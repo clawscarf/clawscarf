@@ -77,6 +77,10 @@ justify its actual owners during extraction. Do not introduce it for pack metada
 
 ## Implementation order
 
+- [ ] **Apply the reuse map throughout extraction.** Begin each existing capability
+  with RawClaw's source, contracts, visual primitives and regression tests. Record
+  the actual donor revision and adapt concrete dependencies instead of rewriting
+  proven mechanisms. Bring its applicable quality checks with the first code slice.
 - [ ] **1. Prove the runtime boundary.** Select current OpenClaw/OpenShell versions;
   build a pinned vanilla runtime image and reproducible non-interactive launch.
   Verify persistence, restart, networking, resource limits, model/tool streaming,
@@ -137,7 +141,7 @@ justify its actual owners during extraction. Do not introduce it for pack metada
 ## Deferred or undecided
 
 - [ ] Select public licensing and repository publication settings before publishing.
-- [ ] Consume qualified artifacts from RawClaw in a separately selected integration
+- [ ] Have RawClaw consume qualified ClawScarf artifacts in a separately selected integration
   slice; preserve current deployments and avoid duplicate maintained defaults.
 - [ ] Decide additional supported platforms from evidence, not a blanket promise.
 - [ ] Website, billing, fleet management, additional hosting providers and automated
@@ -145,7 +149,35 @@ justify its actual owners during extraction. Do not introduce it for pack metada
 - [ ] Stronger operation-level company policy and cross-tool audit guarantees need
   explicit requirements; do not infer them from MCP, OpenShell or connection grants.
 
-## References and reusable work
+## RawClaw reuse map
+
+**Copy/extract working code and its tests, then adapt the composition.** This is the
+default for existing capabilities, not merely inspiration. New OpenShell packaging
+and pack lifecycle work have no equivalent proven RawClaw implementation; use
+upstream mechanisms for those. Do not transplant the native systemd/Docker layout
+as if it already qualified the proposed whole-runtime boundary.
+
+Reviewed donor baseline: RawClaw
+[`f37a6e786fdd88857c21bd32140567874e281a8c`](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c).
+Recheck the actual donor source when extracting and pin that revision in destination
+provenance. Paths below are relative to that donor, not files already present here.
+
+| Capability | Donor source to start from | Adaptation boundary |
+| --- | --- | --- |
+| Contributor/tooling conventions | AGENTS.md, eslint.config.mjs, tsconfig*.json, .dependency-cruiser.cjs, scripts/check-docs.ts and contract generation/check tooling | Preserve standards and meaningful checks; replace donor paths/scripts and omit absent components. |
+| Runtime/defaults and plugin packaging | runtime/openclaw/, deploy/images/hetzner/scripts/install-runtime.sh, plugins/connections/ | Reuse defaults, integrity checks and packaging; replace Hetzner, systemd, rootless-engine and host-path assumptions for the selected target. |
+| Company login and entry | src/domains/access/, src/domains/installations/service/openclaw/entry/, src/apps/ingress/, src/composition/ingress.ts | Reuse OIDC/session/ingress mechanics and native identity semantics; replace organization/admission/placement wiring with standalone ownership. |
+| Connections | plugins/connections/, src/domains/connections/, src/composition/connections/, catalogs/connections/, scripts/connectors-catalog*.ts | Preserve REST tools, Composio adapter, callbacks, account selection and grants; extract required persistence without the fleet control plane. |
+| Connection account UI | src/apps/web/domains/connections/ and its shared visual/form dependencies | Copy the working flow and visual primitives; remove organization routing through explicit standalone composition. |
+| Model gateway | runtime/ai-gateway/, deploy/ai-gateway/, src/composition/ai/ and applicable src/domains/ai/ code | Reuse LiteLLM integration/configuration and tests; replace hosted-source/admission/catalog wiring where needed. Do not recreate the removed inference proxy. |
+| Acceptance | tests/ and corresponding helpers for identity, logout, ingress, native roles, connections, model gateway and browser flows | Transfer regressions with each capability; adapt fixtures and run against the new runtime. Donor success is not new-target acceptance. |
+
+Preserve licenses/notices and identify each intentional omission. Copy no secrets,
+customer state or per-run reports. Keep RawClaw functioning during extraction; its
+switch to shared ClawScarf artifacts is a separately authorized integration step.
+Do not turn that temporary transition into permanently duplicated runtime ownership.
+
+## References
 
 Reference current upstream, pin the selected release for implementation:
 
@@ -156,10 +188,8 @@ Reference current upstream, pin the selected release for implementation:
 - [OpenClaw security](https://docs.openclaw.ai/gateway/security),
   [skills](https://docs.openclaw.ai/tools/skills) and
   [Lobster](https://docs.openclaw.ai/tools/lobster) describe trust and capability limits.
-- Local donor checkout `/Users/miguel/raw-labs/rawclaw`: runtime/openclaw,
-  plugins/connections, identity/ingress and provider domains, deploy recipes and
-  existing regression tests. Record exact commits when extracting; this path is
-  developer-local evidence, not a public installation dependency.
+- Local donor checkout `/Users/miguel/raw-labs/rawclaw` supplies the reuse map above.
+  This path is developer-local evidence, not a public installation dependency.
 - Local pilot `/Users/miguel/raw-labs/claw/docs/sandboxing.md`: native Codex,
   filesystem visibility and browser isolation acceptance. Its past findings must
   be rerun against the newly selected runtime; do not copy old workarounds blindly.
