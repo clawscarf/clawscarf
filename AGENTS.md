@@ -7,7 +7,9 @@ Preserve its engineering standards while adapting runtime ownership and scope.
 
 [README.md](README.md) owns setup and verified status; [PLAN.md](PLAN.md) owns the
 initial design and single task checklist. Local READMEs own implementation detail
-and reuse provenance. Create focused specification/architecture owners when real
+and reuse provenance. [CONTRIBUTING.md](CONTRIBUTING.md) is the human entry point;
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) owns incorporated-material attribution.
+Create focused specification/architecture owners when real
 implementation warrants them, moving detail and linking rather than copying.
 Keep entry points short and navigable. Explain behavior once in its owner.
 Keep only current documentation, open work and future ideas. History belongs in git;

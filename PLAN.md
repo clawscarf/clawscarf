@@ -1,7 +1,7 @@
 # ClawScarf — initial plan
 
-This is the single initial design and implementation checklist. Repository setup
-is the currently authorized slice; the work below is planned, not implemented.
+This is the single initial design and implementation checklist. The repository
+contains documentation and licensing only; the work below is planned, not implemented.
 The terminal installer is last. Build and validate the underlying components first.
 
 ## Product and boundaries
@@ -75,6 +75,44 @@ No full upstream OpenClaw source copy, RawClaw fleet database or second native-r
 database. Postgres may support extracted companions' durable sessions/accounts;
 justify its actual owners during extraction. Do not introduce it for pack metadata.
 
+## Standalone and hosted contracts
+
+Independence must be demonstrated, not inferred from a configurable service URL.
+
+| Deployment | Identity and admission | Models and Connections |
+| --- | --- | --- |
+| Local evaluation | Loopback-only protected local administrator enrollment; no company IdP or public DNS required. | Operator-supplied model gateway or optional local LiteLLM. Connections may be absent. |
+| Standalone team | Local access companion connected to company OIDC; explicit authorized-user enrollment and native role assignment. | Existing external services or optional locally operated companions with customer credentials. |
+| RawClaw-managed | RawClaw supplies current identity/admission authority and native acting-user context. No second independent SSO authority. | RawClaw supplies its model gateway and broker; its hosted authorization/accounting remains outside ClawScarf. |
+
+Before extracting access, define one durable server identity, stable issuer/subject
+mapping, explicit first-administrator enrollment, authorization of additional people,
+handover and revocation. OIDC authentication alone does not admit everyone from an
+IdP. Use native user/role controls where adequate and a narrow extracted access
+surface where required; never fake organization, allocation or Hetzner records to
+satisfy donor dependencies. Reuse the narrow ingress/session-check boundary rather
+than copying the fleet-dependent entry service unchanged.
+
+Define the local endpoint map before the installer: native UI, login/callback,
+widgets, optional account UI and provider callbacks. Verify loopback origins/ports,
+browser cookie isolation and redirects without a RawClaw hostname. Shared mode
+adds configured names/TLS; public exposure requires working authentication.
+
+Optional Connections needs standalone account setup/return, plugin activation and
+scoped runtime credentials. External-broker mode must require neither a local broker
+database nor local Composio credentials. Optional LiteLLM needs local key provisioning
+and revocation without RawClaw's internal admission callback. Retain native state,
+server identity, user mapping and companion account/key material across restart or
+container recreation. Stopping a deployment must not delete its data.
+
+RawClaw adoption requires an explicit runtime-target contract, separate from its
+server/volume/allocation facts: exact artifact, endpoint/transport, persistent paths,
+identity context and supported operations. Its adapter retains hosted authorization
+and uses the selected runtime controller from outside the sandbox. Existing root-only
+SSH launchers, ZFS binding checks, systemd units and fixed bridge addresses are not
+portable runtime interfaces. Preserve user-scoped management and uncertain outcomes;
+do not replace them with a shared all-powerful identity to simplify integration.
+
 ## Implementation order
 
 - [ ] **Apply the reuse map throughout extraction.** Begin each existing capability
@@ -85,7 +123,9 @@ justify its actual owners during extraction. Do not introduce it for pack metada
   build a pinned vanilla runtime image and reproducible non-interactive launch.
   Verify persistence, restart, networking, resource limits, model/tool streaming,
   and native UI/widget reachability. Test forbidden host paths, unrelated data,
-  controller/socket access and forbidden egress. Record actual platform limits.
+  controller/socket access and forbidden egress. Record actual platform limits,
+  download size, cold-start/install time and measured idle/active memory. Do not
+  assume the current small RawClaw VM can run the new stack unchanged.
 - [ ] **2. Define the shipped capability baseline.** Inventory selected native
   plugins, skills, CLI dependencies, channels and MCP paths with exact execution
   location and authority. Compare executable defaults and tests from RawClaw and
@@ -98,7 +138,8 @@ justify its actual owners during extraction. Do not introduce it for pack metada
   first administrator; native roles thereafter, no first-login takeover. Verify two
   identities, role denial/handover, stable display identities, direct bookmarks,
   multiple tabs, logout/revocation of open streams, widgets and authenticated hooks.
-  Do not require a RawClaw account or expose remote access without working identity.
+  Qualify the standalone identity and endpoint contracts above. Do not require a
+  RawClaw account or expose remote access without working identity.
 - [ ] **4. Complete model integration.** Support an existing compatible gateway
   and optional bundled LiteLLM configuration. Keep provider credentials outside the
   runtime. Test a real response and tool call, model discovery/defaults, failures,
@@ -129,6 +170,10 @@ justify its actual owners during extraction. Do not introduce it for pack metada
   Test missing/invalid optional services and interrupted setup. Produce exact
   artifacts with license/provenance review. Full backups and rollback automation
   remain outside this work; make no data-recovery promise from an image rebuild.
+  Run a clean-machine acceptance from release artifacts without RawClaw source,
+  account, API, database or hostname: protected login, real model/tool response,
+  retained state after restart and clean operation with integrations disabled.
+  Qualify team OIDC and optional broker account setup separately.
 - [ ] **9. Build the terminal installer last.** A small verified-download bootstrap
   invokes a maintained terminal UI over the already-working commands. Offer local
   trial, team server and existing-install configuration. Prompt for exposure/login,
@@ -137,12 +182,43 @@ justify its actual owners during extraction. Do not introduce it for pack metada
   Finish with the actual usable URL and operating commands. Support unattended
   configuration without embedding secrets in argv or baked artifacts. Do not
   duplicate native agent onboarding or require the wizard for ordinary operation.
+  Follow the packaging lessons below rather than silently compiling from source
+  or replacing an existing installation when a release download/setup fails.
+
+## Adoption and packaging lessons
+
+Use NemoClaw's practical patterns without copying its entire orchestration stack:
+
+- Release artifacts and a documented platform/resource matrix, separate from the
+  contributor checkout. Default to a tested release with exact image integrity;
+  source builds are explicit, not a hidden fallback after a failed download.
+- Inspect an existing installation and distinguish configure/resume/upgrade/new.
+  Show a real first successful model/tool interaction, not only process readiness.
+- Keep reproducible unattended commands beneath the eventual terminal wizard.
+  Provide agent-readable instructions without asking users to put secrets in chat.
+- Measure our selected stack. NemoClaw's resource figures and platform claims do
+  not automatically apply to ClawScarf. Verify runtime-controller topology from the
+  selected release rather than assuming a Docker install has no other components.
+- Publish actual screenshots/demo, working quickstart, support matrix and release
+  checksums when available. No fake download commands, passing badges or security
+  claims. Keep the README welcoming and capability-oriented while marking status.
+
+See [NemoClaw's quickstart](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/get-started/quickstart)
+and [prerequisites](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/get-started/prerequisites).
 
 ## Deferred or undecided
 
-- [ ] Select public licensing and repository publication settings before publishing.
+- [ ] Before publication, verify extracted-code rights and bundled dependency
+  licenses/notices, configure an actual private vulnerability-reporting channel,
+  and choose repository/release settings. ClawScarf-owned work uses [MIT](LICENSE);
+  [third-party provenance](THIRD_PARTY_NOTICES.md) does not grant blanket rights
+  to donor code or change dependencies' licenses.
 - [ ] Have RawClaw consume qualified ClawScarf artifacts in a separately selected integration
   slice; preserve current deployments and avoid duplicate maintained defaults.
+  Qualify one new managed installation using external RawClaw identity/model/broker
+  services, native mutation/stream/widget behavior, connector context, source-bound
+  AI authorization and revocation. Transfer runtime/default/image ownership after
+  success, not while the new target is still unqualified.
 - [ ] Decide additional supported platforms from evidence, not a blanket promise.
 - [ ] Website, billing, fleet management, additional hosting providers and automated
   recovery/backups are separate future work. ZFS is not a distribution prerequisite.
