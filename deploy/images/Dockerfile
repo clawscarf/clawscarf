@@ -1,0 +1,68 @@
+FROM ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101 AS upstream
+
+FROM upstream AS connections
+USER root
+WORKDIR /build/connections
+COPY plugins/connections/ ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
+    && npm run artifact \
+    && mkdir /out \
+    && tar -xzf .local/artifact/connectors.tgz --strip-components=1 -C /out
+
+FROM upstream AS native-plugins
+USER root
+WORKDIR /build/native-plugins
+COPY deploy/images/native-plugins/ ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+    && node download.mjs \
+    && mkdir -p node_modules/@openclaw/lobster \
+    && tar -xzf /tmp/lobster.tgz --strip-components=1 -C node_modules/@openclaw/lobster \
+    && rm /tmp/lobster.tgz download.mjs \
+    && ln -s /app node_modules/openclaw
+
+FROM upstream AS access
+USER root
+WORKDIR /build/access
+COPY plugins/access/ ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
+    && npm run build \
+    && mkdir /out \
+    && cp -r dist openclaw.plugin.json package.json LICENSE README.md /out
+
+FROM upstream AS pack-tools
+USER root
+WORKDIR /build/pack-tools
+COPY deploy/images/pack-tools/ ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
+COPY scripts/packs.ts ./scripts/packs.ts
+COPY scripts/packs/ ./scripts/packs/
+COPY services/connections/generated/client/ ./services/connections/generated/client/
+RUN ./node_modules/.bin/tsc -p tsconfig.json \
+    && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+
+FROM upstream
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends iproute2=6.1.0-3 nftables=1.0.6-2+deb12u2 \
+       chromium=152.0.7977.82-1~deb12u1 chromium-sandbox=152.0.7977.82-1~deb12u1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -o node -g node -m 0700 /home/node/.openclaw \
+    && install -d -o node -g node -m 0755 /workspace
+COPY --from=connections /out /app/clawscarf/connections
+COPY --from=native-plugins /build/native-plugins /app/clawscarf/native-plugins
+COPY --from=access /out /app/clawscarf/access
+COPY --chmod=0755 runtime/openclaw.sh /app/clawscarf/bin/openclaw
+COPY runtime/models.ts /app/clawscarf/models.ts
+COPY release/licenses/ /usr/share/licenses/clawscarf/
+
+COPY --from=pack-tools /build/pack-tools/dist /app/clawscarf/pack-tools
+COPY --from=pack-tools /build/pack-tools/node_modules /app/clawscarf/pack-tools/node_modules
+COPY --from=pack-tools /build/pack-tools/package.json /app/clawscarf/pack-tools/package.json
+COPY packs/research-team/ /app/clawscarf/packs/research-team/
+COPY --chmod=0755 runtime/packs.sh /app/clawscarf/bin/packs
+
+USER node
+ENV SQLITE_TMPDIR=/tmp
+WORKDIR /workspace
+CMD ["/app/clawscarf/bin/openclaw", "gateway"]

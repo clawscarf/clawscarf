@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "disableSourceOfProjectReferenceRedirect": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "scripts/**/*.ts",
+    "services/**/*.ts",
+    "tests/**/*.ts",
+    "services/**/*.tsx",
+    "runtime/**/*.ts",
+    "apps/**/*.ts"
+  ],
+  "exclude": [
+    "services/access/generated/client",
+    "services/connections/generated/client"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.sdk.json"
+    }
+  ]
+}

@@ -2,34 +2,41 @@
 
 **Your team's OpenClaw. Your infrastructure.**
 
-ClawScarf is building an open-source team edition of
-[OpenClaw](https://github.com/openclaw/openclaw): company login, useful capability
-packs, your choice of models, and connections to the services your team uses.
-A coherent installation you can run yourself, without a RawClaw account.
+Bring your team, models and tools to [OpenClaw](https://github.com/openclaw/openclaw).
+ClawScarf packages its native application with company login, optional model and
+connection services, and reusable agent packs—on infrastructure you control.
 
-> **Early development:** this repository currently contains the design and
-> contributor guidance. There is no runnable distribution or installer yet.
+> **Early development:** components are implemented and undergoing integration testing.
+> There is no qualified distribution, complete quickstart or installer yet.
 > Follow the [implementation plan](PLAN.md) for the work remaining.
 
-## What we're building
+## What's in the repository
 
-- **A team server.** Multiple people and agents, company OIDC login and native
-  OpenClaw roles. The native OpenClaw UI remains the everyday application.
-- **Packs that arrive prepared.** Selected agents, skills, plugins and workflows
-  with their actual dependencies and connection requirements accounted for.
-- **Models on your terms.** Use an existing model gateway or an optional LiteLLM
-  deployment. No mandatory OpenRouter account or RAW Labs inference service.
-- **Connections where you need them.** Optional managed account connections,
-  alongside native plugins, messaging channels, CLI tools and MCP.
-- **A practical local start.** A container-based installation without requiring
-  you to arrange a VM. Build the working runtime first, then a polished terminal
-  installer with optional packs and resumable setup.
+- **[Team access](services/access/README.md).** Generic OIDC, protected local login,
+  enrollment and revocable sessions. OpenClaw owns application roles and remains
+  the everyday UI.
+- **[Agent packs](packs/README.md).** Native OpenClaw Claws grouped into reusable
+  packs, with explicit previews, prerequisite checks and preservation of user edits.
+  The example pairs a researcher with a reviewer; native Claws are experimental.
+- **[Models on your terms](deploy/models/README.md).** Configure an existing model
+  gateway or the optional LiteLLM companion. No mandatory OpenRouter account or
+  RAW Labs inference service.
+- **[Managed connections](services/connections/README.md).** Optional account setup,
+  agent grants and a small discovery/description/call plugin. Native plugins,
+  messaging channels and MCP remain OpenClaw capabilities.
+- **[A pinned runtime](deploy/images/README.md).** Vanilla OpenClaw with Codex,
+  Lobster, Chromium and ClawScarf plugins packaged together. Dependencies being
+  installed does not mean every execution path is qualified.
+
+The intended installation is container-based, without a separately provisioned VM.
+The terminal installer comes after the underlying components work together.
 
 ## Security with explicit boundaries
 
-The proposed OpenShell integration contains the whole OpenClaw runtime, including
-native plugins, under externally controlled filesystem and network policy. This
-combination still needs qualification; it is not a released security guarantee.
+The OpenShell candidate places the whole OpenClaw runtime, including native
+plugins, under externally controlled filesystem and network policy. Its Docker
+driver and application transport have component-level checks; the combined runtime
+still needs qualification. Browser sandboxing and member execution remain open.
 
 One installation serves one trusted team. Native roles control application access;
 external services retain shared provider credentials. Sandboxing cannot make every
@@ -38,9 +45,10 @@ See the [security posture and validation plan](PLAN.md#runtime-candidate-and-sec
 
 ## Independent by design
 
-ClawScarf is intended to work on its own. RawClaw is a separate management and
-hosting product that can consume the same runtime artifacts. Standalone users
-must not need its portal, organization database, billing or cloud credentials.
+The standalone components do not depend on RawClaw's portal, organization database,
+billing or cloud credentials. A hosting platform can supply its own trusted-ingress
+identity and omit standalone account navigation. RawClaw adoption is a separate,
+future integration; it does not consume this runtime yet.
 
 OpenClaw owns the application; ClawScarf packages and tests the combination.
 We are building on its supported interfaces and existing formats, not a parallel
@@ -52,12 +60,16 @@ NVIDIA distribution.
 The most useful early contributions are testing runtime compatibility, improving
 standalone team setup and defining a small set of useful, testable packs.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [plan](PLAN.md).
-Installation commands, screenshots and platform claims will appear when verified.
+Component build and test instructions are available now. A complete installation
+guide and supported-platform claims wait for clean-install qualification.
+
+Runtime contributors can inspect the [image recipe](deploy/images/Dockerfile),
+[sandbox policy](deploy/openshell/policy.yaml) and [component pins](release/components.json).
 
 ## License and acknowledgements
 
 ClawScarf-owned work is [MIT licensed](LICENSE), the same license used by
-[OpenClaw](https://github.com/openclaw/openclaw/blob/main/LICENSE).
+[OpenClaw](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/LICENSE).
 Third-party components retain their own licenses; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

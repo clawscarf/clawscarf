@@ -1,0 +1,79 @@
+{
+  "id": "clawscarf-connections",
+  "name": "Connections",
+  "description": "Use the accounts connected to this installation.",
+  "skills": ["./skills"],
+  "configContracts": {
+    "secretInputs": {
+      "paths": [
+        {
+          "path": "credential",
+          "expected": "string",
+          "ownerKind": "capability"
+        }
+      ]
+    }
+  },
+  "uiHints": {
+    "credential": {
+      "sensitive": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "brokerUrl": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      },
+      "credential": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "object",
+            "required": ["source", "provider", "id"],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "env"
+                  },
+                  {
+                    "type": "string",
+                    "const": "file"
+                  },
+                  {
+                    "type": "string",
+                    "const": "exec"
+                  }
+                ]
+              },
+              "provider": {
+                "type": "string",
+                "minLength": 1
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": ["connections_search", "connections_describe", "connections_call"]
+  }
+}

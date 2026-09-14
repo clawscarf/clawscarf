@@ -1,8 +1,14 @@
 # Contributing to ClawScarf
 
-ClawScarf is in its design and runtime-validation stage. There is no installable
-release or application test command yet. The [plan](PLAN.md) is the single list of
+ClawScarf is implementing and validating its standalone runtime. There is no
+qualified installable release yet. The [plan](PLAN.md) is the single list of
 open work; [AGENTS.md](AGENTS.md) defines engineering and review conventions.
+
+Use the Node and pnpm versions in [package.json](package.json) and follow the
+[contributor setup and checks](scripts/README.md). The two plugin builds have their
+own locked development dependencies. Real database/native tests require the
+environments described in the component READMEs. Passing these checks does not
+establish that the distribution is ready to install.
 
 Start with one concrete outcome and a small change. For work based on RawClaw,
 copy the relevant implementation and regression tests, record its source revision,

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "lib": ["ES2024", "DOM"],
+    "exactOptionalPropertyTypes": false,
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/sdk.tsbuildinfo"
+  },
+  "include": [
+    "services/access/generated/client/**/*.ts",
+    "services/connections/generated/client/**/*.ts"
+  ],
+  "exclude": [],
+  "references": []
+}

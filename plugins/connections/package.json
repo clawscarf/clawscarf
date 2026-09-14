@@ -1,0 +1,67 @@
+{
+  "name": "@clawscarf/connections",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Managed connections for ClawScarf and vanilla OpenClaw.",
+  "files": [
+    "dist",
+    "skills",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=24.16.0 <25 || >=26.1.0"
+  },
+  "peerDependencies": {
+    "openclaw": "2026.9.4"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "typebox": "1.3.18"
+  },
+  "bundledDependencies": [
+    "typebox"
+  ],
+  "devDependencies": {
+    "@types/node": "24.10.13",
+    "typescript": "6.0.3",
+    "openclaw": "2026.9.4",
+    "@hey-api/openapi-ts": "0.99.0",
+    "yaml": "2.9.0"
+  },
+  "scripts": {
+    "setup": "npm ci --no-audit --no-fund",
+    "api:generate": "openapi-ts",
+    "build": "npm run prepare:client && tsc -p tsconfig.build.json && node scripts/package-client.mjs",
+    "artifact": "npm run build && node scripts/artifact.mjs",
+    "check": "npm run prepare:client && tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/plugin.test.ts tests/rest-broker.test.ts",
+    "test:native": "npm run build && node --experimental-strip-types --test tests/native-package.test.ts tests/configuration.test.ts",
+    "prepare:client": "tsc -p tsconfig.sdk.json",
+    "pretest": "npm run prepare:client"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "compat": {
+      "pluginApi": "2026.9.4",
+      "minGatewayVersion": "2026.9.4"
+    },
+    "build": {
+      "openclawVersion": "2026.9.4",
+      "pluginSdkVersion": "2026.9.4"
+    }
+  },
+  "license": "MIT"
+}

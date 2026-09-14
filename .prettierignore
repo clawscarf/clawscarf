@@ -1,0 +1,8 @@
+node_modules
+dist
+.local
+pnpm-lock.yaml
+**/package-lock.json
+**/src/generated
+
+**/generated/**

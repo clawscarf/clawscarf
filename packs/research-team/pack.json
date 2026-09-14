@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "research-team",
+  "version": "0.1.0",
+  "openclaw": "2026.9.4",
+  "description": "A researcher and a reviewer for evidence-based team briefs.",
+  "members": [
+    {
+      "id": "researcher",
+      "source": "researcher",
+      "requirements": { "model": "configured-default", "connections": [] }
+    },
+    {
+      "id": "reviewer",
+      "source": "reviewer",
+      "requirements": { "model": "configured-default", "connections": [] }
+    }
+  ],
+  "execution": { "location": "native-tools", "binaries": [], "network": [] }
+}

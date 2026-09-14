@@ -1,0 +1,16 @@
+services:
+  models:
+    command:
+      - --config
+      - /etc/clawscarf/models.json
+      - --host
+      - 0.0.0.0
+      - --port
+      - "4000"
+      - --ssl_keyfile_path
+      - /run/clawscarf/models.key
+      - --ssl_certfile_path
+      - /run/clawscarf/models.crt
+    volumes:
+      - ${CLAWSCARF_MODELS_DIRECTORY:?}/server.key:/run/clawscarf/models.key:ro
+      - ${CLAWSCARF_MODELS_DIRECTORY:?}/server.crt:/run/clawscarf/models.crt:ro

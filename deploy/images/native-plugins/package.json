@@ -1,0 +1,9 @@
+{
+  "name": "clawscarf-native-plugin-payload",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@openclaw/codex": "2026.9.4"
+  }
+}

@@ -1,0 +1,12 @@
+ClawScarf Connections
+
+Contains source, skill instructions and tests adapted from RawClaw,
+https://github.com/raw-labs/rawclaw
+Revision f37a6e786fdd88857c21bd32140567874e281a8c
+Copyright (c) RAW Labs contributors.
+Reuse was directed by the project owner; public redistribution rights of donor
+material remain subject to the repository's third-party review before publication.
+
+Generated transport source uses @hey-api/openapi-ts (MIT).
+The package bundles TypeBox (MIT); its license is retained in the dependency.
+OpenClaw is an external peer dependency and is not bundled.

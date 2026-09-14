@@ -1,0 +1,24 @@
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+    - /app
+    - /usr
+    - /lib
+    - /etc
+    - /proc
+    - /sys/fs/cgroup
+    - /sys/devices/system/cpu
+    - /dev/urandom
+    - /dev/random
+  read_write:
+    - /home/node
+    - /tmp
+    - /dev/null
+    - /dev/shm
+landlock:
+  compatibility: hard_requirement
+process:
+  run_as_user: "1000"
+  run_as_group: "1000"
+network_policies: {}

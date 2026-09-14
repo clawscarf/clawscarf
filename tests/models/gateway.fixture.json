@@ -1,0 +1,22 @@
+{
+  "mode": "litellm",
+  "baseUrl": "http://127.0.0.1:14000/v1",
+  "defaultModel": "team-model",
+  "models": [
+    {
+      "id": "team-model",
+      "name": "Team model",
+      "enabled": true,
+      "contextWindow": 128000,
+      "maxTokens": 16384,
+      "reasoning": false,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openai/test-model",
+        "apiKeyEnv": "TEST_PROVIDER_KEY",
+        "apiBase": "http://host.docker.internal:14001/v1"
+      }
+    }
+  ]
+}

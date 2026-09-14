@@ -1,0 +1,367 @@
+import {
+  randomUUID,
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+} from "node:crypto";
+import type { Pool, PoolClient } from "pg";
+import { z } from "zod";
+import { SessionLogoutProtection } from "./session-logout.js";
+import { AccessError } from "../types/errors.js";
+import type {
+  AccessStore,
+  Identity,
+  LoginTransaction,
+  Session,
+  User,
+} from "../types/model.js";
+import { hash } from "../types/credential.js";
+interface UserRow {
+  id: string;
+  email: string;
+  name: string;
+  revision: string;
+  admitted: boolean;
+}
+const loginSchema = z
+  .object({
+    state: z.string(),
+    nonce: z.string(),
+    codeVerifier: z.string(),
+    returnTo: z.string(),
+  })
+  .strict();
+const user = (row: UserRow): User => ({
+  id: row.id,
+  identity: `clawscarf:${row.id}`,
+  email: row.email,
+  name: row.name.trim() || row.email,
+});
+export interface InitialAdministrator {
+  issuer: string;
+  subject: string;
+  email: string;
+  name: string;
+}
+/** Selected RawClaw Postgres session mechanics, without organization or host records. */
+export class PostgresAccessStore implements AccessStore {
+  private readonly logoutProtection: SessionLogoutProtection;
+  constructor(
+    private readonly pool: Pool,
+    private readonly key: Buffer,
+    private readonly administrator: InitialAdministrator,
+    private readonly client?: PoolClient,
+  ) {
+    if (key.length !== 32)
+      throw Error("Access encryption key must contain 32 bytes.");
+    this.logoutProtection = new SessionLogoutProtection(key);
+  }
+  private async transaction<T>(
+    work: (client: PoolClient) => Promise<T>,
+  ): Promise<T> {
+    if (this.client) return work(this.client);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await work(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async withEnrollmentLock<T>(
+    work: (store: AccessStore) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.pool.connect();
+    let locked = false;
+    try {
+      const result = await client.query<{ locked: boolean }>(
+        "SELECT pg_try_advisory_lock(174992004) AS locked",
+      );
+      locked = result.rows[0]?.locked === true;
+      if (!locked)
+        throw new AccessError(
+          "rate_limited",
+          "Another membership change is in progress. Try again.",
+        );
+      return await work(
+        new PostgresAccessStore(
+          this.pool,
+          this.key,
+          this.administrator,
+          client,
+        ),
+      );
+    } finally {
+      try {
+        if (locked) await client.query("SELECT pg_advisory_unlock(174992004)");
+      } finally {
+        client.release();
+      }
+    }
+  }
+  async eligibleIdentities() {
+    const result = await (this.client ?? this.pool).query<{ id: string }>(
+      "SELECT id FROM clawscarf_access.users WHERE admitted ORDER BY id",
+    );
+    return result.rows.map((row) => `clawscarf:${row.id}`);
+  }
+  async people() {
+    const result = await (this.client ?? this.pool).query<UserRow>(
+      "SELECT id, email, name, revision, admitted FROM clawscarf_access.users WHERE admitted ORDER BY name, id LIMIT 1000",
+    );
+    return result.rows.map(user);
+  }
+  async person(id: string) {
+    const result = await (this.client ?? this.pool).query<UserRow>(
+      "SELECT * FROM clawscarf_access.users WHERE id=$1",
+      [id],
+    );
+    return result.rows[0] ? user(result.rows[0]) : null;
+  }
+  async initialize() {
+    return this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(174992001)");
+      const existing = await client.query<
+        UserRow & { server_id: string; issuer: string; subject: string }
+      >(
+        "SELECT u.*,s.id AS server_id FROM clawscarf_access.server s JOIN clawscarf_access.users u ON u.id=s.administrator_id",
+      );
+      const row = existing.rows[0];
+      if (row) {
+        if (
+          row.issuer !== this.administrator.issuer ||
+          row.subject !== this.administrator.subject
+        )
+          throw Error(
+            "Configured initial identity differs from this server database.",
+          );
+        return { serverId: row.server_id, administrator: user(row) };
+      }
+      const id = randomUUID(),
+        serverId = randomUUID(),
+        a = this.administrator;
+      const inserted = await client.query<UserRow>(
+        "INSERT INTO clawscarf_access.users(id,issuer,subject,email,name,admitted) VALUES($1,$2,$3,$4,$5,true) RETURNING *",
+        [id, a.issuer, a.subject, a.email, a.name],
+      );
+      const created = inserted.rows[0];
+      if (!created) throw Error("Administrator initialization failed.");
+      await client.query(
+        "INSERT INTO clawscarf_access.server(id,administrator_id) VALUES($1,$2)",
+        [serverId, id],
+      );
+      return { serverId, administrator: user(created) };
+    });
+  }
+  private seal(value: LoginTransaction) {
+    const iv = randomBytes(12),
+      cipher = createCipheriv("aes-256-gcm", this.key, iv);
+    const payload = Buffer.concat([
+      cipher.update(JSON.stringify(value)),
+      cipher.final(),
+    ]);
+    return Buffer.concat([iv, cipher.getAuthTag(), payload]).toString(
+      "base64url",
+    );
+  }
+  private open(value: string): LoginTransaction {
+    const bytes = Buffer.from(value, "base64url"),
+      cipher = createDecipheriv("aes-256-gcm", this.key, bytes.subarray(0, 12));
+    cipher.setAuthTag(bytes.subarray(12, 28));
+    return loginSchema.parse(
+      JSON.parse(
+        Buffer.concat([
+          cipher.update(bytes.subarray(28)),
+          cipher.final(),
+        ]).toString(),
+      ),
+    );
+  }
+  async beginLogin(cookieHash: string, value: LoginTransaction) {
+    await this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(174992002)");
+      await client.query(
+        "DELETE FROM clawscarf_access.login_transactions WHERE expires_at<=now()",
+      );
+      const count = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM clawscarf_access.login_transactions",
+      );
+      if ((count.rows[0]?.count ?? 1000) >= 1000)
+        throw new AccessError(
+          "rate_limited",
+          "Too many pending logins. Try again later.",
+        );
+      await client.query(
+        "INSERT INTO clawscarf_access.login_transactions(cookie_hash,state_hash,payload) VALUES($1,$2,$3)",
+        [cookieHash, hash(value.state), this.seal(value)],
+      );
+    });
+  }
+  async consumeLogin(cookieHash: string, state: string) {
+    const result = await (this.client ?? this.pool).query<{ payload: string }>(
+      "DELETE FROM clawscarf_access.login_transactions WHERE cookie_hash=$1 AND state_hash=$2 AND expires_at>now() RETURNING payload",
+      [cookieHash, hash(state)],
+    );
+    return result.rows[0] ? this.open(result.rows[0].payload) : null;
+  }
+  async admitIdentity(identity: Identity) {
+    const result = await (this.client ?? this.pool).query<UserRow>(
+      "UPDATE clawscarf_access.users SET email=$3,name=$4 WHERE issuer=$1 AND subject=$2 AND admitted RETURNING *",
+      [
+        identity.issuer,
+        identity.subject,
+        identity.email.toLowerCase(),
+        identity.name,
+      ],
+    );
+    const row = result.rows[0];
+    if (!row)
+      throw new AccessError(
+        "forbidden",
+        "This account has not been admitted to this server.",
+      );
+    return user(row);
+  }
+  async createSession(
+    userId: string,
+    digest: string,
+    csrfToken: string,
+    logoutUrl: string | null,
+  ) {
+    const result = await (this.client ?? this.pool).query(
+      "INSERT INTO clawscarf_access.browser_sessions(hash,user_id,admission_revision,csrf,logout_redirect) SELECT $1,id,revision,$3,$4 FROM clawscarf_access.users WHERE id=$2 AND admitted",
+      [
+        digest,
+        userId,
+        csrfToken,
+        logoutUrl === null
+          ? null
+          : this.logoutProtection.seal(digest, logoutUrl),
+      ],
+    );
+    if (result.rowCount !== 1)
+      throw new AccessError("forbidden", "This account is not admitted.");
+  }
+  async authenticateSession(digest: string): Promise<Session | null> {
+    const result = await (this.client ?? this.pool).query<
+      UserRow & { csrf: string }
+    >(
+      "SELECT u.*,s.csrf FROM clawscarf_access.browser_sessions s JOIN clawscarf_access.users u ON u.id=s.user_id WHERE s.hash=$1 AND s.expires_at>clock_timestamp() AND (u.admitted OR s.purpose='enrollment') AND s.admission_revision=u.revision AND (s.parent_hash IS NULL OR EXISTS(SELECT 1 FROM clawscarf_access.browser_sessions parent JOIN clawscarf_access.users parent_user ON parent_user.id=parent.user_id WHERE parent.hash=s.parent_hash AND parent.parent_hash IS NULL AND parent.expires_at>clock_timestamp() AND parent_user.admitted AND parent_user.revision=parent.admission_revision))",
+      [digest],
+    );
+    return result.rows[0]
+      ? {
+          hash: digest,
+          user: user(result.rows[0]),
+          csrfToken: result.rows[0].csrf,
+        }
+      : null;
+  }
+  async createDelegation(parentHash: string, digest: string) {
+    const result = await (this.client ?? this.pool).query(
+      `INSERT INTO clawscarf_access.browser_sessions(hash,purpose,parent_hash,user_id,admission_revision,csrf,expires_at)
+      SELECT $1,'management',s.hash,s.user_id,s.admission_revision,s.csrf,LEAST(s.expires_at,clock_timestamp()+interval '3 minutes')
+      FROM clawscarf_access.browser_sessions s JOIN clawscarf_access.users u ON u.id=s.user_id
+      WHERE s.hash=$2 AND s.parent_hash IS NULL AND s.expires_at>clock_timestamp() AND u.admitted AND s.admission_revision=u.revision`,
+      [digest, parentHash],
+    );
+    if (result.rowCount !== 1)
+      throw new AccessError("unauthenticated", "Sign in to continue.");
+  }
+  async createEnrollmentDelegation(
+    parentHash: string,
+    userId: string,
+    digest: string,
+  ) {
+    const result = await (this.client ?? this.pool).query(
+      `INSERT INTO clawscarf_access.browser_sessions(hash,purpose,parent_hash,user_id,admission_revision,csrf,expires_at)
+      SELECT $1,'enrollment',s.hash,target.id,target.revision,s.csrf,LEAST(s.expires_at,clock_timestamp()+interval '3 minutes')
+      FROM clawscarf_access.browser_sessions s JOIN clawscarf_access.users actor ON actor.id=s.user_id
+      CROSS JOIN clawscarf_access.users target
+      WHERE s.hash=$2 AND s.parent_hash IS NULL AND s.expires_at>clock_timestamp() AND actor.admitted AND actor.revision=s.admission_revision AND target.id=$3 AND NOT target.admitted`,
+      [digest, parentHash, userId],
+    );
+    if (result.rowCount !== 1)
+      throw new AccessError("forbidden", "Enrollment is unavailable.");
+  }
+  async prepareEnrollment(identity: Identity) {
+    const result = await (this.client ?? this.pool).query<UserRow>(
+      `INSERT INTO clawscarf_access.users(id,issuer,subject,email,name)
+      VALUES($1,$2,$3,$4,$5) ON CONFLICT(issuer,subject) DO UPDATE SET email=excluded.email,name=excluded.name
+      WHERE NOT clawscarf_access.users.admitted RETURNING *`,
+      [
+        randomUUID(),
+        identity.issuer,
+        identity.subject,
+        identity.email,
+        identity.name,
+      ],
+    );
+    const row = result.rows[0];
+    if (!row)
+      throw new AccessError(
+        "invalid_request",
+        "This person is already admitted.",
+      );
+    return user(row);
+  }
+  async activateEnrollment(id: string) {
+    await (this.client ?? this.pool).query(
+      "UPDATE clawscarf_access.users SET admitted=true,revision=revision+1 WHERE id=$1 AND NOT admitted",
+      [id],
+    );
+  }
+  async removeEnrollment(id: string) {
+    await (this.client ?? this.pool).query(
+      "UPDATE clawscarf_access.users SET admitted=false,revision=revision+1 WHERE id=$1",
+      [id],
+    );
+  }
+  async revokeDelegation(digest: string) {
+    await (this.client ?? this.pool).query(
+      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 AND parent_hash IS NOT NULL",
+      [digest],
+    );
+  }
+  async revokeSession(digest: string) {
+    const result = await (this.client ?? this.pool).query<{
+      logout_redirect: string | null;
+    }>(
+      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 RETURNING logout_redirect",
+      [digest],
+    );
+    const row = result.rows[0];
+    if (!row) throw new AccessError("unauthenticated", "Sign in to continue.");
+    return row.logout_redirect === null
+      ? null
+      : this.logoutProtection.open(digest, row.logout_redirect);
+  }
+  async createLocalToken(digest: string) {
+    await this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(174992003)");
+      await client.query("DELETE FROM clawscarf_access.local_tokens");
+      await client.query(
+        "INSERT INTO clawscarf_access.local_tokens(hash) VALUES($1)",
+        [digest],
+      );
+    });
+  }
+  async consumeLocalToken(digest: string) {
+    return this.transaction(async (client) => {
+      const consumed = await client.query(
+        "DELETE FROM clawscarf_access.local_tokens WHERE hash=$1 AND expires_at>clock_timestamp() RETURNING hash",
+        [digest],
+      );
+      if (consumed.rowCount !== 1) return null;
+      const result = await client.query<UserRow>(
+        "SELECT u.* FROM clawscarf_access.users u JOIN clawscarf_access.server s ON s.administrator_id=u.id WHERE u.admitted",
+      );
+      return result.rows[0] ? user(result.rows[0]) : null;
+    });
+  }
+}

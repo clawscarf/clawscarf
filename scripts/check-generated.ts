@@ -1,0 +1,36 @@
+import { execFileSync } from "node:child_process";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+async function snapshot(path: string): Promise<readonly [string, string][]> {
+  const rows: [string, string][] = [];
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    const file = join(path, entry.name);
+    if (entry.isDirectory()) rows.push(...(await snapshot(file)));
+    else rows.push([file, await readFile(file, "utf8")]);
+  }
+  return rows.sort(([a], [b]) => a.localeCompare(b));
+}
+
+const capture = async () =>
+  JSON.stringify(
+    await Promise.all([
+      snapshot("services/access/generated"),
+      snapshot("services/connections/generated"),
+      snapshot("plugins/connections/generated"),
+    ]),
+  );
+const before = await capture();
+execFileSync("pnpm", ["connections:generate"], { stdio: "inherit" });
+execFileSync("pnpm", ["access:generate"], { stdio: "inherit" });
+execFileSync(
+  "npm",
+  ["--prefix", "plugins/connections", "run", "api:generate"],
+  { stdio: "inherit" },
+);
+if (before !== (await capture())) {
+  console.error(
+    "Generated API files were stale. Review and commit the regenerated output.",
+  );
+  process.exitCode = 1;
+}

@@ -1,0 +1,27 @@
+services:
+  models:
+    image: ghcr.io/berriai/litellm:v1.100.1@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf
+    command:
+      [
+        "--config",
+        "/etc/clawscarf/models.json",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4000",
+      ]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    env_file:
+      - ${CLAWSCARF_MODELS_DIRECTORY:?Provide private gateway configuration directory}/gateway.env
+    volumes:
+      - ${CLAWSCARF_MODELS_DIRECTORY:?}/models.json:/etc/clawscarf/models.json:ro
+    ports:
+      - "127.0.0.1:${CLAWSCARF_MODELS_PORT:-14000}:4000"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

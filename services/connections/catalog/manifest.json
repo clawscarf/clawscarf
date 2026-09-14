@@ -1,0 +1,497 @@
+{
+  "source": {
+    "repository": "https://github.com/raw-labs/kora-platform",
+    "revision": "44287507be2070df8ecaf75725ed0f6616b6d15a",
+    "paths": [
+      "platform/built-in-extensions/managed-composio-providers.json",
+      "cloud/apps/accounts/src/composio/catalog-sources.json"
+    ]
+  },
+  "connectors": [
+    {
+      "id": "github",
+      "toolkitSlug": "github",
+      "name": "GitHub",
+      "description": "GitHub is a code hosting platform for version control, collaboration, issue tracking, and CI workflows.",
+      "category": "Developer Tools",
+      "iconUrl": "https://logos.composio.dev/api/github",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "gmail",
+      "toolkitSlug": "gmail",
+      "name": "Gmail",
+      "description": "Gmail is Google's email service with search, spam protection, and Google Workspace integrations.",
+      "category": "Communication",
+      "iconUrl": "https://logos.composio.dev/api/gmail",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "googlecalendar",
+      "toolkitSlug": "googlecalendar",
+      "name": "Google Calendar",
+      "description": "Google Calendar manages schedules, events, reminders, and shared calendar coordination.",
+      "category": "Scheduling",
+      "iconUrl": "https://logos.composio.dev/api/googlecalendar",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "googledrive",
+      "toolkitSlug": "googledrive",
+      "name": "Google Drive",
+      "description": "Google Drive stores, shares, and collaborates on files across Google Workspace.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/googledrive",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "slack",
+      "toolkitSlug": "slack",
+      "name": "Slack",
+      "description": "Slack is a channel-based messaging platform for team communication and workflow collaboration.",
+      "category": "Collaboration",
+      "iconUrl": "https://logos.composio.dev/api/slack",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "outlook",
+      "toolkitSlug": "outlook",
+      "name": "Outlook",
+      "description": "Outlook combines Microsoft email, calendars, contacts, and scheduling in one workspace.",
+      "category": "Communication",
+      "iconUrl": "https://logos.composio.dev/api/outlook",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "microsoft_teams",
+      "toolkitSlug": "microsoft_teams",
+      "name": "Microsoft Teams",
+      "description": "Microsoft Teams brings chat, meetings, calls, and Microsoft 365 collaboration into one workspace.",
+      "category": "Collaboration",
+      "iconUrl": "https://logos.composio.dev/api/microsoft_teams",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "share_point",
+      "toolkitSlug": "share_point",
+      "name": "SharePoint",
+      "description": "SharePoint manages documents, intranets, and team content across Microsoft 365.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/share_point",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "one_drive",
+      "toolkitSlug": "one_drive",
+      "name": "OneDrive",
+      "description": "OneDrive stores, syncs, shares, and collaborates on files across Microsoft 365.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/one_drive",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "notion",
+      "toolkitSlug": "notion",
+      "name": "Notion",
+      "description": "Notion centralizes notes, docs, wikis, databases, and tasks in a collaborative workspace.",
+      "category": "Productivity",
+      "iconUrl": "https://logos.composio.dev/api/notion",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "googlesheets",
+      "toolkitSlug": "googlesheets",
+      "name": "Google Sheets",
+      "description": "Google Sheets is a cloud spreadsheet tool for collaborative data entry, analysis, and reporting.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/googlesheets",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "googledocs",
+      "toolkitSlug": "googledocs",
+      "name": "Google Docs",
+      "description": "Google Docs is a cloud word processor for collaborative writing, editing, and version history.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/googledocs",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "googlebigquery",
+      "toolkitSlug": "googlebigquery",
+      "name": "Google BigQuery",
+      "description": "Google BigQuery is a managed data warehouse for SQL analytics, datasets, jobs, and large-scale reporting.",
+      "category": "Analytics & Data",
+      "iconUrl": "https://logos.composio.dev/api/googlebigquery",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "google_analytics",
+      "toolkitSlug": "google_analytics",
+      "name": "Google Analytics",
+      "description": "Google Analytics tracks website and app traffic, events, audiences, and conversion reporting.",
+      "category": "Analytics & Data",
+      "iconUrl": "https://logos.composio.dev/api/google_analytics",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "linear",
+      "toolkitSlug": "linear",
+      "name": "Linear",
+      "description": "Linear is an issue tracking and project planning tool built for fast product and engineering workflows.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/linear",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "jira",
+      "toolkitSlug": "jira",
+      "name": "Jira",
+      "description": "Jira supports bug tracking, issue tracking, sprint planning, and agile project management.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/jira",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "asana",
+      "toolkitSlug": "asana",
+      "name": "Asana",
+      "description": "Asana helps teams organize projects, assign tasks, track work, and coordinate deadlines.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/asana",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "hubspot",
+      "toolkitSlug": "hubspot",
+      "name": "HubSpot",
+      "description": "HubSpot combines CRM, marketing, sales, service, email automation, and customer analytics.",
+      "category": "CRM & Sales",
+      "iconUrl": "https://logos.composio.dev/api/hubspot",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "salesforce",
+      "toolkitSlug": "salesforce",
+      "name": "Salesforce",
+      "description": "Salesforce is a CRM platform for managing sales, service, marketing, and customer relationships.",
+      "category": "CRM & Sales",
+      "iconUrl": "https://logos.composio.dev/api/salesforce",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "dynamics365",
+      "toolkitSlug": "dynamics365",
+      "name": "Dynamics 365",
+      "description": "Dynamics 365 combines CRM, ERP, sales, service, and operations apps across Microsoft business workflows.",
+      "category": "CRM & Sales",
+      "iconUrl": "https://logos.composio.dev/api/dynamics365",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "zoho",
+      "toolkitSlug": "zoho",
+      "name": "Zoho",
+      "description": "Zoho provides CRM, marketing, sales, support, and collaboration apps for business workflows.",
+      "category": "CRM & Sales",
+      "iconUrl": "https://logos.composio.dev/api/zoho",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "zendesk",
+      "toolkitSlug": "zendesk",
+      "name": "Zendesk",
+      "description": "Zendesk provides support ticketing, live chat, help center, and customer service workflows.",
+      "category": "Support",
+      "iconUrl": "https://logos.composio.dev/api/zendesk",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "intercom",
+      "toolkitSlug": "intercom",
+      "name": "Intercom",
+      "description": "Intercom provides customer messaging, live chat, support automation, and engagement workflows.",
+      "category": "Support",
+      "iconUrl": "https://logos.composio.dev/api/intercom",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "airtable",
+      "toolkitSlug": "airtable",
+      "name": "Airtable",
+      "description": "Airtable combines spreadsheet-style editing with database views, automations, and collaboration.",
+      "category": "Productivity",
+      "iconUrl": "https://logos.composio.dev/api/airtable",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "dropbox",
+      "toolkitSlug": "dropbox",
+      "name": "Dropbox",
+      "description": "Dropbox stores, syncs, shares, and collaborates on files across devices and teams.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/dropbox",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "box",
+      "toolkitSlug": "box",
+      "name": "Box",
+      "description": "Box is a cloud content platform for secure file storage, sharing, collaboration, and governance.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/box",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "zoom",
+      "toolkitSlug": "zoom",
+      "name": "Zoom",
+      "description": "Zoom provides video meetings, webinars, screen sharing, recordings, and collaboration workflows.",
+      "category": "Collaboration",
+      "iconUrl": "https://logos.composio.dev/api/zoom",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "calendly",
+      "toolkitSlug": "calendly",
+      "name": "Calendly",
+      "description": "Calendly automates scheduling with availability checks, booking links, invitations, and reminders.",
+      "category": "Scheduling",
+      "iconUrl": "https://logos.composio.dev/api/calendly",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "clickup",
+      "toolkitSlug": "clickup",
+      "name": "ClickUp",
+      "description": "ClickUp combines tasks, docs, goals, dashboards, and collaboration for project workflows.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/clickup",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "todoist",
+      "toolkitSlug": "todoist",
+      "name": "Todoist",
+      "description": "Todoist manages tasks, due dates, projects, reminders, and cross-platform to-do lists.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/todoist",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "monday",
+      "toolkitSlug": "monday",
+      "name": "Monday",
+      "description": "monday.com is a work management platform for planning, tracking, automating, and reporting on projects.",
+      "category": "Project Management",
+      "iconUrl": "https://logos.composio.dev/api/monday",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "confluence",
+      "toolkitSlug": "confluence",
+      "name": "Confluence",
+      "description": "Confluence is a collaborative knowledge base for team docs, pages, decisions, and project context.",
+      "category": "Documents & Files",
+      "iconUrl": "https://logos.composio.dev/api/confluence",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "gitlab",
+      "toolkitSlug": "gitlab",
+      "name": "GitLab",
+      "description": "GitLab is a DevOps platform for Git repositories, issue tracking, code review, and CI/CD.",
+      "category": "Developer Tools",
+      "iconUrl": "https://logos.composio.dev/api/gitlab",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "bitbucket",
+      "toolkitSlug": "bitbucket",
+      "name": "Bitbucket",
+      "description": "Bitbucket hosts Git repositories with pull requests, code collaboration, and Atlassian integrations.",
+      "category": "Developer Tools",
+      "iconUrl": "https://logos.composio.dev/api/bitbucket",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "discord",
+      "toolkitSlug": "discord",
+      "name": "Discord",
+      "description": "Discord provides communities, chat, voice, channels, and real-time team communication.",
+      "category": "Collaboration",
+      "iconUrl": "https://logos.composio.dev/api/discord",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "figma",
+      "toolkitSlug": "figma",
+      "name": "Figma",
+      "description": "Figma is a collaborative design tool for interfaces, prototypes, design systems, and feedback.",
+      "category": "Design & Content",
+      "iconUrl": "https://logos.composio.dev/api/figma",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "canva",
+      "toolkitSlug": "canva",
+      "name": "Canva",
+      "description": "Canva is a design platform for presentations, social graphics, marketing assets, and templates.",
+      "category": "Design & Content",
+      "iconUrl": "https://logos.composio.dev/api/canva",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "stripe",
+      "toolkitSlug": "stripe",
+      "name": "Stripe",
+      "description": "Stripe provides payment infrastructure for checkout, subscriptions, invoices, and global payments.",
+      "category": "Finance",
+      "iconUrl": "https://logos.composio.dev/api/stripe",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "quickbooks",
+      "toolkitSlug": "quickbooks",
+      "name": "QuickBooks",
+      "description": "QuickBooks manages accounting, invoices, expenses, payments, payroll, and financial reporting.",
+      "category": "Finance",
+      "iconUrl": "https://logos.composio.dev/api/quickbooks",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "linkedin",
+      "toolkitSlug": "linkedin",
+      "name": "LinkedIn",
+      "description": "LinkedIn is a professional network for profiles, companies, recruiting, content, and business relationships.",
+      "category": "Social & Media",
+      "iconUrl": "https://logos.composio.dev/api/linkedin",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "reddit",
+      "toolkitSlug": "reddit",
+      "name": "Reddit",
+      "description": "Reddit is a social community platform for posts, discussions, subreddits, and audience engagement.",
+      "category": "Social & Media",
+      "iconUrl": "https://logos.composio.dev/api/reddit",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "youtube",
+      "toolkitSlug": "youtube",
+      "name": "YouTube",
+      "description": "YouTube is a video platform for channels, uploads, live streams, analytics, and audience engagement.",
+      "category": "Social & Media",
+      "iconUrl": "https://logos.composio.dev/api/youtube",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "facebook",
+      "toolkitSlug": "facebook",
+      "name": "Facebook",
+      "description": "Facebook supports Pages, posts, comments, messages, and audience engagement for businesses.",
+      "category": "Social & Media",
+      "iconUrl": "https://logos.composio.dev/api/facebook",
+      "auth": {
+        "kind": "managed"
+      }
+    },
+    {
+      "id": "odoo",
+      "toolkitSlug": "odoo",
+      "name": "Odoo",
+      "description": "Odoo is an open-source ERP and CRM platform for sales, accounting, inventory, projects, and other business operations.",
+      "category": "CRM & Sales",
+      "iconUrl": "https://logos.composio.dev/api/odoo",
+      "auth": {
+        "kind": "custom",
+        "scheme": "API_KEY"
+      }
+    }
+  ]
+}

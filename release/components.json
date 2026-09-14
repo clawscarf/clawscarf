@@ -1,0 +1,28 @@
+{
+  "openclaw": {
+    "version": "2026.9.4",
+    "sourceRevision": "3a9d69db306cd7f081e06254cb89c4bcc14a7107",
+    "image": "ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101"
+  },
+  "openshell": {
+    "version": "0.0.116",
+    "sourceRevision": "d1155aa70042d3e2ee49dbfa15346b108b7c1d92",
+    "supervisorImage": "ghcr.io/nvidia/openshell/supervisor:0.0.116@sha256:c8c42aef16c200063e32cbf72e553e4ead027085427b555efafd95063ecead42",
+    "cli": {
+      "darwin-arm64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-aarch64-apple-darwin.tar.gz",
+        "sha256": "e582f2374053bebac8e6aaeb4a369931b7d4bb97bd55055e2c02e85502627e22"
+      }
+    },
+    "gateway": {
+      "darwin-arm64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-gateway-aarch64-apple-darwin.tar.gz",
+        "sha256": "f192d3d737c125264e13ef73458541df2ca6a9eb2fa599736a7f2587d5d2ce8d"
+      }
+    }
+  },
+  "companionNode": {
+    "version": "24.19.0",
+    "image": "node@sha256:4196d66a565c6f195728d9952f161f4adfe2ad753052a08b7ec7f1c5a6bda42b"
+  }
+}

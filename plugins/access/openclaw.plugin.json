@@ -1,0 +1,20 @@
+{
+  "id": "clawscarf-access",
+  "name": "ClawScarf account",
+  "version": "0.1.0",
+  "description": "Open your ClawScarf account or manage team admission.",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "controlUi": {
+    "entry": "dist/control-ui/7f4c4434c3c7c2c5f38e9397350aef3f498e6be1c7123dad57d06154528b1460/index.js"
+  },
+  "contracts": {
+    "tools": []
+  }
+}

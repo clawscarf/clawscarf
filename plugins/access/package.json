@@ -1,0 +1,50 @@
+{
+  "name": "@clawscarf/access",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Native account navigation for the ClawScarf access companion.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=24.16.0 <25 || >=26.1.0"
+  },
+  "peerDependencies": {
+    "openclaw": "2026.9.4"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "openclaw": "2026.9.4",
+    "typescript": "6.0.3",
+    "@types/node": "24.10.13",
+    "esbuild": "0.27.4"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && openclaw plugins build --root .",
+    "validate": "openclaw plugins validate --root . && openclaw plugins build --root . --check"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "controlUi": "./src/control-ui.ts",
+    "compat": {
+      "pluginApi": "2026.9.4",
+      "minGatewayVersion": "2026.9.4"
+    },
+    "build": {
+      "openclawVersion": "2026.9.4",
+      "pluginSdkVersion": "2026.9.4"
+    }
+  }
+}

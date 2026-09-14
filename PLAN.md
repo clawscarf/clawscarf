@@ -1,8 +1,10 @@
 # ClawScarf — initial plan
 
 This is the single initial design and implementation checklist. The repository
-contains documentation and licensing only; the work below is planned, not implemented.
-The terminal installer is last. Build and validate the underlying components first.
+is implementing the runtime boundary and extracting donor components. An initial
+pinned image recipe and deny-by-default policy exist; the standalone distribution
+is not yet qualified. The terminal installer is last. Build and validate the
+underlying components first.
 
 ## Product and boundaries
 
@@ -38,6 +40,13 @@ not just successful startup. OpenShell does not establish native user permission
 safe business actions, immunity to prompt injection or protection from host root.
 Administrators may edit native application configuration within deployment limits;
 they must not gain controller credentials or change host-owned policy from inside.
+
+Current validation found that whole-runtime containment leaves shell execution in
+the Gateway's loopback namespace. Trusted-proxy identity headers are therefore not
+a member boundary against unrestricted local execution. Selection and qualification
+of a separate native execution sandbox remain part of the first milestone; ordinary
+member shell access must stay denied until that boundary is verified. The runtime
+packaging decision is awaiting owner input, not silently replaced.
 
 Keep shared model/connection provider credentials outside OpenClaw. Limited runtime
 credentials remain credentials and require tested scoping and revocation. A broker
@@ -79,11 +88,11 @@ justify its actual owners during extraction. Do not introduce it for pack metada
 
 Independence must be demonstrated, not inferred from a configurable service URL.
 
-| Deployment | Identity and admission | Models and Connections |
-| --- | --- | --- |
-| Local evaluation | Loopback-only protected local administrator enrollment; no company IdP or public DNS required. | Operator-supplied model gateway or optional local LiteLLM. Connections may be absent. |
-| Standalone team | Local access companion connected to company OIDC; explicit authorized-user enrollment and native role assignment. | Existing external services or optional locally operated companions with customer credentials. |
-| RawClaw-managed | RawClaw supplies current identity/admission authority and native acting-user context. No second independent SSO authority. | RawClaw supplies its model gateway and broker; its hosted authorization/accounting remains outside ClawScarf. |
+| Deployment       | Identity and admission                                                                                                     | Models and Connections                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Local evaluation | Loopback-only protected local administrator enrollment; no company IdP or public DNS required.                             | Operator-supplied model gateway or optional local LiteLLM. Connections may be absent.                         |
+| Standalone team  | Local access companion connected to company OIDC; explicit authorized-user enrollment and native role assignment.          | Existing external services or optional locally operated companions with customer credentials.                 |
+| RawClaw-managed  | RawClaw supplies current identity/admission authority and native acting-user context. No second independent SSO authority. | RawClaw supplies its model gateway and broker; its hosted authorization/accounting remains outside ClawScarf. |
 
 Before extracting access, define one durable server identity, stable issuer/subject
 mapping, explicit first-administrator enrollment, authorization of additional people,
@@ -113,77 +122,77 @@ SSH launchers, ZFS binding checks, systemd units and fixed bridge addresses are 
 portable runtime interfaces. Preserve user-scoped management and uncertain outcomes;
 do not replace them with a shared all-powerful identity to simplify integration.
 
-## Implementation order
+## Remaining implementation and qualification
 
-- [ ] **Apply the reuse map throughout extraction.** Begin each existing capability
-  with RawClaw's source, contracts, visual primitives and regression tests. Record
-  the actual donor revision and adapt concrete dependencies instead of rewriting
-  proven mechanisms. Bring its applicable quality checks with the first code slice.
+Completed component work lives in its implementation owner, not in this checklist.
+The [model integration](deploy/models/README.md), for example, has its operational
+configuration path and component acceptance; it still participates in the combined
+fresh-install qualification below. Continue following the reuse map and contributor
+rules for every remaining change.
+
 - [ ] **1. Prove the runtime boundary.** Select current OpenClaw/OpenShell versions;
-  build a pinned vanilla runtime image and reproducible non-interactive launch.
-  Verify persistence, restart, networking, resource limits, model/tool streaming,
-  and native UI/widget reachability. Test forbidden host paths, unrelated data,
-  controller/socket access and forbidden egress. Record actual platform limits,
-  download size, cold-start/install time and measured idle/active memory. Do not
-  assume the current small RawClaw VM can run the new stack unchanged.
+      build a pinned vanilla runtime image and reproducible non-interactive launch.
+      Verify persistence, restart, networking, resource limits, model/tool streaming,
+      and native UI/widget reachability. Test forbidden host paths, unrelated data,
+      controller/socket access and forbidden egress. Record actual platform limits,
+      download size, cold-start/install time and measured idle/active memory. Do not
+      assume the current small RawClaw VM can run the new stack unchanged.
 - [ ] **2. Define the shipped capability baseline.** Inventory selected native
-  plugins, skills, CLI dependencies, channels and MCP paths with exact execution
-  location and authority. Compare executable defaults and tests from RawClaw and
-  the pilot. Qualify ordinary execution, native Codex, browser automation and
-  Lobster where promised; do not confuse their different sandbox mechanisms.
-  Preinstalled, enabled, visible and allowed-to-execute are separate properties.
+      plugins, skills, CLI dependencies, channels and MCP paths with exact execution
+      location and authority. Compare executable defaults and tests from RawClaw and
+      the pilot. Qualify ordinary execution, native Codex, browser automation and
+      Lobster where promised; do not confuse their different sandbox mechanisms.
+      Preinstalled, enabled, visible and allowed-to-execute are separate properties.
 - [ ] **3. Complete independent access.** Reuse RawClaw's working identity/ingress
-  implementation through a standalone composition. Deliver protected loopback-only
-  local administrator setup and generic company OIDC for shared deployment. Explicit
-  first administrator; native roles thereafter, no first-login takeover. Verify two
-  identities, role denial/handover, stable display identities, direct bookmarks,
-  multiple tabs, logout/revocation of open streams, widgets and authenticated hooks.
-  Qualify the standalone identity and endpoint contracts above. Do not require a
-  RawClaw account or expose remote access without working identity.
-- [ ] **4. Complete model integration.** Support an existing compatible gateway
-  and optional bundled LiteLLM configuration. Keep provider credentials outside the
-  runtime. Test a real response and tool call, model discovery/defaults, failures,
-  and unconfigured operation. Provider selection stays extensible; OpenRouter is
-  not mandatory. No AI credits, organization inheritance or billing in this slice.
+      implementation through a standalone composition. Deliver protected loopback-only
+      local administrator setup and generic company OIDC for shared deployment. Explicit
+      first administrator; native roles thereafter, no first-login takeover. Verify two
+      identities, role denial/handover, stable display identities, direct bookmarks,
+      multiple tabs, logout/revocation of open streams, widgets and authenticated hooks.
+      Qualify the standalone identity and endpoint contracts above. Do not require a
+      RawClaw account or expose remote access without working identity.
 - [ ] **5. Complete optional managed Connections.** Reuse the current generic REST
-  plugin and broker; no MCP rewrite. Extract independent account setup/management
-  and required persistence, with Composio behind its provider boundary. Support an
-  external broker or locally deployed companion. Preserve exact account selection,
-  agent grants, revocation and explicit outcomes. Verify trusted caller context;
-  do not advertise per-human or per-operation authorization not actually enforced.
-  Unconfigured integration has no unusable tools or dead-end actions. Keep native
-  MCP, channels and other plugins as separate supported integration paths.
+      plugin and broker; no MCP rewrite. Extract independent account setup/management
+      and required persistence, with Composio behind its provider boundary. Support an
+      external broker or locally deployed companion. Preserve exact account selection,
+      agent grants, revocation and explicit outcomes. Verify trusted caller context;
+      do not advertise per-human or per-operation authorization not actually enforced.
+      Unconfigured integration has no unusable tools or dead-end actions. Keep native
+      MCP, channels and other plugins as separate supported integration paths.
 - [ ] **6. Implement packs.** Use upstream Claws/bundles where they fit. A pack may
-  contain several agents, skills, plugins and workflows; bind models and connections
-  separately from secrets. Define required binaries, execution locations, network
-  permissions, compatibility and owned files/settings. Implement install, inspect,
-  explicit update/reapply and removal with dependency checks and preservation of
-  user changes/data. Qualify one representative pack before expanding the catalog.
+      contain several agents, skills, plugins and workflows; bind models and connections
+      separately from secrets. Define required binaries, execution locations, network
+      permissions, compatibility and owned files/settings. Implement install, inspect,
+      explicit update/reapply and removal with dependency checks and preservation of
+      user changes/data. The included research pack's packaged lifecycle is qualified.
+      Finish operator-side connection verification combined with target execution,
+      without copying browser administrator credentials into the runtime, and bind a
+      real runtime network-policy verifier before enabling packs that require egress.
 - [ ] **7. Complete curation and configuration.** Support selected capability
-  enable/disable through native interfaces. Qualify hiding ClawHub/unselected
-  discovery independently of execution restrictions. Use supported UI extension
-  points; if a patch is necessary, obtain a maintenance decision rather than quietly
-  weakening the requirement. Keep native administration and explicit reapplication;
-  no background overwrite daemon or duplicate OpenClaw dashboard.
+      enable/disable through native interfaces. Qualify hiding ClawHub/unselected
+      discovery independently of execution restrictions. Use supported UI extension
+      points; if a patch is necessary, obtain a maintenance decision rather than quietly
+      weakening the requirement. Keep native administration and explicit reapplication;
+      no background overwrite daemon or duplicate OpenClaw dashboard.
 - [ ] **8. Qualify release operation.** Document persistent paths, secret handling,
-  stop/start, logs, diagnostics and one supported upgrade preserving native edits.
-  Test missing/invalid optional services and interrupted setup. Produce exact
-  artifacts with license/provenance review. Full backups and rollback automation
-  remain outside this work; make no data-recovery promise from an image rebuild.
-  Run a clean-machine acceptance from release artifacts without RawClaw source,
-  account, API, database or hostname: protected login, real model/tool response,
-  retained state after restart and clean operation with integrations disabled.
-  Qualify team OIDC and optional broker account setup separately.
+      stop/start, logs, diagnostics and one supported upgrade preserving native edits.
+      Test missing/invalid optional services and interrupted setup. Produce exact
+      artifacts with license/provenance review. Full backups and rollback automation
+      remain outside this work; make no data-recovery promise from an image rebuild.
+      Run a clean-machine acceptance from release artifacts without RawClaw source,
+      account, API, database or hostname: protected login, real model/tool response,
+      retained state after restart and clean operation with integrations disabled.
+      Qualify team OIDC and optional broker account setup separately.
 - [ ] **9. Build the terminal installer last.** A small verified-download bootstrap
-  invokes a maintained terminal UI over the already-working commands. Offer local
-  trial, team server and existing-install configuration. Prompt for exposure/login,
-  models and optional packs/account bindings, with concise ASCII-style presentation,
-  masked secrets, dependency review, visible progress, actionable errors and resume.
-  Finish with the actual usable URL and operating commands. Support unattended
-  configuration without embedding secrets in argv or baked artifacts. Do not
-  duplicate native agent onboarding or require the wizard for ordinary operation.
-  Follow the packaging lessons below rather than silently compiling from source
-  or replacing an existing installation when a release download/setup fails.
+      invokes a maintained terminal UI over the already-working commands. Offer local
+      trial, team server and existing-install configuration. Prompt for exposure/login,
+      models and optional packs/account bindings, with concise ASCII-style presentation,
+      masked secrets, dependency review, visible progress, actionable errors and resume.
+      Finish with the actual usable URL and operating commands. Support unattended
+      configuration without embedding secrets in argv or baked artifacts. Do not
+      duplicate native agent onboarding or require the wizard for ordinary operation.
+      Follow the packaging lessons below rather than silently compiling from source
+      or replacing an existing installation when a release download/setup fails.
 
 ## Adoption and packaging lessons
 
@@ -209,21 +218,21 @@ and [prerequisites](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/get-sta
 ## Deferred or undecided
 
 - [ ] Before publication, verify extracted-code rights and bundled dependency
-  licenses/notices, configure an actual private vulnerability-reporting channel,
-  and choose repository/release settings. ClawScarf-owned work uses [MIT](LICENSE);
-  [third-party provenance](THIRD_PARTY_NOTICES.md) does not grant blanket rights
-  to donor code or change dependencies' licenses.
+      licenses/notices, configure an actual private vulnerability-reporting channel,
+      and choose repository/release settings. ClawScarf-owned work uses [MIT](LICENSE);
+      [third-party provenance](THIRD_PARTY_NOTICES.md) does not grant blanket rights
+      to donor code or change dependencies' licenses.
 - [ ] Have RawClaw consume qualified ClawScarf artifacts in a separately selected integration
-  slice; preserve current deployments and avoid duplicate maintained defaults.
-  Qualify one new managed installation using external RawClaw identity/model/broker
-  services, native mutation/stream/widget behavior, connector context, source-bound
-  AI authorization and revocation. Transfer runtime/default/image ownership after
-  success, not while the new target is still unqualified.
+      slice; preserve current deployments and avoid duplicate maintained defaults.
+      Qualify one new managed installation using external RawClaw identity/model/broker
+      services, native mutation/stream/widget behavior, connector context, source-bound
+      AI authorization and revocation. Transfer runtime/default/image ownership after
+      success, not while the new target is still unqualified.
 - [ ] Decide additional supported platforms from evidence, not a blanket promise.
 - [ ] Website, billing, fleet management, additional hosting providers and automated
-  recovery/backups are separate future work. ZFS is not a distribution prerequisite.
+      recovery/backups are separate future work. ZFS is not a distribution prerequisite.
 - [ ] Stronger operation-level company policy and cross-tool audit guarantees need
-  explicit requirements; do not infer them from MCP, OpenShell or connection grants.
+      explicit requirements; do not infer them from MCP, OpenShell or connection grants.
 
 ## RawClaw reuse map
 
@@ -238,15 +247,15 @@ Reviewed donor baseline: RawClaw
 Recheck the actual donor source when extracting and pin that revision in destination
 provenance. Paths below are relative to that donor, not files already present here.
 
-| Capability | Donor source to start from | Adaptation boundary |
-| --- | --- | --- |
-| Contributor/tooling conventions | AGENTS.md, eslint.config.mjs, tsconfig*.json, .dependency-cruiser.cjs, scripts/check-docs.ts and contract generation/check tooling | Preserve standards and meaningful checks; replace donor paths/scripts and omit absent components. |
-| Runtime/defaults and plugin packaging | runtime/openclaw/, deploy/images/hetzner/scripts/install-runtime.sh, plugins/connections/ | Reuse defaults, integrity checks and packaging; replace Hetzner, systemd, rootless-engine and host-path assumptions for the selected target. |
-| Company login and entry | src/domains/access/, src/domains/installations/service/openclaw/entry/, src/apps/ingress/, src/composition/ingress.ts | Reuse OIDC/session/ingress mechanics and native identity semantics; replace organization/admission/placement wiring with standalone ownership. |
-| Connections | plugins/connections/, src/domains/connections/, src/composition/connections/, catalogs/connections/, scripts/connectors-catalog*.ts | Preserve REST tools, Composio adapter, callbacks, account selection and grants; extract required persistence without the fleet control plane. |
-| Connection account UI | src/apps/web/domains/connections/ and its shared visual/form dependencies | Copy the working flow and visual primitives; remove organization routing through explicit standalone composition. |
-| Model gateway | runtime/ai-gateway/, deploy/ai-gateway/, src/composition/ai/ and applicable src/domains/ai/ code | Reuse LiteLLM integration/configuration and tests; replace hosted-source/admission/catalog wiring where needed. Do not recreate the removed inference proxy. |
-| Acceptance | tests/ and corresponding helpers for identity, logout, ingress, native roles, connections, model gateway and browser flows | Transfer regressions with each capability; adapt fixtures and run against the new runtime. Donor success is not new-target acceptance. |
+| Capability                            | Donor source to start from                                                                                                          | Adaptation boundary                                                                                                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contributor/tooling conventions       | AGENTS.md, eslint.config.mjs, tsconfig*.json, .dependency-cruiser.cjs, scripts/check-docs.ts and contract generation/check tooling  | Preserve standards and meaningful checks; replace donor paths/scripts and omit absent components.                                                            |
+| Runtime/defaults and plugin packaging | runtime/openclaw/, deploy/images/hetzner/scripts/install-runtime.sh, plugins/connections/                                           | Reuse defaults, integrity checks and packaging; replace Hetzner, systemd, rootless-engine and host-path assumptions for the selected target.                 |
+| Company login and entry               | src/domains/access/, src/domains/installations/service/openclaw/entry/, src/apps/ingress/, src/composition/ingress.ts               | Reuse OIDC/session/ingress mechanics and native identity semantics; replace organization/admission/placement wiring with standalone ownership.               |
+| Connections                           | plugins/connections/, src/domains/connections/, src/composition/connections/, catalogs/connections/, scripts/connectors-catalog*.ts | Preserve REST tools, Composio adapter, callbacks, account selection and grants; extract required persistence without the fleet control plane.                |
+| Connection account UI                 | src/apps/web/domains/connections/ and its shared visual/form dependencies                                                           | Copy the working flow and visual primitives; remove organization routing through explicit standalone composition.                                            |
+| Model gateway                         | runtime/ai-gateway/, deploy/ai-gateway/, src/composition/ai/ and applicable src/domains/ai/ code                                    | Reuse LiteLLM integration/configuration and tests; replace hosted-source/admission/catalog wiring where needed. Do not recreate the removed inference proxy. |
+| Acceptance                            | tests/ and corresponding helpers for identity, logout, ingress, native roles, connections, model gateway and browser flows          | Transfer regressions with each capability; adapt fixtures and run against the new runtime. Donor success is not new-target acceptance.                       |
 
 Preserve licenses/notices and identify each intentional omission. Copy no secrets,
 customer state or per-run reports. Keep RawClaw functioning during extraction; its

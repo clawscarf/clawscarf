@@ -1,0 +1,21 @@
+{
+  "mode": "litellm",
+  "baseUrl": "http://127.0.0.1:14000/v1",
+  "defaultModel": "team-model",
+  "models": [
+    {
+      "id": "team-model",
+      "name": "Team model",
+      "enabled": true,
+      "contextWindow": 128000,
+      "maxTokens": 16384,
+      "reasoning": false,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/openai/gpt-5.4",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    }
+  ]
+}

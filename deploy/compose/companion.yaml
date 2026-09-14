@@ -1,0 +1,23 @@
+services:
+  companion:
+    image: ${CLAWSCARF_COMPANION_IMAGE:?Set an exact locally built or qualified companion image}
+    restart: unless-stopped
+    user: "${CLAWSCARF_COMPANION_UID:-1000}:${CLAWSCARF_COMPANION_GID:-1000}"
+    environment:
+      NODE_EXTRA_CA_CERTS: /run/clawscarf/management-ca.pem
+      CLAWSCARF_COMPANION_CONFIG: /run/clawscarf/companion.json
+    volumes:
+      - ${CLAWSCARF_COMPANION_CONFIG_DIRECTORY:?Provide the private configuration directory}:/run/clawscarf:ro
+    ports:
+      - 127.0.0.1:${CLAWSCARF_COMPANION_PORT:-18800}:18800
+      - 127.0.0.1:${CLAWSCARF_MANAGEMENT_PORT:-18801}:18801
+      - 127.0.0.1:${CLAWSCARF_WIDGET_PORT:-18802}:18800
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stop_grace_period: 15s

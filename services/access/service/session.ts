@@ -1,0 +1,161 @@
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { AccessError } from "../types/errors.js";
+import type { AccessStore, LoginProvider, Session } from "../types/model.js";
+export const token = () => randomBytes(32).toString("base64url");
+export { hash } from "../types/credential.js";
+import { hash } from "../types/credential.js";
+export function safeReturn(value: string): string {
+  const origin = "https://return.invalid";
+  const url = new URL(value, origin);
+  if (
+    value.length > 2048 ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    [...value].some(
+      (character) =>
+        character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+    ) ||
+    url.origin !== origin ||
+    url.hash ||
+    (url.pathname.startsWith("/_clawscarf") &&
+      url.pathname !== "/_clawscarf/team/" &&
+      url.pathname !== "/_clawscarf/account/" &&
+      !/^\/_clawscarf\/connections\/(?:return\/[a-zA-Z0-9-]+)?$/.test(
+        url.pathname,
+      )) ||
+    url.pathname + url.search !== value
+  )
+    throw new AccessError("invalid_request", "Unsupported return destination.");
+  return value;
+}
+/** RawClaw's browser session mechanics, with standalone admission and one origin. */
+export class SessionService {
+  constructor(
+    private readonly store: AccessStore,
+    private readonly provider: LoginProvider | null,
+    private readonly origin: string,
+  ) {}
+  async startLogin(returnTo = "/") {
+    const next = safeReturn(returnTo);
+    if (!this.provider)
+      return {
+        url: `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(next)}`,
+        cookie: "",
+      };
+    const cookie = token(),
+      state = token(),
+      nonce = token(),
+      codeVerifier = token();
+    const url = await this.provider.authorization({
+      state,
+      nonce,
+      codeChallenge: createHash("sha256")
+        .update(codeVerifier)
+        .digest("base64url"),
+    });
+    await this.store.beginLogin(hash(cookie), {
+      state,
+      nonce,
+      codeVerifier,
+      returnTo: next,
+    });
+    return { url, cookie };
+  }
+  async completeLogin(cookie: string, state: string, callbackUrl: string) {
+    if (!this.provider)
+      throw new AccessError("forbidden", "Company login is not configured.");
+    const transaction = await this.store.consumeLogin(hash(cookie), state);
+    if (!transaction)
+      throw new AccessError(
+        "invalid_authorization",
+        "Login expired or was already used. Start again.",
+      );
+    const { identity, logoutUrl } = await this.provider.exchange({
+      ...transaction,
+      callbackUrl,
+    });
+    if (!identity.emailVerified)
+      throw new AccessError(
+        "email_unverified",
+        "Sign in with a verified email address.",
+      );
+    const user = await this.store.admitIdentity(identity);
+    const session = token();
+    await this.store.createSession(user.id, hash(session), token(), logoutUrl);
+    return { session, returnTo: safeReturn(transaction.returnTo) };
+  }
+  async localLogin(value: string, returnTo = "/") {
+    const next = safeReturn(returnTo);
+    if (this.provider)
+      throw new AccessError(
+        "forbidden",
+        "Local sign-in is disabled in team mode.",
+      );
+    const user = await this.store.consumeLocalToken(hash(value));
+    if (!user)
+      throw new AccessError(
+        "invalid_authorization",
+        "Local sign-in expired or was already used.",
+      );
+    const session = token();
+    await this.store.createSession(user.id, hash(session), token(), null);
+    return { session, returnTo: next };
+  }
+  async authenticate(value: string): Promise<Session> {
+    const session = await this.store.authenticateSession(hash(value));
+    if (!session)
+      throw new AccessError("unauthenticated", "Sign in to continue.");
+    return session;
+  }
+  csrf(
+    session: Session,
+    origin: string | undefined,
+    value: string | undefined,
+  ) {
+    if (
+      origin !== this.origin ||
+      !timingSafeEqual(
+        Buffer.from(hash(value ?? "")),
+        Buffer.from(hash(session.csrfToken)),
+      )
+    )
+      throw new AccessError("csrf_failed", "Refresh before submitting again.");
+  }
+  async withEnrollmentSession<T>(
+    parentHash: string,
+    userId: string,
+    work: (credential: string) => Promise<T>,
+  ): Promise<T> {
+    const credential = token();
+    await this.store.createEnrollmentDelegation(
+      parentHash,
+      userId,
+      hash(credential),
+    );
+    try {
+      return await work(credential);
+    } finally {
+      await this.store.revokeDelegation(hash(credential));
+    }
+  }
+  async withActingSession<T>(
+    parentHash: string,
+    work: (credential: string) => Promise<T>,
+  ): Promise<T> {
+    const credential = token();
+    await this.store.createDelegation(parentHash, hash(credential));
+    try {
+      return await work(credential);
+    } finally {
+      await this.store.revokeDelegation(hash(credential));
+    }
+  }
+
+  async logout(session: Session) {
+    const providerUrl = await this.store.revokeSession(session.hash);
+    return (
+      providerUrl ?? new URL("/_clawscarf/signed-out", this.origin).toString()
+    );
+  }
+}

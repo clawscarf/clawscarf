@@ -1,0 +1,2862 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ClawScarf Connections",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/_clawscarf/connections/v1/connectors": {
+      "get": {
+        "operationId": "listConnectors",
+        "summary": "Browse available connectors",
+        "description": "Selected connector contract. Unavailable until the complete service and customer journey are wired and qualified.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connectors/{connectorId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectorId"
+        }
+      ],
+      "get": {
+        "operationId": "getConnector",
+        "summary": "Read connector metadata",
+        "description": "Selected connector contract. Unavailable until the complete service and customer journey are wired and qualified.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connector"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connections": {
+      "parameters": [],
+      "get": {
+        "operationId": "listConnections",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "List server connections",
+        "description": "Return connection metadata and setup status after verifying current native administrator authority. Credentials and setup continuation URLs are excluded. A failed read never establishes an empty collection.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          {
+            "name": "includeDisconnected",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createConnection",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "Create a named connection",
+        "description": "Create a named server-owned connection after verifying current native administrator authority. This neither authorizes a provider account nor starts external authentication. Agent grants are checked before activation. Identical authorized retries return the same record.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connections/{connectionId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionId"
+        }
+      ],
+      "get": {
+        "operationId": "getConnection",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "Read a connection",
+        "description": "Read a named connection's agent grant, state, revision, setup and cleanup status, and safe failure summary. Recheck effective native administrator authority before reading. Credentials and setup continuation URLs are never included.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateConnection",
+        "x-fastify-config": {
+          "handlerTimeout": 180000
+        },
+        "summary": "Replace connection name and agent grant",
+        "description": "Replace both editable fields against the quoted current connection revision. Revocation and selected-agent changes take effect at the next broker boundary, including already pending operations.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/ConnectionRevision"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConnection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disconnectConnection",
+        "x-fastify-config": {
+          "handlerTimeout": 180000
+        },
+        "summary": "Disconnect an account",
+        "description": "Revoke local use immediately and cancel pending setup. Provider cleanup is durable and may complete later. Never continue granting local use because provider deletion failed. Retain receipts and exact cleanup references.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/ConnectionRevision"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connections/{connectionId}/setups": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionId"
+        }
+      ],
+      "post": {
+        "operationId": "startConnectionSetup",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "Start connection or reconnection",
+        "description": "Persist one setup attempt before requesting its hosted authentication link. Admission and permission checks use ClawScarf state; setup performs no native management. Clients poll the returned setup and navigate to its continuation URL as soon as available. Account use remains disabled until callback identity, effective native administrator authority and selected agents are verified. Only its initiating user may continue. Reconnection keeps the current active account until the exact replacement is verified. A changed retry payload conflicts; uncertain setup creation is not blindly replayed. New attempts and provider preparation/allocation require the current published catalog. Authentication preparation has its own durable receipt; an uncertain preparation or allocation blocks replacement until resolved.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/ConnectionRevision"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConnectionSetup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSetupContinuation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connections/{connectionId}/setups/{setupId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionId"
+        },
+        {
+          "$ref": "#/components/parameters/ConnectionSetupId"
+        }
+      ],
+      "get": {
+        "operationId": "getConnectionSetup",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "Read or continue a setup attempt",
+        "description": "Return current setup and its unexpired continuation URL only to the initiating user with current native administrator authority. This read never redeems a callback, creates an account or restarts expired setup.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSetupContinuation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelConnectionSetup",
+        "x-fastify-config": {
+          "handlerTimeout": 15000
+        },
+        "summary": "Cancel a setup attempt",
+        "description": "Idempotently cancel this exact setup attempt and schedule provider cleanup. A late callback cannot activate it. Completed setup cannot be cancelled; disconnect the connection explicitly.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/ConnectionRevision"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSetup"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connections/{connectionId}/refresh": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionId"
+        }
+      ],
+      "post": {
+        "operationId": "refreshConnection",
+        "x-fastify-config": {
+          "handlerTimeout": 180000
+        },
+        "summary": "Refresh connection status",
+        "description": "Observe the exact bound provider account after verifying native administrator authority and current revision. The initiator may finish an unexpired setup from a durably recorded identity receipt. Never redeem the callback again or infer identity from account status alone.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/ConnectionRevision"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/search": {
+      "post": {
+        "operationId": "searchConnectorRuntime",
+        "summary": "Connector search",
+        "description": "Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No server identity is accepted in the payload.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRuntimeSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeSearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/describe": {
+      "post": {
+        "operationId": "describeConnectorRuntime",
+        "summary": "Connector describe",
+        "description": "Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No server identity is accepted in the payload.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRuntimeDescribe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeDescription"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/call": {
+      "post": {
+        "operationId": "callConnectorRuntime",
+        "summary": "Connector call",
+        "x-fastify-config": {
+          "bodyLimit": 262144
+        },
+        "description": "Durable invocation identity is scoped to server credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation must still be current. New dispatch also requires the published catalog and current action version; authorized receipt replay does not require retired catalog metadata.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRuntimeCall"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeInvocation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/invocations/{invocationId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionInvocationId"
+        }
+      ],
+      "get": {
+        "operationId": "getConnectorRuntimeInvocation",
+        "summary": "Recover an invocation result",
+        "description": "Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeInvocation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/invocations/{invocationId}/result": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ConnectionInvocationId"
+        }
+      ],
+      "get": {
+        "operationId": "getConnectorRuntimeResultPage",
+        "summary": "Read a bounded page of retained result JSON",
+        "description": "Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeResultPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connector-runtime/invocations/lookup": {
+      "post": {
+        "operationId": "lookupConnectorRuntimeInvocation",
+        "summary": "Find a receipt from its original native call identity",
+        "description": "Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.",
+        "tags": ["Connector runtime"],
+        "security": [
+          {
+            "ConnectorRuntime": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRuntimeInvocationLookup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRuntimeInvocation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/verify": {
+      "get": {
+        "operationId": "stageConnectionReturn",
+        "summary": "Receive a hosted connection return",
+        "description": "Stage the opaque provider session reference in encrypted, ten-minute server storage bound to an HttpOnly browser cookie. Redirect to a clean portal URL before sign-in. This public entry never redeems a provider session or grants account access. Never log the query or expose its reference to portal JavaScript.",
+        "tags": ["Connections"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "session_uri",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Opaque provider session token; forward unchanged, without URI interpretation.",
+              "maxLength": 8192
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Continue at the clean connection return page; no provider call.",
+            "headers": {
+              "Location": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connection-returns/{returnId}/complete": {
+      "post": {
+        "operationId": "completeConnectionReturn",
+        "x-fastify-config": {
+          "handlerTimeout": 180000
+        },
+        "summary": "Complete a staged connection return",
+        "description": "Require the original staging browser cookie, a current browser session and CSRF protection. The signed-in initiator must hold current native administrator authority for the exact setup. Redeem the provider session at most once and persist confirmed identity before further checks. Explicit retries may finish from that receipt or recover a completed destination; they never redeem again. If no receipt survived, check the connection and explicitly cancel its setup before starting another. Never infer identity from account status or select a server from unrelated pending setups. The response contains only the authorized destination identifiers; the provider reference stays private.",
+        "tags": ["Connections"],
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "returnId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The authorized connection destination, including a recovered completion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionReturnDestination"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connection-capabilities": {
+      "get": {
+        "operationId": "getConnectionCapabilities",
+        "summary": "Read optional Connections availability",
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current configured availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["enabled"],
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connection-agents": {
+      "get": {
+        "operationId": "listConnectionAgents",
+        "summary": "Discover agents for connection grants",
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current native agent inventory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["agents"],
+                  "properties": {
+                    "agents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["id", "name"],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": ["string", "null"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/_clawscarf/connections/v1/connection-credentials": {
+      "post": {
+        "operationId": "rotateConnectionCredential",
+        "summary": "Rotate the OpenClaw plugin credential",
+        "description": "Explicit administrative operation. Returns the new server-scoped token once. Previous credentials stop working. If the response is lost, issue a new explicit rotation; never automatically replay.",
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One-time runtime credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["credentialId", "generation", "token"],
+                  "properties": {
+                    "credentialId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "generation": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "token": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeConnectionCredential",
+        "summary": "Revoke OpenClaw plugin access",
+        "security": [
+          {
+            "BrowserSession": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Credential revoked"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConnectorList": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connector"
+            },
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          }
+        },
+        "required": ["items", "nextCursor"]
+      },
+      "Connector": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "iconUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2000
+          },
+          "auth": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "managed",
+                    "type": "string"
+                  }
+                },
+                "required": ["kind"]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "custom",
+                    "type": "string"
+                  },
+                  "scheme": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": ["kind", "scheme"]
+              }
+            ]
+          },
+          "catalogVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "actionCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "category",
+          "iconUrl",
+          "auth",
+          "catalogVersion",
+          "actionCount"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "title", "status", "code", "detail"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "about:blank"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable code; clients tolerate additional codes."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Safe explanation without raw provider diagnostics or secrets."
+          },
+          "requestId": {
+            "type": "string",
+            "description": "HTTP response correlation matching X-Request-Id in both compositions; absent when a client cannot obtain a server response."
+          },
+          "retry": {
+            "$ref": "#/components/schemas/RetryGuidance"
+          }
+        }
+      },
+      "RetryGuidance": {
+        "description": "HTTP retry advice; hosted operation use is planned. Mutation safety still requires idempotency or reconciliation.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["strategy"],
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": ["never", "after_delay", "after_change", "reconcile"],
+            "description": "never means no automatic replay; after_change requires a corrected\nrequest or changed prerequisite; reconcile means inspect the original\ncommand outcome before deciding whether another attempt is safe.\n"
+          },
+          "afterSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Only when a retry time is known; consistent with Retry-After when provided."
+          }
+        },
+        "examples": [
+          {
+            "strategy": "after_change"
+          },
+          {
+            "strategy": "after_delay",
+            "afterSeconds": 30
+          },
+          {
+            "strategy": "reconcile"
+          }
+        ]
+      },
+      "ConnectionList": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            },
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          }
+        },
+        "required": ["items", "nextCursor"]
+      },
+      "Connection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "connectorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "grant": {
+            "$ref": "#/components/schemas/ConnectorAgentGrant"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_connected",
+              "connected",
+              "needs_attention",
+              "disconnected"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "setup": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionSetup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cleanup": {
+            "type": "string",
+            "enum": ["none", "pending", "complete", "needs_attention"]
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "id",
+          "serverId",
+          "connectorId",
+          "name",
+          "grant",
+          "state",
+          "generation",
+          "revision",
+          "setup",
+          "cleanup",
+          "failure",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "Current authorized connection state for this server."
+      },
+      "Id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Opaque identifier; clients must not infer identity or provider details from it."
+      },
+      "ConnectorAgentGrant": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "const": "all"
+              }
+            },
+            "required": ["mode"]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "const": "selected"
+              },
+              "agentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "maxItems": 500,
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": ["mode", "agentIds"]
+          }
+        ],
+        "description": "All includes future native agents. Selected uses exact IDs; missing IDs never widen the grant."
+      },
+      "ConnectionSetup": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["initial", "reconnect"]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "creating",
+              "pending",
+              "verifying",
+              "succeeded",
+              "expired",
+              "cancelled",
+              "failed",
+              "outcome_unknown"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "connectionId",
+          "kind",
+          "state",
+          "createdAt",
+          "expiresAt",
+          "completedAt",
+          "failure"
+        ]
+      },
+      "ConnectionFailure": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "provider_unavailable",
+              "provider_rejected",
+              "provider_not_configured",
+              "setup_expired",
+              "setup_cancelled",
+              "setup_outcome_unknown",
+              "account_unavailable",
+              "account_mismatch",
+              "credential_revoked",
+              "catalog_changed",
+              "outcome_unknown",
+              "result_unavailable"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "retry": {
+            "$ref": "#/components/schemas/RetryGuidance"
+          }
+        },
+        "required": ["code", "detail", "retry"]
+      },
+      "CreateConnection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "connectorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "grant": {
+            "$ref": "#/components/schemas/ConnectorAgentGrant"
+          }
+        },
+        "required": ["connectorId", "name", "grant"]
+      },
+      "UpdateConnection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "grant": {
+            "$ref": "#/components/schemas/ConnectorAgentGrant"
+          }
+        },
+        "required": ["name", "grant"]
+      },
+      "StartConnectionSetup": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["initial", "reconnect"]
+          }
+        },
+        "required": ["kind"]
+      },
+      "ConnectionSetupContinuation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "setup": {
+            "$ref": "#/components/schemas/ConnectionSetup"
+          },
+          "url": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "maxLength": 8192
+          }
+        },
+        "required": ["setup", "url"],
+        "description": "Only the initiating user with current native-administrator admission may obtain the unexpired setup URL. URLs contain provider capabilities and must not be logged or included in ordinary list responses."
+      },
+      "ConnectorRuntimeSearch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ConnectorRuntimeContext"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "connectorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 10
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": ["context"]
+      },
+      "ConnectorRuntimeContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "sessionKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "toolCallId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": ["agentId", "toolCallId"],
+        "description": "Populated by the trusted native plugin factory, never by model arguments. Calls require sessionId or sessionKey. Installation identity comes only from the machine credential."
+      },
+      "ConnectorRuntimeSearchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorRuntimeMatch"
+            },
+            "maxItems": 25
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "guidance": {
+            "description": "Present only when this agent has no usable connections before applying search filters. The URL identifies the authenticated server; it grants no portal access. Managing connections requires the signed-in person's current native administrator permission.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConnectorRuntimeSearchGuidance"
+              }
+            ]
+          }
+        },
+        "required": ["items", "nextCursor", "guidance"]
+      },
+      "ConnectorRuntimeMatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "connection": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "connectorId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              }
+            },
+            "required": ["id", "name", "connectorId", "generation"]
+          },
+          "action": {
+            "$ref": "#/components/schemas/ConnectorActionSummary"
+          }
+        },
+        "required": ["connection", "action"]
+      },
+      "ConnectorActionSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "connectorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "schemaDigest": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "connectorId",
+          "version",
+          "schemaDigest"
+        ]
+      },
+      "ConnectorRuntimeSearchGuidance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["no_usable_connections"]
+          },
+          "connectionsUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          }
+        },
+        "required": ["code", "connectionsUrl"]
+      },
+      "ConnectorRuntimeDescribe": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ConnectorRuntimeContext"
+          },
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "actionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": ["context", "connectionId", "actionId"]
+      },
+      "ConnectorRuntimeDescription": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "action": {
+            "$ref": "#/components/schemas/ConnectorActionDetail"
+          }
+        },
+        "required": ["connectionId", "generation", "action"]
+      },
+      "ConnectorActionDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "connectorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "schemaDigest": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "inputSchema": {
+            "description": "Opaque provider schema hint or JSON data. Never use it as a transport validator."
+          },
+          "outputSchema": {
+            "description": "Opaque provider schema hint or JSON data. Never use it as a transport validator."
+          },
+          "fileInputs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "maxItems": 1000
+          },
+          "fileOutputs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "connectorId",
+          "version",
+          "schemaDigest",
+          "inputSchema",
+          "outputSchema",
+          "fileInputs",
+          "fileOutputs"
+        ]
+      },
+      "ConnectorRuntimeCall": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ConnectorRuntimeContext"
+          },
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "actionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "arguments": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Generic JSON object. Provider input schemas are advisory and are not enforced or repaired. Serialized arguments are limited to 128 KiB of UTF-8 JSON. The complete HTTP request body is limited to 256 KiB."
+          }
+        },
+        "required": [
+          "context",
+          "connectionId",
+          "generation",
+          "actionId",
+          "version",
+          "arguments"
+        ],
+        "description": "Durable invocation identity is scoped to server credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation and catalog action version must still be current."
+      },
+      "ConnectorRuntimeInvocation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "invocation": {
+            "$ref": "#/components/schemas/ConnectionInvocation"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "inline",
+                    "type": "string"
+                  },
+                  "data": {}
+                },
+                "required": ["kind", "data"]
+              },
+              {
+                "$ref": "#/components/schemas/ConnectorResultReference"
+              },
+              {
+                "$ref": "#/components/schemas/ConnectorResultUnavailable"
+              }
+            ]
+          }
+        },
+        "required": ["invocation", "result"],
+        "description": "Execution state and idempotency survive result expiry. Results are retained for 24 hours after completion. JSON above the 32 KiB inline limit is read through bounded result pages. Expired or unavailable data never changes a succeeded execution to failure or permits a new dispatch."
+      },
+      "ConnectionInvocation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "connectionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "agentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "actionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "state": {
+            "type": "string",
+            "enum": ["dispatching", "succeeded", "rejected", "outcome_unknown"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "connectionId",
+          "generation",
+          "agentId",
+          "actionId",
+          "version",
+          "state",
+          "createdAt",
+          "completedAt",
+          "failure"
+        ]
+      },
+      "ConnectorResultReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "reference"
+          },
+          "invocationId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "mediaType": {
+            "type": "string",
+            "const": "application/json"
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8388608
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "invocationId",
+          "mediaType",
+          "byteLength",
+          "sha256",
+          "expiresAt"
+        ]
+      },
+      "ConnectorResultUnavailable": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "unavailable"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "failed",
+              "outcome_unknown",
+              "too_large",
+              "invalid_result",
+              "expired"
+            ]
+          }
+        },
+        "required": ["kind", "reason"]
+      },
+      "ConnectorRuntimeResultPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "invocation": {
+            "$ref": "#/components/schemas/ConnectionInvocation"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectorResultPage"
+              },
+              {
+                "$ref": "#/components/schemas/ConnectorResultUnavailable"
+              }
+            ]
+          }
+        },
+        "required": ["invocation", "result"]
+      },
+      "ConnectorResultPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Exact UTF-8 JSON text, at most 8192 UTF-8 bytes per page. Join page text in byte-offset order and verify the reference byte length and SHA-256 to recover the complete serialized result. No page is an independent JSON document. Cursor is a selector, not authorization; every page rechecks current access.",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "page"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/ConnectorResultReference"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "offsetBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8388608
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "maxLength": 512
+          }
+        },
+        "required": ["kind", "reference", "text", "offsetBytes", "nextCursor"]
+      },
+      "ConnectorRuntimeInvocationLookup": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Read only. Find the receipt for the original tool call in the current native agent/session. Missing receipts return 404 and never allocate or execute an invocation. Native context is supplied by the plugin, not model parameters.",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ConnectorRuntimeContext"
+          },
+          "targetToolCallId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": ["context", "targetToolCallId"]
+      },
+      "ConnectionReturnDestination": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["serverId", "connectionId"],
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Current authorized connection state for this server."
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "Invalid JSON, field, signature payload or request shape; code invalid_request.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid credential/signature; foundation code unauthenticated.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authenticated caller lacks the required current authority; code forbidden.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource absent or not accessible in the server; code not_found.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The command conflicts with current state or a previous idempotent request.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "PreconditionFailed": {
+        "description": "The observed resource revision is stale; code revision_conflict.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "Request body must use application/json; code unsupported_media_type.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Request limit reached; code rate_limited.",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Delay in seconds, if known."
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Safe failure response; no provider payload, stack trace or credential is exposed.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "Required service unavailable; code dependency_unavailable.",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Delay in seconds, if known."
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "ConnectorId": {
+        "name": "connectorId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "CsrfToken": {
+        "name": "x-csrf-token",
+        "in": "header",
+        "required": false,
+        "description": "Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "IdempotencyKey": {
+        "name": "idempotency-key",
+        "in": "header",
+        "required": true,
+        "description": "Stable for one logical request; scoped by server, actor and operation kind.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[!-~]{1,200}$"
+        }
+      },
+      "ConnectionId": {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "ConnectionRevision": {
+        "name": "if-match",
+        "in": "header",
+        "required": true,
+        "description": "Quoted current connection revision, for example \"3\". Applies to the connection record, not the installation or provider configuration.",
+        "schema": {
+          "type": "string",
+          "pattern": "^\"[1-9][0-9]{0,9}\"$"
+        }
+      },
+      "ConnectionSetupId": {
+        "name": "setupId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "ConnectionInvocationId": {
+        "name": "invocationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      }
+    },
+    "securitySchemes": {
+      "BrowserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "clawscarf_session"
+      },
+      "ConnectorRuntime": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
