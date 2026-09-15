@@ -213,6 +213,83 @@ remains required. The selected member/browser
 execution limitations still apply; see
 [runtime placement](../openshell/README.md#execution-placement).
 
+## Runtime upgrade
+
+The `upgrade` command replaces stopped compute while retaining its named home volume.
+Real replacement and interruption/resumption have passed on macOS arm64. This is a
+local operator path, not a qualified cross-platform release upgrade.
+It requires an exact replacement image with the ClawScarf startup gate and the pinned
+Python SDK environment from [pack setup](../../packs/README.md). It does not upgrade
+the controller, companion or database, and it does not back up or roll back data.
+
+Stop the foreground installation. In one terminal, start only its private controller:
+
+```sh
+pnpm exec tsx scripts/controller.ts start --directory .local/my-team/controller
+```
+
+In another, run the explicit replacement:
+
+```sh
+pnpm exec tsx scripts/local.ts upgrade --directory .local/my-team \
+  --runtime-image sha256:REPLACE_WITH_EXACT_IMAGE_ID \
+  --python /absolute/operator-python/bin/python --yes
+```
+
+The command records current controller policy, typed settings, provider bindings and
+runtime specification privately before deletion. It verifies the old compute is absent
+and the same owned volume remains, then creates one replacement with OpenClaw startup
+gated. Settings are restored before compute stops and its gate marker is published.
+The next normal start boots the supervisor with restored settings before OpenClaw.
+Compute ends stopped; stop the private controller and use normal `start` for administrator
+verification. Update the original input file's runtime image if repeating `prepare`.
+Native configuration, identities and workspaces are not initialized again.
+
+An interrupted upgrade blocks ordinary preparation/start. Resume the same command and
+exact image; recorded deletion/allocation requests are observed, never blindly replayed.
+Settings resume skips exact typed matches and writes only still-unset values; observed
+conflicting values require inspection. The pinned setting-update API has no atomic
+revision precondition: exclusive operator control is required throughout replacement
+and resumption. Existing provider records remain live external authority; the command
+preserves their bindings, not a private copy of provider credentials. The current native delete API
+has no atomic UUID precondition; keep exclusive operator control during this local
+procedure. It rejects changed bindings, custom canonical commands, unloaded policy,
+and global overrides before destructive work. Global settings hide sandbox-local
+values in this pinned API, so their upgrade cannot safely use effective readback alone.
+No rollback promise follows from retaining a volume that the new runtime can modify.
+
+The operator uses the pinned SDK's generated public protobuf RPCs for current policy,
+typed settings and creation. It does not read controller databases or private SDK
+client attributes. Controller keys and upgrade snapshots remain in the operator's
+private directory, outside the runtime image.
+
+## Upgrade acceptance
+
+Use a disposable stopped installation with its controller running and no previous
+upgrade. The replacement image must already be built. This test deliberately kills
+its own upgrade process before settings restoration, resumes the same replacement,
+and verifies retained home/configuration and a stopped result:
+
+```sh
+CLAWSCARF_TEST_LOCAL_UPGRADE_DIRECTORY=/absolute/disposable-installation \
+CLAWSCARF_TEST_LOCAL_UPGRADE_IMAGE=sha256:REPLACE_WITH_EXACT_IMAGE_ID \
+CLAWSCARF_TEST_LOCAL_UPGRADE_PYTHON=/absolute/operator-python/bin/python \
+  pnpm exec tsx --test tests/local/upgrade-live.test.ts
+```
+
+Run the bridge protocol regressions with the same pinned Python environment:
+
+```sh
+/absolute/operator-python/bin/python -m unittest discover -s tests/local -p 'upgrade_rpc_test.py'
+```
+
+The real replacement retained native configuration and a workspace marker, blocked
+Gateway startup before restoration, and resumed without another allocation. Normal
+startup afterward verified administrator authority through Gateway. This check used
+the same pinned OpenClaw version in a rebuilt runtime; it does not establish migration
+compatibility with a different upstream version. Browser interaction after replacement,
+Linux and upgrades from published release artifacts remain unqualified.
+
 ## Allocation acceptance
 
 Use a disposable prepared installation with no runtime or recorded create attempt.

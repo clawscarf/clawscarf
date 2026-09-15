@@ -12,6 +12,7 @@ import { LocalSetupError, run } from "./process.js";
 import { localLoginCode, verifyLocalAdministrator } from "./login.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import { verifyRuntimeBinding } from "./runtime-binding.js";
+import { requireNoUpgrade } from "./upgrade-state.js";
 
 export async function launchLocal(
   directoryInput: string,
@@ -38,6 +39,7 @@ export async function launchLocal(
   };
   const name = resourceNames(state).sandbox;
   await withLocalLock(directory, async () => {
+    await requireNoUpgrade(directory);
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
     await verifyLocalNetworks(directory, state);

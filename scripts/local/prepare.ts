@@ -27,6 +27,7 @@ import {
 import { composeConfiguration, compose, ensureOwnedVolume } from "./compose.js";
 import { run, LocalSetupError } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
+import { requireNoUpgrade } from "./upgrade-state.js";
 
 export async function prepareLocal(
   directoryInput: string,
@@ -43,6 +44,7 @@ export async function prepareLocal(
     await run("docker", ["image", "inspect", image]);
   const state = await initializeState(directory, input);
   await withLocalLock(directory, async () => {
+    await requireNoUpgrade(directory);
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
     const models = await prepareInitialModels(directory, input.models);

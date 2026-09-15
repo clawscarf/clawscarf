@@ -7,7 +7,40 @@ import { launchLocal } from "./local/launch.js";
 import { localLoginCode } from "./local/login.js";
 import { readState } from "./local/state.js";
 import { resolve } from "node:path";
+import { upgradeLocal } from "./local/upgrade.js";
 const command = new Command("clawscarf-local");
+command
+  .command("upgrade")
+  .requiredOption(
+    "--directory <path>",
+    "Stopped private installation directory; start only its controller",
+  )
+  .requiredOption(
+    "--runtime-image <digest>",
+    "Exact replacement image with ClawScarf startup-gate support",
+  )
+  .requiredOption(
+    "--python <path>",
+    "Python with pinned operator SDK dependencies installed",
+  )
+  .requiredOption(
+    "--yes",
+    "Replace stopped compute; retain data without promising rollback",
+  )
+  .action(
+    async (options: {
+      directory: string;
+      runtimeImage: string;
+      python: string;
+    }) => {
+      await upgradeLocal(
+        options.directory,
+        options.runtimeImage,
+        options.python,
+        (message) => process.stdout.write(message + "\n"),
+      );
+    },
+  );
 command
   .command("prepare")
   .requiredOption("--directory <path>", "Private installation directory")

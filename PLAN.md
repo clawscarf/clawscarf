@@ -190,6 +190,11 @@ rules for every remaining change.
       is not an upgrade source. Verify actual image/mounts, confirmed old compute
       removal and one replacement allocation. Native name-based deletion has no atomic
       UUID precondition; do not claim otherwise or infer rollback from volume retention.
+      The [local upgrade command](deploy/local/README.md#runtime-upgrade) is implemented
+      with local replacement/interruption acceptance on macOS arm64; published-release,
+      changed-upstream-version and Linux qualification remain open. Global
+      overrides are unsupported because this API cannot expose hidden sandbox settings;
+      do not silently discard them. Verify typed settings before application startup.
       Assemble one reproducible noninteractive setup sequence for controller, volume,
       native state, Postgres/migrations, private credentials, companions and forwarding;
       separate component commands are not a complete installation path. The

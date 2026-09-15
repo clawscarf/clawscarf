@@ -45,7 +45,7 @@ function changed(): never {
     "The runtime identity or ownership differs from this installation. No further runtime command was sent.",
   );
 }
-function manager(
+export function runtimeManager(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
@@ -165,7 +165,7 @@ export async function ensureRuntime(
   env: NodeJS.ProcessEnv,
   command: Command = run,
 ): Promise<{ id: string; name: string; phase: string }> {
-  const control = manager(directory, state, env, command);
+  const control = runtimeManager(directory, state, env, command);
   const record = await control.recorded();
   let target = await control.observe();
   if (record.receipt && target?.id !== record.receipt.id) changed();
@@ -256,7 +256,7 @@ export async function stopRuntime(
   env: NodeJS.ProcessEnv,
   command: Command = run,
 ): Promise<void> {
-  const control = manager(directory, state, env, command);
+  const control = runtimeManager(directory, state, env, command);
   const record = await control.recorded();
   const target = await control.observe();
   if (!target) {

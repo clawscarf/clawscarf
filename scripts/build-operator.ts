@@ -4,6 +4,13 @@ import { copyFile, cp, mkdir } from "node:fs/promises";
 const source = new URL("./packs/", import.meta.url);
 const destination = new URL("../dist/scripts/packs/", import.meta.url);
 await mkdir(destination, { recursive: true });
+await mkdir(new URL("../dist/scripts/local/", import.meta.url), {
+  recursive: true,
+});
+await copyFile(
+  new URL("./local/upgrade-rpc.py", import.meta.url),
+  new URL("../dist/scripts/local/upgrade-rpc.py", import.meta.url),
+);
 await Promise.all(
   ["transport.py", "requirements.in", "requirements.txt"].map((name) =>
     copyFile(new URL(name, source), new URL(name, destination)),

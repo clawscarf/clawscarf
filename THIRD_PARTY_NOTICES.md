@@ -48,8 +48,8 @@ that release requirement remains in the plan.
 Both image recipes also copy this file and the root [license](LICENSE) verbatim
 to `/usr/share/licenses/clawscarf`. The companion recipe additionally copies the
 incorporated [shadcn notice](services/connections/web/shared/shadcn/LICENSE.md)
-there as `shadcn-MIT.txt`. These additions are source-level packaging changes;
-their retained contents still require verification in rebuilt images. Relative
+there as `shadcn-MIT.txt`. A local runtime rebuild verified the root notices against its build inputs.
+The companion still requires rebuilt-image verification. Relative
 source links in this file refer to the source checkout, not image filesystem paths.
 
 When bundling or adapting software, record its exact version and source, retain its

@@ -60,7 +60,7 @@ image's one OpenClaw installation; no second OpenClaw distribution is installed.
 The recipe copies the root [license](../../LICENSE),
 [third-party notices](../../THIRD_PARTY_NOTICES.md) and pinned upstream license/notice
 files verbatim to `/usr/share/licenses/clawscarf`. Debian package copyright files
-are retained. The added root notices have not yet been checked in a rebuilt image;
+are retained. A local runtime rebuild verified the root notices against build inputs;
 complete release license qualification remains open in the [plan](../../PLAN.md).
 
 ## Native registration

@@ -3,6 +3,9 @@ import { promisify } from "node:util";
 
 const execute = promisify(execFile);
 type LocalSetupErrorCode =
+  | "upgrade_pending"
+  | "upgrade_refused"
+  | "upgrade_outcome_unknown"
   | "runtime_binding_changed"
   | "runtime_binding_unavailable"
   | "administrator_unverified"

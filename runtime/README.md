@@ -44,6 +44,14 @@ and rejects unreadable inputs or mismatched existing contents. CA changes requir
 Gateway restart; no certificate verification is disabled. Model tokens remain separate
 private native file secrets.
 
+Replacement images support an operator-controlled startup gate. When
+`CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
+root-owned `/etc/clawscarf-start-ready` marker before starting OpenClaw. The operator
+restores controller settings and stops compute before publishing that marker. The next
+normal start boots the supervisor with restored settings before launching OpenClaw.
+It is absent from normal fresh startup; it does not change OpenClaw itself or store
+controller credentials in the guest. See the [upgrade procedure](../deploy/local/README.md#runtime-upgrade).
+
 ## Capability controls
 
 The pinned native configuration owns these controls; administrators may deliberately

@@ -77,8 +77,10 @@ OpenClaw formats and do not need their own database.
 ## Before you try it
 
 The developer path requires building images and obtaining the pinned controller
-executables. There is no published all-in-one download, installer or supported runtime
-upgrade yet. The [local setup guide](deploy/local/README.md) owns the exact steps.
+executables. There is no published all-in-one download or installer. A local runtime
+replacement has passed interruption/resumption and retained-state checks; cross-version
+and release-artifact upgrades remain unqualified. The [local setup guide](deploy/local/README.md)
+owns the exact steps.
 
 Administrator chat and file-read execution have passed. Ordinary-member shell execution
 is unavailable in the current preset, and packaged Chromium cannot start under the
