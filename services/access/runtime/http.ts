@@ -58,7 +58,7 @@ export async function createAccessHttp(
   const app = Fastify({
     logger: false,
     trustProxy: false,
-    bodyLimit: 65536,
+    bodyLimit: 256 * 1024,
     requestIdHeader: false,
     genReqId: () => randomUUID(),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false } },
@@ -148,13 +148,19 @@ export async function createAccessHttp(
             } as const
           )[error.code]
         : null;
+    const bodyTooLarge =
+      error instanceof Fastify.errorCodes.FST_ERR_CTP_BODY_TOO_LARGE;
     const code =
       nativeCode ??
       (error instanceof AccessError
         ? error.code
-        : typeof error === "object" && error !== null && "validation" in error
+        : bodyTooLarge ||
+            (typeof error === "object" &&
+              error !== null &&
+              "validation" in error)
           ? "invalid_request"
           : "dependency_unavailable");
+    const status = bodyTooLarge ? 413 : errorStatus[code];
     if (
       req.headers.accept?.includes("text/html") &&
       [
@@ -165,7 +171,7 @@ export async function createAccessHttp(
       ].includes(req.routeOptions.url ?? "")
     ) {
       void reply
-        .code(errorStatus[code])
+        .code(status)
         .header("Content-Security-Policy", signInPagePolicy)
         .type("text/html")
         .send(
@@ -179,15 +185,16 @@ export async function createAccessHttp(
       return;
     }
     void reply
-      .code(errorStatus[code])
+      .code(status)
       .type("application/problem+json")
       .send({
         type: "about:blank",
         title: code,
-        status: errorStatus[code],
+        status,
         code,
-        detail:
-          error instanceof AccessError
+        detail: bodyTooLarge
+          ? "The request body exceeds 256 KiB."
+          : error instanceof AccessError
             ? error.message
             : code === "invalid_request"
               ? "Use the documented fields."

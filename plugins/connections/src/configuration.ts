@@ -25,7 +25,7 @@ const connectorTools = [
 const requestSchema = Type.Object(
   {
     kind: Type.Union([Type.Literal("configure"), Type.Literal("observe")]),
-    brokerOrigin: Type.String({ maxLength: 2048 }),
+    brokerUrl: Type.String({ maxLength: 2048 }),
     packageDirectory: Type.String({ minLength: 1, maxLength: 4096 }),
     replacePackageDirectories: Type.Array(
       Type.String({ minLength: 1, maxLength: 4096 }),
@@ -36,7 +36,7 @@ const requestSchema = Type.Object(
 );
 export type ConfigurationRequest = Static<typeof requestSchema>;
 
-function origin(value: string): string {
+function brokerEndpoint(value: string): string {
   const url = new URL(value);
   if (
     (url.protocol !== "https:" &&
@@ -44,12 +44,13 @@ function origin(value: string): string {
         url.protocol === "http:" &&
         ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
       )) ||
-    url.origin !== value ||
+    url.search ||
+    url.hash ||
     url.username ||
     url.password
   )
-    throw new Error("Invalid broker origin.");
-  return url.origin;
+    throw new Error("Invalid broker URL.");
+  return url.href.replace(/\/$/u, "");
 }
 
 function managedProvider(value: unknown): boolean {
@@ -64,7 +65,7 @@ function managedProvider(value: unknown): boolean {
 }
 
 export async function configureConnections(request: ConfigurationRequest) {
-  const brokerOrigin = origin(request.brokerOrigin);
+  const brokerUrl = brokerEndpoint(request.brokerUrl);
   const { snapshot } = await readConfigFileSnapshotForWrite();
   if (!snapshot.valid || !snapshot.exists || !snapshot.hash)
     throw new Error("A valid installation configuration is required.");
@@ -102,7 +103,7 @@ export async function configureConnections(request: ConfigurationRequest) {
         const entry = draft.plugins.entries[PLUGIN_ID] ?? {};
         draft.plugins.entries[PLUGIN_ID] = {
           ...entry,
-          config: { ...entry.config, brokerUrl: brokerOrigin, credential },
+          config: { ...entry.config, brokerUrl, credential },
         };
         draft.tools ??= {};
         draft.tools.sandbox ??= {};
@@ -137,7 +138,7 @@ export async function configureConnections(request: ConfigurationRequest) {
     config.plugins?.load?.paths?.includes(request.packageDirectory) === true;
   const managedConfig = Type.Object(
     {
-      brokerUrl: Type.Literal(brokerOrigin),
+      brokerUrl: Type.Literal(brokerUrl),
       credential: Type.Object(
         {
           source: Type.Literal("env"),
@@ -158,7 +159,7 @@ export async function configureConnections(request: ConfigurationRequest) {
   return {
     state: "configured",
     enabled,
-    brokerOrigin,
+    brokerUrl,
     configHash: observed.hash,
   } as const;
 }

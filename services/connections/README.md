@@ -84,8 +84,13 @@ retry a lost rotation response; explicitly rotate again if the outcome is uncert
 exact-account search, encrypted result transport and real-Postgres account lifecycle,
 idempotency, grants, credentials and session revocation. PostgreSQL tests require a
 **disposable database** in `CLAWSCARF_CONNECTIONS_TEST_DATABASE_URL`; they recreate
-only its Connections schema. Provider and native-authority effects in these tests
-are controlled fixtures. This does not establish a live external-account journey.
+only its Connections schema. The [lifecycle regressions](../../tests/connections/lifecycle.test.ts)
+also create and remove uniquely named databases on that server, so their configured
+login needs database-creation permission. They cover real HTTP request limits,
+cancellation during account allocation, uncertain allocation without duplicate
+creation, setup cleanup and result expiry without losing invocation receipts.
+Provider and native-authority effects in these tests are controlled fixtures.
+This does not establish a live external-account journey.
 
 Adapted from RawClaw commit
 [f37a6e786fdd88857c21bd32140567874e281a8c](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/src/domains/connections):

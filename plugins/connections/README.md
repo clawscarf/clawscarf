@@ -31,7 +31,9 @@ flow, then configure `plugins.entries.clawscarf-connections`:
 
 Supply that limited server credential to the runtime through its secret environment;
 never bake it into an image. The native SecretRef resolver supplies the string to
-the plugin. HTTPS is required except for loopback development endpoints. The
+the plugin. `brokerUrl` preserves an optional path prefix, such as
+`https://host.example/_clawscarf/connections`; query strings, fragments and URL
+credentials are rejected. HTTPS is required except for loopback development endpoints. The
 OpenShell deployment must explicitly permit the selected broker destination.
 
 An empty plugin configuration exposes no executable tools and makes no broker
@@ -73,8 +75,9 @@ Unit/HTTP tests cover native identity, exact account/version arguments, cancella
 credential exclusion, error semantics, slow responses, saved-result paging and
 no mutation replay. The native package test uses temporary OpenClaw state and a
 loopback test broker to exercise installation, restart and disablement. A native
-configuration test verifies read-only observation, retained disablement and authored
-allow/deny policy against the pinned mutation SDK. These tests
+configuration test verifies read-only observation, retained disablement, authored
+allow/deny policy, path-prefixed broker URLs and rejected endpoints without writes
+against the pinned mutation SDK. These tests
 do not qualify OpenShell, live external account authentication, or model-driven
 execution; those require distribution-level acceptance.
 

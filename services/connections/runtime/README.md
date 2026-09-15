@@ -4,7 +4,10 @@
 assets to the existing access companion. It uses the shared Access session and CSRF
 port, OpenAPI route registration and generated Fastify handler types. Domain services
 own native authority and operation outcomes. The access companion owns common request
-validation, response validation and safe HTTP failures.
+validation, response validation and safe HTTP failures. The common request envelope
+is limited to 256 KiB; connector arguments are independently limited to 128 KiB of
+serialized JSON. Oversized envelopes receive 413, oversized arguments receive 400,
+and neither dispatches a provider operation.
 
 The [contract](../openapi.json) owns all paths beneath `/_clawscarf/connections`.
 The OpenClaw plugin uses that prefix as its broker base URL and keeps the public

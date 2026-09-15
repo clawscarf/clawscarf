@@ -161,8 +161,10 @@ rules for every remaining change.
 - [ ] **5. Complete optional managed Connections.** Reuse the current generic REST
       plugin and broker; no MCP rewrite. Extract independent account setup/management
       and required persistence, with Composio behind its provider boundary. Support an
-      external broker or locally deployed companion. Preserve exact account selection,
-      agent grants, revocation and explicit outcomes. Verify trusted caller context;
+      external broker or locally deployed companion. Wire either selection into local
+      assembly; the existing broker and plugin components alone do not provide that
+      setup path. Preserve exact account selection, agent grants, revocation and explicit
+      outcomes. Verify trusted caller context;
       do not advertise per-human or per-operation authorization not actually enforced.
       Unconfigured integration has no unusable tools or dead-end actions. Keep native
       MCP, channels and other plugins as separate supported integration paths.

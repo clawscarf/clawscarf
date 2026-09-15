@@ -76,7 +76,9 @@ Login uses PKCE, state, nonce, verified identity claims and one-use transactions
 Only admitted subjects receive sessions. Browser sign-in failures show a concise page
 with a fresh sign-in link; they retain the failure HTTP status and never replay the
 request or display provider details. API clients retain typed Problem Details. Failed
-callbacks clear the login cookie.
+callbacks clear the login cookie. The shared HTTP server accepts request bodies up to
+256 KiB; Fastify rejects larger bodies with 413 Problem Details before dispatch.
+Individual operations apply their own narrower field and argument limits.
 Session authentication checks current
 admission revisions; revocation cannot revive after a later admission. Stored logout
 hints are encrypted and bound to their session. Browser mutations require exact

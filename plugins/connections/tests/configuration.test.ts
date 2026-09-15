@@ -18,7 +18,10 @@ await test("native configuration preserves authored policy, disablement and unre
     plugins: { entries: { "clawscarf-connections": { enabled: false } } },
     tools: { sandbox: { tools: { allow: ["read"], deny: ["exec"] } } },
   };
-  const command = (kind: "configure" | "observe") =>
+  const command = (
+    kind: "configure" | "observe",
+    brokerUrl = "http://127.0.0.1:8800/_clawscarf/connections/",
+  ) =>
     new Promise<string>((resolveOutput, reject) => {
       const child = spawn(
         process.execPath,
@@ -50,7 +53,7 @@ await test("native configuration preserves authored policy, disablement and unre
       child.stdin.end(
         JSON.stringify({
           kind,
-          brokerOrigin: "http://127.0.0.1:8800",
+          brokerUrl,
           packageDirectory,
           replacePackageDirectories: [],
         }),
@@ -59,6 +62,15 @@ await test("native configuration preserves authored policy, disablement and unre
   try {
     await writeFile(configPath, JSON.stringify(initial));
     const before = await readFile(configPath, "utf8");
+    for (const brokerUrl of [
+      "https://broker.example/_clawscarf/connections?token=secret",
+      "https://broker.example/_clawscarf/connections#fragment",
+      "https://user:secret@broker.example/_clawscarf/connections",
+      "http://broker.example/_clawscarf/connections",
+    ]) {
+      await assert.rejects(command("configure", brokerUrl));
+      assert.equal(await readFile(configPath, "utf8"), before);
+    }
     await command("observe");
     assert.equal(await readFile(configPath, "utf8"), before);
     const configured: unknown = JSON.parse(await command("configure"));
@@ -76,7 +88,7 @@ await test("native configuration preserves authored policy, disablement and unre
           "clawscarf-connections": {
             enabled: false,
             config: {
-              brokerUrl: "http://127.0.0.1:8800",
+              brokerUrl: "http://127.0.0.1:8800/_clawscarf/connections",
               credential: {
                 source: "env",
                 provider: "clawscarf-connections",
