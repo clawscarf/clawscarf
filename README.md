@@ -59,9 +59,9 @@ network policy for every companion.
   without provider credentials or a Connections schema.
 - **Browser operator integration is unfinished.** The private [browser-node assembly](deploy/execution/browser-node/README.md)
   passed native member/administrator browsing with explicit node selection, TLS/DNS,
-  retained device identity and revocation after restart. Initial enrollment still needs
-  an authenticated administrator through Access; localhost trusted-proxy bootstrap is
-  rejected upstream. Gateway and worker retain OpenShell. Browser remains opt-in.
+  retained device identity and revocation after restart. Unattended node-only enrollment
+  through the public SDK also passed. Startup wiring and native default-target guidance
+  remain unfinished. Gateway and worker retain OpenShell. Browser remains opt-in.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
   tests. Changed-upstream-version upgrades, clean-machine release installation,
   Linux/WSL, automated backups and the terminal installer are unfinished.

@@ -230,5 +230,5 @@ or remove confinement to make acceptance pass.
 
 A separate [private browser-node assembly](../execution/browser-node/README.md) passed
 native member/admin browsing with explicit node selection, TLS/DNS and device
-revocation across restart. Its authenticated initial enrollment is not wired into
-normal operator startup. Gateway/worker OpenShell protection remains unchanged.
+revocation across restart. Local public-SDK enrollment also passed; the browser-node
+path is not wired into normal operator startup. Gateway/worker OpenShell protection remains unchanged.

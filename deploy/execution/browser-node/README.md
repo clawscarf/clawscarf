@@ -2,8 +2,8 @@
 
 **Operator integration is unfinished.** A disposable private TLS/DNS assembly passed
 native administrator/member browsing, retained device identity and revocation after
-restart. Initial authenticated enrollment and retained browser-profile acceptance
-remain in [TODO.md](../../../TODO.md). There is no automatic operator startup path.
+restart. Unattended node-only enrollment through the public SDK also passed.
+Operator startup wiring and retained browser-profile acceptance remain in [TODO.md](../../../TODO.md). There is no automatic operator startup path.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The Gateway and SSH execution worker retain
@@ -53,10 +53,19 @@ operator can replace those mounts or this image and is outside this boundary.
 
 ## Pairing and connection
 
-The operator calls the native `device.pair.setupCode` RPC with
-`bootstrapProfile: "node"`, `includeQr: false`, and the private Gateway URL. Mount
-its one-use code at `/configuration/pairing-code`, read-only and mode `0600`, for
-initial enrollment. The native node connects with role `node` and no operator
+Native enrollment supports two verified issuance paths: an authenticated administrator
+can call `device.pair.setupCode` with `bootstrapProfile: "node"`, or an
+operator-owned local process can call the public `openclaw/plugin-sdk/device-bootstrap`
+export `issueDeviceBootstrapToken` with the Gateway's actual state directory and
+`profile: { roles: ["node"], scopes: [] }`. The latter does not need a browser login,
+proxy identity or shared Gateway password. It needs installation-owner access to the
+Gateway state, outside agent-controlled execution. The live trial used UID 1000,
+`HOME=/home/node`, `SQLITE_TMPDIR=/tmp` and `baseDir: "/home/node/.openclaw"`.
+This is a verified component path, not an implemented operator command.
+
+The native setup-code payload carries the private Gateway URL and the scoped bootstrap
+token. Mount its one-use code at `/configuration/pairing-code`, read-only and mode
+`0600`, for initial enrollment. The node connects with role `node` and no operator
 scopes. The launcher reads the code privately and invokes the package's exported
 `runLegacyCliEntry` in-process; the code does not enter OS process arguments.
 The pinned package exports its root at `/app/dist/index.js`; the launcher uses
@@ -117,29 +126,43 @@ private/loopback/metadata navigation denial. Test containers and pairings were r
 These trials do not qualify normal operator startup, browser-profile persistence or
 Linux-host deployment.
 
-### Initial enrollment boundary
+### Remaining integration boundary
 
-The successful trials obtained `device.pair.setupCode` through an authenticated
-Access administrator. A fresh operator's direct localhost bootstrap attempt failed:
-OpenClaw requires a non-loopback client attribution for trusted-proxy authentication,
-even when the proxy itself may be loopback. Setting an invented forwarding address or
-creating another administrator ingress is not an accepted workaround. The remaining
-integration must use an authenticated Access session, coordinated with initial
-administrator setup, before starting and pinning the browser node. No automatic
-re-pair may undo native revocation. Prototype startup wiring is not in the shipped
-operator.
+A local public-SDK-issued node-only token paired the browser node through private
+TLS without an administrator session for issuance. Native browser navigation,
+retained device reconnect and revocation after restart passed against the pinned
+2026.9.4 runtime. Administrator authentication was used only to inspect the node,
+exercise browser commands and revoke it. Startup integration must retain this
+separation and never automatically re-pair a revoked node.
 
-Native agent routing has a separate usability limitation: its tool description says
-`host` is the default even when `gateway.nodes.browser.node` is pinned. In a live
-trial, the model explicitly selected `host` and hit the Gateway DNS denial. Explicit
-`target=node` succeeded for both members and administrators. There is no native tool
-or RPC rewrite in ClawScarf; operator integration must address this guidance without
-weakening Gateway confinement.
+Trusted-proxy authentication rejects loopback client attribution; local provisioning
+must not impersonate a proxied user or invent a forwarding address. The public SDK
+issuance path avoids that failed bootstrap approach. Operator startup/stop wiring
+and retained browser-profile acceptance remain unfinished.
+
+Native routing has an upstream guidance mismatch. With a configured browser node,
+an omitted target selects that node; an explicit `host` selects Gateway-side control.
+The tool description nevertheless advertises `host` as the default. Disabling
+`allowHostControl` blocks node browsing too, so that setting cannot force a browser
+node. Three focused tests against checkout `29e149ccbf649ed2137ded6f4a857dc6eb2abbb6`
+confirmed these cases; the same branches exist in the pinned release. The earlier
+live model trial selected `host` and hit Gateway DNS denial, whereas explicit
+`target=node` succeeded for members and administrators.
+
+The minimum upstream correction is to make tool guidance reflect the effective
+configured routing, while preserving explicit target semantics and sandbox policy.
+No supported installation-wide node-only target selector was found in the checked
+configuration/schema. A tab-bound browser run exists but requires a specific existing
+tab and is not a general installation default. No native patches, tool/RPC rewrites,
+prompt overrides or weaker confinement are shipped to hide this mismatch. Ordinary
+model-driven browser acceptance must be rerun after the supported correction.
 
 Pinned upstream sources:
 
 - [Node CLI and lifecycle entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/cli/node-cli/register.ts)
   and [public package entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/index.ts).
+- [Public device-bootstrap SDK](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/plugin-sdk/device-bootstrap.ts)
+  and [native issuance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/infra/device-bootstrap.ts).
 - [Trusted-proxy attribution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/ingress-attribution.ts)
   and [authentication](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/auth.ts).
 - [Browser target guidance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/browser-tool.ts)

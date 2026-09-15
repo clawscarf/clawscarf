@@ -238,7 +238,7 @@ Startup verifies authenticated CDP readiness before OpenClaw; a failed required 
 process stops the supervised assembly. The network and browser components have actual
 Chromium acceptance. A separate private browser-node assembly passed member/admin
 native browsing; it is not wired into this operator. See its
-[enrollment boundary](../execution/browser-node/README.md#initial-enrollment-boundary).
+[remaining integration](../execution/browser-node/README.md#remaining-integration-boundary).
 Native navigation currently fails at the Gateway's public-destination DNS preflight
 under OpenShell. This option is an integration candidate, not a working browser
 feature; see [execution placement](../openshell/README.md#execution-placement).

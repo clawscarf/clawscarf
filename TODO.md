@@ -6,13 +6,12 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Next implementation
 
-- [ ] **1. Finish browser operator integration.** Private TLS/DNS, native member/admin
-      browsing with explicit node selection, device reconnect and revocation passed.
-      Resolve initial enrollment through an authenticated Access administrator; native
-      trusted-proxy authentication rejects loopback client attribution. Do not invent
-      an IP or an administrator bypass. Then wire startup/stop and verify retained
-      browser profile state. Native tool guidance still advertises `host` as default;
-      decide supported node guidance or an upstream correction. Preserve OpenShell.
+- [ ] **1. Finish browser operator integration.** Wire the verified local public-SDK
+      node-only enrollment into startup/stop; retain identity and native revocation.
+      Correct upstream browser-tool guidance: a configured node is used when target
+      is omitted, but the description still advertises `host`; disabling host control
+      also blocks nodes. No prompt/RPC workaround or weaker OpenShell policy. Then
+      verify ordinary member/admin browsing and retained browser profile state.
 
 ## Following slices
 
