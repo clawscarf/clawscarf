@@ -126,7 +126,11 @@ do not replace them with a shared all-powerful identity to simplify integration.
 
 The reviewed donor uses UID 2000 and `/opt/rawclaw`, while this image uses UID 1000
 and persistent `/home/node`. Adoption must map data ownership, trusted ingress and
-the hosted inference source address deliberately. Preserve the running plugin's
+the hosted inference source address deliberately. The local controller disables bind
+mounts and uses a Docker named home volume; adopting that unchanged would not put
+native state on RawClaw's existing installation data volume. Define and test the
+hosted mount arrangement while retaining allocation/volume fencing; do not silently
+move persistent state to the VM's disposable root disk. Preserve the running plugin's
 credential-generation verification when replacing systemd-based checks. RawClaw's
 existing identity, broker and LiteLLM remain the owners in hosted mode; do not deploy
 duplicate standalone companions for those responsibilities. The current release
@@ -184,7 +188,10 @@ rules for every remaining change.
       [local assembly](deploy/local/README.md) has verified fresh preparation,
       supervised launch, native administrator login and retained-state restart.
       Complete model/tool and interrupted-allocation acceptance before qualifying
-      the whole setup path.
+      the whole setup path. Include model selection, scoped credentials and the
+      matching network permission in that qualification: the current local setup
+      initializes no model and starts with outbound traffic denied. A successful
+      browser login alone does not establish an agent ready to do useful work.
       Test missing/invalid optional services and interrupted setup. Produce exact
       artifacts with license/provenance review. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.
@@ -212,6 +219,10 @@ Use NemoClaw's practical patterns without copying its entire orchestration stack
   source builds are explicit, not a hidden fallback after a failed download.
 - Inspect an existing installation and distinguish configure/resume/upgrade/new.
   Show a real first successful model/tool interaction, not only process readiness.
+- Treat model endpoint configuration and its required network policy as one setup
+  choice. Optional integrations need their own explicit destinations; installing a
+  plugin or supplying a key does not authorize egress. Recheck current state when
+  resuming setup rather than relying on an earlier success marker.
 - Check ports and container-network capacity before changing resources. Report
   startup stages, use bounded readiness checks and retain enough state to resume.
   Print the actual application URL and operating commands only after their checks

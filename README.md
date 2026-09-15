@@ -1,13 +1,14 @@
 # ClawScarf 🧣
 
-**Your team's OpenClaw. Your infrastructure.**
+**OpenClaw for your team. On your terms.**
 
 Bring your team, models and tools to [OpenClaw](https://github.com/openclaw/openclaw).
 ClawScarf packages its native application with company login, optional model and
 connection services, and reusable agent packs—on infrastructure you control.
 
-Keep the OpenClaw you know. Add a shared team environment, bring your own model
-provider and choose the tools your agents need. No RawClaw account is required.
+Keep the OpenClaw you know. Bring your own models, connect your team's tools and
+share useful agents through reusable packs. Your conversations and workspaces stay
+on infrastructure you control. No RawClaw account is required.
 
 > **Early development:** components are implemented and undergoing integration testing.
 > There is no qualified distribution, complete quickstart or installer yet.
@@ -36,10 +37,17 @@ The terminal installer comes after the underlying components work together.
 
 ## Start here
 
-Developers can [build and check the repository](scripts/README.md) and follow the
-[local assembly work](deploy/local/README.md). Preparation has a real Docker/Postgres
-check. Supervised startup, local browser login and retained-state restart also passed;
-the full model/tool journey and company-login deployment remain unqualified.
+| Your goal               | Current path                                                                                                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Try it locally          | [Build the components](scripts/README.md), then [prepare and start a local installation](deploy/local/README.md). Protected browser login and retained-state restart have passed. |
+| Run it for a team       | [Company OIDC and enrollment](services/access/README.md) are implemented; the shared-deployment journey and member execution still need qualification.                            |
+| Host it through RawClaw | The integration boundary is [specified](PLAN.md#standalone-and-hosted-contracts); RawClaw does not consume these artifacts yet.                                                   |
+
+Local setup opens the protected native UI without requiring a provider account.
+To use a model, separately [configure the model gateway](deploy/models/README.md)
+and authorize its network route. Fresh setup denies outbound traffic by default.
+The combined first model/tool journey remains unqualified; this is currently a
+developer evaluation path, not a finished end-user quickstart.
 
 The current runtime checks target **macOS arm64 with Docker Desktop**. Linux and
 Windows/WSL are not yet qualified. See the measured
