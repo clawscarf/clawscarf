@@ -5,6 +5,7 @@ import {
   withInitialModels,
   type InitialModels,
 } from "./models.js";
+import { ensureLocalNetworks } from "./networks.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { ensureCertificates } from "./certificates.js";
 import pg from "pg";
@@ -45,6 +46,7 @@ export async function prepareLocal(
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
     const models = await prepareInitialModels(directory, input.models);
+    await ensureLocalNetworks(directory, state);
     const privateDirectory = join(directory, "private");
     const names = resourceNames(state);
     await ensureOwnedVolume(names.databaseVolume, state.ownerId);

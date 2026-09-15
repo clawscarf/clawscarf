@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { readState, resourceNames, withLocalLock } from "./state.js";
+import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
 import { startProcess, type ManagedProcess } from "./supervisor.js";
 import { ensureRuntime, stopRuntime } from "./runtime.js";
@@ -38,6 +39,7 @@ export async function launchLocal(
   await withLocalLock(directory, async () => {
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
+    await verifyLocalNetworks(directory, state);
     const children: ManagedProcess[] = [];
     const lifetime = { stopped: false, childExited: false };
     let runtimeAttempted = false;

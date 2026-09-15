@@ -53,6 +53,20 @@ pnpm exec tsx scripts/local.ts prepare \
   --directory .local/my-team --config /absolute/path/to/local-input.json
 ```
 
+Preparation first reserves both actual Docker bridge networks using Docker's allocator:
+one for companions and one for OpenShell. Each has installation/purpose labels and a
+recorded exact ID. Compose consumes the companion network as external; OpenShell uses
+its reserved runtime network. Startup verifies both IDs and ownership before starting
+processes. This establishes allocated capacity, not a speculative count from Docker's
+possibly absent address-pool metadata. It does not prove later service connectivity.
+
+Network creation intent is recorded before allocation. If a response is lost, preparation
+reconciles the matching owned network and records its ID. An absent network after a
+recorded attempt remains uncertain and requires operator inspection; it is never
+blindly allocated again. A partial setup retains its first network if reserving the
+second fails. Foreign, unlabeled, replaced or ambiguous networks are rejected, not
+adopted or deleted. No subnet ranges are hardcoded and no other projects are pruned.
+
 Preparation starts its own digest-pinned PostgreSQL container and owns separate
 named database and runtime-home volumes. It creates private random credentials once,
 runs the existing Access migrations as the database owner, grants a separate runtime
@@ -141,8 +155,8 @@ Initial native team preparation establishes the administrator profile and explic
 once. Its pending/completed records prevent an uncertain change from being replayed
 automatically. Later startup verifies access without reapplying those native settings.
 
-Ctrl+C stops the companion, forwards, runtime, controller and database; the directory and
-volumes remain. Process-group supervision also cleans up SSH children after a forward
+Ctrl+C stops the companion, forwards, runtime, controller and database; the directory,
+volumes and reserved networks remain. Process-group supervision also cleans up SSH children after a forward
 exits. Companion/Postgres exits are monitored through Compose, and signal handling
 remains active throughout cleanup. Only one foreground owner can run for an installation.
 This is a local evaluation process, not a daemon/service installation or unattended
@@ -158,12 +172,10 @@ UUID precondition. The CLI cannot independently read the runtime's actual image 
 its current `get` output; do not treat receipt metadata as that verification.
 
 Private controller/forward logs are under `logs/` in the installation directory. Compose
-owns companion/Postgres logs. Docker needs capacity for both a companion network and an
-OpenShell network. If its address pools are exhausted, inspect unused networks explicitly;
-setup does not prune networks belonging to other projects. A failed PostgreSQL start
-reports that stage and directs the operator to Compose status/logs and Docker network
-capacity. It does not infer address-pool exhaustion from Docker's error text or
-claim a successful capacity preflight. Port tests use actual loopback listeners;
+owns companion/Postgres logs. If network reservation fails, inspect Docker's address
+pools and this installation's recorded network intents before resuming. Setup does not
+classify Docker error messages as proof of pool exhaustion. A failed PostgreSQL start
+reports that separate stage and directs the operator to Compose status/logs. Port tests use actual loopback listeners;
 retained Docker ownership/binding denials use structured fixtures. Repeated preparation
 and startup also passed against the retained local installation with its actual
 PostgreSQL listener and runtime volume.
@@ -179,7 +191,37 @@ native bootstrap, cancellation, process-tree cleanup and paginated discovery.
 
 The configured administrator browser journey also passed a real model response and
 native file-read tool through the optional gateway; see [model acceptance](../models/README.md#verification-and-provenance).
-Allocation interrupted against the real controller and a release-artifact
-clean-machine run remain required. The selected member/browser
+A [real-controller crash test](../../tests/local/allocation-live.test.ts) passed:
+setup was killed after allocation acceptance and before saving its local receipt;
+resumption recovered the same UUID without another create call. The normal launcher
+then reached verified administrator access and the protected native browser UI with
+models unconfigured. This tests lost local completion after acceptance, not every
+possible failure inside Docker or OpenShell. A release-artifact clean-machine run
+remains required. The selected member/browser
 execution limitations still apply; see
 [runtime placement](../openshell/README.md#execution-placement).
+
+## Allocation acceptance
+
+Use a disposable prepared installation with no runtime or recorded create attempt.
+Start only its controller, then run the explicitly enabled test:
+
+```sh
+CLAWSCARF_TEST_LOCAL_ALLOCATION_DIRECTORY=/absolute/path/to/disposable-installation \
+  pnpm exec tsx --test tests/local/allocation-live.test.ts
+```
+
+The test holds the installation lock, requires an empty controller inventory, kills
+its own child setup process after the real creation response, and verifies exact-UUID
+resumption before stopping the runtime. It leaves the controller, private records
+and volumes for inspection. Stop the controller explicitly afterward. It refuses an
+existing runtime or previous create attempt; ordinary test runs skip this test.
+
+Network regression tests cover foreign/replaced/duplicate networks, failed observation,
+private intent/receipt integrity and uncertain allocation without replay. Live preparation
+reconciled two deliberately preallocated owned bridges on this workstation, then started
+Compose and OpenShell using them. A separate attempted allocation failed before any
+installation volume or container was created; setup reported an uncertain network outcome
+without interpreting Docker's error text. The workstation's default address pools were
+unavailable, so successful default-pool allocation remains environment-dependent; the
+live owned-network test used explicitly chosen, nonoverlapping test subnets.

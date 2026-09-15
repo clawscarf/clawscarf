@@ -52,8 +52,14 @@ await test("local preparation retains private identity/secrets and rejects forei
     await writeFile(join(other, "keep"), "data");
     await assert.rejects(initializeState(other, input));
     assert.equal(await readFile(join(other, "keep"), "utf8"), "data");
-    const mounts = composeConfiguration(state, directory).services.companion
-      .volumes;
+    const composed = composeConfiguration(state, directory);
+    assert.deepEqual(composed.networks, {
+      default: {
+        external: true,
+        name: `clawscarf-${state.ownerId.replaceAll("-", "").slice(0, 12)}_default`,
+      },
+    });
+    const mounts = composed.services.companion.volumes;
     assert.equal(
       mounts.some((value) => value.includes("database-admin-password")),
       false,

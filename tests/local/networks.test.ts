@@ -1,0 +1,315 @@
+import assert from "node:assert/strict";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  lstat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test, type TestContext } from "node:test";
+import {
+  ensureLocalNetworks,
+  verifyLocalNetworks,
+} from "../../scripts/local/networks.js";
+import { LocalSetupError } from "../../scripts/local/process.js";
+import { resourceNames, type LocalState } from "../../scripts/local/state.js";
+
+const state: LocalState = {
+  schemaVersion: 1,
+  ownerId: "00000000-0000-4000-8000-000000000001",
+  input: {
+    name: "network-test",
+    administratorName: "Ada",
+    runtimeImage: `sha256:${"a".repeat(64)}`,
+    companionImage: `sha256:${"b".repeat(64)}`,
+    openshellCli: "/tools/openshell",
+    openshellGateway: "/tools/openshell-gateway",
+    ports: {
+      controller: 17671,
+      application: 18800,
+      widgets: 18802,
+      management: 18801,
+      native: 18789,
+      nativeWidgets: 18790,
+      database: 15432,
+    },
+    cpu: "2",
+    memory: "2Gi",
+  },
+};
+function expected(purpose: "companion" | "runtime") {
+  const names = resourceNames(state);
+  return {
+    ownerId: state.ownerId,
+    purpose,
+    name: purpose === "companion" ? `${names.project}_default` : names.sandbox,
+  };
+}
+function network(purpose: "companion" | "runtime", id: string) {
+  return {
+    Id: id,
+    Name: expected(purpose).name,
+    Driver: "bridge",
+    Scope: "local",
+    Internal: false,
+    Ingress: false,
+    Attachable: purpose === "runtime",
+    EnableIPv6: false,
+    // Observed on freshly allocated Docker Desktop bridges; no custom options.
+    Options: {
+      "com.docker.network.enable_ipv4": "true",
+      "com.docker.network.enable_ipv6": "false",
+    },
+    Labels: {
+      "clawscarf.installation": state.ownerId,
+      "clawscarf.network-purpose": purpose,
+    },
+    IPAM: {
+      Driver: "default",
+      Options: null,
+      Config: [{ Subnet: "172.29.0.0/24", Gateway: "172.29.0.1" }],
+    },
+  };
+}
+async function fixture(t: TestContext) {
+  const directory = await mkdtemp(join(tmpdir(), "clawscarf-networks-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await mkdir(join(directory, "private"), { mode: 0o700 });
+  const networks = new Map<string, ReturnType<typeof network>>();
+  const behavior = {
+    failure: "none",
+    failPurpose: "runtime",
+    brokenInventory: false,
+  };
+  const creates: string[] = [];
+  const commands: string[] = [];
+  const command = async (executable: string, args: readonly string[]) => {
+    assert.equal(executable, "docker");
+    assert.equal(args[0], "network");
+    commands.push(args[1] ?? "");
+    if (args[1] === "ls") {
+      if (behavior.brokenInventory) return "not JSON";
+      return [...networks.values()]
+        .map((value) => JSON.stringify({ id: value.Id, name: value.Name }))
+        .join("\n");
+    }
+    if (args[1] === "inspect") {
+      const found = networks.get(args.at(-1) ?? "");
+      if (!found) throw Error("network unavailable");
+      return JSON.stringify(found);
+    }
+    assert.equal(args[1], "create");
+    const purpose =
+      args.at(-1) === expected("runtime").name ? "runtime" : "companion";
+    creates.push(purpose);
+    const marker = join(directory, "private", `network-${purpose}-create.json`);
+    assert.deepEqual(
+      JSON.parse(await readFile(marker, "utf8")),
+      expected(purpose),
+    );
+    assert.equal((await lstat(marker)).mode & 0o777, 0o600);
+    assert.ok(args.includes(`clawscarf.installation=${state.ownerId}`));
+    assert.ok(args.includes(`clawscarf.network-purpose=${purpose}`));
+    assert.equal(args.includes("--attachable"), purpose === "runtime");
+    assert.ok(!args.includes("--subnet") && !args.includes("--gateway"));
+    if (purpose === behavior.failPurpose && behavior.failure === "before")
+      throw Error("external error containing a secret");
+    const id = String(creates.length).repeat(64);
+    networks.set(id, network(purpose, id));
+    if (purpose === behavior.failPurpose && behavior.failure === "after")
+      throw Error("lost response containing a secret");
+    return id;
+  };
+  return { directory, networks, behavior, creates, commands, command };
+}
+function code(expectedCode: string) {
+  return (error: unknown) =>
+    error instanceof LocalSetupError &&
+    error.code === expectedCode &&
+    !error.message.includes("secret");
+}
+
+await test("actual network intents precede allocation; repeat preparation and verification retain exact IDs without mutations", async (t) => {
+  const f = await fixture(t);
+  const unrelated = {
+    ...network("companion", "f".repeat(64)),
+    Name: "another-project",
+    Driver: "overlay",
+  };
+  f.networks.set(unrelated.Id, unrelated);
+  await assert.rejects(
+    verifyLocalNetworks(f.directory, state, f.command),
+    code("network_unprepared"),
+  );
+  assert.deepEqual(f.commands, []);
+  await ensureLocalNetworks(f.directory, state, f.command);
+  assert.deepEqual(f.creates, ["companion", "runtime"]);
+  assert.deepEqual(f.networks.get(unrelated.Id), unrelated);
+  for (const purpose of ["companion", "runtime"] as const) {
+    const path = join(
+      f.directory,
+      "private",
+      `network-${purpose}-receipt.json`,
+    );
+    assert.equal((await lstat(path)).mode & 0o777, 0o600);
+    assert.deepEqual(JSON.parse(await readFile(path, "utf8")), {
+      ...expected(purpose),
+      id: purpose === "companion" ? "1".repeat(64) : "2".repeat(64),
+    });
+  }
+  await ensureLocalNetworks(f.directory, state, f.command);
+  await verifyLocalNetworks(f.directory, state, f.command);
+  assert.deepEqual(f.creates, ["companion", "runtime"]);
+  assert.ok(
+    f.commands.every((value) => ["ls", "inspect", "create"].includes(value)),
+  );
+});
+
+await test("lost create responses reconcile observed ownership, while absent uncertain allocation never replays or removes the first reservation", async (t) => {
+  const lost = await fixture(t);
+  lost.behavior.failure = "after";
+  await ensureLocalNetworks(lost.directory, state, lost.command);
+  await verifyLocalNetworks(lost.directory, state, lost.command);
+  assert.equal(lost.creates.length, 2);
+  const absent = await fixture(t);
+  absent.behavior.failure = "before";
+  await assert.rejects(
+    ensureLocalNetworks(absent.directory, state, absent.command),
+    code("network_outcome_unknown"),
+  );
+  assert.equal(absent.networks.size, 1);
+  assert.equal(absent.creates.length, 2);
+  absent.behavior.failure = "none";
+  await assert.rejects(
+    ensureLocalNetworks(absent.directory, state, absent.command),
+    code("network_outcome_unknown"),
+  );
+  await assert.rejects(
+    verifyLocalNetworks(absent.directory, state, absent.command),
+    code("network_unprepared"),
+  );
+  assert.equal(absent.creates.length, 2);
+  assert.deepEqual((await readdir(join(absent.directory, "private"))).sort(), [
+    "network-companion-create.json",
+    "network-companion-receipt.json",
+    "network-runtime-create.json",
+  ]);
+});
+
+await test("recorded attempts can reconcile later observation but never adopt unrecorded existing networks", async (t) => {
+  const f = await fixture(t);
+  f.networks.set("a".repeat(64), network("companion", "a".repeat(64)));
+  await assert.rejects(
+    ensureLocalNetworks(f.directory, state, f.command),
+    code("network_identity_changed"),
+  );
+  assert.equal(f.creates.length, 0);
+  await writeFile(
+    join(f.directory, "private", "network-companion-create.json"),
+    JSON.stringify(expected("companion")),
+    { mode: 0o600 },
+  );
+  await ensureLocalNetworks(f.directory, state, f.command);
+  assert.deepEqual(f.creates, ["runtime"]);
+  await verifyLocalNetworks(f.directory, state, f.command);
+});
+
+await test("foreign ownership, altered topology, duplicate names and replacement IDs are rejected without allocation", async (t) => {
+  const f = await fixture(t);
+  await ensureLocalNetworks(f.directory, state, f.command);
+  const id = "1".repeat(64);
+  for (const change of [
+    { Driver: "overlay" },
+    { Scope: "swarm" },
+    { Internal: true },
+    { Ingress: true },
+    { Attachable: true },
+    { EnableIPv6: true },
+    { Options: { "com.docker.network.bridge.enable_icc": "false" } },
+    { Options: { "com.docker.network.enable_ipv4": "false" } },
+    { Options: { "com.docker.network.enable_ipv6": "true" } },
+    {
+      Labels: {
+        "clawscarf.installation": "foreign",
+        "clawscarf.network-purpose": "companion",
+      },
+    },
+    {
+      Labels: {
+        "clawscarf.installation": state.ownerId,
+        "clawscarf.network-purpose": "runtime",
+      },
+    },
+    {
+      IPAM: { Driver: "default", Options: null, Config: [{ Gateway: "::1" }] },
+    },
+  ]) {
+    f.networks.set(id, Object.assign(network("companion", id), change));
+    await assert.rejects(
+      verifyLocalNetworks(f.directory, state, f.command),
+      code("network_identity_changed"),
+    );
+  }
+  f.networks.set(id, network("companion", id));
+  f.networks.set("a".repeat(64), network("companion", "a".repeat(64)));
+  await assert.rejects(
+    ensureLocalNetworks(f.directory, state, f.command),
+    code("network_identity_changed"),
+  );
+  f.networks.delete(id);
+  await assert.rejects(
+    ensureLocalNetworks(f.directory, state, f.command),
+    code("network_identity_changed"),
+  );
+  f.networks.delete("a".repeat(64));
+  await assert.rejects(
+    ensureLocalNetworks(f.directory, state, f.command),
+    code("network_outcome_unknown"),
+  );
+  assert.equal(f.creates.length, 2);
+});
+
+await test("incomplete Docker observation cannot establish absence or dispatch allocation", async (t) => {
+  const f = await fixture(t);
+  f.behavior.brokenInventory = true;
+  await assert.rejects(
+    ensureLocalNetworks(f.directory, state, f.command),
+    code("network_lookup_incomplete"),
+  );
+  assert.deepEqual(f.creates, []);
+  assert.deepEqual(await readdir(join(f.directory, "private")), []);
+});
+
+await test("missing, changed or nonprivate receipt records cannot authorize startup", async (t) => {
+  const f = await fixture(t);
+  await ensureLocalNetworks(f.directory, state, f.command);
+  const path = join(f.directory, "private", "network-companion-receipt.json");
+  const receipt = await readFile(path, "utf8");
+  await writeFile(
+    path,
+    JSON.stringify({
+      ...expected("companion"),
+      ownerId: "00000000-0000-4000-8000-000000000099",
+      id: "1".repeat(64),
+    }),
+  );
+  await assert.rejects(
+    verifyLocalNetworks(f.directory, state, f.command),
+    code("network_identity_changed"),
+  );
+  await rm(path);
+  await assert.rejects(
+    verifyLocalNetworks(f.directory, state, f.command),
+    code("network_unprepared"),
+  );
+  await writeFile(path, receipt, { mode: 0o644 });
+  await assert.rejects(
+    verifyLocalNetworks(f.directory, state, f.command),
+    code("network_identity_changed"),
+  );
+  assert.equal(f.creates.length, 2);
+});

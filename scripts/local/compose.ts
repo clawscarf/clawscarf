@@ -68,6 +68,7 @@ export function composeConfiguration(state: LocalState, directory: string) {
         file: join(privateDirectory, "database-admin-password"),
       },
     },
+    networks: { default: { external: true, name: `${names.project}_default` } },
     volumes: { database: { external: true, name: names.databaseVolume } },
   };
 }
