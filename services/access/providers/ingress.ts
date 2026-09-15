@@ -38,7 +38,7 @@ export function createIngress(
   routes: readonly RuntimeRoute[],
   localLogin: boolean,
   handleAccess: (request: IncomingMessage, response: ServerResponse) => void,
-  tls?: TlsOptions,
+  tls: { management?: TlsOptions; application?: TlsOptions } = {},
 ) {
   const streams = new SessionStreams(authority);
   const timer = setInterval(() => streams.tick(), 2000);
@@ -176,8 +176,12 @@ export function createIngress(
   const handler = (req: IncomingMessage, res: ServerResponse) => {
     void forward(req, res);
   };
-  const server = createServer(handler);
-  const managementServer = tls ? createHttpsServer(tls, handler) : undefined;
+  const server = tls.application
+    ? createHttpsServer(tls.application, handler)
+    : createServer(handler);
+  const managementServer = tls.management
+    ? createHttpsServer(tls.management, handler)
+    : undefined;
   const servers = managementServer ? [server, managementServer] : [server];
   for (const listener of servers)
     listener.on("upgrade", (req, socket, head) => {

@@ -1,3 +1,4 @@
+import { readTeamMaterials, prepareTeamFiles } from "./team.js";
 import { readFile, lstat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
@@ -35,6 +36,9 @@ export async function prepareLocal(
 ) {
   const directory = resolve(directoryInput);
   const input = parseLocalInput(inputValue);
+  const teamMaterials = input.team
+    ? await readTeamMaterials(input.team)
+    : undefined;
   if (process.platform !== "darwin" || process.arch !== "arm64")
     throw new LocalSetupError(
       "platform_unqualified",
@@ -51,6 +55,7 @@ export async function prepareLocal(
     await ensureLocalNetworks(directory, state);
     const privateDirectory = join(directory, "private");
     const names = resourceNames(state);
+    if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
     await ensureOwnedVolume(names.databaseVolume, state.ownerId);
     await ensureOwnedVolume(names.volume, state.ownerId);
     await ensurePrivateFile(
@@ -94,9 +99,9 @@ export async function prepareLocal(
         pool,
         await readFile(join(privateDirectory, "encryption.key")),
         {
-          issuer: "urn:clawscarf:local",
-          subject: "administrator",
-          email: "administrator@localhost",
+          issuer: input.team?.issuer ?? "urn:clawscarf:local",
+          subject: input.team?.administratorSubject ?? "administrator",
+          email: input.team?.administratorEmail ?? "administrator@localhost",
           name: input.administratorName,
         },
       );

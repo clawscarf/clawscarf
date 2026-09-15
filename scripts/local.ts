@@ -46,7 +46,7 @@ command
   .requiredOption("--directory <path>", "Private installation directory")
   .requiredOption(
     "--config <path>",
-    "Local setup inputs; no credentials required",
+    "Installation inputs; credentials are referenced through private files",
   )
   .action(async (options: { directory: string; config: string }) => {
     await prepareLocal(
@@ -54,7 +54,7 @@ command
       JSON.parse(await readFile(options.config, "utf8")),
     );
     process.stdout.write(
-      "Local configuration, database and native volume prepared. Runtime launch is not part of this command.\n",
+      "Installation configuration, database and native volume prepared. Runtime launch is not part of this command.\n",
     );
   });
 command

@@ -23,8 +23,8 @@ The recipe copies the root [license](../../LICENSE) and
 [third-party notices](../../THIRD_PARTY_NOTICES.md) verbatim to
 `/usr/share/licenses/clawscarf`, together with the incorporated
 [shadcn notice](../../services/connections/web/shared/shadcn/LICENSE.md) as
-`shadcn-MIT.txt`. These notice additions have not yet been checked in a rebuilt
-image; complete release license qualification remains open in the [plan](../../PLAN.md).
+`shadcn-MIT.txt`. A local rebuild verified these retained files against build inputs;
+complete release license qualification remains open in the [plan](../../PLAN.md).
 
 Set `CLAWSCARF_COMPANION_CONFIG` to a private configuration file, then run
 `pnpm companion:start`. The [Compose fragment](../../deploy/compose/companion.yaml)

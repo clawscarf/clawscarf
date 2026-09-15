@@ -5,121 +5,100 @@
 Bring your team, models and tools to [OpenClaw](https://github.com/openclaw/openclaw).
 ClawScarf packages its native application with company login, optional model and
 connection services, and reusable agent packs—on infrastructure you control.
+No RawClaw account is required.
 
-Use OpenClaw's own interface to work with your agents. Add company identity,
-connect your team's tools and share useful setups through packs. Conversations and
-workspaces are stored on infrastructure you control; configured model and tool
-providers can receive data you send them. No RawClaw account is required.
+> **Developer preview:** a local administrator can sign in, use a configured model
+> and tools, and retain their workspace across restarts. This has passed on macOS
+> arm64 with Docker Desktop. Shared-team use and an installable release are unfinished.
 
-> **Developer preview:** local administrator login, a real model/tool conversation
-> and retained-state restart have passed on macOS arm64 with Docker Desktop.
-> Shared-team use and a complete installable release are still being validated.
-> Follow the [implementation plan](PLAN.md) for the work remaining.
+## Your agents, ready to work together
 
-## What's in the repository
+- **Bring your team.** [Company login and enrollment](services/access/README.md)
+  connect to generic OIDC providers. OpenClaw keeps its own application roles;
+  ClawScarf provides protected entry and revocable sessions.
+- **Share useful setups.** [Agent packs](packs/README.md) bundle native agents,
+  skills and workflows. The example pairs a researcher with a reviewer, with
+  prerequisite checks and an explicit preview before installation.
+- **Choose your models.** Use an existing gateway or the optional
+  [LiteLLM companion](deploy/models/README.md). No mandatory OpenRouter account
+  or RAW Labs inference service.
+- **Connect your tools.** The optional [Connections service](services/connections/README.md)
+  lets administrators connect accounts and choose which agents can use them.
+  Native plugins, messaging channels and MCP remain available through OpenClaw.
+- **Keep the familiar application.** Use OpenClaw's own interface for agents,
+  conversations and configuration. ClawScarf packages vanilla upstream releases
+  and dependencies; it does not replace the agent engine.
 
-- **[Team access](services/access/README.md).** Generic OIDC, protected local login,
-  enrollment and revocable sessions. OpenClaw owns application roles and remains
-  the everyday UI.
-- **[Agent packs](packs/README.md).** Native OpenClaw Claws grouped into reusable
-  packs, with explicit previews, prerequisite checks and preservation of user edits.
-  The example pairs a researcher with a reviewer; native Claws are experimental.
-- **[Models on your terms](deploy/models/README.md).** Configure an existing model
-  gateway or the optional LiteLLM companion. No mandatory OpenRouter account or
-  RAW Labs inference service.
-- **[Managed connections](services/connections/README.md).** Optional account setup,
-  agent grants and a small discovery/description/call plugin. Native plugins,
-  messaging channels and MCP remain OpenClaw capabilities.
-- **[A pinned runtime](deploy/images/README.md).** Vanilla OpenClaw with Codex,
-  Lobster, Chromium and ClawScarf plugins packaged together. Dependencies being
-  installed does not mean every execution path is qualified.
+Conversations and workspaces are stored on infrastructure you control. Configured
+model and tool providers can receive data you send them.
 
-The local installation uses containers, without a separately provisioned VM.
-The terminal installer comes after the underlying components work together.
+## Try the developer preview
 
-## Start here
+[Build the components](scripts/README.md), then follow the
+[local setup guide](deploy/local/README.md) to prepare and start an installation.
+The current path requires **macOS arm64, Docker Desktop, source builds and the
+pinned controller executables**. Check the measured
+[development footprint](deploy/openshell/README.md#development-footprint) first.
 
-| Your goal               | Current path                                                                                                                                                                      |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Try it locally          | [Build the components](scripts/README.md), then [prepare and start a local installation](deploy/local/README.md). Protected browser login and retained-state restart have passed. |
-| Run it for a team       | [Company OIDC and enrollment](services/access/README.md) are implemented; the shared-deployment journey and member execution still need qualification.                            |
-| Host it through RawClaw | The integration boundary is [specified](PLAN.md#standalone-and-hosted-contracts); RawClaw does not consume these artifacts yet.                                                   |
+No company identity provider, public DNS, cloud account or separately provisioned
+VM is needed for local evaluation. Setup opens a protected native UI. Supply the
+optional [initial model configuration](deploy/local/README.md#initial-model-setup)
+to use a gateway: preparation configures its scoped credential and network route
+together. Without model inputs, the OpenClaw runtime starts with outbound traffic
+denied; this policy does not cover companion services.
 
-Local setup opens the protected native UI without requiring a provider account.
-To use a model, supply the optional [initial model setup](deploy/local/README.md#initial-model-setup)
-inputs for an existing gateway; preparation configures the scoped credential and its
-network route together. The optional [LiteLLM companion](deploy/models/README.md)
-can provide that gateway. Without model inputs, fresh setup denies outbound traffic.
-The configured local installation has passed an administrator browser conversation
-with a real model and native file-read tool. This is a developer evaluation path,
-not a finished end-user quickstart or shared-team qualification.
+| Other deployment | Current path                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Standalone team  | The [team profile](deploy/local/README.md#team-profile-under-qualification) assembles HTTPS and company OIDC. The shared deployment journey remains under qualification. |
+| RawClaw-managed  | The [integration boundary](PLAN.md#standalone-and-hosted-contracts) is specified. RawClaw does not consume these artifacts yet.                                          |
 
-The local setup command currently accepts **macOS arm64 with Docker Desktop** only.
-Linux and Windows/WSL setup are not supported yet. See the measured
-[development footprint](deploy/openshell/README.md#development-footprint) before
-building.
-Contributors can also [package the compiled operator](scripts/README.md#operator-archive)
-for use outside the checkout. This development archive is separate from the runtime
-and companion images; it is not a published end-user release.
+## What runs
 
-The installation has three parts:
-
-- **OpenClaw runtime:** the native application and installed capabilities, running
-  inside an OpenShell-managed container with a persistent home volume.
-- **Access companion:** local login or company OIDC, enrollment and browser sessions,
-  with PostgreSQL for durable identity and session state.
+- **OpenClaw runtime:** the native application and installed capabilities inside an
+  OpenShell-managed container, with a persistent home volume.
+- **Access companion:** local login or company OIDC, enrollment and browser sessions.
+  PostgreSQL stores its durable identity and session state.
 - **Optional services:** LiteLLM and managed Connections, or existing external
-  services that provide those capabilities.
+  services providing those capabilities.
 
 Compose runs companions; OpenShell owns the OpenClaw runtime. Packs use native
-OpenClaw formats and do not need their own database.
+OpenClaw formats and need no separate database. A hosting platform can supply its
+own trusted-ingress identity and omit standalone account navigation.
 
-## Before you try it
+## Current limits
 
-The developer path requires building images and obtaining the pinned controller
-executables. There is no published all-in-one download or installer. A local runtime
-replacement has passed interruption/resumption and retained-state checks; cross-version
-and release-artifact upgrades remain unqualified. The [local setup guide](deploy/local/README.md)
-owns the exact steps.
+- Local administrator chat and file-read execution have passed. **Ordinary-member
+  shell execution is unavailable, and packaged Chromium cannot launch** under the
+  current policy. Their [execution placement](deploy/openshell/README.md#execution-placement)
+  still needs resolving.
+- Company OIDC and managed Connections have component tests; the complete company-login
+  journey and real external-account setup remain unqualified. Native Claws used by
+  packs are experimental.
+- There is no published all-in-one download or terminal installer. Linux and
+  Windows/WSL setup are not supported yet. The [compiled operator archive](scripts/README.md#operator-archive)
+  is a local development artifact, separate from runtime and companion images.
+- Local runtime replacement has passed interruption/resumption and retained-state
+  checks. Cross-version, published-artifact and clean-machine upgrades remain open.
 
-Administrator chat and file-read execution have passed. Ordinary-member shell execution
-is unavailable in the current preset, and packaged Chromium cannot start under the
-current sandbox policy. Their [execution placement](deploy/openshell/README.md#execution-placement)
-is still being resolved. Generic OIDC and managed Connections are implemented, but a
-real company-login deployment and external-account setup remain separate acceptance
-requirements. Do not choose this preview for a production team on the strength of
-component tests alone.
+This preview is for technical evaluation, not production team deployment.
+[PLAN.md](PLAN.md) tracks the remaining work.
 
-## Security with explicit boundaries
+## Security boundaries
 
-The OpenShell candidate places the whole OpenClaw runtime, including native
-plugins, under externally controlled filesystem and network policy. Its Docker
-driver and application transport have component-level checks; the combined runtime
-still needs qualification. Browser sandboxing and member execution remain open.
+One installation serves one trusted team. The OpenShell candidate places the runtime,
+including native plugins, under externally controlled filesystem and network policy.
+Its Docker driver and application transport have component checks; combined runtime
+qualification remains open. Native roles govern application access, and external
+services retain shared provider credentials. Sandboxing cannot make every permitted
+action safe; an unrestricted administrator remains trusted.
 
-One installation serves one trusted team. Native roles control application access;
-external services retain shared provider credentials. Sandboxing cannot make every
-permitted action safe, and an unrestricted administrator remains trusted.
 See the [security posture and validation plan](PLAN.md#runtime-candidate-and-security-posture).
-
-## Independent by design
-
-The standalone components do not depend on RawClaw's portal, organization database,
-billing or cloud credentials. A hosting platform can supply its own trusted-ingress
-identity and omit standalone account navigation. RawClaw adoption is a separate,
-future integration; it does not consume this runtime yet.
-
-OpenClaw owns the application; ClawScarf packages and tests the combination.
-We are building on its supported interfaces and existing formats, not a parallel
-agent engine. ClawScarf is an independent project, not an official OpenClaw or
-NVIDIA distribution.
+ClawScarf is independent—not an official OpenClaw or NVIDIA distribution.
 
 ## Get involved
 
-The most useful early contributions are testing runtime compatibility, improving
-standalone team setup and defining a small set of useful, testable packs.
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [plan](PLAN.md).
-
+Useful early contributions include runtime compatibility, standalone team setup and
+small, testable packs. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [plan](PLAN.md).
 Runtime contributors can inspect the [image recipe](deploy/images/Dockerfile),
 [sandbox policy](deploy/openshell/policy.yaml) and [component pins](release/components.json).
 
@@ -127,8 +106,7 @@ Runtime contributors can inspect the [image recipe](deploy/images/Dockerfile),
 
 ClawScarf-owned work is [MIT licensed](LICENSE), the same license used by
 [OpenClaw](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/LICENSE).
-Third-party components retain their own licenses; see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Third-party components retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Built from lessons and reusable work in RawClaw, the Raw Labs OpenClaw pilot,
 OpenClaw itself, and NVIDIA's [NemoClaw](https://github.com/NVIDIA/NemoClaw).

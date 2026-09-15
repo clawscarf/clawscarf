@@ -6,14 +6,14 @@ import { type LocalState, resourceNames } from "./state.js";
 import { LocalSetupError, run } from "./process.js";
 
 /** A bind probe detects current conflicts; it does not reserve a port for startup. */
-async function available(port: number): Promise<boolean> {
+async function available(port: number, host: string): Promise<boolean> {
   const server = createServer((socket) => {
     socket.destroy();
   });
   try {
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
-      server.listen({ host: "127.0.0.1", port, exclusive: true }, resolve);
+      server.listen({ host, port, exclusive: true }, resolve);
     });
     return true;
   } catch (error) {
@@ -90,12 +90,16 @@ export async function verifyLocalPorts(
   command: typeof run = run,
 ) {
   for (const [name, port] of Object.entries(state.input.ports)) {
-    if (await available(port)) continue;
+    const host =
+      state.input.team && ["application", "widgets"].includes(name)
+        ? "0.0.0.0"
+        : "127.0.0.1";
+    if (await available(port, host)) continue;
     if (name === "database" && (await ownedDatabaseListener(state, command)))
       continue;
     throw new LocalSetupError(
       "port_in_use",
-      `The ${name} port 127.0.0.1:${String(port)} is already in use. Stop its current owner or select different ports for a new installation before retrying.`,
+      `The ${name} port ${host}:${String(port)} is already in use. Stop its current owner or select different ports for a new installation before retrying.`,
     );
   }
 }

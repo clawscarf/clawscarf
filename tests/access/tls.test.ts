@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { get } from "node:https";
 import { createIngress } from "../../services/access/providers/ingress.js";
-await test("management TLS requires a trusted CA and shares the authenticated ingress", async () => {
+await test("application and management TLS require a trusted CA and share authenticated ingress", async () => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-tls-"));
   try {
     const config = join(directory, "tls.cnf"),
@@ -47,39 +47,43 @@ await test("management TLS requires a trusted CA and shares the authenticated in
       (_req, res) => {
         res.end("same access handler");
       },
-      { cert: ca, key: await readFile(key) },
+      {
+        management: { cert: ca, key: await readFile(key) },
+        application: { cert: ca, key: await readFile(key) },
+      },
     );
     try {
-      const listener = ingress.managementServer;
-      assert.ok(listener);
-      listener.listen(0, "127.0.0.1");
-      await once(listener, "listening");
-      const address = listener.address();
-      assert.ok(address && typeof address !== "string");
-      const read = (trusted: boolean) =>
-        new Promise<string>((resolve, reject) => {
-          get(
-            {
-              hostname: "127.0.0.1",
-              port: address.port,
-              path: "/_clawscarf/health",
-              headers: { host: "127.0.0.1:18800" },
-              ...(trusted ? { ca } : {}),
-            },
-            (res) => {
-              let body = "";
-              res.setEncoding("utf8");
-              res.on("data", (chunk: string) => {
-                body += chunk;
-              });
-              res.on("end", () => resolve(body));
-            },
-          ).on("error", reject);
+      for (const listener of [ingress.managementServer, ingress.server]) {
+        assert.ok(listener);
+        listener.listen(0, "127.0.0.1");
+        await once(listener, "listening");
+        const address = listener.address();
+        assert.ok(address && typeof address !== "string");
+        const read = (trusted: boolean) =>
+          new Promise<string>((resolve, reject) => {
+            get(
+              {
+                hostname: "127.0.0.1",
+                port: address.port,
+                path: "/_clawscarf/health",
+                headers: { host: "127.0.0.1:18800" },
+                ...(trusted ? { ca } : {}),
+              },
+              (res) => {
+                let body = "";
+                res.setEncoding("utf8");
+                res.on("data", (chunk: string) => {
+                  body += chunk;
+                });
+                res.on("end", () => resolve(body));
+              },
+            ).on("error", reject);
+          });
+        await assert.rejects(read(false), {
+          code: "DEPTH_ZERO_SELF_SIGNED_CERT",
         });
-      await assert.rejects(read(false), {
-        code: "DEPTH_ZERO_SELF_SIGNED_CERT",
-      });
-      assert.equal(await read(true), "same access handler");
+        assert.equal(await read(true), "same access handler");
+      }
     } finally {
       await ingress.close();
     }

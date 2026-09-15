@@ -7,6 +7,11 @@ import { join } from "node:path";
 import { ensurePrivateFile, readState } from "./state.js";
 
 export async function localLoginCode(directory: string) {
+  if ((await readState(directory)).input.team)
+    throw new LocalSetupError(
+      "invalid_team_configuration",
+      "Sign in through the configured company provider; team deployments do not issue local login codes.",
+    );
   const output = await compose(directory, [
     "exec",
     "-T",

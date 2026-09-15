@@ -121,12 +121,24 @@ export async function composeAccess(
       routes,
       mode.mode === "local",
       (req, res) => activeHttp.routing(req, res),
-      config.managementTls
-        ? {
-            cert: await readFile(config.managementTls.certificateFile),
-            key: await readFile(config.managementTls.keyFile),
-          }
-        : undefined,
+      {
+        ...(config.managementTls
+          ? {
+              management: {
+                cert: await readFile(config.managementTls.certificateFile),
+                key: await readFile(config.managementTls.keyFile),
+              },
+            }
+          : {}),
+        ...(config.applicationTls
+          ? {
+              application: {
+                cert: await readFile(config.applicationTls.certificateFile),
+                key: await readFile(config.applicationTls.keyFile),
+              },
+            }
+          : {}),
+      },
     );
     return {
       identity,

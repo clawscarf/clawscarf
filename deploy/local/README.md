@@ -44,8 +44,8 @@ setup with the affected listener named. These checks do not reserve ports; anoth
 process can still claim one before startup. A failed preflight retains any initialized
 private installation directory for resumption.
 Public DNS, company login and external exposure
-are not part of this local profile. The normal Access service retains its separate
-[company OIDC configuration](../../services/access/README.md#configuration-and-operation).
+are not part of this local profile. An explicit [team profile](#team-profile-under-qualification)
+assembles company OIDC and public TLS using the same operator.
 No AI or connection provider key is required by preparation.
 
 ```sh
@@ -314,3 +314,54 @@ installation volume or container was created; setup reported an uncertain networ
 without interpreting Docker's error text. The workstation's default address pools were
 unavailable, so successful default-pool allocation remains environment-dependent; the
 live owned-network test used explicitly chosen, nonoverlapping test subnets.
+
+## Team profile (under qualification)
+
+A new installation can include a `team` block in the same input file. This configures
+company OIDC and direct HTTPS on the Access companion; it does not create an identity
+provider. Existing local identities cannot silently become team identities. Platform
+support remains macOS arm64 with Docker Desktop while Linux qualification is open.
+
+```json
+{
+  "origin": "https://team.example.com:18443",
+  "widgetOrigin": "https://widgets.example.com:18444",
+  "certificateFile": "/absolute/fullchain.pem",
+  "keyFile": "/absolute/private-key.pem",
+  "issuer": "https://identity.example.com/realm",
+  "clientId": "clawscarf",
+  "clientSecretFile": "/absolute/oidc-client-secret",
+  "administratorSubject": "exact-subject-for-this-client",
+  "administratorEmail": "admin@example.com"
+}
+```
+
+Put that object at `team`, alongside the existing setup inputs. Set
+`ports.application` and `ports.widgets` to the respective origin ports (443 when
+omitted). Both DNS names must resolve to this host and be covered by the supplied
+certificate. Supply its full chain and matching key. The key and OIDC secret must
+be private regular files owned by the operator. Preparation validates material before
+allocation, copies it into the private installation directory and refuses conflicting
+files on resume. Certificate renewal/reconfiguration requires an explicit operating
+procedure; this profile does not implement automatic issuance or renewal.
+
+Register `https://team.example.com:18443/_clawscarf/callback` and
+`https://team.example.com:18443/_clawscarf/signed-out` with the provider. It must emit
+an email and `email_verified: true`; the administrator subject must be the exact
+`sub` returned to this client. No first-login takeover is used.
+
+Only application and widget ports publish on all IPv4 interfaces. Management,
+Postgres, controller and native forwarding remain on loopback. Browser TLS and
+private management TLS use separate keys. Set firewall rules for the intended
+clients; this operator does not configure the host firewall or DNS.
+
+`prepare` initializes the configured OIDC administrator and matching native identity.
+`start` checks service availability through private management TLS, then prints the
+People URL for company sign-in. It does not issue a local login code or claim to have
+verified the administrator through OIDC. Company login, native preparation and
+member enrollment use the existing Access service and People page; no RawClaw service
+is involved. TLS transport tests cover trusted/untrusted certificates on both listeners and a
+private management probe whose public routing Host differs from its certificate name.
+The fresh-admin preparation interaction still needs refinement and the complete
+browser journey remains unqualified. Do not expose this preview as a
+qualified team deployment on the strength of configuration tests.

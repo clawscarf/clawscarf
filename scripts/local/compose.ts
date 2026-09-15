@@ -46,13 +46,20 @@ export function composeConfiguration(state: LocalState, directory: string) {
           "management-ca.pem",
           "management-cert.pem",
           "management-key.pem",
+          ...(input.team
+            ? [
+                "application-cert.pem",
+                "application-key.pem",
+                "oidc-client-secret",
+              ]
+            : []),
         ].map(
           (name) => `${join(privateDirectory, name)}:/run/clawscarf/${name}:ro`,
         ),
         ports: [
-          `127.0.0.1:${String(input.ports.application)}:18800`,
+          `${input.team ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.application)}:18800`,
           `127.0.0.1:${String(input.ports.management)}:18801`,
-          `127.0.0.1:${String(input.ports.widgets)}:18800`,
+          `${input.team ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.widgets)}:18800`,
         ],
         read_only: true,
         tmpfs: ["/tmp"],

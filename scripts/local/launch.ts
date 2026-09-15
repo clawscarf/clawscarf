@@ -1,3 +1,4 @@
+import { probeTeamAccess } from "./team.js";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -141,7 +142,11 @@ export async function launchLocal(
         await response.body?.cancel();
       });
       await verifyRuntimeBinding(state, runtime);
-      report("Starting access and verifying administrator…");
+      report(
+        state.input.team
+          ? "Starting company access…"
+          : "Starting access and verifying administrator…",
+      );
       await compose(directory, ["up", "-d", "--wait", "companion"]);
       for (const service of ["companion", "postgres"])
         await spawn(
@@ -149,29 +154,43 @@ export async function launchLocal(
           ["compose", "-f", join(directory, "compose.json"), "wait", service],
           `${service}-wait.log`,
         );
-      const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
-      await waitFor(async () => {
-        const response = await fetch(origin + "/_clawscarf/health", {
-          signal: AbortSignal.timeout(3000),
+      if (state.input.team) {
+        await waitFor(() =>
+          probeTeamAccess(
+            directory,
+            state.input,
+            AbortSignal.any([cancellation.signal, AbortSignal.timeout(3000)]),
+          ),
+        );
+        check();
+        report(`Open ${state.input.team.origin}/_clawscarf/team/
+Sign in as the configured administrator to verify access and enroll your team.
+Press Ctrl+C to stop. Your data will be retained.`);
+      } else {
+        const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
+        await waitFor(async () => {
+          const response = await fetch(origin + "/_clawscarf/health", {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (!response.ok)
+            throw new LocalSetupError(
+              "native_unavailable",
+              "The access companion has not become healthy.",
+            );
+          await response.body?.cancel();
         });
-        if (!response.ok)
-          throw new LocalSetupError(
-            "native_unavailable",
-            "The access companion has not become healthy.",
-          );
-        await response.body?.cancel();
-      });
-      // This may create a one-use login, so it is deliberately not retried by waitFor.
-      await verifyLocalAdministrator(
-        directory,
-        origin,
-        AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
-      );
-      check();
-      const login = await localLoginCode(directory);
-      report(
-        `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
-      );
+        // This may create a one-use login, so it is deliberately not retried by waitFor.
+        await verifyLocalAdministrator(
+          directory,
+          origin,
+          AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
+        );
+        check();
+        const login = await localLoginCode(directory);
+        report(
+          `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
+        );
+      }
       await Promise.race([
         signal.promise,
         ...children.map((child) => child.done),

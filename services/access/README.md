@@ -31,6 +31,8 @@ Issuing a new code invalidates any outstanding code.
 The command's `--json` option returns `{ "url": "…", "code": "…" }` for private
 operator tooling. Treat that output as a temporary credential; never log it as diagnostics.
 
+For the assembled single-host path, use the [team profile](../../deploy/local/README.md#team-profile-under-qualification).
+
 Team identity uses `mode: "oidc"`, `issuer`, `clientId`, `clientSecretFile`,
 `administratorSubject` and `administratorEmail`. Team mode requires an HTTPS origin.
 The provider callback is `<origin>/_clawscarf/callback`; its post-logout callback is
@@ -76,7 +78,9 @@ The runtime connection uses [standard OpenShell SSH forwarding](../../deploy/ope
 
 Ingress replaces identity and forwarded headers using authenticated session data
 and the actual socket address. It does not invent a remote address to bypass native
-trusted-proxy checks. The public Gateway SDK requires TLS for management credentials. A configured
+trusted-proxy checks. The optional `applicationTls` certificate/key pair enables direct HTTPS on the public
+listener, independently of private management TLS. Both listeners share authorization,
+HTTP forwarding and WebSocket revocation. The public Gateway SDK requires TLS for management credentials. A configured
 management endpoint must therefore use HTTPS with a trusted certificate. Configure
 `managementTls` with `certificateFile`, `keyFile`, `host` and `port`;
 `runtime.managementOrigin` points to that HTTPS listener. It shares the same ingress

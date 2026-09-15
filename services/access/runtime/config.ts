@@ -14,6 +14,12 @@ const configSchema = z
     host: z.string().default("127.0.0.1"),
     containerLoopbackPublication: z.boolean().default(false),
     port: z.number().int().min(1).max(65535).default(18800),
+    applicationTls: z
+      .strictObject({
+        certificateFile: z.string().min(1),
+        keyFile: z.string().min(1),
+      })
+      .optional(),
     managementTls: z
       .object({
         certificateFile: z.string().min(1),
@@ -71,6 +77,8 @@ export async function readConfiguration(
 ): Promise<AccessConfiguration> {
   const config = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
   const hostname = new URL(config.origin).hostname;
+  if (config.applicationTls && new URL(config.origin).protocol !== "https:")
+    throw Error("Application TLS requires an HTTPS origin.");
   if (
     config.identity.mode === "local" &&
     (!["127.0.0.1", "localhost", "[::1]"].includes(hostname) ||

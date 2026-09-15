@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 
 const execute = promisify(execFile);
 type LocalSetupErrorCode =
+  | "invalid_team_configuration"
   | "upgrade_pending"
   | "upgrade_refused"
   | "upgrade_outcome_unknown"
