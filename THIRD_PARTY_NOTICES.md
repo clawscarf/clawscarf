@@ -38,7 +38,7 @@ build options and the corresponding-source export required for binary releases.
 
 The runtime image retains pinned [OpenClaw license](release/licenses/openclaw-MIT.txt)
 and [third-party notices](release/licenses/openclaw-THIRD_PARTY_NOTICES.txt), plus
-Codex CLI 0.153.4's [license](release/licenses/codex-Apache-2.0.txt) and
+the upstream image's bundled Codex CLI 0.153.4 [license](release/licenses/codex-Apache-2.0.txt) and
 [notice](release/licenses/codex-NOTICE.txt), under `/usr/share/licenses/clawscarf`.
 These are copied verbatim from their exact upstream revisions, not generated
 qualification reports. Debian package copyright files remain under `/usr/share/doc`.

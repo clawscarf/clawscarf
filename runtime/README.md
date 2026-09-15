@@ -22,7 +22,8 @@ The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. Member policy requires native sandboxing;
 execution remains unavailable until a separate execution backend is qualified.
 
-Codex and Lobster are registered from the image's pinned native plugin directories.
+Codex uses the pinned upstream image's bundled plugin and dependency closure.
+Lobster is registered from the separately included official release directory.
 Lobster remains subject to its native unsandboxed-context requirement. Chromium is
 configured headless with its sandbox required; its current placement is unqualified.
 Connections is bundled and registered without broker credentials; it contributes

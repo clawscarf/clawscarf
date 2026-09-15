@@ -21,9 +21,8 @@ RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
 FROM upstream AS native-plugins
 USER root
 WORKDIR /build/native-plugins
-COPY deploy/images/native-plugins/ ./
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
-    && node download.mjs \
+COPY deploy/images/native-plugins/download.mjs deploy/images/native-plugins/lobster.json ./
+RUN node download.mjs \
     && mkdir -p node_modules/@openclaw/lobster \
     && tar -xzf /tmp/lobster.tgz --strip-components=1 -C node_modules/@openclaw/lobster \
     && rm /tmp/lobster.tgz download.mjs \

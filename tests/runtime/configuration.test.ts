@@ -59,3 +59,17 @@ await test("hosted ingress can supply its identity without standalone account na
     initialConfiguration({ ...input, administratorIdentity: "admin\nspoof" }),
   );
 });
+await test("native Codex keeps bundled provenance while Lobster is explicitly loaded", () => {
+  const config = initialConfiguration(input);
+  assert.equal(config.plugins.entries.codex.enabled, true);
+  assert.equal(
+    config.plugins.entries.codex.config.sessionCatalog.enabled,
+    false,
+  );
+  assert.ok(
+    config.plugins.load.paths.includes(
+      "/app/clawscarf/native-plugins/node_modules/@openclaw/lobster",
+    ),
+  );
+  assert.ok(config.plugins.load.paths.every((path) => !path.includes("codex")));
+});

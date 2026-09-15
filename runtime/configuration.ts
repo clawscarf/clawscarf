@@ -86,7 +86,6 @@ export function initialConfiguration(
       load: {
         paths: [
           "/app/clawscarf/connections",
-          "/app/clawscarf/native-plugins/node_modules/@openclaw/codex",
           "/app/clawscarf/native-plugins/node_modules/@openclaw/lobster",
           ...(settings.standaloneNavigation ? ["/app/clawscarf/access"] : []),
         ],

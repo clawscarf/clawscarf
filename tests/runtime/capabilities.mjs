@@ -22,7 +22,7 @@ assert.deepEqual(result.details.output, [1, 2, 3]);
 const codex = spawnSync(
   "node",
   [
-    "/app/clawscarf/native-plugins/node_modules/@openai/codex/bin/codex.js",
+    "/app/dist/extensions/codex/node_modules/@openai/codex/bin/codex.js",
     "--version",
   ],
   { encoding: "utf8" },
@@ -63,7 +63,6 @@ try {
         allow: ["codex", "lobster"],
         load: {
           paths: [
-            "/app/clawscarf/native-plugins/node_modules/@openclaw/codex",
             "/app/clawscarf/native-plugins/node_modules/@openclaw/lobster",
           ],
         },
@@ -78,9 +77,24 @@ try {
     }),
     { flag: "wx", mode: 0o600 },
   );
-  const plugins = JSON.parse(
-    nativeCommand("plugins", "list", "--json"),
-  ).plugins;
+  const discovery = JSON.parse(nativeCommand("plugins", "list", "--json"));
+  assert.deepEqual(discovery.diagnostics, []);
+  const plugins = discovery.plugins;
+  const bundledCodex = plugins.find((plugin) => plugin.id === "codex");
+  assert.equal(bundledCodex?.origin, "bundled");
+  assert.equal(bundledCodex?.source, "/app/dist/extensions/codex/index.js");
+  assert.ok(bundledCodex?.commands.includes("codex"));
+  const inspected = JSON.parse(
+    nativeCommand("plugins", "inspect", "codex", "--runtime", "--json"),
+  );
+  assert.equal(inspected.plugin.origin, "bundled");
+  assert.deepEqual(inspected.plugin.agentHarnessIds, ["codex"]);
+  assert.ok(inspected.commands.includes("codex"));
+  assert.deepEqual(inspected.diagnostics, []);
+  const doctor = JSON.parse(nativeCommand("plugins", "doctor", "--json"));
+  assert.equal(doctor.ok, true);
+  assert.deepEqual(doctor.pluginErrors, []);
+  assert.deepEqual(doctor.diagnostics, []);
   for (const id of ["codex", "lobster"]) {
     const plugin = plugins.find((item) => item.id === id);
     assert.equal(plugin?.status, "loaded");

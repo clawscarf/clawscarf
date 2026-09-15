@@ -31,12 +31,11 @@ The image includes:
   [locked build dependencies](pack-tools/package-lock.json) are isolated from the
   runtime's one OpenClaw installation; only the compiled tool and production
   dependency closure ship.
-- Official Codex and Lobster plugins at
-  `/app/clawscarf/native-plugins/node_modules/@openclaw/codex` and
+- Upstream's bundled Codex plugin at `/app/dist/extensions/codex`, with Codex CLI
+  0.153.4 and its native platform payload already supplied by the pinned image.
+  Its command is `node /app/dist/extensions/codex/node_modules/@openai/codex/bin/codex.js`.
+- The official Lobster plugin at
   `/app/clawscarf/native-plugins/node_modules/@openclaw/lobster`.
-- Codex CLI 0.153.4 and its native platform payload, installed from the
-  [dependency lock](native-plugins/package-lock.json). Its command is
-  `node /app/clawscarf/native-plugins/node_modules/@openai/codex/bin/codex.js`.
 - Debian Chromium and its sandbox helper, version 152.0.7977.82-1~deb12u1.
   The browser executable is `/usr/bin/chromium`.
 - OpenShell's iproute2 and [Netfilter dependencies](network-tools/README.md),
@@ -50,13 +49,14 @@ and [native lifecycle adapter](../../scripts/packs/lifecycle.ts). Its private
 dependencies for this image artifact; it is not another published application
 package or an alternate OpenClaw installation.
 
-Codex is not dependency-bundled upstream, so npm installs its complete locked
-closure without lifecycle scripts. Lobster's official release contains its embedded
-`@clawdbot/lobster` 2026.6.11 runtime and dependencies: the build verifies
+Codex uses the pinned upstream image's complete plugin-local runtime dependencies.
+No extra Codex npm installation or explicit discovery path is needed. Lobster's
+separate official release contains its embedded `@clawdbot/lobster` 2026.6.11
+runtime and dependencies: the build verifies
 [its release integrity](native-plugins/lobster.json) with
 [the downloader](native-plugins/download.mjs), then extracts the archive verbatim.
-Neither plugin needs a source patch. A symlink resolves their SDK imports to the
-image's one OpenClaw installation; no second OpenClaw distribution is installed.
+Lobster's SDK imports resolve through a symlink to the image's one OpenClaw
+installation. Neither plugin needs an upstream source patch.
 The recipe copies the root [license](../../LICENSE),
 [third-party notices](../../THIRD_PARTY_NOTICES.md) and pinned upstream license/notice
 files verbatim to `/usr/share/licenses/clawscarf`. Debian package copyright files
@@ -65,9 +65,11 @@ complete release license qualification remains open in the [plan](../../PLAN.md)
 
 ## Native registration
 
-Installation configuration adds the two plugin directories to `plugins.load.paths`,
-allows `codex`/`lobster` under `plugins.allow` when an allowlist is used, and enables
-their `plugins.entries` entries. Set `codex.config.sessionCatalog.enabled: false`
+Lobster is explicitly included in `plugins.load.paths`; Codex uses upstream
+discovery and keeps its native bundled provenance. Both are allowed under `plugins.allow` when an
+allowlist is used and enabled through `plugins.entries`. An explicit external
+Codex path would override the bundled plugin and lose its reserved command and
+native-compaction authority. Set `codex.config.sessionCatalog.enabled: false`
 inside its entry to omit local external-session browsing. Add `lobster` through
 `tools.alsoAllow` for an authorized unsandboxed context. These are runtime presets,
 not image mutations; preserve subsequent administrator changes.
@@ -86,8 +88,10 @@ Codex's permissions and from native tool sandbox placement.
 
 The image built on Linux arm64. On the current pinned OpenShell Docker driver and
 [policy](../openshell/policy.yaml), native plugin discovery loads both exact
-versions; Codex CLI reports 0.153.4 and a Lobster local deterministic pipeline
-returns its expected JSON. Those checks are reproduced by
+versions. The capability probe checks bundled Codex provenance, successful
+runtime harness registration with no diagnostics, Codex CLI 0.153.4, and a
+Lobster deterministic pipeline returning its expected JSON. These checks use
+temporary configuration with no model calls and are reproduced by
 [the capability probe](../../tests/runtime/capabilities.mjs).
 The probe also checks plugin disable/enable and skill eligibility using native CLI
 commands against a temporary configuration. Run that image-only check with an exact
