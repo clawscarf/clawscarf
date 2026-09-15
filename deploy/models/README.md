@@ -128,8 +128,18 @@ An additional actual-model run used Qwen3 1.7B through LiteLLM's standard Ollama
 provider: native inference and a read tool completed without execution errors.
 The small model misquoted the file and made an invalid read invocation on a repeat
 run. This qualifies the successful transport/tool execution, not repeatable model
-quality or a production model recommendation. No paid
-provider credentials were required.
+quality or a production model recommendation. These isolated controlled/Ollama
+tests required no paid provider credentials.
+
+The fresh local assembly also passed a native administrator browser conversation
+through the rebuilt runtime, private-TLS LiteLLM and OpenRouter GPT-5.4 Mini. Native
+transcript records confirm `clawscarf/team-model`, successful read-tool execution
+and the exact synthetic file contents in the final response. Both the inherited
+OpenShell CA and private gateway CA remained active. The scoped runtime key was
+then revoked; the gateway rejected it with HTTP 401. This was an isolated acceptance
+installation, not a production model default. The actual browser path is qualified
+for that administrator configuration; member execution and release-artifact
+clean-machine acceptance remain separate.
 
 ```sh
 CLAWSCARF_TEST_NATIVE_MODELS=1 pnpm exec tsx --test tests/models/native.test.ts

@@ -47,8 +47,9 @@ The terminal installer comes after the underlying components work together.
 Local setup opens the protected native UI without requiring a provider account.
 To use a model, separately [configure the model gateway](deploy/models/README.md)
 and authorize its network route. Fresh setup denies outbound traffic by default.
-The combined first model/tool journey remains unqualified; this is currently a
-developer evaluation path, not a finished end-user quickstart.
+The configured local installation has passed an administrator browser conversation
+with a real model and native file-read tool. This is a developer evaluation path,
+not a finished end-user quickstart or shared-team qualification.
 
 The current runtime checks target **macOS arm64 with Docker Desktop**. Linux and
 Windows/WSL are not yet qualified. See the measured

@@ -2,9 +2,9 @@
 
 This operator path assembles the existing components for local evaluation on macOS
 arm64 with Docker Desktop. `prepare` initializes private configuration, the database
-and native volume. `start` supervises the runtime and companions; its complete live
-model/tool journey remains unverified. Fresh startup, native administrator browser
-login and retained-state restart have passed. The terminal wizard remains separate
+and native volume. `start` supervises the runtime and companions. Fresh startup, native administrator
+browser login, a configured model/tool interaction and retained-state restart have
+passed. The terminal wizard remains separate
 and last.
 
 Build the [runtime](../images/README.md) and [companion](../../apps/companion/README.md)
@@ -35,7 +35,15 @@ image IDs or registry digest references, and executable paths with absolute path
 }
 ```
 
-All ports must be distinct and free. Public DNS, company login and external exposure
+All ports must be distinct. Preparation and startup check that the configured
+controller executables are runnable files and probe every host loopback port before
+changing Docker resources. An occupied database port is accepted only when Docker
+reports one running PostgreSQL container with this installation's exact ownership,
+Compose project/service labels and loopback publication. Other occupied ports stop
+setup with the affected listener named. These checks do not reserve ports; another
+process can still claim one before startup. A failed preflight retains any initialized
+private installation directory for resumption.
+Public DNS, company login and external exposure
 are not part of this local profile. The normal Access service retains its separate
 [company OIDC configuration](../../services/access/README.md#configuration-and-operation).
 No AI or connection provider key is required by preparation.
@@ -107,7 +115,13 @@ its current `get` output; do not treat receipt metadata as that verification.
 Private controller/forward logs are under `logs/` in the installation directory. Compose
 owns companion/Postgres logs. Docker needs capacity for both a companion network and an
 OpenShell network. If its address pools are exhausted, inspect unused networks explicitly;
-setup does not prune networks belonging to other projects.
+setup does not prune networks belonging to other projects. A failed PostgreSQL start
+reports that stage and directs the operator to Compose status/logs and Docker network
+capacity. It does not infer address-pool exhaustion from Docker's error text or
+claim a successful capacity preflight. Port tests use actual loopback listeners;
+retained Docker ownership/binding denials use structured fixtures. Repeated preparation
+and startup also passed against the retained local installation with its actual
+PostgreSQL listener and runtime volume.
 
 Fresh preparation and startup passed with the actual companion, PostgreSQL and
 OpenShell-hosted Gateway, including the Docker-host management route. Browser login
@@ -118,7 +132,9 @@ Controller-startup failure also stopped the database and released the
 installation lock without deleting volumes. Tests additionally cover interrupted
 native bootstrap, cancellation, process-tree cleanup and paginated discovery.
 
-Model/tool execution, allocation interrupted against the real controller, and a
-release-artifact clean-machine run remain required. The selected member/browser
+The configured administrator browser journey also passed a real model response and
+native file-read tool through the optional gateway; see [model acceptance](../models/README.md#verification-and-provenance).
+Allocation interrupted against the real controller and a release-artifact
+clean-machine run remain required. The selected member/browser
 execution limitations still apply; see
 [runtime placement](../openshell/README.md#execution-placement).

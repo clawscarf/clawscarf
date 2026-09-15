@@ -9,6 +9,7 @@ import { ensureRuntime, stopRuntime } from "./runtime.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { LocalSetupError, run } from "./process.js";
 import { localLoginCode, verifyLocalAdministrator } from "./login.js";
+import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 
 export async function launchLocal(
   directoryInput: string,
@@ -35,6 +36,8 @@ export async function launchLocal(
   };
   const name = resourceNames(state).sandbox;
   await withLocalLock(directory, async () => {
+    await verifyLocalExecutables(state);
+    await verifyLocalPorts(state);
     const children: ManagedProcess[] = [];
     const lifetime = { stopped: false, childExited: false };
     let runtimeAttempted = false;

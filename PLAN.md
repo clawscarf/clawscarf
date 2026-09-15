@@ -187,13 +187,13 @@ rules for every remaining change.
       separate component commands are not a complete installation path. The
       [local assembly](deploy/local/README.md) has verified fresh preparation,
       supervised launch, native administrator login and retained-state restart.
-      Complete model/tool and interrupted-allocation acceptance before qualifying
-      the whole setup path. Include model selection, scoped credentials and the
-      matching network permission in that qualification: the current local setup
+      Complete interrupted-allocation acceptance before qualifying the whole setup
+      path. Integrate model selection, scoped credentials and the matching network
+      permission into that setup path: the current local setup
       initializes no model and starts with outbound traffic denied. A successful
       browser login alone does not establish an agent ready to do useful work.
-      Verify the rebuilt image's browser model/tool path with both OpenShell's
-      inherited CA and the private model gateway's CA before closing acceptance.
+      Complete Docker address-pool capacity preflight; current port and executable
+      checks are described in the local assembly owner.
       Test missing/invalid optional services and interrupted setup. Produce exact
       artifacts with license/provenance review. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.

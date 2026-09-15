@@ -20,6 +20,7 @@ import {
 } from "./state.js";
 import { composeConfiguration, compose, ensureOwnedVolume } from "./compose.js";
 import { run, LocalSetupError } from "./process.js";
+import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 
 export async function prepareLocal(
   directoryInput: string,
@@ -36,6 +37,8 @@ export async function prepareLocal(
     await run("docker", ["image", "inspect", image]);
   const state = await initializeState(directory, input);
   await withLocalLock(directory, async () => {
+    await verifyLocalExecutables(state);
+    await verifyLocalPorts(state);
     const privateDirectory = join(directory, "private");
     const names = resourceNames(state);
     await ensureOwnedVolume(names.databaseVolume, state.ownerId);
@@ -45,14 +48,21 @@ export async function prepareLocal(
       JSON.stringify(composeConfiguration(state, directory), null, 2),
     );
     await ensureCertificates(privateDirectory);
-    await compose(directory, [
-      "up",
-      "-d",
-      "--wait",
-      "--wait-timeout",
-      "90",
-      "postgres",
-    ]);
+    try {
+      await compose(directory, [
+        "up",
+        "-d",
+        "--wait",
+        "--wait-timeout",
+        "90",
+        "postgres",
+      ]);
+    } catch {
+      throw new LocalSetupError(
+        "database_start_failed",
+        "PostgreSQL startup did not confirm success. Inspect this installation's Compose status/logs and Docker network address-pool capacity before retrying. Setup does not remove existing networks or volumes.",
+      );
+    }
     const adminUrl = new URL(
       `postgresql://postgres@127.0.0.1:${String(input.ports.database)}/clawscarf`,
     );
