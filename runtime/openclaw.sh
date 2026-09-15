@@ -6,8 +6,16 @@ export SQLITE_TMPDIR="/tmp"
 if [ -n "${CLAWSCARF_START_GATE:-}" ]; then
   /usr/local/bin/node /app/clawscarf/start-gate-main.js
 fi
-if [ -r "$OPENCLAW_STATE_DIR/clawscarf-models/ca.pem" ]; then
-  NODE_EXTRA_CA_CERTS="$(/usr/local/bin/node /app/clawscarf/trust-main.js)"
+connections_token="$(/usr/local/bin/node /app/clawscarf/connections-credential-main.js)"
+if [ -n "$connections_token" ]; then
+  CLAWSCARF_CONNECTIONS_TOKEN="$connections_token"
+  export CLAWSCARF_CONNECTIONS_TOKEN
+fi
+unset connections_token
+runtime_trust="$(/usr/local/bin/node /app/clawscarf/trust-main.js)"
+if [ -n "$runtime_trust" ]; then
+  NODE_EXTRA_CA_CERTS="$runtime_trust"
   export NODE_EXTRA_CA_CERTS
 fi
+unset runtime_trust
 exec /usr/local/bin/node /app/openclaw.mjs "$@"

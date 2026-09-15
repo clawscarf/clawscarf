@@ -1,24 +1,37 @@
 import { createHash, randomUUID } from "node:crypto";
 import { link, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { loadConnectionsCredential } from "./connections-credential.js";
 
-/** Retain controller/operator CA trust when adding a private model gateway. */
+/** Retain controller/operator trust alongside optional model and Connections CAs. */
 export async function runtimeTrust(
   stateDirectory: string,
   inherited: string | undefined,
-): Promise<string> {
-  const directory = join(stateDirectory, "clawscarf-models");
-  const modelPath = join(directory, "ca.pem");
-  const model = await readFile(modelPath);
-  if (!inherited || inherited === modelPath) return modelPath;
-  const combined = Buffer.concat([
-    await readFile(inherited),
-    Buffer.from("\n"),
-    model,
-    Buffer.from("\n"),
-  ]);
+): Promise<string | undefined> {
+  const connections = await loadConnectionsCredential(stateDirectory);
+  const modelPath = join(stateDirectory, "clawscarf-models", "ca.pem");
+  const additions = new Map<string, Buffer>();
+  try {
+    additions.set(modelPath, await readFile(modelPath));
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+      throw error;
+  }
+  if (connections?.ca && connections.caPath)
+    additions.set(connections.caPath, connections.ca);
+  if (!additions.size) return inherited;
+  const first = additions.keys().next().value;
+  if (!first) throw new Error("Runtime trust has no certificate source.");
+  if (additions.size === 1 && (!inherited || additions.has(inherited)))
+    return first;
+  const sources = new Map(additions);
+  if (inherited && !sources.has(inherited))
+    sources.set(inherited, await readFile(inherited));
+  const combined = Buffer.concat(
+    [...sources.values()].flatMap((bytes) => [bytes, Buffer.from("\n")]),
+  );
   const digest = createHash("sha256").update(combined).digest("hex");
-  const bundles = join(directory, "trust");
+  const bundles = join(dirname(first), "trust");
   await mkdir(bundles, { recursive: true, mode: 0o700 });
   const target = join(bundles, `${digest}.pem`);
   const staged = join(bundles, `${randomUUID()}.tmp`);

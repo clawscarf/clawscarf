@@ -53,8 +53,8 @@ USER root
 WORKDIR /build/runtime-tools
 COPY deploy/images/pack-tools/package*.json ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY runtime/initialize.ts runtime/initialize-main.ts runtime/trust.ts runtime/trust-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
-RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts trust.ts trust-main.ts start-gate.ts start-gate-main.ts
+COPY runtime/initialize.ts runtime/initialize-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts start-gate.ts start-gate-main.ts
 
 FROM upstream
 LABEL io.clawscarf.start-gate="1"

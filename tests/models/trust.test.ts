@@ -17,12 +17,12 @@ import { runtimeTrust } from "../../runtime/trust.js";
 
 const execute = promisify(execFile);
 
-await test("runtime trusts controller and model CAs together, but rejects an unrelated CA", async (t) => {
+await test("runtime trusts controller, model and Connections CAs together, but rejects an unrelated CA", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-trust-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, "clawscarf-models"));
   const origins: string[] = [];
-  for (const name of ["controller", "model", "unrelated"]) {
+  for (const name of ["controller", "model", "connections", "unrelated"]) {
     const key = join(directory, `${name}.key`);
     const cert = join(directory, `${name}.pem`);
     await execute("openssl", [
@@ -62,6 +62,18 @@ await test("runtime trusts controller and model CAs together, but rejects an unr
   const model = join(directory, "clawscarf-models", "ca.pem");
   await writeFile(model, await readFile(join(directory, "model.pem")));
   assert.equal(await runtimeTrust(directory, undefined), model);
+  const connections = join(directory, "clawscarf-connections");
+  await mkdir(connections, { mode: 0o700 });
+  await writeFile(
+    join(connections, "runtime.json"),
+    JSON.stringify({ token: "fixture" }),
+    { mode: 0o600 },
+  );
+  await writeFile(
+    join(connections, "ca.pem"),
+    await readFile(join(directory, "connections.pem")),
+    { mode: 0o600 },
+  );
   const paths = await Promise.all(
     Array.from({ length: 4 }, () =>
       runtimeTrust(directory, join(directory, "controller.pem")),
@@ -92,6 +104,7 @@ await test("runtime trusts controller and model CAs together, but rejects an unr
     { env: { ...process.env, NODE_EXTRA_CA_CERTS: bundle }, timeout: 10000 },
   );
   assert.deepEqual(JSON.parse(stdout), [
+    200,
     200,
     200,
     "DEPTH_ZERO_SELF_SIGNED_CERT",

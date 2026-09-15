@@ -40,11 +40,30 @@ unmodified upstream executable. OpenShell operator execution does not inherit al
 Docker image environment variables, so image `ENV` alone is insufficient.
 When model setup installs a private gateway's public CA, the launcher adds it to
 Node's process-wide trust through `NODE_EXTRA_CA_CERTS`. [trust.ts](trust.ts) combines
-the model CA with any inherited controller/operator CA bundle; neither replaces the
-other. It publishes immutable content-addressed public bundles before Node starts,
+optional model and Connections CAs with any inherited controller/operator CA
+bundle; none replaces another. It publishes immutable content-addressed public bundles before Node starts,
 and rejects unreadable inputs or mismatched existing contents. CA changes require a
 Gateway restart; no certificate verification is disabled. Model tokens remain separate
 private native file secrets.
+
+For an explicitly configured Connections runtime, the launcher reads
+`/home/node/.openclaw/clawscarf-connections/runtime.json` by default and exports
+its `token` as `CLAWSCARF_CONNECTIONS_TOKEN` before starting OpenClaw. An explicit
+`OPENCLAW_STATE_DIR` changes the containing state directory. The
+[credential loader](connections-credential.ts) accepts only a private JSON object
+containing that scoped token; optional public CA trust lives in sibling `ca.pem`.
+The directory and files must belong to the runtime user, have no group/other
+permissions, and must not be symbolic links; files must have one hard link. Missing
+configuration is a no-op, while partial, invalid or exposed material stops startup
+with a generic diagnostic. The launcher captures the token privately without
+shell evaluation, command-line arguments or Docker environment configuration.
+This only delivers an operator-provisioned credential: it does not issue, rotate,
+configure or enable the plugin. Credentials are confined to the Gateway home;
+provider keys remain outside the native runtime. The
+[startup regression](../tests/runtime/connections-credential.test.ts) covers secret
+handling and rejected material, and the
+[HTTPS trust regression](../tests/models/trust.test.ts) verifies all three CA sources
+while rejecting an unrelated server certificate.
 
 Replacement images support an operator-controlled startup gate. When
 `CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching

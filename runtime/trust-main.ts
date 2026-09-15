@@ -2,10 +2,10 @@ import { runtimeTrust } from "./trust.js";
 
 try {
   process.stdout.write(
-    await runtimeTrust(
+    (await runtimeTrust(
       process.env.OPENCLAW_STATE_DIR ?? "/home/node/.openclaw",
       process.env.NODE_EXTRA_CA_CERTS,
-    ),
+    )) ?? "",
   );
 } catch {
   process.stderr.write(
