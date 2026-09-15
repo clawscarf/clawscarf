@@ -158,21 +158,6 @@ rules for every remaining change.
       the pilot. Qualify ordinary execution, native Codex, browser automation and
       Lobster where promised; do not confuse their different sandbox mechanisms.
       Preinstalled, enabled, visible and allowed-to-execute are separate properties.
-- [ ] **3. Complete independent access.** Reuse RawClaw's working identity/ingress
-      implementation through a standalone composition. Deliver protected loopback-only
-      local administrator setup and generic company OIDC for shared deployment. Explicit
-      shared-team setup must compose that OIDC service with configured TLS/ingress and
-      native/widget endpoints. The single-host operator's explicit team profile now
-      assembles public TLS and OIDC configuration. The assembled
-      [Dex/browser acceptance](deploy/local/README.md#team-profile-under-qualification)
-      covers first-admin preparation, enrollment, native handover, two-tab revocation,
-      logout and retained team login after restart. Complete the combined team-origin
-      widget/hook journey; local test TLS does not qualify public deployment. Require an explicit
-      first administrator; native roles thereafter, no first-login takeover. Verify two
-      identities, role denial/handover, stable display identities, direct bookmarks,
-      multiple tabs, logout/revocation of open streams, widgets and authenticated hooks.
-      Qualify the standalone identity and endpoint contracts above. Do not require a
-      RawClaw account or expose remote access without working identity.
 - [ ] **5. Complete optional managed Connections.** Reuse the current generic REST
       plugin and broker; no MCP rewrite. Extract independent account setup/management
       and required persistence, with Composio behind its provider boundary. Support an
@@ -216,7 +201,8 @@ rules for every remaining change.
       Run a clean-machine acceptance from release artifacts without RawClaw source,
       account, API, database or hostname: protected login, real model/tool response,
       retained state after restart and clean operation with integrations disabled.
-      Qualify team OIDC and optional broker account setup separately.
+      Repeat the locally qualified team OIDC/widget/hook path from release artifacts;
+      qualify optional broker account setup separately.
 - [ ] **9. Build the terminal installer last.** A small verified-download bootstrap
       invokes a maintained terminal UI over the already-working commands. Offer local
       trial, team server and existing-install configuration. Prompt for exposure/login,

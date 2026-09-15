@@ -101,3 +101,6 @@ The compiled image also started successfully with the production entry point and
 Connections omitted. Its authenticated capabilities endpoint returned disabled,
 its UI loaded without account actions, and its Access session contained no
 Connections navigation. No fixture provider or provider credential was loaded.
+The rebuilt image also passed expired-callback checks over HTTPS: browsers receive
+the concise sign-in failure page, while API callers retain Problem Details. The
+page rendered at desktop and mobile sizes.

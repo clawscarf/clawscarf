@@ -44,7 +44,7 @@ setup with the affected listener named. These checks do not reserve ports; anoth
 process can still claim one before startup. A failed preflight retains any initialized
 private installation directory for resumption.
 Public DNS, company login and external exposure
-are not part of this local profile. An explicit [team profile](#team-profile-under-qualification)
+are not part of this local profile. An explicit [team profile](#team-profile)
 assembles company OIDC and public TLS using the same operator.
 No AI or connection provider key is required by preparation.
 
@@ -316,7 +316,7 @@ without interpreting Docker's error text. The workstation's default address pool
 unavailable, so successful default-pool allocation remains environment-dependent; the
 live owned-network test used explicitly chosen, nonoverlapping test subnets.
 
-## Team profile (under qualification)
+## Team profile
 
 A new installation can include a `team` block in the same input file. This configures
 company OIDC and direct HTTPS on the Access companion; it does not create an identity
@@ -377,10 +377,30 @@ v2.45.1 test provider, signed tokens, TLS and the actual pinned OpenClaw runtime
   signed-out page without automatic re-entry.
 - A renewed administrator session and the other person’s revocation survived restarting
   the runtime, companion and PostgreSQL.
+- A fresh browser opened a native settings bookmark, completed OIDC login and returned
+  to the exact path and query. The native settings page rendered at desktop and mobile sizes.
+- A native dashboard widget rendered through the separate HTTPS widget origin. Its
+  nested frame handled a button click and could not read the application document.
+- An explicitly published `/hooks/wake` POST rejected missing/incorrect native tokens
+  and accepted the correct token without browser login. Unpublished paths and wrong
+  methods stayed protected; the widget origin rejected the companion session endpoint.
 
 This test used an explicit private test certificate trust in the companion and browser,
 with hostnames resolved locally. It does not qualify public DNS, certificate renewal,
-a customer's IdP configuration or browser execution inside the sandbox. Widgets and
-hooks have separate native acceptance; the combined team-origin widget/hook journey remains open. Do not expose this preview as a
-fully qualified team deployment. A native configuration reload can briefly make
-management reads unavailable; a failed command is never automatically replayed.
+a customer's IdP configuration or browser execution inside the sandbox. The access
+path is locally qualified; member execution and release qualification remain open.
+A native configuration reload can briefly make management reads unavailable; a failed
+command is never automatically replayed.
+
+### Native webhook acceptance
+
+The opt-in [live regression](../../tests/access/hooks-live.test.ts) requires a disposable
+team installation with native hooks enabled and only `/hooks/wake` explicitly published
+in `runtime.webhookPaths`. It sends one authenticated wake event in `next-heartbeat`
+mode; use a test installation. Keep the native hook token in a private file. Supply
+`CLAWSCARF_TEST_HOOK_ORIGIN`, `CLAWSCARF_TEST_WIDGET_ORIGIN` and
+`CLAWSCARF_TEST_HOOK_TOKEN_FILE`, then run
+`pnpm exec tsx --test tests/access/hooks-live.test.ts`. For private test certificates,
+set `NODE_EXTRA_CA_CERTS` to their explicit trust file; never disable TLS verification.
+Missing inputs skip the test. Native hook configuration and ingress publication are
+separate deliberate operator settings; see [hook routing](../../services/access/README.md#security-and-state).

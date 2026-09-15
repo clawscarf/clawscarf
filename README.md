@@ -47,10 +47,10 @@ to use a gateway: preparation configures its scoped credential and network route
 together. Without model inputs, the OpenClaw runtime starts with outbound traffic
 denied; this policy does not cover companion services.
 
-| Other deployment | Current path                                                                                                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Standalone team  | The [team profile](deploy/local/README.md#team-profile-under-qualification) assembles HTTPS and company OIDC. The shared deployment journey remains under qualification. |
-| RawClaw-managed  | The [integration boundary](PLAN.md#standalone-and-hosted-contracts) is specified. RawClaw does not consume these artifacts yet.                                          |
+| Other deployment | Current path                                                                                                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standalone team  | The [team profile](deploy/local/README.md#team-profile) assembles HTTPS and company OIDC. Local Dex/browser enrollment, handover, widgets and hooks have passed; release qualification remains open. |
+| RawClaw-managed  | The [integration boundary](PLAN.md#standalone-and-hosted-contracts) is specified. RawClaw does not consume these artifacts yet.                                                                      |
 
 ## What runs
 
@@ -71,9 +71,9 @@ own trusted-ingress identity and omit standalone account navigation.
   shell execution is unavailable, and packaged Chromium cannot launch** under the
   current policy. Their [execution placement](deploy/openshell/README.md#execution-placement)
   still needs resolving.
-- The assembled [team profile](deploy/local/README.md#team-profile-under-qualification)
-  passed Dex browser login, enrollment, handover and revocation. Combined widget/hook
-  access and public deployment remain under qualification.
+- The assembled [team profile](deploy/local/README.md#team-profile)
+  passed Dex browser login, enrollment, handover, revocation, widgets and native hooks.
+  Public deployment and release-artifact acceptance remain under qualification.
   Real external-account setup remains unqualified. Native Claws used by packs are experimental.
 - There is no published all-in-one download or terminal installer. Linux and
   Windows/WSL setup are not supported yet. The [compiled operator archive](scripts/README.md#operator-archive)
