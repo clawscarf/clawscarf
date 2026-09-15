@@ -72,11 +72,14 @@ pnpm exec tsx services/connections/credential-command.ts \
   rotate --output /private/connections-token
 ```
 
-The session file contains the current `clawscarf_session` value. The CLI obtains
+The private, operator-owned session file contains the current `clawscarf_session` value. The CLI obtains
 CSRF state through the access API; it does not bypass native administration. The
 output file must not exist and is created with mode 0600. Mount that secret for the
 plugin. Use `revoke` instead of `rotate` to disable its access. Never automatically
 retry a lost rotation response; explicitly rotate again if the outcome is uncertain.
+The CLI accepts only an exact HTTPS origin or loopback HTTP origin, follows no
+redirects and emits no tokens in diagnostics. Its [transport regression](../../tests/connections/credential-command.test.ts)
+checks private output, refusal before credential transmission and lost-response handling.
 
 ## Verification and reuse
 

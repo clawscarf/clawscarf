@@ -1,4 +1,5 @@
-import { readFile, open, unlink } from "node:fs/promises";
+import { open, unlink } from "node:fs/promises";
+import { constants } from "node:fs";
 import { Command } from "commander";
 import { createClient as accessClient } from "../access/generated/client/client/index.js";
 import { session } from "../access/generated/client/sdk.gen.js";
@@ -19,17 +20,51 @@ const program = new Command("connections-credential")
   );
 async function authenticatedClient() {
   const options = program.opts<{ origin: string; sessionFile: string }>();
-  const origin = new URL(options.origin).origin;
-  const credential = (await readFile(options.sessionFile, "utf8")).trim();
+  const url = new URL(options.origin);
+  if (
+    url.origin !== options.origin ||
+    url.username ||
+    url.password ||
+    (url.protocol !== "https:" &&
+      !(
+        url.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+      ))
+  )
+    throw Error("Use an exact HTTPS or loopback HTTP origin.");
+  const origin = url.origin;
+  const file = await open(
+    options.sessionFile,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
+  let credential: string;
+  try {
+    const metadata = await file.stat();
+    if (
+      !metadata.isFile() ||
+      metadata.uid !== process.getuid?.() ||
+      metadata.nlink !== 1 ||
+      (metadata.mode & 0o077) !== 0 ||
+      metadata.size > 4096
+    )
+      throw Error("Use a private session file.");
+    const bytes = await file.readFile();
+    if (bytes.length > 4096) throw Error("Use a private session file.");
+    credential = bytes.toString("utf8").trim();
+  } finally {
+    await file.close();
+  }
   if (!/^[A-Za-z0-9_-]+$/.test(credential))
     throw Error("Invalid session file.");
   const headers = { Cookie: `clawscarf_session=${credential}`, Origin: origin };
   const current = await session({
-    client: accessClient({ baseUrl: origin, headers }),
+    client: accessClient({ baseUrl: origin, headers, redirect: "error" }),
     throwOnError: true,
+    signal: AbortSignal.timeout(10000),
   });
   return createClient({
     baseUrl: origin,
+    redirect: "error",
     headers: { ...headers, "X-CSRF-Token": current.data.csrfToken },
   });
 }
@@ -43,8 +78,10 @@ program
       const result = await rotateConnectionCredential({
         client,
         throwOnError: true,
+        signal: AbortSignal.timeout(30000),
       });
       await file.writeFile(result.data.token + "\n");
+      await file.sync();
       process.stdout.write(
         JSON.stringify({
           credentialId: result.data.credentialId,
@@ -62,7 +99,15 @@ program.command("revoke").action(async () => {
   await revokeConnectionCredential({
     client: await authenticatedClient(),
     throwOnError: true,
+    signal: AbortSignal.timeout(30000),
   });
   process.stdout.write("Connection plugin access revoked.\n");
 });
-await program.parseAsync();
+try {
+  await program.parseAsync();
+} catch {
+  process.stderr.write(
+    "Credential management did not confirm completion. Check the origin and private administrator session. Do not automatically retry a rotation; an interrupted request may already have revoked the previous token.\n",
+  );
+  process.exitCode = 1;
+}
