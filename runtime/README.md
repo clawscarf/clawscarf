@@ -81,6 +81,7 @@ controls, not hot reload, menu hiding or shell authorization.
 
 OpenClaw 2026.9.4 still mounts its Plugins discovery surface independently of these
 loading controls. The public custom-page API adds pages; it does not remove core
-navigation. Hiding ClawHub/unselected browsing is therefore unimplemented, pending
-an upstream capability or an explicit maintenance decision. ClawScarf does not
-hide it through injected CSS or reinterpret loading restrictions as a UI guarantee.
+navigation. ClawHub/unselected browsing remains visible in this distribution;
+hiding is a future issue in [PLAN.md](../PLAN.md#deferred-or-undecided). Preserve
+vanilla OpenClaw, with no UI patch or injected CSS. Loading restrictions do not
+establish a curated browsing UI.

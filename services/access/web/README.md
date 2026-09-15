@@ -32,7 +32,9 @@ to port 18800. For this development arrangement, configure Access’s public `or
 as `http://127.0.0.1:5173` while keeping its listener on port 18800. Local sign-in, native profile presentation and the People desktop view have been
 checked in the browser. The 390px mobile People layout and browser sign-out returning native bookmarks to
 login have also passed. The native navigation plugin opens the account page.
-Interactive company enrollment remains unverified.
+The assembled [team profile](../../../deploy/local/README.md#team-profile) also has
+real Dex/browser enrollment, handover and revocation acceptance; release qualification
+remains open.
 
 Visual primitives and theme are copied from
 [RawClaw's Kora-derived UI at f37a6e7](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/src/apps/web/shared),

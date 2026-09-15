@@ -169,10 +169,9 @@ rules for every remaining change.
 - [ ] **7. Complete curation and configuration.** Support selected capability
       enable/disable through native interfaces. The image's native plugin/skill CLI
       controls have [disposable-configuration acceptance](runtime/README.md#capability-controls);
-      live application behavior remains part of combined qualification. Qualify hiding ClawHub/unselected
-      discovery independently of execution restrictions. Use supported UI extension
-      points; if a patch is necessary, obtain a maintenance decision rather than quietly
-      weakening the requirement. Keep native administration and explicit reapplication;
+      live application behavior remains part of combined qualification. Preserve the
+      vanilla native discovery UI; ClawHub hiding is deferred below. Use supported
+      UI extension points. Keep native administration and explicit reapplication;
       no background overwrite daemon or duplicate OpenClaw dashboard.
 - [ ] **8. Qualify release operation.** Document persistent paths, secret handling,
       stop/start, logs, diagnostics and one supported upgrade preserving native edits.
@@ -247,6 +246,9 @@ and [prerequisites](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/get-sta
 
 ## Deferred or undecided
 
+- [ ] Curate or hide ClawHub/unselected discovery when supported upstream. Preserve
+      vanilla OpenClaw for the current distribution; no UI patch or injected hiding.
+      Plugin/skill loading and execution controls remain separate from visibility.
 - [ ] Before publication, verify extracted-code rights and bundled dependency
       licenses/notices, configure an actual private vulnerability-reporting channel,
       and choose repository/release settings. ClawScarf-owned work uses [MIT](LICENSE);
