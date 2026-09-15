@@ -188,10 +188,8 @@ rules for every remaining change.
       [local assembly](deploy/local/README.md) has verified fresh preparation,
       supervised launch, native administrator login and retained-state restart.
       Complete interrupted-allocation acceptance before qualifying the whole setup
-      path. Integrate model selection, scoped credentials and the matching network
-      permission into that setup path: the current local setup
-      initializes no model and starts with outbound traffic denied. A successful
-      browser login alone does not establish an agent ready to do useful work.
+      path. A successful browser login alone does not establish an agent ready to do
+      useful work; retain the local assembly's model/tool acceptance in release testing.
       Complete Docker address-pool capacity preflight; current port and executable
       checks are described in the local assembly owner.
       Test missing/invalid optional services and interrupted setup. Produce exact

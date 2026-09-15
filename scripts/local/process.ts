@@ -12,6 +12,8 @@ type LocalSetupErrorCode =
   | "executable_unavailable"
   | "incomplete_certificate"
   | "invalid_certificate"
+  | "invalid_model_setup"
+  | "invalid_runtime_policy"
   | "native_unavailable"
   | "platform_unqualified"
   | "port_check_failed"

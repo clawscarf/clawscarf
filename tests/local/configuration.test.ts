@@ -52,6 +52,22 @@ await test("local inputs reject mutable images, relative executables and public 
     { origin: "https://team.example" },
     { identity: { mode: "oidc" } },
     { connections: {} },
+    { models: { configurationFile: "relative", runtimeKeyFile: "/key" } },
+    { models: { configurationFile: "/config", runtimeKeyFile: "relative" } },
+    {
+      models: {
+        configurationFile: "/config",
+        runtimeKeyFile: "/key",
+        caFile: "relative",
+      },
+    },
+    {
+      models: {
+        configurationFile: "/config",
+        runtimeKeyFile: "/key",
+        token: "inline",
+      },
+    },
     { cpu: "0" },
     { cpu: "0m" },
     { cpu: "unlimited" },

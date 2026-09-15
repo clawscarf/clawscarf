@@ -1,5 +1,10 @@
 import { readFile, lstat } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import {
+  prepareInitialModels,
+  withInitialModels,
+  type InitialModels,
+} from "./models.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { ensureCertificates } from "./certificates.js";
 import pg from "pg";
@@ -39,6 +44,7 @@ export async function prepareLocal(
   await withLocalLock(directory, async () => {
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
+    const models = await prepareInitialModels(directory, input.models);
     const privateDirectory = join(directory, "private");
     const names = resourceNames(state);
     await ensureOwnedVolume(names.databaseVolume, state.ownerId);
@@ -115,8 +121,17 @@ export async function prepareLocal(
         join(privateDirectory, "companion.json"),
         JSON.stringify(generated.companion, null, 2),
       );
-      const native = JSON.stringify(generated.native, null, 2);
-      await initializeNativeVolume(state, native, identity.serverId);
+      const native = JSON.stringify(
+        withInitialModels(generated.native, models),
+        null,
+        2,
+      );
+      await initializeNativeVolume(
+        state,
+        native,
+        identity.serverId,
+        models?.credential,
+      );
       await writePrivate(
         join(directory, "identity.json"),
         JSON.stringify(identity, null, 2),
@@ -170,6 +185,7 @@ async function initializeNativeVolume(
   state: LocalState,
   configuration: string,
   serverId: string,
+  modelCredential: InitialModels["credential"] | undefined,
 ) {
   await run(
     "docker",
@@ -195,6 +211,7 @@ async function initializeNativeVolume(
         ownerId: state.ownerId,
         serverId,
         configuration,
+        ...(modelCredential ? { modelCredential } : {}),
       }),
     },
   );

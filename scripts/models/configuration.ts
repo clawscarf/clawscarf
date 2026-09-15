@@ -75,6 +75,36 @@ export const configurationSchema = z
   });
 export type ModelConfiguration = z.infer<typeof configurationSchema>;
 export const tokenVariable = "CLAWSCARF_MODEL_TOKEN";
+export type EnabledModelConfiguration = Exclude<
+  ModelConfiguration,
+  { mode: "disabled" }
+>;
+export function nativeModelProvider(config: EnabledModelConfiguration) {
+  return {
+    baseUrl: config.baseUrl,
+    api: "openai-completions",
+    agentRuntime: { id: "openclaw" },
+    apiKey: {
+      source: "env",
+      provider: "clawscarf-models",
+      id: tokenVariable,
+    },
+    models: config.models
+      .filter((model) => model.enabled)
+      .map((model) => ({
+        id: model.id,
+        name: model.name,
+        input: model.input,
+        reasoning: model.reasoning,
+        contextWindow: model.contextWindow,
+        maxTokens: model.maxTokens,
+        compat: {
+          supportsTools: model.tools,
+          supportsUsageInStreaming: true,
+        },
+      })),
+  };
+}
 export function nativeAssignments(config: ModelConfiguration) {
   if (config.mode === "disabled") return [];
   const assignments: { path: string; value: unknown }[] = [
@@ -84,30 +114,7 @@ export function nativeAssignments(config: ModelConfiguration) {
     },
     {
       path: "models.providers.clawscarf",
-      value: {
-        baseUrl: config.baseUrl,
-        api: "openai-completions",
-        agentRuntime: { id: "openclaw" },
-        apiKey: {
-          source: "env",
-          provider: "clawscarf-models",
-          id: tokenVariable,
-        },
-        models: config.models
-          .filter((model) => model.enabled)
-          .map((model) => ({
-            id: model.id,
-            name: model.name,
-            input: model.input,
-            reasoning: model.reasoning,
-            contextWindow: model.contextWindow,
-            maxTokens: model.maxTokens,
-            compat: {
-              supportsTools: model.tools,
-              supportsUsageInStreaming: true,
-            },
-          })),
-      },
+      value: nativeModelProvider(config),
     },
   ];
   if (config.defaultModel !== null)

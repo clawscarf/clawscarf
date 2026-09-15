@@ -5,6 +5,10 @@ private gateway with a scoped runtime key, or this optional LiteLLM companion.
 No RawClaw service, account, inference proxy or billing hook is required.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
+For a new local installation, [initial model setup](../local/README.md#initial-model-setup)
+combines this configuration, a scoped runtime key and its network permission before
+first startup. Existing installations use the explicit configuration commands below.
+
 ## Configure OpenClaw
 
 Copy [config.example.json](config.example.json) to private deployment configuration.
@@ -131,8 +135,9 @@ run. This qualifies the successful transport/tool execution, not repeatable mode
 quality or a production model recommendation. These isolated controlled/Ollama
 tests required no paid provider credentials.
 
-The fresh local assembly also passed a native administrator browser conversation
-through the rebuilt runtime, private-TLS LiteLLM and OpenRouter GPT-5.4 Mini. Native
+The fresh local assembly passed integrated initial model/credential/policy setup
+and a native administrator browser conversation through the rebuilt runtime,
+private-TLS LiteLLM and OpenRouter GPT-5.4 Mini. Native
 transcript records confirm `clawscarf/team-model`, successful read-tool execution
 and the exact synthetic file contents in the final response. Both the inherited
 OpenShell CA and private gateway CA remained active. The scoped runtime key was

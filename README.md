@@ -45,8 +45,10 @@ The terminal installer comes after the underlying components work together.
 | Host it through RawClaw | The integration boundary is [specified](PLAN.md#standalone-and-hosted-contracts); RawClaw does not consume these artifacts yet.                                                   |
 
 Local setup opens the protected native UI without requiring a provider account.
-To use a model, separately [configure the model gateway](deploy/models/README.md)
-and authorize its network route. Fresh setup denies outbound traffic by default.
+To use a model, supply the optional [initial model setup](deploy/local/README.md#initial-model-setup)
+inputs for an existing gateway; preparation configures the scoped credential and its
+network route together. The optional [LiteLLM companion](deploy/models/README.md)
+can provide that gateway. Without model inputs, fresh setup denies outbound traffic.
 The configured local installation has passed an administrator browser conversation
 with a real model and native file-read tool. This is a developer evaluation path,
 not a finished end-user quickstart or shared-team qualification.

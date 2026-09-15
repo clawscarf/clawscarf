@@ -51,6 +51,13 @@ const localInput = z.strictObject({
   openshellCli: absolutePath,
   openshellGateway: absolutePath,
   ports,
+  models: z
+    .strictObject({
+      configurationFile: absolutePath,
+      runtimeKeyFile: absolutePath,
+      caFile: absolutePath.optional(),
+    })
+    .optional(),
   cpu: z
     .string()
     .regex(

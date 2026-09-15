@@ -17,6 +17,16 @@ const inputSchema = z.strictObject({
   ownerId: z.uuid(),
   serverId: z.uuid(),
   configuration: z.string().min(1),
+  modelCredential: z
+    .strictObject({
+      token: z
+        .string()
+        .min(1)
+        .max(65536)
+        .refine((value) => value.trim().length > 0),
+      ca: z.string().optional(),
+    })
+    .optional(),
 });
 /** Initialization only: never overwrite native edits in an already-owned volume. */
 export async function initializeHome(
@@ -65,13 +75,35 @@ export async function initializeHome(
       JSON.stringify({ ownerId: input.ownerId, serverId: input.serverId }),
       { flag: "wx", mode: 0o600 },
     );
-    for (const path of [
+    const ownedPaths = [
       home,
       staging,
       join(staging, "openclaw.json"),
       join(staging, marker),
-    ])
-      await chown(path, uid, gid);
+    ];
+    if (input.modelCredential) {
+      const directory = join(staging, "clawscarf-models");
+      await mkdir(directory, { mode: 0o700 });
+      const credential = join(directory, "initial.json");
+      await writeFile(
+        credential,
+        JSON.stringify({ token: input.modelCredential.token }),
+        {
+          flag: "wx",
+          mode: 0o600,
+        },
+      );
+      ownedPaths.push(directory, credential);
+      if (input.modelCredential.ca !== undefined) {
+        const ca = join(directory, "ca.pem");
+        await writeFile(ca, input.modelCredential.ca, {
+          flag: "wx",
+          mode: 0o600,
+        });
+        ownedPaths.push(ca);
+      }
+    }
+    for (const path of ownedPaths) await chown(path, uid, gid);
     await rename(staging, target);
   } finally {
     await rm(staging, { recursive: true, force: true });

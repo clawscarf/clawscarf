@@ -78,6 +78,51 @@ against fresh local Docker/Postgres resources. Tests cover retained keys, foreig
 and database privilege denials. Controller staging errors require operator inspection.
 Preparation never runs database migrations on API startup.
 
+## Initial model setup
+
+The optional `models` field in the local input composes model configuration, a scoped
+runtime credential and its exact network permission before the first Gateway start:
+
+```json
+{
+  "models": {
+    "configurationFile": "/absolute/path/to/models.json",
+    "runtimeKeyFile": "/absolute/path/to/runtime-key",
+    "caFile": "/absolute/path/to/model-gateway-ca.pem"
+  }
+}
+```
+
+Merge this field into the input above. `configurationFile` uses the existing
+[model configuration](../models/README.md); select an enabled default model.
+`runtimeKeyFile` contains a runtime-scoped gateway key, never its master key or a shared
+provider key. `caFile` contains an explicit CA or self-signed trust certificate; omit it for a gateway signed by a public CA. Use an HTTPS
+DNS endpoint reachable from the runtime—for a workstation gateway,
+`https://host.docker.internal:PORT/v1`, not host loopback. Operating the optional
+LiteLLM companion and issuing its scoped key remain separate operator steps.
+
+Preparation validates these files before allocating Docker resources. It snapshots
+initial model material privately, derives the [private runtime policy](../../scripts/local/models.ts) from the
+shipped policy and allows only the Node executable to reach that exact gateway
+host/port. TLS passes through the policy proxy; Node still verifies the gateway
+certificate. First initialization atomically writes the scoped credential in
+the [private credential file](../../runtime/initialize.ts) and the optional public CA under `ca.pem`.
+Native configuration references the credential file; Access never receives that key.
+The runtime retains the controller's CA trust when adding a private model CA.
+
+Repeat `prepare` requires the original model configuration/key/CA files with unchanged
+contents. `start` consumes persisted state without rereading those source files.
+Neither command overwrites later native model, credential or policy edits. Use the
+explicit model configuration commands to change an existing installation. Omitting
+`models` keeps provider-free startup and deny-by-default outbound policy.
+A fresh image/volume passed this integrated path: protected administrator login,
+configured model selection, real model response and native file-read execution without
+subsequent model or network-policy commands. OpenShell reported the exact Node-only
+gateway policy effective. A deliberate native model-name edit, conversation and browser
+session survived repeat preparation and foreground stop/start with the compiled operator.
+Regression tests cover invalid inputs, private credentials, unchanged-input requirements
+and atomic initialization failures. Release-artifact clean-machine acceptance remains open.
+
 ## Run and stop
 
 Start the prepared installation:

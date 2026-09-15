@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { run, LocalSetupError } from "./process.js";
 import {
@@ -184,9 +183,7 @@ export async function ensureRuntime(
       "--from",
       state.input.runtimeImage,
       "--policy",
-      fileURLToPath(
-        new URL("../../deploy/openshell/policy.yaml", import.meta.url),
-      ),
+      join(directory, "private/runtime-policy.json"),
       "--cpu",
       state.input.cpu,
       "--memory",
