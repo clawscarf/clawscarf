@@ -13,26 +13,22 @@ export class EnrollmentService {
   get enabled() {
     return this.issuer !== null;
   }
-  private async authorized<T>(
+  private async authenticated<T>(
     actor: Session,
     store: AccessStore,
-    work: (sessions: SessionService, credential: string) => Promise<T>,
+    work: (
+      sessions: SessionService,
+      credential: string,
+      current: Session,
+    ) => Promise<T>,
   ) {
     const current = await store.authenticateSession(actor.hash);
     if (!current || current.user.id !== actor.user.id)
       throw new AccessError("unauthenticated", "Sign in to continue.");
     const sessions = new SessionService(store, null, this.origin);
-    return sessions.withActingSession(actor.hash, async (credential) => {
-      await this.native.verifyAdministrator(
-        {
-          identity: current.user.identity,
-          name: current.user.name,
-          sessionHash: current.hash,
-        },
-        credential,
-      );
-      return work(sessions, credential);
-    });
+    return sessions.withActingSession(actor.hash, (credential) =>
+      work(sessions, credential, current),
+    );
   }
   private change<T>(
     actor: Session,
@@ -43,13 +39,39 @@ export class EnrollmentService {
     ) => Promise<T>,
   ) {
     return this.store.withEnrollmentLock((store) =>
-      this.authorized(actor, store, (sessions, credential) =>
-        work(store, sessions, credential),
+      this.authenticated(
+        actor,
+        store,
+        async (sessions, credential, current) => {
+          await this.native.verifyAdministrator(
+            {
+              identity: current.user.identity,
+              name: current.user.name,
+              sessionHash: current.hash,
+            },
+            credential,
+          );
+          return work(store, sessions, credential);
+        },
       ),
     );
   }
   list(actor: Session) {
-    return this.authorized(actor, this.store, () => this.store.people());
+    return this.authenticated(
+      actor,
+      this.store,
+      async (_sessions, credential, current) => {
+        const enrollment = await this.native.observeTeam(
+          {
+            identity: current.user.identity,
+            name: current.user.name,
+            sessionHash: current.hash,
+          },
+          credential,
+        );
+        return { people: await this.store.people(), enrollment };
+      },
+    );
   }
   prepareTeam(actor: Session) {
     return this.change(actor, (_store, _sessions, credential) =>

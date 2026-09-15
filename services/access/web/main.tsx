@@ -72,20 +72,54 @@ function People({
     queryKey: ["people"],
     retry: false,
     queryFn: async ({ signal }) =>
-      (await api.listPeople({ ...request, signal })).data.people,
+      (await api.listPeople({ ...request, signal })).data,
   });
   const change = useMutation({
     mutationFn: async (action: () => Promise<unknown>) => action(),
+    onError: () => cache.invalidateQueries({ queryKey: ["people"] }),
     onSuccess: async () => {
       setAdding(false);
       setRemoving(null);
       await cache.invalidateQueries({ queryKey: ["people"] });
     },
   });
-  const failure = change.error ?? people.error;
+  const prepare = useMutation({
+    mutationFn: () => api.prepareTeam({ ...request, headers }),
+    onError: () => cache.invalidateQueries({ queryKey: ["people"] }),
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["people"] }),
+  });
+  const authorized = !!people.data && !people.isError;
+  const canEnroll = authorized && people.data?.enrollment === "ready";
+  const busy = change.isPending || prepare.isPending;
+  const setup =
+    authorized && enrollmentEnabled && people.data?.enrollment !== "ready" ? (
+      <div className="space-y-3">
+        {people.data?.enrollment === "preparation_required" ? (
+          <>
+            <p className="text-sm">Enable team access before adding people.</p>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                change.reset();
+                prepare.mutate();
+              }}
+            >
+              Enable team access
+            </Button>
+          </>
+        ) : (
+          <p role="alert" className="text-sm">
+            Review team roles in OpenClaw before adding people.
+          </p>
+        )}
+        {prepare.isPending && <Loading text="Enabling team access…" />}
+      </div>
+    ) : null;
+  const failure = people.error ?? change.error ?? prepare.error;
   return (
     <section className="space-y-4">
-      {people.data && links.length > 0 && (
+      {authorized && links.length > 0 && (
         <nav aria-label="Server management" className="flex gap-4 text-sm">
           <span aria-current="page" className="font-medium">
             People
@@ -114,8 +148,9 @@ function People({
             <RefreshCw />
             Refresh
           </Button>
-          {enrollmentEnabled && (
+          {enrollmentEnabled && canEnroll && (
             <Button
+              disabled={busy}
               onClick={() => {
                 change.reset();
                 setAdding(true);
@@ -135,22 +170,15 @@ function People({
           }
         />
       )}
-      {failure && (
+      {failure && !adding && !removing && (
         <p role="alert" className="text-sm text-destructive">
           {problem(failure).detail ?? "Access could not be loaded."}
         </p>
       )}
-      {problem(failure).code === "setup_required" && (
-        <Button
-          disabled={change.isPending}
-          onClick={() =>
-            change.mutate(() => api.prepareTeam({ ...request, headers }))
-          }
-        >
-          Prepare team access
-        </Button>
+      {!adding && setup}
+      {change.isPending && !adding && !removing && (
+        <Loading text="Updating access…" />
       )}
-      {change.isPending && <Loading text="Updating access…" />}
       {people.data && (
         <div className="rounded-lg border">
           <Table>
@@ -164,7 +192,7 @@ function People({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {people.data.map((person) => (
+              {people.data.people.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell className="max-w-48 whitespace-normal break-words sm:max-w-none">
                     <span>{person.name}</span>
@@ -178,7 +206,7 @@ function People({
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
-                      disabled={change.isPending}
+                      disabled={!authorized || busy}
                       onClick={() => {
                         change.reset();
                         setRemoving(person);
@@ -232,10 +260,11 @@ function People({
               Use the person’s subject ID from your company identity provider.
               They join as a member; change application roles in OpenClaw.
             </p>
+            {setup}
             {change.isPending && <Loading text="Adding person…" />}
-            {change.error && (
+            {failure && (
               <p role="alert" className="text-sm text-destructive">
-                {problem(change.error).detail ?? "Could not add this person."}
+                {problem(failure).detail ?? "Could not add this person."}
               </p>
             )}
             <DialogFooter>
@@ -246,7 +275,7 @@ function People({
               >
                 Cancel
               </Button>
-              <Button disabled={change.isPending}>Add person</Button>
+              <Button disabled={!canEnroll || busy}>Add person</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -264,9 +293,9 @@ function People({
           <p className="text-sm">
             Their access and open connections to this server will be revoked.
           </p>
-          {change.error && (
+          {failure && (
             <p role="alert" className="text-sm text-destructive">
-              {problem(change.error).detail ?? "Could not remove this person."}
+              {problem(failure).detail ?? "Could not remove this person."}
             </p>
           )}
           <DialogFooter>
@@ -275,7 +304,7 @@ function People({
             </Button>
             <Button
               variant="destructive"
-              disabled={change.isPending}
+              disabled={!authorized || busy}
               onClick={() => {
                 if (removing)
                   change.mutate(() =>

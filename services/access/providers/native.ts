@@ -15,6 +15,7 @@ import {
   profileFor,
   readState,
   requireTeam,
+  teamEnrollmentState,
   self,
   type NativeState,
 } from "./native-state.js";
@@ -59,6 +60,13 @@ export class OpenClawAuthority implements NativeAuthority {
       );
       await gateway.read("exec.approvals.get", {});
       return { agentIds: result.agents.map((agent) => agent.id) };
+    });
+  }
+
+  async observeTeam(actor: NativeActor, credential: string) {
+    return this.acting(actor, credential, async (gateway) => {
+      await gateway.read("exec.approvals.get", {});
+      return teamEnrollmentState(await readState(gateway));
     });
   }
 

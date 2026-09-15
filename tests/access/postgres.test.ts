@@ -65,6 +65,10 @@ await test(
       let nativeWrites = 0;
       let deny = false;
       const native: NativeAuthority = {
+        observeTeam: () =>
+          deny
+            ? Promise.reject(new NativeFailure("access_denied"))
+            : Promise.resolve("ready"),
         verifyAdministrator: () =>
           deny
             ? Promise.reject(new NativeFailure("access_denied"))
@@ -125,7 +129,21 @@ await test(
           ).statusCode,
           400,
         );
+        const observed = await app.inject({
+          url: "/_clawscarf/people",
+          headers,
+        });
+        assert.equal(observed.statusCode, 200, observed.body);
+        assert.equal(
+          observed.json<{ enrollment: string }>().enrollment,
+          "ready",
+        );
+        assert.equal(nativeWrites, 0);
         deny = true;
+        assert.equal(
+          (await app.inject({ url: "/_clawscarf/people", headers })).statusCode,
+          403,
+        );
         const personInput = {
           subject: "bob",
           email: "bob@example.com",
@@ -437,6 +455,10 @@ await test(
       // This case tests HTTP/session/admission boundaries. Native permission
       // enforcement and promotion are exercised by native-live.test.ts.
       const native: NativeAuthority = {
+        observeTeam: (actor) =>
+          actor.identity === identity.administrator.identity
+            ? Promise.resolve("ready")
+            : Promise.reject(new NativeFailure("access_denied")),
         verifyAdministrator: (actor) => {
           if (actor.identity !== identity.administrator.identity)
             return Promise.reject(new NativeFailure("access_denied"));

@@ -5,7 +5,15 @@ export interface NativeActor {
   name?: string;
   sessionHash: string;
 }
+export type TeamEnrollmentState =
+  "ready" | "preparation_required" | "configuration_required";
+
 export interface NativeAuthority {
+  /** Observes enrollment configuration using current native administrator authority. */
+  observeTeam(
+    actor: NativeActor,
+    credential: string,
+  ): Promise<TeamEnrollmentState>;
   prepareTeam(actor: NativeActor, credential: string): Promise<void>;
   verifyAdministrator(
     actor: NativeActor,

@@ -199,9 +199,7 @@ export async function createAccessHttp(
   };
   const handlers = {
     listPeople: async (req, reply) =>
-      reply
-        .code(200)
-        .send({ people: await team().list(await actor(req, false)) }),
+      reply.code(200).send(await team().list(await actor(req, false))),
     prepareTeam: async (req, reply) => {
       await team().prepareTeam(await actor(req, true));
       return reply.code(200).send();

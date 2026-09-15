@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDeepStrictEqual } from "node:util";
+import type { TeamEnrollmentState } from "../types/native.js";
 import { NativeFailure } from "../types/native-errors.js";
 import type { NativeGateway } from "./gateway.js";
 
@@ -100,6 +101,22 @@ export async function readState(gateway: NativeGateway) {
   return { config: before.sourceConfig, revision: before.hash, profiles };
 }
 export type NativeState = Awaited<ReturnType<typeof readState>>;
+/** Distinguish a safe initial preparation from native edits requiring administrator attention. */
+export function teamEnrollmentState(state: NativeState): TeamEnrollmentState {
+  const roles = state.config.gateway.roles;
+  const member = roles.definitions.member;
+  if (!member || member.scopes.includes("operator.admin"))
+    return "configuration_required";
+  const pending = roles.definitions[pendingRole];
+  if (pending && !isDeepStrictEqual(pending, pendingPolicy))
+    return "configuration_required";
+  if (roles.default === pendingRole)
+    return pending ? "ready" : "configuration_required";
+  return roles.definitions[roles.default]
+    ? "preparation_required"
+    : "configuration_required";
+}
+
 export function requireTeam(state: NativeState) {
   const roles = state.config.gateway.roles;
   if (

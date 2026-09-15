@@ -11,8 +11,20 @@ screens, each person’s email appears beneath their name so removal stays visib
 When configured, Connections appears in People after the existing administrator
 check succeeds. Link metadata comes from composition; session refresh adds no
 native request and the account page remains available without a native check.
-Local mode does not offer company enrollment. A native preparation action appears
-only after the server reports that it is required.
+Local mode does not offer company enrollment. The People read observes native enrollment
+configuration after verifying current administrator authority. Company mode offers
+Enable team access before Add person when initial preparation is needed. Conflicting
+native role configuration directs the administrator to OpenClaw. A failed read never
+implies missing setup; denied authority hides administrator navigation/actions and
+disables an already-open mutation dialog. Failed mutations refresh observation without
+replaying writes. If native setup changes while adding someone, preparation stays
+inside that dialog and preserves the entered fields.
+
+Desktop (1280px) and mobile (390px) browser checks cover setup, retained form input,
+conflicting native setup and authorization denial, using controlled REST responses.
+Native observation unit tests cover readiness/conflicts and administrator denial;
+real PostgreSQL/REST tests cover the response and session boundary. These checks do
+not replace company-login acceptance against a running native installation.
 
 Build with `pnpm access:web:build`. The service hosts the resulting assets; development
 Vite is available through `pnpm access:web:dev` on port 5173, proxying access APIs

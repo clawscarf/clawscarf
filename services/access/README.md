@@ -33,6 +33,10 @@ operator tooling. Treat that output as a temporary credential; never log it as d
 
 For the assembled single-host path, use the [team profile](../../deploy/local/README.md#team-profile-under-qualification).
 
+The [People interface](web/README.md) observes native enrollment readiness on its
+existing list read; it does not store a second readiness flag or change native
+configuration during refresh. REST and CLI list responses include `enrollment`.
+
 Team identity uses `mode: "oidc"`, `issuer`, `clientId`, `clientSecretFile`,
 `administratorSubject` and `administratorEmail`. Team mode requires an HTTPS origin.
 The provider callback is `<origin>/_clawscarf/callback`; its post-logout callback is

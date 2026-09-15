@@ -37,6 +37,10 @@ await test(
     let administrator = true,
       nativeChecks = 0;
     const native: NativeAuthority = {
+      observeTeam: () =>
+        administrator
+          ? Promise.resolve("ready")
+          : Promise.reject(new NativeFailure("access_denied")),
       verifyAdministrator: () => {
         nativeChecks++;
         if (!administrator) throw new NativeFailure("access_denied");

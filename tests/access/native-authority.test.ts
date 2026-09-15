@@ -20,12 +20,18 @@ function fixture(
     other = "clawscarf:other";
   let revoked = false,
     writes = 0;
+  const pendingScopes: string[] = [];
   const config = {
     gateway: {
       roles: {
         default: pendingRole,
         definitions: {
-          [pendingRole]: pendingPolicy,
+          [pendingRole]: { ...pendingPolicy, scopes: pendingScopes },
+          member: {
+            agents: "*",
+            scopes: ["operator.read"],
+            sessions: { others: "none" },
+          },
           admin: {
             agents: "*",
             scopes: ["operator.admin"],
@@ -112,6 +118,7 @@ function fixture(
     return work(gateway);
   };
   return {
+    config,
     authority: new OpenClawAuthority("https://team.example", { connect }),
     identity,
     other,
@@ -188,4 +195,63 @@ await test("denial of acting admin does not confirm revocation of a different pe
       error instanceof NativeFailure && error.code === "access_denied",
   );
   assert.equal(f.writes(), 1);
+});
+
+await test("team readiness observes preparation and conflicting native edits without mutation", async () => {
+  const f = fixture();
+  const actor = { identity: f.identity, sessionHash: "hash" };
+  assert.equal(await f.authority.observeTeam(actor, "credential"), "ready");
+  f.config.gateway.roles.default = "admin";
+  assert.equal(
+    await f.authority.observeTeam(actor, "credential"),
+    "preparation_required",
+  );
+  f.config.gateway.roles.definitions.member.scopes = ["operator.admin"];
+  assert.equal(
+    await f.authority.observeTeam(actor, "credential"),
+    "configuration_required",
+  );
+  f.config.gateway.roles.definitions.member.scopes = ["operator.read"];
+  f.config.gateway.roles.definitions[pendingRole] = {
+    ...pendingPolicy,
+    scopes: ["operator.read"],
+  };
+  assert.equal(
+    await f.authority.observeTeam(actor, "credential"),
+    "configuration_required",
+  );
+  assert.equal(f.writes(), 0);
+});
+await test("team observation requires native administrator authority", async () => {
+  let configReads = 0;
+  const connect: typeof withGateway = (_options, work) =>
+    work({
+      scopes: ["operator.read"],
+      read: (method) => {
+        if (method === "users.self")
+          return Promise.resolve({
+            profile: {
+              id: "member",
+              emails: ["clawscarf:member"],
+              updatedAt: 1,
+            },
+          });
+        if (method === "exec.approvals.get")
+          throw new NativeFailure("access_denied");
+        configReads++;
+        return Promise.resolve({});
+      },
+      mutate: () => {
+        throw Error("Observation must never write");
+      },
+    });
+  const authority = new OpenClawAuthority("https://team.example", { connect });
+  await assert.rejects(
+    authority.observeTeam(
+      { identity: "clawscarf:member", sessionHash: "hash" },
+      "credential",
+    ),
+    { code: "access_denied" },
+  );
+  assert.equal(configReads, 0);
 });

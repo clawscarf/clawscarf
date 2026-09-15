@@ -362,6 +362,7 @@ verified the administrator through OIDC. Company login, native preparation and
 member enrollment use the existing Access service and People page; no RawClaw service
 is involved. TLS transport tests cover trusted/untrusted certificates on both listeners and a
 private management probe whose public routing Host differs from its certificate name.
-The fresh-admin preparation interaction still needs refinement and the complete
+The People page observes preparation requirements before enrollment; its desktop/mobile
+interaction has controlled-response browser coverage. The complete company-login
 browser journey remains unqualified. Do not expose this preview as a
 qualified team deployment on the strength of configuration tests.

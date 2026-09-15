@@ -220,6 +220,10 @@ export type ListPeopleResponses = {
      */
     200: {
         people: Array<User>;
+        /**
+         * Current native enrollment configuration, observed without mutation after administrator authorization.
+         */
+        enrollment: 'ready' | 'preparation_required' | 'configuration_required';
     };
 };
 

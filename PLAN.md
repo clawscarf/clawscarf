@@ -163,10 +163,8 @@ rules for every remaining change.
       local administrator setup and generic company OIDC for shared deployment. Explicit
       shared-team setup must compose that OIDC service with configured TLS/ingress and
       native/widget endpoints. The single-host operator's explicit team profile now
-      assembles public TLS and OIDC configuration. Fix first-admin People preparation:
-      expose the observed setup need before enrollment, keep its action accessible,
-      and hide administrator actions when current authorization is denied. Real shared
-      deployment and browser enrollment still require acceptance. Component OIDC
+      assembles public TLS and OIDC configuration. Real shared deployment and browser
+      enrollment still require acceptance, including the first-admin preparation flow. Component OIDC
       support or a healthy TLS listener alone does not complete this deployment path. Require an explicit
       first administrator; native roles thereafter, no first-login takeover. Verify two
       identities, role denial/handover, stable display identities, direct bookmarks,

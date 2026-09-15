@@ -321,9 +321,18 @@
                       "items": {
                         "$ref": "#/components/schemas/User"
                       }
+                    },
+                    "enrollment": {
+                      "type": "string",
+                      "enum": [
+                        "ready",
+                        "preparation_required",
+                        "configuration_required"
+                      ],
+                      "description": "Current native enrollment configuration, observed without mutation after administrator authorization."
                     }
                   },
-                  "required": ["people"],
+                  "required": ["people", "enrollment"],
                   "additionalProperties": false
                 }
               }
