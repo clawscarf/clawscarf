@@ -21,8 +21,8 @@ OpenShell's own supervisor is privileged during setup and then confines the
 application process. This is not an unprivileged container supervisor or protection
 against an administrator of the Docker host. One runtime serves one trusted team.
 Whole-runtime confinement does not isolate shell execution from the Gateway's
-own loopback listener. Native member execution needs a separate sandbox boundary;
-the standalone team execution configuration is not qualified yet.
+own loopback listener. The separate SSH worker has local native member/administrator
+execution acceptance; native browser execution and release qualification remain open.
 
 The runtime's `/home/node` needs its own named volume. It includes OpenClaw state,
 workspaces, native credentials, extensions and browser state. The image's
@@ -79,7 +79,7 @@ OpenShell's terminal Error phase may require explicit replacement rather than st
 preserve and reattach its named volume. The current helper intentionally does not
 delete failed compute or volumes automatically. Access-companion configuration,
 native state initialization and model routing have their own owners and still need
-the combined clean-install qualification in the plan.
+the combined clean-install qualification in [TODO.md](../../TODO.md).
 
 ## Application transport
 
@@ -182,44 +182,48 @@ comes from `docker stats --no-stream`, and controller RSS from the host process 
 ## Execution placement
 
 The outer sandbox contains the Gateway and native plugins together. It does not
-separate member shell execution from the Gateway's loopback listeners. The shipped
-member preset therefore requires native sandboxing; no working member execution
-backend is claimed. Chromium also cannot launch with its sandbox under this policy.
+separate member shell execution from the Gateway's loopback listeners. Member
+roles therefore require native sandboxing. The selected execution composition uses
+OpenClaw's supported [SSH backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/gateway/sandboxing/ssh-backend.md)
+and an externally operated [SSH worker](../execution/worker/README.md). The Gateway
+receives only that worker's client key and pinned host key. Controller credentials
+and Docker sockets stay outside both application and worker.
 
-Source review of pinned OpenClaw 2026.9.4/OpenShell 0.0.116 identifies two candidate
-worker arrangements, neither selected or qualified here:
+OpenClaw's native OpenShell backend needs controller-user authority for worker
+lifecycle. Our local controller's mTLS identity is broader than worker execution,
+so ClawScarf does not copy it into the Gateway. The external operator owns worker
+creation, persistence and stopping through [local setup](../local/README.md).
 
-- The [native OpenShell backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/openshell/src/backend.ts)
-  manages sibling workers through the external controller. A company-OIDC principal
-  can be an ordinary user in a dedicated execution workspace, with sandbox read/write
-  and config-read scopes. This permits lifecycle operations on every worker in that
-  workspace, not exec-only access to one worker. The Gateway's outer sandbox must
-  remain outside that workspace. Our local controller's mTLS credentials have broader
-  authority and must not be copied into the Gateway. Precreating a worker or copying
-  its SSH token does not remove the controller-authentication requirement.
-- OpenClaw's native SSH backend can use worker-specific SSH credentials against an
-  ordinary SSH endpoint. An external operator would own worker lifecycle. OpenShell's
-  current `ssh-proxy` still authenticates the controller user, so it is not such an
-  endpoint by itself.
+Neither SSH nor the native OpenShell backend supports native sandboxed-browser
+provisioning in this release. The [shared browser](../execution/browser/README.md)
+instead exposes a native attach-only remote CDP profile, with explicit native
+host-browser permission. Chromium runs in a separate nonroot container with its own
+sandbox. An [isolated network and public-web proxy](../execution/network/README.md)
+prevent browser access to raw Gateway, controller, metadata and private services.
+Chromium cannot retain its namespace sandbox inside the selected OpenShell supervisor,
+which denies the required namespace/syscall operations; no unsandboxed fallback is used.
 
-Neither backend supports native sandboxed browser execution in this release; the
-[native guard](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/agents/sandbox/context.ts)
-rejects it. Browser placement requires its own supported integration and acceptance.
-The conservative current configuration keeps member execution unavailable while this
-decision remains open; it never mounts controller keys or a Docker socket into OpenClaw.
+One trusted team shares worker files and browser logins. SSH session directories
+share one worker user; browser users share profile cookies/state. Individual login
+and native roles remain application controls, not per-person OS isolation. Native
+member roles remove write/edit tools and retain read-only agent workspace inputs;
+worker scratch files remain shared execution state.
 
-A container-only candidate combines the
-[native SSH backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/gateway/sandboxing/ssh-backend.md)
-with a separately operated SSH worker and a
-[remote CDP browser](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/tools/browser/remote.md).
-The latter would use an attach-only profile, native host-browser permission and
-Chromium's own sandbox in a non-root container. It would not use native per-session
-browser provisioning. The operator must prevent both workers from reaching raw
-Gateway forwards and controller endpoints; separate containers alone do not prove
-that denial.
+Worker and browser component confinement/persistence tests pass. Fresh combined
+startup and administrator login pass. The assembled native execution test passed
+for a temporary member and the administrator: commands and file reads ran as UID
+1000 on the SSH worker, Gateway configuration was absent, and Gateway loopback,
+host-forwarded Gateway, controller and undeclared public-egress probes failed. Member
+administrative RPC was denied; test identities, sessions and files were removed.
+Native SSH and CDP use the owned `runtime.clawscarf.internal` relay
+with exact-host TCP policies. Its runtime-facing SSH listener is inaccessible from
+the browser network, and it forwards only to the operator-owned worker port.
+See [remaining runtime acceptance](../../TODO.md).
 
-This candidate awaits the owner's scope decision and live qualification. SSH
-session directories share a worker user, and one remote browser profile shares
-cookies/state across its users. It fits a trusted-team boundary only if those
-sharing rules are acceptable. It does not establish per-person OS/browser isolation.
-Worker files also become persistent state requiring explicit lifecycle ownership.
+Native browser navigation currently fails before Chromium navigates: OpenClaw
+resolves the public destination in the Gateway for its navigation safety check,
+and the whole-Gateway OpenShell policy denies that DNS lookup. Successful CDP
+readiness and browser-container public-web tests do not qualify this path.
+Whole-runtime OpenShell confinement remains required. Resolve this integration
+through supported upstream interfaces; do not disable native navigation checks
+or remove confinement to make acceptance pass.

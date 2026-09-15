@@ -36,7 +36,7 @@ export function cleanHeaders(
     )
       delete headers[name];
 }
-/** Adapts RawClaw's streaming proxy to one configured server, without fleet lookup. */
+/** Streaming proxy for one configured team server. */
 export function createIngress(
   authority: IngressAuthority,
   routes: readonly RuntimeRoute[],

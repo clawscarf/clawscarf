@@ -1,3 +1,10 @@
+import { verifyRelayConfiguration } from "./relay.js";
+import { requireNoConnectionsChange } from "./connections-runtime.js";
+import { verifyExecutionListener } from "./execution.js";
+import {
+  verifyBrowserListener,
+  verifyBrowserConfiguration,
+} from "./browser.js";
 import { probeTeamAccess } from "./team.js";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -7,12 +14,20 @@ import { readState, resourceNames, withLocalLock } from "./state.js";
 import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
 import { startProcess, type ManagedProcess } from "./supervisor.js";
-import { ensureRuntime, stopRuntime } from "./runtime.js";
+import {
+  ensureRuntime,
+  stopRuntime,
+  ensureExecutionRuntime,
+  stopExecutionRuntime,
+} from "./runtime.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { LocalSetupError, run } from "./process.js";
 import { localLoginCode, verifyLocalAdministrator } from "./login.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
-import { verifyRuntimeBinding } from "./runtime-binding.js";
+import {
+  verifyRuntimeBinding,
+  verifyExecutionBinding,
+} from "./runtime-binding.js";
 import { requireNoUpgrade } from "./upgrade-state.js";
 
 export async function launchLocal(
@@ -41,12 +56,17 @@ export async function launchLocal(
   const name = resourceNames(state).sandbox;
   await withLocalLock(directory, async () => {
     await requireNoUpgrade(directory);
+    await requireNoConnectionsChange(directory, state.ownerId);
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
     await verifyLocalNetworks(directory, state);
+    await verifyBrowserConfiguration(directory, state);
+    await verifyRelayConfiguration(directory, state);
     const children: ManagedProcess[] = [];
     const lifetime = { stopped: false, childExited: false };
     let runtimeAttempted = false;
+    let executionAttempted = false;
+    let relayAttempted = false;
     const signal = Promise.withResolvers<undefined>();
     const cancellation = new AbortController();
     const stopSignal = () => {
@@ -116,6 +136,49 @@ export async function launchLocal(
           { env, timeout: 5000 },
         );
       });
+      if (state.input.execution) {
+        report("Starting execution worker…");
+        executionAttempted = true;
+        const execution = await ensureExecutionRuntime(directory, state, env);
+        if (!execution)
+          throw new LocalSetupError(
+            "configuration_changed",
+            "The execution worker is not configured.",
+          );
+        await spawn(
+          state.input.openshellCli,
+          [
+            "forward",
+            "start",
+            String(state.input.execution.port),
+            execution.name,
+            "--gateway",
+            name,
+          ],
+          "execution.log",
+        );
+        const port = state.input.execution.port;
+        await waitFor(() => verifyExecutionListener(directory, port));
+        await verifyExecutionBinding(state, execution);
+      }
+      if (state.input.relayImage) {
+        report("Starting execution relay…");
+        relayAttempted = true;
+        await compose(directory, ["up", "-d", "execution-relay"]);
+        if (state.input.browser) {
+          const browserPort = state.input.browser.port;
+          await waitFor(() => verifyBrowserListener(directory, browserPort));
+        }
+        for (const service of [
+          "execution-relay",
+          ...(state.input.browser ? ["browser", "browser-egress"] : []),
+        ])
+          await spawn(
+            "docker",
+            ["compose", "-f", join(directory, "compose.json"), "wait", service],
+            `${service}-wait.log`,
+          );
+      }
       report("Starting OpenClaw…");
       runtimeAttempted = true;
       const runtime = await ensureRuntime(directory, state, env);
@@ -223,6 +286,22 @@ Press Ctrl+C to stop. Your data will be retained.`);
       if (runtimeAttempted)
         try {
           await stopRuntime(directory, state, env);
+        } catch (error) {
+          errors.push(error);
+        }
+      if (executionAttempted)
+        try {
+          await stopExecutionRuntime(directory, state, env);
+        } catch (error) {
+          errors.push(error);
+        }
+      if (relayAttempted)
+        try {
+          await compose(directory, [
+            "stop",
+            "execution-relay",
+            ...(state.input.browser ? ["browser", "browser-egress"] : []),
+          ]);
         } catch (error) {
           errors.push(error);
         }

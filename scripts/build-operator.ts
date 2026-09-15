@@ -22,6 +22,9 @@ for (const path of [
   "services/connections/migrations",
   "release/components.json",
   "deploy/openshell/policy.yaml",
+  "deploy/execution/worker/policy.yaml",
+  "deploy/execution/browser/seccomp.json",
+  "deploy/execution/browser/LICENSE.playwright",
 ]) {
   const destination = new URL(`../dist/${path}`, import.meta.url);
   await mkdir(new URL(".", destination), { recursive: true });

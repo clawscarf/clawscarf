@@ -14,6 +14,8 @@ import { test, type TestContext } from "node:test";
 import {
   ensureLocalNetworks,
   verifyLocalNetworks,
+  observedBrowserAddress,
+  observedRelayAddress,
 } from "../../scripts/local/networks.js";
 import { LocalSetupError } from "../../scripts/local/process.js";
 import { resourceNames, type LocalState } from "../../scripts/local/state.js";
@@ -41,21 +43,26 @@ const state: LocalState = {
     memory: "2Gi",
   },
 };
-function expected(purpose: "companion" | "runtime") {
+function expected(purpose: "companion" | "runtime" | "browser") {
   const names = resourceNames(state);
   return {
     ownerId: state.ownerId,
     purpose,
-    name: purpose === "companion" ? `${names.project}_default` : names.sandbox,
+    name:
+      purpose === "companion"
+        ? `${names.project}_default`
+        : purpose === "browser"
+          ? `${names.project}_browser`
+          : names.sandbox,
   };
 }
-function network(purpose: "companion" | "runtime", id: string) {
+function network(purpose: "companion" | "runtime" | "browser", id: string) {
   return {
     Id: id,
     Name: expected(purpose).name,
     Driver: "bridge",
     Scope: "local",
-    Internal: false,
+    Internal: purpose === "browser",
     Ingress: false,
     Attachable: purpose === "runtime",
     EnableIPv6: false,
@@ -63,6 +70,9 @@ function network(purpose: "companion" | "runtime", id: string) {
     Options: {
       "com.docker.network.enable_ipv4": "true",
       "com.docker.network.enable_ipv6": "false",
+      ...(purpose === "browser"
+        ? { "com.docker.network.bridge.gateway_mode_ipv4": "isolated" }
+        : {}),
     },
     Labels: {
       "clawscarf.installation": state.ownerId,
@@ -104,7 +114,11 @@ async function fixture(t: TestContext) {
     }
     assert.equal(args[1], "create");
     const purpose =
-      args.at(-1) === expected("runtime").name ? "runtime" : "companion";
+      args.at(-1) === expected("runtime").name
+        ? "runtime"
+        : args.at(-1) === expected("browser").name
+          ? "browser"
+          : "companion";
     creates.push(purpose);
     const marker = join(directory, "private", `network-${purpose}-create.json`);
     assert.deepEqual(
@@ -115,6 +129,11 @@ async function fixture(t: TestContext) {
     assert.ok(args.includes(`clawscarf.installation=${state.ownerId}`));
     assert.ok(args.includes(`clawscarf.network-purpose=${purpose}`));
     assert.equal(args.includes("--attachable"), purpose === "runtime");
+    assert.equal(args.includes("--internal"), purpose === "browser");
+    assert.equal(
+      args.includes("com.docker.network.bridge.gateway_mode_ipv4=isolated"),
+      purpose === "browser",
+    );
     assert.ok(!args.includes("--subnet") && !args.includes("--gateway"));
     if (purpose === behavior.failPurpose && behavior.failure === "before")
       throw Error("external error containing a secret");
@@ -311,5 +330,327 @@ await test("missing, changed or nonprivate receipt records cannot authorize star
     verifyLocalNetworks(f.directory, state, f.command),
     code("network_identity_changed"),
   );
+  assert.equal(f.creates.length, 2);
+});
+
+function browserState(): LocalState {
+  return {
+    ...state,
+    input: {
+      ...state.input,
+      relayImage: `sha256:${"d".repeat(64)}`,
+      browser: {
+        image: `sha256:${"c".repeat(64)}`,
+        egressImage: `sha256:${"e".repeat(64)}`,
+        port: 19223,
+      },
+    },
+  };
+}
+await test("browser reserves only its own isolated bridge and pins an address from observed Docker IPAM", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  assert.deepEqual(f.creates, ["companion", "runtime", "browser"]);
+  const address = await observedBrowserAddress(
+    f.directory,
+    configured,
+    f.command,
+  );
+  assert.equal(address, "172.29.0.254");
+  assert.deepEqual(
+    JSON.parse(
+      await readFile(
+        join(f.directory, "private/network-browser-receipt.json"),
+        "utf8",
+      ),
+    ),
+    {
+      ...expected("browser"),
+      id: "3".repeat(64),
+      browser: { subnet: "172.29.0.0/24", gateway: "172.29.0.1", address },
+    },
+  );
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  await verifyLocalNetworks(f.directory, configured, f.command);
+  assert.equal(f.creates.length, 3);
+  f.commands.length = 0;
+  assert.equal(
+    await observedBrowserAddress(f.directory, state, f.command),
+    undefined,
+  );
+  assert.deepEqual(f.commands, []);
+});
+await test("browser isolation and IPAM drift cannot change the saved address or authorize startup", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  const id = "3".repeat(64);
+  for (const change of [
+    { Internal: false },
+    { Attachable: true },
+    { EnableIPv6: true },
+    { Options: null },
+    { Options: { "com.docker.network.bridge.gateway_mode_ipv4": "nat" } },
+    {
+      Options: {
+        "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
+        "com.docker.network.enable_ipv6": "true",
+      },
+    },
+    ...[
+      [{ Subnet: "172.30.0.0/24", Gateway: "172.30.0.1" }],
+      [{ Subnet: "172.29.0.0/24", Gateway: "172.29.0.2" }],
+      [{ Subnet: "172.29.0.0/24", Gateway: "172.29.0.254" }],
+      [{ Subnet: "172.29.0.0/24", Gateway: "10.0.0.1" }],
+      [{ Subnet: "172.29.0.1/24", Gateway: "172.29.0.2" }],
+      [{ Subnet: "172.29.0.0/30", Gateway: "172.29.0.1" }],
+      [{ Subnet: "8.8.8.0/24", Gateway: "8.8.8.1" }],
+      [{ Subnet: "fd00::/64" }],
+      [{ Subnet: "invalid" }],
+      [{ Subnet: "172.29.0.0/24", IPRange: "172.29.0.128/25" }],
+      [
+        {
+          Subnet: "172.29.0.0/24",
+          Gateway: "172.29.0.1",
+          AuxiliaryAddresses: { reserved: "172.29.0.254" },
+        },
+      ],
+      [{ Subnet: "172.29.0.0/24" }, { Subnet: "10.0.0.0/24" }],
+      [],
+    ].map((Config) => ({ IPAM: { Driver: "default", Options: null, Config } })),
+  ]) {
+    f.networks.set(id, Object.assign(network("browser", id), change));
+    await assert.rejects(
+      observedBrowserAddress(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+    await assert.rejects(
+      verifyLocalNetworks(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+  }
+  assert.equal(f.creates.length, 3);
+});
+await test("browser receipts remain required and cannot be substituted or edited", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  const path = join(f.directory, "private/network-browser-receipt.json");
+  const original = await readFile(path, "utf8");
+  for (const browser of [
+    undefined,
+    { subnet: "172.29.0.0/24", gateway: "172.29.0.1", address: "172.29.0.253" },
+  ]) {
+    await writeFile(
+      path,
+      JSON.stringify({ ...expected("browser"), id: "3".repeat(64), browser }),
+    );
+    await assert.rejects(
+      observedBrowserAddress(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+  }
+  await rm(path);
+  await assert.rejects(
+    observedBrowserAddress(f.directory, configured, f.command),
+    code("network_unprepared"),
+  );
+  await writeFile(path, original, { mode: 0o644 });
+  await assert.rejects(
+    observedBrowserAddress(f.directory, configured, f.command),
+    code("network_identity_changed"),
+  );
+  assert.equal(f.creates.length, 3);
+});
+await test("lost browser allocation response reconciles once and absent uncertain browser creates are never replayed", async (t) => {
+  for (const failure of ["before", "after"]) {
+    const f = await fixture(t);
+    const configured = browserState();
+    f.behavior.failPurpose = "browser";
+    f.behavior.failure = failure;
+    if (failure === "after") {
+      await ensureLocalNetworks(f.directory, configured, f.command);
+      assert.equal(
+        await observedBrowserAddress(f.directory, configured, f.command),
+        "172.29.0.254",
+      );
+    } else {
+      for (let attempt = 0; attempt < 2; attempt++)
+        await assert.rejects(
+          ensureLocalNetworks(f.directory, configured, f.command),
+          code("network_outcome_unknown"),
+        );
+      assert.equal(f.networks.size, 2);
+    }
+    assert.equal(f.creates.length, 3);
+  }
+});
+await test("browser address follows a private Docker subnet of a different size without supplying allocation ranges", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  const command: typeof f.command = async (executable, args) => {
+    const result = await f.command(executable, args);
+    if (args[1] === "create" && args.at(-1) === expected("browser").name) {
+      const observed = f.networks.get(result);
+      assert.ok(observed);
+      observed.IPAM.Config = [{ Subnet: "10.75.2.0/27", Gateway: "10.75.2.1" }];
+    }
+    return result;
+  };
+  await ensureLocalNetworks(f.directory, configured, command);
+  assert.equal(
+    await observedBrowserAddress(f.directory, configured, command),
+    "10.75.2.30",
+  );
+});
+
+await test("runtime relay pins its own static address independently of the isolated browser and observes it without mutations", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  const command: typeof f.command = async (executable, args) => {
+    const result = await f.command(executable, args);
+    if (args[1] === "create" && args.at(-1) === expected("runtime").name) {
+      const observed = f.networks.get(result);
+      assert.ok(observed);
+      observed.IPAM.Config = [{ Subnet: "10.76.2.0/27", Gateway: "10.76.2.1" }];
+    }
+    return result;
+  };
+  await ensureLocalNetworks(f.directory, configured, command);
+  assert.equal(
+    await observedRelayAddress(f.directory, configured, command),
+    "10.76.2.30",
+  );
+  assert.equal(
+    await observedBrowserAddress(f.directory, configured, command),
+    "172.29.0.254",
+  );
+  assert.deepEqual(
+    JSON.parse(
+      await readFile(
+        join(f.directory, "private/network-runtime-receipt.json"),
+        "utf8",
+      ),
+    ),
+    {
+      ...expected("runtime"),
+      id: "2".repeat(64),
+      relay: {
+        subnet: "10.76.2.0/27",
+        gateway: "10.76.2.1",
+        address: "10.76.2.30",
+      },
+    },
+  );
+  await verifyLocalNetworks(f.directory, configured, command);
+  await ensureLocalNetworks(f.directory, configured, command);
+  assert.equal(f.creates.length, 3);
+  f.commands.length = 0;
+  assert.equal(
+    await observedRelayAddress(f.directory, state, command),
+    undefined,
+  );
+  assert.deepEqual(f.commands, []);
+});
+
+await test("runtime relay rejects changed network topology, IPAM or receipt instead of rebinding SSH", async (t) => {
+  const f = await fixture(t);
+  const configured = browserState();
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  const id = "2".repeat(64);
+  for (const change of [
+    { Internal: true },
+    { Attachable: false },
+    { EnableIPv6: true },
+    { Options: { "com.docker.network.bridge.gateway_mode_ipv4": "isolated" } },
+    {
+      IPAM: {
+        Driver: "default",
+        Options: null,
+        Config: [{ Subnet: "10.75.0.0/16", Gateway: "10.75.0.1" }],
+      },
+    },
+    {
+      IPAM: {
+        Driver: "default",
+        Options: null,
+        Config: [{ Subnet: "172.29.0.0/24", Gateway: "172.29.0.254" }],
+      },
+    },
+    {
+      IPAM: {
+        Driver: "default",
+        Options: null,
+        Config: [
+          {
+            Subnet: "172.29.0.0/24",
+            Gateway: "172.29.0.1",
+            IPRange: "172.29.0.128/25",
+          },
+        ],
+      },
+    },
+  ]) {
+    f.networks.set(id, Object.assign(network("runtime", id), change));
+    await assert.rejects(
+      observedRelayAddress(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+    await assert.rejects(
+      verifyLocalNetworks(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+  }
+  f.networks.set(id, network("runtime", id));
+  const path = join(f.directory, "private/network-runtime-receipt.json");
+  for (const relay of [
+    undefined,
+    { subnet: "172.29.0.0/24", gateway: "172.29.0.1", address: "172.29.0.253" },
+  ]) {
+    await writeFile(
+      path,
+      JSON.stringify({ ...expected("runtime"), id, relay }),
+    );
+    await assert.rejects(
+      observedRelayAddress(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+    await assert.rejects(
+      ensureLocalNetworks(f.directory, configured, f.command),
+      code("network_identity_changed"),
+    );
+  }
+  await rm(path);
+  await assert.rejects(
+    observedRelayAddress(f.directory, configured, f.command),
+    code("network_unprepared"),
+  );
+  assert.equal(f.creates.length, 3);
+});
+
+await test("execution-only relay reserves no browser network and reconciles lost allocation without replay", async (t) => {
+  const f = await fixture(t);
+  const configured: LocalState = {
+    ...state,
+    input: {
+      ...state.input,
+      relayImage: `sha256:${"d".repeat(64)}`,
+      execution: {
+        image: `sha256:${"c".repeat(64)}`,
+        port: 18803,
+        cpu: "1",
+        memory: "2Gi",
+      },
+    },
+  };
+  f.behavior.failure = "after";
+  await ensureLocalNetworks(f.directory, configured, f.command);
+  assert.deepEqual(f.creates, ["companion", "runtime"]);
+  assert.equal(
+    await observedRelayAddress(f.directory, configured, f.command),
+    "172.29.0.254",
+  );
+  await ensureLocalNetworks(f.directory, configured, f.command);
   assert.equal(f.creates.length, 2);
 });

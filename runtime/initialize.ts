@@ -18,6 +18,15 @@ const inputSchema = z.strictObject({
   ownerId: z.uuid(),
   serverId: z.uuid(),
   configuration: z.string().min(1),
+  executionCredential: z
+    .strictObject({
+      clientKey: z
+        .string()
+        .startsWith("-----BEGIN OPENSSH PRIVATE KEY-----\n")
+        .max(8192),
+      knownHosts: z.string().min(1).max(8192),
+    })
+    .optional(),
   modelCredential: z
     .strictObject({
       token: z
@@ -82,6 +91,19 @@ export async function initializeHome(
       join(staging, "openclaw.json"),
       join(staging, marker),
     ];
+    if (input.executionCredential) {
+      const directory = join(staging, "clawscarf-execution");
+      await mkdir(directory, { mode: 0o700 });
+      ownedPaths.push(directory);
+      for (const [name, value] of Object.entries({
+        client_ed25519: input.executionCredential.clientKey,
+        known_hosts: input.executionCredential.knownHosts,
+      })) {
+        const path = join(directory, name);
+        await writeFile(path, value, { flag: "wx", mode: 0o600 });
+        ownedPaths.push(path);
+      }
+    }
     if (input.modelCredential) {
       const directory = join(staging, "clawscarf-models");
       await mkdir(directory, { mode: 0o700 });

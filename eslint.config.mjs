@@ -32,6 +32,7 @@ export default tseslint.config(
     files: [
       "apps/**/*.ts",
       "runtime/**/*.ts",
+      "deploy/execution/**/*.ts",
       "plugins/access/src/**/*.ts",
       "services/**/*.ts",
       "services/**/*.tsx",

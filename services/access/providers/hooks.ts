@@ -1,5 +1,5 @@
 import { z } from "zod";
-/** RawClaw hook projection: exact native built-in URLs, never arbitrary plugin prefixes. */
+/** Exact native built-in hook URLs, never arbitrary plugin prefixes. */
 const hooksSchema = z.object({
   enabled: z.boolean().optional(),
   token: z.unknown().optional(),

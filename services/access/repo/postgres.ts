@@ -43,7 +43,7 @@ export interface InitialAdministrator {
   email: string;
   name: string;
 }
-/** Selected RawClaw Postgres session mechanics, without organization or host records. */
+/** Durable sessions and enrollment for one team server. */
 export class PostgresAccessStore implements AccessStore {
   private readonly logoutProtection: SessionLogoutProtection;
   constructor(

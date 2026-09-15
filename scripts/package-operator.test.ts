@@ -43,8 +43,20 @@ await test(
     assert.ok(
       !listing.includes("apps/companion") && !listing.includes(".test."),
     );
+    assert.ok(!listing.includes("services/connections/runtime/"));
     await execute("tar", ["-xzf", archive, "-C", directory]);
     const cwd = join(directory, "package");
+    for (const path of [
+      "deploy/execution/worker/policy.yaml",
+      "deploy/execution/browser/seccomp.json",
+      "deploy/execution/browser/LICENSE.playwright",
+    ]) {
+      assert.deepEqual(
+        await readFile(join(cwd, path)),
+        await readFile(join(root, path)),
+        `The archive must retain its execution input: ${path}`,
+      );
+    }
     await execute(
       "pnpm",
       ["install", "--prod", "--frozen-lockfile", "--ignore-scripts"],
@@ -60,6 +72,16 @@ await test(
         [`scripts/${command}.js`, "--help"],
         { cwd, timeout: 15000 },
       );
+      assert.match(stdout, /Usage:/);
+    }
+    for (const args of [
+      ["scripts/local.js", "connections", "configure", "--help"],
+      ["services/connections/credential-command.js", "--help"],
+    ]) {
+      const { stdout } = await execute(process.execPath, args, {
+        cwd,
+        timeout: 15000,
+      });
       assert.match(stdout, /Usage:/);
     }
     const configuration = join(directory, "models.json");

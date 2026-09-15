@@ -8,7 +8,50 @@ import { localLoginCode } from "./local/login.js";
 import { readState } from "./local/state.js";
 import { resolve } from "node:path";
 import { upgradeLocal } from "./local/upgrade.js";
+import { operateConnectionsRuntime } from "./local/connections-runtime.js";
 const command = new Command("clawscarf-local");
+const connections = command
+  .command("connections")
+  .description(
+    "Observe or explicitly configure the stopped native Connections integration",
+  );
+connections
+  .command("observe")
+  .requiredOption(
+    "--directory <path>",
+    "Stopped private installation directory; start only its controller",
+  )
+  .action(async (options: { directory: string }) => {
+    process.stdout.write(
+      JSON.stringify(
+        await operateConnectionsRuntime(options.directory, { kind: "observe" }),
+      ) + "\n",
+    );
+  });
+connections
+  .command("configure")
+  .requiredOption(
+    "--directory <path>",
+    "Stopped private installation directory; start only its controller",
+  )
+  .requiredOption(
+    "--credential-file <path>",
+    "Private file containing the scoped broker token",
+  )
+  .requiredOption(
+    "--yes",
+    "Replace only the Connections endpoint and credential; preserve native disablement and other settings",
+  )
+  .action(async (options: { directory: string; credentialFile: string }) => {
+    process.stdout.write(
+      JSON.stringify(
+        await operateConnectionsRuntime(options.directory, {
+          kind: "configure",
+          credentialFile: options.credentialFile,
+        }),
+      ) + "\n",
+    );
+  });
 command
   .command("upgrade")
   .requiredOption(

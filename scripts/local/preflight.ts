@@ -89,7 +89,12 @@ export async function verifyLocalPorts(
   state: LocalState,
   command: typeof run = run,
 ) {
-  for (const [name, port] of Object.entries(state.input.ports)) {
+  const ports = {
+    ...state.input.ports,
+    ...(state.input.execution ? { execution: state.input.execution.port } : {}),
+    ...(state.input.browser ? { browser: state.input.browser.port } : {}),
+  };
+  for (const [name, port] of Object.entries(ports)) {
     const host =
       state.input.team && ["application", "widgets"].includes(name)
         ? "0.0.0.0"

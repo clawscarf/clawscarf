@@ -5,7 +5,7 @@ export interface TrackedStream {
   checkedAt: number;
   close(): void;
 }
-/** RawClaw's revocation rechecks: healthy connections have no maximum lifetime. */
+/** Revocation rechecks: healthy connections have no maximum lifetime. */
 export class SessionStreams {
   readonly active = new Set<TrackedStream>();
   private readonly pending = new Set<string>();

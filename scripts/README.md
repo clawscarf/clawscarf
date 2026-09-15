@@ -22,7 +22,7 @@ the pinned SDK dependencies as described in [pack setup](../packs/README.md).
 
 [check-docs.ts](check-docs.ts) checks tracked and unignored new Markdown files for
 relative file links, heading anchors, documented root pnpm commands and completed
-tasks in [PLAN.md](../PLAN.md). It does not establish behavioral accuracy or check
+tasks in [TODO.md](../TODO.md). It does not establish behavioral accuracy or check
 remote links. [Its regression tests](check-docs.test.ts) cover missing/moved targets,
 invalid anchors, machine-local paths, stale commands and nested checklist entries.
 
@@ -55,14 +55,14 @@ pnpm exec tsx scripts/package-operator.ts --output .local/operator-artifacts
 
 The command uses the system tar utility and emits a development `.tgz` plus `SHA256SUMS`.
 It refuses an existing output directory. The archive includes its frozen dependency
-lockfile, required migrations/policy/SDK clients, Python transport and notices; it
+lockfile, required migrations/policies/SDK clients, browser seccomp profile, Python transport and notices; it
 excludes companion servers, contributor tooling and installation state. It does not
 download images, include provider credentials, publish a release or build missing
 components. Its README links to the included [archive instructions](../release/operator.md).
 
 The opt-in archive acceptance extracts into a temporary directory outside the
 checkout, installs only frozen production dependencies and starts all four compiled
-command entry points, then renders model configuration without a provider call:
+command entry points, verifies retained execution policies/notices, then renders model configuration without a provider call:
 
 ```sh
 CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.test.ts
@@ -81,7 +81,7 @@ Adapted from RawClaw revision
 [`f37a6e786fdd88857c21bd32140567874e281a8c`](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c):
 [documentation checker](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/scripts/check-docs.ts),
 [regression tests](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/tests/documentation.test.ts), root TypeScript,
-ESLint and package configuration. The checker uses ClawScarf's plan owner and also
+ESLint and package configuration. The checker uses ClawScarf's task checklist and also
 checks new files before they are staged. Strict typed lint covers the tooling;
 The extracted access and Connections services, UI and generated contracts are checked;
 unrelated donor hosting and billing commands are not copied.

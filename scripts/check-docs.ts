@@ -9,7 +9,7 @@ const textParser = new Parser();
 const sourceFile =
   /^[\w.@][\w.@/-]*\.(?:[cm]?tsx?|md|json|ya?ml|css|sh|html|sql)$/;
 
-/** References, commands and plan hygiene; behavioral claims still require review. */
+/** References, commands and checklist hygiene; behavioral claims still require review. */
 export async function checkDocuments(root: string, files: readonly string[]) {
   const packageJson: unknown = JSON.parse(
     await readFile(resolve(root, "package.json"), "utf8"),
@@ -45,7 +45,7 @@ export async function checkDocuments(root: string, files: readonly string[]) {
       markdown
         .walkTokens(await document(path), (token) => {
           if (
-            file === "PLAN.md" &&
+            file === "TODO.md" &&
             token.type === "list_item" &&
             token.checked === true
           )

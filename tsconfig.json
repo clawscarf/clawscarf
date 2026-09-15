@@ -24,7 +24,8 @@
     "tests/**/*.ts",
     "services/**/*.tsx",
     "runtime/**/*.ts",
-    "apps/**/*.ts"
+    "apps/**/*.ts",
+    "deploy/execution/**/*.ts"
   ],
   "exclude": [
     "services/access/generated/client",

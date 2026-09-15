@@ -161,5 +161,8 @@ export function resourceNames(state: LocalState) {
     sandbox: `cs-${suffix}`,
     volume: `clawscarf-${suffix}-home`,
     databaseVolume: `clawscarf-${suffix}-postgres`,
+    workerSandbox: `csw-${suffix}`,
+    workerVolume: `clawscarf-${suffix}-worker`,
+    browserVolume: `clawscarf-${suffix}-browser`,
   };
 }

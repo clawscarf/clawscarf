@@ -41,7 +41,7 @@ await test("documentation checks resolve nested links, reference links, encoded 
 await test("documentation checks reject moved files, stale anchors, machine-local links and obsolete scripts", async () => {
   const f = await fixture({
     "README.md":
-      "[moved](src/routes.ts)\n\n[heading](docs/guide.md#old-heading)\n\n[directory](docs)\n\n[local](/Users/example/rawclaw/src/server.ts)\n\n[outside](../outside.md)\n\n`authentication.ts`\n\n```sh\npnpm obsolete\n```\n\n`pnpm run removed`\n",
+      "[moved](src/routes.ts)\n\n[heading](docs/guide.md#old-heading)\n\n[directory](docs)\n\n[local](/Users/example/clawscarf/src/server.ts)\n\n[outside](../outside.md)\n\n`authentication.ts`\n\n```sh\npnpm obsolete\n```\n\n`pnpm run removed`\n",
     "docs/guide.md": "# Current heading\n",
   });
   try {
@@ -66,16 +66,16 @@ await test("documentation checks reject moved files, stale anchors, machine-loca
   }
 });
 
-await test("the active plan accepts open and deferred work but rejects completed tasks at any depth", async () => {
+await test("the task checklist accepts open and deferred work but rejects completed tasks at any depth", async () => {
   const f = await fixture({
-    "PLAN.md":
-      "# Plan\n\n- [ ] Pending acceptance\n  - [x] Completed subtask\n- [X] Completed batch\n\n## Future ideas\n\n- [ ] Optional integration\n\n```md\n- [x] Example syntax\n```\n",
+    "TODO.md":
+      "# Remaining work\n\n- [ ] Pending acceptance\n  - [x] Completed subtask\n- [X] Completed batch\n\n## Future ideas\n\n- [ ] Optional integration\n\n```md\n- [x] Example syntax\n```\n",
   });
   try {
     assert.deepEqual(
-      await checkDocuments(f.root, ["PLAN.md"]),
+      await checkDocuments(f.root, ["TODO.md"]),
       Array<string>(2).fill(
-        "PLAN.md: remove completed tasks from the implementation checklist",
+        "TODO.md: remove completed tasks from the implementation checklist",
       ),
     );
   } finally {

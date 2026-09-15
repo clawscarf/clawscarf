@@ -24,7 +24,7 @@ The recipe copies the root [license](../../LICENSE) and
 `/usr/share/licenses/clawscarf`, together with the incorporated
 [shadcn notice](../../services/connections/web/shared/shadcn/LICENSE.md) as
 `shadcn-MIT.txt`. A local rebuild verified these retained files against build inputs;
-complete release license qualification remains open in the [plan](../../PLAN.md).
+complete release license qualification remains open in the [remaining work](../../TODO.md).
 
 Set `CLAWSCARF_COMPANION_CONFIG` to a private configuration file, then run
 `pnpm companion:start`. The [Compose fragment](../../deploy/compose/companion.yaml)
@@ -38,7 +38,7 @@ Its default mount contains `/run/clawscarf/companion.json`:
 ```
 
 After preparing the Access configuration, database and private management TLS
-files, the disabled local composition can be started with:
+files, the composition with Connections disabled can be started with:
 
 ```sh
 CLAWSCARF_COMPANION_IMAGE=clawscarf-companion:dev \
@@ -53,6 +53,10 @@ and exposes disabled capabilities without account actions. The native People pag
 contains no Connections navigation in this mode.
 
 To enable Connections, add the optional block:
+
+The [local assembly](../../deploy/local/README.md#optional-connections)
+can generate this configuration and prepare its private catalog/database inputs.
+For independently operated companions, supply the equivalent configuration below.
 
 ```json
 {
@@ -87,8 +91,9 @@ listener, using its actual Host. This lets the native plugin use the existing RE
 broker with a scoped bearer credential and a trusted CA. Runtime authentication
 rejects missing, revoked and mixed bearer/session credentials. This origin does
 not expose account management, login, native HTTP or WebSocket paths. Connections
-omitted means this route is absent. Native credential provisioning and activation
-remain explicit operator work; enabling the broker does not configure the plugin.
+omitted means this route is absent. Native credential provisioning and
+[activation](../../deploy/local/README.md#activate-connections) remain explicit
+operator actions; enabling the broker does not configure the plugin.
 
 The process runs the existing Connections maintenance sweep once at startup and
 then once per minute without overlap. It processes persisted cleanup and retention

@@ -40,7 +40,7 @@ await test("initial admission is one explicit identity, with required member iso
   );
 });
 await test("hosted ingress can supply its identity without standalone account navigation", () => {
-  const identity = "rawclaw:6b5dd932-8a12-411e-870a-802959cb54cc";
+  const identity = "clawscarf:6b5dd932-8a12-411e-870a-802959cb54cc";
   const config = initialConfiguration({
     ...input,
     administratorIdentity: identity,

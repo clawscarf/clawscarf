@@ -42,7 +42,7 @@ export interface NativeGateway {
   scopes: readonly string[];
 }
 
-/** Adapted from RawClaw's Gateway boundary; each connection has one acting session. */
+/** Each Gateway connection has one acting session. */
 export async function withGateway<T>(
   options: {
     origin: string;

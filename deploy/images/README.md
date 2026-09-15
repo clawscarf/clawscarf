@@ -22,13 +22,20 @@ The image includes:
   used for Gateway startup and operator commands.
 - The [fresh-volume initializer](../../runtime/initialize.ts), with its compiled entry
   point `/app/clawscarf/initialize-main.js`, used only by operator setup. It atomically
-  initializes optional scoped model credentials with native state and makes a fresh
-  home owner-only (0700). It preserves existing owned configuration and rejects
-  foreign state; repeated initialization does not repair retained permissions.
+  initializes optional scoped model and worker-client credentials with native state,
+  makes a fresh home owner-only (0700), preserves existing owned configuration and
+  rejects foreign state. Repeating initialization does not repair retained permissions.
+- The [worker-volume initializer](../../runtime/initialize-worker.ts), at
+  `/app/clawscarf/initialize-worker-main.js`, used by operator setup with only the
+  separate worker-home volume mounted. It installs that worker's host key and
+  client public key; no Gateway or controller authority enters the worker image.
+- The [browser-volume initializer](../../runtime/initialize-browser.ts), at
+  `/app/clawscarf/initialize-browser-main.js`, used only on the separate owned
+  browser volume. It retains profile state and verifies its private CDP identity.
 - The stopped [Connections configuration helper](../../runtime/configure-connections.ts),
   at `/app/clawscarf/configure-connections-main.js`, and the launcher's scoped credential
-  loader. The invoking operator owns stopped-volume access; provider keys are never
-  supplied to these helpers.
+  loader. The [local activation procedure](../local/README.md#activate-connections)
+  owns their use; provider keys are never supplied to these helpers.
 - The [model configuration helper](../../runtime/models.ts), at
   `/app/clawscarf/models.ts`, for applying a scoped gateway credential and selected
   native model settings through authenticated operator access.
@@ -67,7 +74,7 @@ The recipe copies the root [license](../../LICENSE),
 [third-party notices](../../THIRD_PARTY_NOTICES.md) and pinned upstream license/notice
 files verbatim to `/usr/share/licenses/clawscarf`. Debian package copyright files
 are retained. A local runtime rebuild verified the root notices against build inputs;
-complete release license qualification remains open in the [plan](../../PLAN.md).
+complete release license qualification remains open in the [remaining work](../../TODO.md).
 
 ## Native registration
 
@@ -85,10 +92,12 @@ environment. Its official factory returns no tool for a sandboxed agent context.
 Installing the package does not make it a sandboxed worker tool or establish
 per-member shell isolation. Do not bypass that native restriction.
 
-For a browser profile, configure `browser.headless: true`,
-`browser.noSandbox: false`, `browser.executablePath: /usr/bin/chromium` and use
-OpenClaw's dedicated managed profile. Browser execution remains separate from
-Codex's permissions and from native tool sandbox placement.
+The selected [shared browser](../execution/browser/README.md) runs Chromium
+outside this Gateway image with its sandbox intact. [Local setup](../local/README.md#shared-browser)
+configures the native remote CDP profile, scoped network route and sandboxed-tool
+permission. Browser execution remains separate from Codex permissions and native
+shell placement. Installing Chromium in the Gateway image does not qualify
+launching it inside OpenShell; see the limits below.
 
 ## Verified limits
 

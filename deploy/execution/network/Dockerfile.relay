@@ -1,0 +1,6 @@
+FROM haproxy:3.2.23-alpine@sha256:6343ce34a132a5dceaa24767d739df2bd519f8f7c1079ae39e4821334e8eb42e
+COPY deploy/execution/network/LICENSE.haproxy deploy/execution/network/COPYING.haproxy deploy/execution/network/COPYING.LESSER.haproxy /usr/share/licenses/clawscarf-runtime-relay/
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf-runtime-relay/
+USER 1000:1000
+EXPOSE 2222 9223
+CMD ["haproxy", "-W", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]

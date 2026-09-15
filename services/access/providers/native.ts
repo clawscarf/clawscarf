@@ -20,7 +20,7 @@ import {
   type NativeState,
 } from "./native-state.js";
 
-/** Reuses RawClaw's native enrollment sequence; no native role database. */
+/** Native enrollment without a parallel role database. */
 export class OpenClawAuthority implements NativeAuthority {
   constructor(
     private readonly origin: string,

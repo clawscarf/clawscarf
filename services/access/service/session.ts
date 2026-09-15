@@ -29,7 +29,7 @@ export function safeReturn(value: string): string {
     throw new AccessError("invalid_request", "Unsupported return destination.");
   return value;
 }
-/** RawClaw's browser session mechanics, with standalone admission and one origin. */
+/** Browser sessions with standalone admission and one origin. */
 export class SessionService {
   constructor(
     private readonly store: AccessStore,

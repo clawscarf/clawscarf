@@ -9,7 +9,7 @@ import {
 const key = "dedicated-project-secret-for-provider-test";
 const binding: ConnectorProviderBinding = {
   accountId: "ca_exact",
-  subjectId: "rawclaw_user",
+  subjectId: "clawscarf_user",
   toolkit: "example",
   authConfigurationId: "ac_exact",
 };
@@ -156,7 +156,7 @@ await test("same-service setup creates distinct hosted accounts with the generic
   const input = {
     authConfigurationId: binding.authConfigurationId,
     subjectId: binding.subjectId,
-    callbackUrl: "https://rawclaw.example.test/connections/verify",
+    callbackUrl: "https://clawscarf.example.test/connections/verify",
   };
   const first = await provider.createSetup(input, signal());
   const second = await provider.createSetup(input, signal());

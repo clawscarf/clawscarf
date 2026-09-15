@@ -2,16 +2,33 @@ import { lstat, readFile } from "node:fs/promises";
 import { isIP } from "node:net";
 import { join } from "node:path";
 import { z } from "zod";
+import ipaddr from "ipaddr.js";
+import { isDeepStrictEqual } from "node:util";
 import { LocalSetupError, run } from "./process.js";
 import { ensurePrivateFile, resourceNames, type LocalState } from "./state.js";
 
 const networkId = z.string().regex(/^[a-f0-9]{64}$/);
 const intentSchema = z.strictObject({
   ownerId: z.uuid(),
-  purpose: z.enum(["companion", "runtime"]),
+  purpose: z.enum(["companion", "runtime", "browser"]),
   name: z.string().min(1),
 });
-const receiptSchema = intentSchema.extend({ id: networkId });
+const browserAddressSchema = z.strictObject({
+  subnet: z.string(),
+  address: z.ipv4(),
+  gateway: z.string().optional(),
+});
+const receiptSchema = intentSchema
+  .extend({
+    id: networkId,
+    browser: browserAddressSchema.optional(),
+    relay: browserAddressSchema.optional(),
+  })
+  .refine(
+    (receipt) =>
+      (receipt.purpose === "browser") === (receipt.browser !== undefined) &&
+      (receipt.purpose === "runtime" || receipt.relay === undefined),
+  );
 type Intent = z.infer<typeof intentSchema>;
 const emptyOptions = z.record(z.string(), z.never()).nullable();
 const bridgeOptions = z
@@ -41,6 +58,69 @@ const inspectedSchema = z.object({
       ),
   }),
 });
+
+const browserInspectedSchema = inspectedSchema.extend({
+  Internal: z.literal(true),
+  Attachable: z.literal(false),
+  Options: z.strictObject({
+    "com.docker.network.enable_ipv4": z.literal("true").optional(),
+    "com.docker.network.enable_ipv6": z.literal("false").optional(),
+    "com.docker.network.bridge.gateway_mode_ipv4": z.literal("isolated"),
+  }),
+  IPAM: z.object({
+    Driver: z.literal("default"),
+    Options: emptyOptions,
+    Config: z.tuple([
+      z.strictObject({
+        Subnet: z.string(),
+        Gateway: z.string().optional(),
+        IPRange: z.literal("").optional(),
+        AuxiliaryAddresses: z.record(z.string(), z.never()).optional(),
+      }),
+    ]),
+  }),
+});
+function reservedAddress(
+  config: z.infer<typeof browserInspectedSchema>["IPAM"]["Config"][0],
+) {
+  try {
+    if (!ipaddr.IPv4.isValidCIDRFourPartDecimal(config.Subnet)) changed();
+    const [base, prefix] = ipaddr.IPv4.parseCIDR(config.Subnet);
+    const first = ipaddr.IPv4.networkAddressFromCIDR(config.Subnet);
+    const last = ipaddr.IPv4.broadcastAddressFromCIDR(config.Subnet);
+    if (
+      base.toString() !== first.toString() ||
+      prefix > 29 ||
+      first.range() !== "private" ||
+      last.range() !== "private"
+    )
+      changed();
+    // The final usable host avoids Docker's usual low-address dynamic allocation.
+    const bytes = last.toByteArray();
+    const end = bytes[3];
+    if (end === undefined || end < 1) changed();
+    bytes[3] = end - 1;
+    const address = ipaddr.fromByteArray(bytes).toString();
+    if (config.Gateway) {
+      if (!ipaddr.IPv4.isValidFourPartDecimal(config.Gateway)) changed();
+      const gateway = ipaddr.IPv4.parse(config.Gateway);
+      if (
+        !gateway.match([first, prefix]) ||
+        [first.toString(), last.toString(), address].includes(
+          gateway.toString(),
+        )
+      )
+        changed();
+    }
+    return {
+      subnet: config.Subnet,
+      address,
+      ...(config.Gateway !== undefined ? { gateway: config.Gateway } : {}),
+    };
+  } catch {
+    changed();
+  }
+}
 
 function changed(): never {
   throw new LocalSetupError(
@@ -78,7 +158,11 @@ function equalIntent(actual: Intent, expected: Intent) {
     actual.name === expected.name
   );
 }
-async function records(directory: string, intent: Intent) {
+async function records(
+  directory: string,
+  intent: Intent,
+  reserveRelay = false,
+) {
   const base = join(directory, "private", `network-${intent.purpose}`);
   const intentPath = `${base}-create.json`;
   const receiptPath = `${base}-receipt.json`;
@@ -94,7 +178,8 @@ async function records(directory: string, intent: Intent) {
     if (
       !parsed.success ||
       !equalIntent(parsed.data, intent) ||
-      pending === undefined
+      pending === undefined ||
+      (parsed.data.relay !== undefined) !== reserveRelay
     )
       changed();
     receipt = parsed.data;
@@ -102,7 +187,11 @@ async function records(directory: string, intent: Intent) {
   return { pending: pending !== undefined, receipt, intentPath, receiptPath };
 }
 
-async function observe(intent: Intent, command: typeof run) {
+async function observe(
+  intent: Intent,
+  command: typeof run,
+  reserveRelay = false,
+) {
   try {
     const output = await command("docker", [
       "network",
@@ -127,17 +216,25 @@ async function observe(intent: Intent, command: typeof run) {
     if (!found) return undefined;
     const format =
       '{"Id":{{json .Id}},"Name":{{json .Name}},"Driver":{{json .Driver}},"Scope":{{json .Scope}},"Internal":{{json .Internal}},"Ingress":{{json .Ingress}},"Attachable":{{json .Attachable}},"EnableIPv6":{{json .EnableIPv6}},"Options":{{json .Options}},"Labels":{{json .Labels}},"IPAM":{{json .IPAM}}}';
-    const result = inspectedSchema.safeParse(
-      JSON.parse(
-        await command("docker", [
-          "network",
-          "inspect",
-          "--format",
-          format,
-          found.id,
-        ]),
-      ),
+    const raw: unknown = JSON.parse(
+      await command("docker", [
+        "network",
+        "inspect",
+        "--format",
+        format,
+        found.id,
+      ]),
     );
+    const browser =
+      intent.purpose === "browser"
+        ? browserInspectedSchema.safeParse(raw)
+        : undefined;
+    const relay = reserveRelay
+      ? inspectedSchema
+          .extend({ IPAM: browserInspectedSchema.shape.IPAM })
+          .safeParse(raw)
+      : undefined;
+    const result = browser ?? relay ?? inspectedSchema.safeParse(raw);
     if (!result.success) changed();
     const network = result.data;
     if (
@@ -148,7 +245,15 @@ async function observe(intent: Intent, command: typeof run) {
       network.Attachable !== (intent.purpose === "runtime")
     )
       changed();
-    return network.Id;
+    return {
+      id: network.Id,
+      ...(browser?.success
+        ? { browser: reservedAddress(browser.data.IPAM.Config[0]) }
+        : {}),
+      ...(relay?.success
+        ? { relay: reservedAddress(relay.data.IPAM.Config[0]) }
+        : {}),
+    };
   } catch (error) {
     if (
       error instanceof LocalSetupError &&
@@ -171,6 +276,15 @@ function intents(state: LocalState): Intent[] {
       name: `${names.project}_default`,
     },
     { ownerId: state.ownerId, purpose: "runtime", name: names.sandbox },
+    ...(state.input.browser
+      ? [
+          {
+            ownerId: state.ownerId,
+            purpose: "browser" as const,
+            name: `${names.project}_browser`,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -181,10 +295,19 @@ export async function ensureLocalNetworks(
   command: typeof run = run,
 ) {
   for (const intent of intents(state)) {
-    const saved = await records(directory, intent);
-    let id = await observe(intent, command);
+    const reserveRelay =
+      intent.purpose === "runtime" && Boolean(state.input.relayImage);
+    const saved = await records(directory, intent, reserveRelay);
+    let observed = await observe(intent, command, reserveRelay);
+    let id = observed?.id;
     if (!id && saved.pending) uncertain(intent.purpose);
-    if (saved.receipt && id !== saved.receipt.id) changed();
+    if (
+      saved.receipt &&
+      (id !== saved.receipt.id ||
+        !isDeepStrictEqual(observed?.browser, saved.receipt.browser) ||
+        !isDeepStrictEqual(observed?.relay, saved.receipt.relay))
+    )
+      changed();
     if (id && !saved.pending) changed();
     if (!id) {
       await ensurePrivateFile(saved.intentPath, JSON.stringify(intent) + "\n");
@@ -197,6 +320,13 @@ export async function ensureLocalNetworks(
             "--driver",
             "bridge",
             ...(intent.purpose === "runtime" ? ["--attachable"] : []),
+            ...(intent.purpose === "browser"
+              ? [
+                  "--internal",
+                  "--opt",
+                  "com.docker.network.bridge.gateway_mode_ipv4=isolated",
+                ]
+              : []),
             "--label",
             `clawscarf.installation=${intent.ownerId}`,
             "--label",
@@ -207,14 +337,20 @@ export async function ensureLocalNetworks(
       } catch {
         // A lost response may follow allocation. Reconcile exact observed ownership only.
       }
-      id = await observe(intent, command);
+      observed = await observe(intent, command, reserveRelay);
+      id = observed?.id;
       if (!id) uncertain(intent.purpose);
       if (returnedId !== undefined && returnedId !== id) changed();
     }
     if (!saved.receipt)
       await ensurePrivateFile(
         saved.receiptPath,
-        JSON.stringify({ ...intent, id }) + "\n",
+        JSON.stringify({
+          ...intent,
+          id,
+          ...(observed?.browser ? { browser: observed.browser } : {}),
+          ...(observed?.relay ? { relay: observed.relay } : {}),
+        }) + "\n",
       );
   }
 }
@@ -226,14 +362,72 @@ export async function verifyLocalNetworks(
   command: typeof run = run,
 ) {
   for (const intent of intents(state)) {
-    const saved = await records(directory, intent);
+    const reserveRelay =
+      intent.purpose === "runtime" && Boolean(state.input.relayImage);
+    const saved = await records(directory, intent, reserveRelay);
     if (!saved.receipt)
       throw new LocalSetupError(
         "network_unprepared",
         "Required network reservations are not confirmed. Inspect and resume preparation before starting this installation.",
       );
-    const id = await observe(intent, command);
-    if (!id) uncertain(intent.purpose);
-    if (id !== saved.receipt.id) changed();
+    const observed = await observe(intent, command, reserveRelay);
+    if (!observed) uncertain(intent.purpose);
+    if (
+      observed.id !== saved.receipt.id ||
+      !isDeepStrictEqual(observed.browser, saved.receipt.browser) ||
+      !isDeepStrictEqual(observed.relay, saved.receipt.relay)
+    )
+      changed();
   }
+}
+
+/** Re-observe the isolated reservation before generating its static address and source ACL. */
+export async function observedBrowserAddress(
+  directory: string,
+  state: LocalState,
+  command: typeof run = run,
+): Promise<string | undefined> {
+  const intent = intents(state).find((value) => value.purpose === "browser");
+  if (!intent) return undefined;
+  const saved = await records(directory, intent);
+  if (!saved.receipt)
+    throw new LocalSetupError(
+      "network_unprepared",
+      "The browser network reservation is not confirmed. Resume preparation before configuring browser access.",
+    );
+  const observed = await observe(intent, command);
+  if (!observed) uncertain(intent.purpose);
+  if (
+    observed.id !== saved.receipt.id ||
+    !observed.browser ||
+    !isDeepStrictEqual(observed.browser, saved.receipt.browser)
+  )
+    changed();
+  return observed.browser.address;
+}
+
+/** Observe the runtime-only relay address before binding SSH or admitting native traffic. */
+export async function observedRelayAddress(
+  directory: string,
+  state: LocalState,
+  command: typeof run = run,
+): Promise<string | undefined> {
+  if (!state.input.relayImage) return undefined;
+  const intent = intents(state).find((value) => value.purpose === "runtime");
+  if (!intent) changed();
+  const saved = await records(directory, intent, true);
+  if (!saved.receipt)
+    throw new LocalSetupError(
+      "network_unprepared",
+      "The runtime relay network reservation is not confirmed. Resume preparation before configuring native access.",
+    );
+  const observed = await observe(intent, command, true);
+  if (!observed) uncertain(intent.purpose);
+  if (
+    observed.id !== saved.receipt.id ||
+    !observed.relay ||
+    !isDeepStrictEqual(observed.relay, saved.receipt.relay)
+  )
+    changed();
+  return observed.relay.address;
 }

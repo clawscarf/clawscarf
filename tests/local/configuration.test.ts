@@ -52,6 +52,23 @@ await test("local inputs reject mutable images, relative executables and public 
     { origin: "https://team.example" },
     { identity: { mode: "oidc" } },
     { connections: {} },
+    {
+      connections: {
+        mode: "local",
+        projectId: "test",
+        apiKeyFile: "relative",
+        catalogDirectory: "/catalog",
+      },
+    },
+    {
+      connections: {
+        mode: "local",
+        projectId: "test",
+        apiKeyFile: "/private/key",
+        catalogDirectory: "/catalog",
+        apiKey: "inline-secret",
+      },
+    },
     { models: { configurationFile: "relative", runtimeKeyFile: "/key" } },
     { models: { configurationFile: "/config", runtimeKeyFile: "relative" } },
     {
@@ -79,6 +96,81 @@ await test("local inputs reject mutable images, relative executables and public 
     assert.throws(() => parseLocalInput({ ...base, ...change }));
   assert.equal(parseLocalInput({ ...base, cpu: "500m" }).cpu, "500m");
   assert.equal(parseLocalInput({ ...base, cpu: "0.5" }).cpu, "0.5");
+});
+await test("optional local Connections needs neither OIDC nor native provider credentials", () => {
+  const input = parseLocalInput({
+    ...base,
+    connections: {
+      mode: "local",
+      projectId: "dedicated-project",
+      apiKeyFile: "/operator/private/key",
+      catalogDirectory: "/operator/catalog",
+    },
+  });
+  const result = generate({ input });
+  assert.deepEqual(result.companion.connections, {
+    projectId: "dedicated-project",
+    apiKeyFile: "/run/clawscarf/connections/api-key",
+    catalogDirectory: "/run/clawscarf/connections/catalog",
+  });
+  assert.equal(result.access.identity.mode, "local");
+  assert.deepEqual(result.native, generate().native);
+  assert.equal(JSON.stringify(result).includes("/operator/"), false);
+});
+await test("external Connections accepts a scoped HTTPS base path without enabling the local broker", () => {
+  const result = generate({
+    input: parseLocalInput({
+      ...base,
+      connections: {
+        mode: "external",
+        brokerUrl: "https://broker.example:9443/customer/team/",
+        caFile: "/operator/trust.pem",
+      },
+    }),
+  });
+  assert.deepEqual(result.companion, {
+    accessConfigurationFile: "/run/clawscarf/access.json",
+  });
+  assert.deepEqual(result.native, generate().native);
+  assert.equal(result.access.identity.mode, "local");
+  assert.equal(JSON.stringify(result).includes("broker.example"), false);
+  for (const brokerUrl of [
+    "http://broker.example",
+    "https://127.0.0.1",
+    "https://localhost",
+    "https://*.example",
+    "https://a:b@broker.example",
+    "https://broker.example/?token=private",
+    "https://broker.example/#private",
+    "https://broker.example/?",
+    "https://broker.example/#",
+    " https://broker.example",
+    "https://bro\tker.example",
+    "https://broker.example\\private",
+  ])
+    assert.throws(() =>
+      parseLocalInput({
+        ...base,
+        connections: { mode: "external", brokerUrl },
+      }),
+    );
+  for (const fields of [
+    { projectId: "must-not-load" },
+    { apiKeyFile: "/key" },
+    { catalogDirectory: "/catalog" },
+    { caFile: "relative" },
+    { token: "inline-secret" },
+  ])
+    assert.throws(() =>
+      parseLocalInput({
+        ...base,
+        connections: {
+          mode: "external",
+          brokerUrl: "https://broker.example",
+          ...fields,
+        },
+      }),
+    );
 });
 await test("generated configuration separates public, container and native listeners without reading keys", () => {
   const result = generate();

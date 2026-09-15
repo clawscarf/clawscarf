@@ -4,7 +4,12 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ensureRuntime, stopRuntime } from "../../scripts/local/runtime.js";
+import {
+  ensureRuntime,
+  stopRuntime,
+  ensureExecutionRuntime,
+  stopExecutionRuntime,
+} from "../../scripts/local/runtime.js";
 import { resourceNames, type LocalState } from "../../scripts/local/state.js";
 import { LocalSetupError, type run } from "../../scripts/local/process.js";
 
@@ -302,5 +307,241 @@ await test("failed, malformed or repeated later pages never imply absence or dis
     } finally {
       await f.cleanup();
     }
+  }
+});
+
+async function executionFixture() {
+  const base = await fixture();
+  base.state.input.execution = {
+    image: `sha256:${"c".repeat(64)}`,
+    port: 22022,
+    cpu: "1",
+    memory: "2Gi",
+  };
+  const names = resourceNames(base.state);
+  type Target = NonNullable<typeof base.target>;
+  const targets = new Map<string, Target>();
+  const calls: string[][] = [];
+  let loseWorkerCreate = false;
+  let workerAbsent = false;
+  const command: typeof run = async (executable, args) => {
+    assert.equal(executable, base.state.input.openshellCli);
+    calls.push([...args]);
+    assert.equal(args[args.indexOf("--gateway") + 1], names.sandbox);
+    const action = args[1];
+    if (action === "list") return JSON.stringify([...targets.values()]);
+    if (action === "create") {
+      const name = args[args.indexOf("--name") + 1];
+      assert.ok(name === names.sandbox || name === names.workerSandbox);
+      const worker = name === names.workerSandbox;
+      const execution = base.state.input.execution;
+      assert.ok(execution);
+      const intent: unknown = JSON.parse(
+        await readFile(
+          join(
+            base.directory,
+            worker ? "execution-create.json" : "runtime-create.json",
+          ),
+          "utf8",
+        ),
+      );
+      assert.deepEqual(intent, {
+        ownerId: base.state.ownerId,
+        name,
+        image: worker ? execution.image : base.state.input.runtimeImage,
+      });
+      if (worker) {
+        assert.notEqual(name, names.sandbox);
+        assert.equal(args[args.indexOf("--from") + 1], execution.image);
+        assert.equal(
+          args[args.indexOf("--policy") + 1],
+          join(base.directory, "private/execution-policy.json"),
+        );
+        assert.equal(args[args.indexOf("--cpu") + 1], execution.cpu);
+        assert.equal(args[args.indexOf("--memory") + 1], execution.memory);
+        assert.deepEqual(args.slice(args.indexOf("--") + 1), [
+          "/usr/sbin/sshd",
+          "-D",
+          "-e",
+          "-f",
+          "/etc/ssh/clawscarf_sshd_config",
+          "-p",
+          String(execution.port),
+        ]);
+        const driver: unknown = JSON.parse(
+          args[args.indexOf("--driver-config-json") + 1] ?? "",
+        );
+        assert.deepEqual(driver, {
+          docker: {
+            mounts: [
+              {
+                type: "volume",
+                source: names.workerVolume,
+                target: "/home/node",
+                read_only: false,
+              },
+            ],
+          },
+        });
+      }
+      if (!(worker && workerAbsent))
+        targets.set(name, {
+          id: randomUUID(),
+          name,
+          phase: "Ready",
+          workspace: "default",
+          labels: { "clawscarf.installation": base.state.ownerId },
+        });
+      if (worker && (loseWorkerCreate || workerAbsent))
+        throw Error("lost response");
+      return "created";
+    }
+    const name = args[2];
+    assert.ok(name);
+    const target = targets.get(name);
+    assert.ok(target);
+    if (action === "get") return JSON.stringify(target);
+    if (action === "stop") target.phase = "Stopped";
+    else if (action === "start") target.phase = "Ready";
+    else throw Error("Unexpected command");
+    return "ok";
+  };
+  return {
+    ...base,
+    names,
+    targets,
+    calls,
+    command,
+    get loseWorkerCreate() {
+      return loseWorkerCreate;
+    },
+    set loseWorkerCreate(value: boolean) {
+      loseWorkerCreate = value;
+    },
+    get workerAbsent() {
+      return workerAbsent;
+    },
+    set workerAbsent(value: boolean) {
+      workerAbsent = value;
+    },
+  };
+}
+
+await test("execution uses a separate sandbox and receipts on the Gateway controller, retaining independent lifecycle identities", async () => {
+  const f = await executionFixture();
+  try {
+    const gateway = await ensureRuntime(f.directory, f.state, {}, f.command);
+    const worker = await ensureExecutionRuntime(
+      f.directory,
+      f.state,
+      {},
+      f.command,
+    );
+    assert.ok(worker);
+    assert.notEqual(gateway.id, worker.id);
+    assert.notEqual(gateway.name, worker.name);
+    for (const [record, target] of [
+      ["runtime", gateway],
+      ["execution", worker],
+    ] as const) {
+      const receipt: unknown = JSON.parse(
+        await readFile(join(f.directory, record + ".json"), "utf8"),
+      );
+      assert.deepEqual(receipt, {
+        ownerId: f.state.ownerId,
+        name: target.name,
+        id: target.id,
+        image:
+          record === "runtime"
+            ? f.state.input.runtimeImage
+            : f.state.input.execution?.image,
+      });
+    }
+    await stopExecutionRuntime(f.directory, f.state, {}, f.command);
+    assert.equal(f.targets.get(worker.name)?.phase, "Stopped");
+    assert.equal(f.targets.get(gateway.name)?.phase, "Ready");
+    assert.deepEqual(
+      await ensureExecutionRuntime(f.directory, f.state, {}, f.command),
+      worker,
+    );
+    await stopRuntime(f.directory, f.state, {}, f.command);
+    assert.equal(f.targets.get(worker.name)?.phase, "Ready");
+    assert.equal(f.calls.filter((call) => call[1] === "create").length, 2);
+    const target = f.targets.get(worker.name);
+    assert.ok(target);
+    target.id = randomUUID();
+    await assert.rejects(
+      stopExecutionRuntime(f.directory, f.state, {}, f.command),
+      code("runtime_identity_changed"),
+    );
+    assert.equal(
+      f.calls.filter((call) => call[1] === "stop" && call[2] === worker.name)
+        .length,
+      1,
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
+
+await test("execution reconciles a lost create response and never replays uncertain allocation independently of Gateway", async () => {
+  for (const absent of [false, true]) {
+    const f = await executionFixture();
+    try {
+      const gateway = await ensureRuntime(f.directory, f.state, {}, f.command);
+      f.loseWorkerCreate = true;
+      f.workerAbsent = absent;
+      if (absent) {
+        for (let attempt = 0; attempt < 2; attempt++)
+          await assert.rejects(
+            ensureExecutionRuntime(f.directory, f.state, {}, f.command),
+            code("runtime_outcome_unknown"),
+          );
+        await assert.rejects(
+          stopExecutionRuntime(f.directory, f.state, {}, f.command),
+          code("runtime_outcome_unknown"),
+        );
+      } else {
+        const worker = await ensureExecutionRuntime(
+          f.directory,
+          f.state,
+          {},
+          f.command,
+        );
+        assert.equal(worker?.phase, "Ready");
+        assert.deepEqual(
+          await ensureExecutionRuntime(f.directory, f.state, {}, f.command),
+          worker,
+        );
+      }
+      assert.deepEqual(
+        await ensureRuntime(f.directory, f.state, {}, f.command),
+        gateway,
+      );
+      assert.equal(
+        f.calls.filter(
+          (call) =>
+            call[1] === "create" &&
+            call[call.indexOf("--name") + 1] === f.names.workerSandbox,
+        ).length,
+        1,
+      );
+    } finally {
+      await f.cleanup();
+    }
+  }
+});
+
+await test("unconfigured execution does not observe or allocate a worker", async () => {
+  const f = await fixture();
+  try {
+    assert.equal(
+      await ensureExecutionRuntime(f.directory, f.state, {}, f.command),
+      undefined,
+    );
+    await stopExecutionRuntime(f.directory, f.state, {}, f.command);
+    assert.deepEqual(f.calls, []);
+  } finally {
+    await f.cleanup();
   }
 });

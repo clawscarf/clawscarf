@@ -2,6 +2,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import { initialConfiguration } from "../../runtime/configuration.js";
 import type { AccessConfiguration } from "../../services/access/runtime/config.js";
+import { networkRequirementSchema } from "../packs/policy.js";
 
 const absolutePath = z
   .string()
@@ -14,6 +15,18 @@ const image = z
     "Use an exact image ID or image reference with a SHA-256 digest.",
   );
 const port = z.number().int().min(1024).max(65535);
+const cpu = z
+  .string()
+  .regex(
+    /^(?:[1-9]\d*m|(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*))$/,
+    "Use a positive CPU quantity, such as 2 or 500m.",
+  );
+const memory = z
+  .string()
+  .regex(
+    /^[1-9]\d*(?:Ki|Mi|Gi|Ti|K|M|G|T)$/,
+    "Use a positive memory quantity, such as 512Mi or 2Gi.",
+  );
 const ports = z
   .strictObject({
     controller: port,
@@ -34,6 +47,58 @@ const httpsOrigin = z.url().refine((value) => {
     u.protocol === "https:" && u.origin === value && !u.username && !u.password
   );
 }, "Use an exact HTTPS origin.");
+export const connectionsBrokerUrlSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((value) => {
+    let endpoint: URL;
+    try {
+      endpoint = new URL(value);
+    } catch {
+      return false;
+    }
+    return (
+      /^https:\/\//iu.test(value) &&
+      value.trim() === value &&
+      Array.from(value).every(
+        (character) =>
+          character.charCodeAt(0) > 32 &&
+          character.charCodeAt(0) !== 127 &&
+          character !== "\\",
+      ) &&
+      endpoint.protocol === "https:" &&
+      !endpoint.username &&
+      !endpoint.password &&
+      !endpoint.search &&
+      !endpoint.hash &&
+      !value.includes("?") &&
+      !value.includes("#") &&
+      networkRequirementSchema.safeParse({
+        host: endpoint.hostname,
+        port: Number(endpoint.port || "443"),
+        protocol: "tcp",
+        binary: "/usr/local/bin/node",
+      }).success
+    );
+  }, "Use an HTTPS DNS endpoint without credentials, query or fragment.");
+export const connectionsInputSchema = z.discriminatedUnion("mode", [
+  z.strictObject({
+    mode: z.literal("local"),
+    projectId: z
+      .string()
+      .min(1)
+      .max(256)
+      .refine((value) => value.trim() === value),
+    apiKeyFile: absolutePath,
+    catalogDirectory: absolutePath,
+  }),
+  z.strictObject({
+    mode: z.literal("external"),
+    brokerUrl: connectionsBrokerUrlSchema,
+    caFile: absolutePath.optional(),
+  }),
+]);
 const teamInput = z
   .strictObject({
     origin: httpsOrigin,
@@ -91,20 +156,40 @@ const localInput = z
         caFile: absolutePath.optional(),
       })
       .optional(),
-    cpu: z
-      .string()
-      .regex(
-        /^(?:[1-9]\d*m|(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*))$/,
-        "Use a positive CPU quantity, such as 2 or 500m.",
-      ),
-    memory: z
-      .string()
-      .regex(
-        /^[1-9]\d*(?:Ki|Mi|Gi|Ti|K|M|G|T)$/,
-        "Use a positive memory quantity, such as 512Mi or 2Gi.",
-      ),
+    connections: connectionsInputSchema.optional(),
+    cpu,
+    memory,
+    execution: z.strictObject({ image, port, cpu, memory }).optional(),
+    relayImage: image.optional(),
+    browser: z.strictObject({ image, egressImage: image, port }).optional(),
   })
   .superRefine((value, ctx) => {
+    if (Boolean(value.relayImage) !== Boolean(value.execution || value.browser))
+      ctx.addIssue({
+        code: "custom",
+        path: ["relayImage"],
+        message:
+          "Supply the relay image exactly when an execution worker or browser is configured.",
+      });
+    if (
+      value.execution &&
+      Object.values(value.ports).includes(value.execution.port)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["execution", "port"],
+        message: "The execution worker needs a distinct port.",
+      });
+    if (
+      value.browser &&
+      (Object.values(value.ports).includes(value.browser.port) ||
+        value.execution?.port === value.browser.port)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["browser", "port"],
+        message: "The browser relay needs a distinct port.",
+      });
     if (!value.team) return;
     for (const [key, port] of [
       ["origin", value.ports.application],
@@ -123,6 +208,10 @@ export type LocalInput = z.infer<typeof localInput>;
 /** A single-host installation uses loopback local identity unless an explicit HTTPS/OIDC team profile is supplied. */
 export function parseLocalInput(value: unknown): LocalInput {
   return localInput.parse(value);
+}
+
+export function managementOrigin(input: Pick<LocalInput, "ports">): string {
+  return `https://host.docker.internal:${String(input.ports.management)}`;
 }
 
 function mountedPrivateFile(
@@ -197,7 +286,7 @@ export function generateLocalConfiguration(options: {
     },
     runtime: {
       origin: `http://host.docker.internal:${String(input.ports.native)}`,
-      managementOrigin: `https://host.docker.internal:${String(input.ports.management)}`,
+      managementOrigin: managementOrigin(input),
       widgetOrigin,
       widgetUpstream: `http://host.docker.internal:${String(input.ports.nativeWidgets)}`,
     },
@@ -230,6 +319,17 @@ export function generateLocalConfiguration(options: {
   return {
     access,
     native,
-    companion: { accessConfigurationFile: "/run/clawscarf/access.json" },
+    companion: {
+      accessConfigurationFile: "/run/clawscarf/access.json",
+      ...(input.connections?.mode === "local"
+        ? {
+            connections: {
+              projectId: input.connections.projectId,
+              apiKeyFile: "/run/clawscarf/connections/api-key",
+              catalogDirectory: "/run/clawscarf/connections/catalog",
+            },
+          }
+        : {}),
+    },
   };
 }

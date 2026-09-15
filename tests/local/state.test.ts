@@ -3,7 +3,11 @@ import { test } from "node:test";
 import { mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { initializeState, withLocalLock } from "../../scripts/local/state.js";
+import {
+  initializeState,
+  withLocalLock,
+  resourceNames,
+} from "../../scripts/local/state.js";
 import { parseLocalInput } from "../../scripts/local/configuration.js";
 import { composeConfiguration } from "../../scripts/local/compose.js";
 const input = parseLocalInput({
@@ -30,6 +34,15 @@ await test("local preparation retains private identity/secrets and rejects forei
   try {
     const directory = join(parent, "install");
     const state = await initializeState(directory, input);
+    const names = resourceNames(state);
+    assert.notEqual(names.sandbox, names.workerSandbox);
+    for (const name of [names.sandbox, names.workerSandbox]) {
+      assert.match(name, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      assert.ok(
+        name.length <= 19,
+        "Pinned OpenShell routable names permit at most 19 characters.",
+      );
+    }
     const key = await readFile(join(directory, "private/encryption.key"));
     assert.equal(
       (await initializeState(directory, input)).ownerId,
@@ -68,6 +81,31 @@ await test("local preparation retains private identity/secrets and rejects forei
       mounts.some((value) => value.includes("controller")),
       false,
     );
+    assert.equal(
+      mounts.some((value) => value.includes("/connections")),
+      false,
+    );
+    const enabled = composeConfiguration(
+      {
+        ...state,
+        input: {
+          ...state.input,
+          connections: {
+            mode: "local",
+            projectId: "project",
+            apiKeyFile: "/source/private/key",
+            catalogDirectory: "/source/catalog",
+          },
+        },
+      },
+      directory,
+    );
+    assert.ok(
+      enabled.services.companion.volumes.includes(
+        `${join(directory, "private/connections")}:/run/clawscarf/connections:ro`,
+      ),
+    );
+    assert.equal(JSON.stringify(enabled).includes("/source/"), false);
   } finally {
     await rm(parent, { recursive: true, force: true });
   }

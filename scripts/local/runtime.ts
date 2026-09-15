@@ -45,24 +45,31 @@ function changed(): never {
     "The runtime identity or ownership differs from this installation. No further runtime command was sent.",
   );
 }
-export function runtimeManager(
+function targetManager(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
   command: Command,
+  configuration: RuntimeTarget,
 ) {
-  const name = resourceNames(state).sandbox;
+  const name = configuration.name;
   const intent = {
     ownerId: state.ownerId,
     name,
-    image: state.input.runtimeImage,
+    image: configuration.image,
   };
-  const receiptPath = join(directory, "runtime.json");
-  const intentPath = join(directory, "runtime-create.json");
+  const receiptPath = join(directory, configuration.record + ".json");
+  const intentPath = join(directory, configuration.record + "-create.json");
   const shell = (args: readonly string[]) =>
     command(
       state.input.openshellCli,
-      [...args, "--gateway", name, "--workspace", "default"],
+      [
+        ...args,
+        "--gateway",
+        resourceNames(state).sandbox,
+        "--workspace",
+        "default",
+      ],
       { env, timeout: 120000 },
     );
   async function observe(): Promise<Target | undefined> {
@@ -158,14 +165,70 @@ export function runtimeManager(
   };
 }
 
-/** Caller holds the installation lock. A persisted create intent is never blindly replayed. */
-export async function ensureRuntime(
+interface RuntimeTarget {
+  name: string;
+  image: string;
+  cpu: string;
+  memory: string;
+  volume: string;
+  record: "runtime" | "execution";
+  policy: string;
+  argv: readonly string[];
+}
+function gatewayTarget(state: LocalState): RuntimeTarget {
+  const names = resourceNames(state);
+  return {
+    name: names.sandbox,
+    image: state.input.runtimeImage,
+    cpu: state.input.cpu,
+    memory: state.input.memory,
+    volume: names.volume,
+    record: "runtime",
+    policy: "private/runtime-policy.json",
+    argv: ["/app/clawscarf/bin/openclaw", "gateway"],
+  };
+}
+function executionTarget(state: LocalState): RuntimeTarget | undefined {
+  const execution = state.input.execution;
+  if (!execution) return undefined;
+  const names = resourceNames(state);
+  return {
+    name: names.workerSandbox,
+    image: execution.image,
+    cpu: execution.cpu,
+    memory: execution.memory,
+    volume: names.workerVolume,
+    record: "execution",
+    policy: "private/execution-policy.json",
+    argv: [
+      "/usr/sbin/sshd",
+      "-D",
+      "-e",
+      "-f",
+      "/etc/ssh/clawscarf_sshd_config",
+      "-p",
+      String(execution.port),
+    ],
+  };
+}
+export function runtimeManager(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
-  command: Command = run,
+  command: Command,
+) {
+  return targetManager(directory, state, env, command, gatewayTarget(state));
+}
+
+/** Caller holds the installation lock. A persisted create intent is never blindly replayed. */
+async function ensureTarget(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  command: Command,
+  configuration: RuntimeTarget,
 ): Promise<{ id: string; name: string; phase: string }> {
-  const control = runtimeManager(directory, state, env, command);
+  const control = targetManager(directory, state, env, command, configuration);
   const record = await control.recorded();
   let target = await control.observe();
   if (record.receipt && target?.id !== record.receipt.id) changed();
@@ -181,20 +244,20 @@ export async function ensureRuntime(
       "--name",
       control.name,
       "--from",
-      state.input.runtimeImage,
+      configuration.image,
       "--policy",
-      join(directory, "private/runtime-policy.json"),
+      join(directory, configuration.policy),
       "--cpu",
-      state.input.cpu,
+      configuration.cpu,
       "--memory",
-      state.input.memory,
+      configuration.memory,
       "--driver-config-json",
       JSON.stringify({
         docker: {
           mounts: [
             {
               type: "volume",
-              source: resourceNames(state).volume,
+              source: configuration.volume,
               target: "/home/node",
               read_only: false,
             },
@@ -207,12 +270,11 @@ export async function ensureRuntime(
       "--detach",
       "--no-tty",
       "--gateway",
-      control.name,
+      resourceNames(state).sandbox,
       "--workspace",
       "default",
       "--",
-      "/app/clawscarf/bin/openclaw",
-      "gateway",
+      ...configuration.argv,
     ];
     // A failed response may follow successful allocation: reconcile observed identity only.
     try {
@@ -250,13 +312,14 @@ export async function ensureRuntime(
 }
 
 /** Native start/stop resolve names; identity checks detect replacement, not an atomic UUID precondition. */
-export async function stopRuntime(
+async function stopTarget(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
-  command: Command = run,
+  command: Command,
+  configuration: RuntimeTarget,
 ): Promise<void> {
-  const control = runtimeManager(directory, state, env, command);
+  const control = targetManager(directory, state, env, command, configuration);
   const record = await control.recorded();
   const target = await control.observe();
   if (!target) {
@@ -278,4 +341,41 @@ export async function stopRuntime(
       "runtime_stop_pending",
       "The runtime has not confirmed Stopped. Keep its controller running and inspect its state.",
     );
+}
+
+export async function ensureRuntime(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  command: Command = run,
+) {
+  return ensureTarget(directory, state, env, command, gatewayTarget(state));
+}
+export async function stopRuntime(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  command: Command = run,
+) {
+  return stopTarget(directory, state, env, command, gatewayTarget(state));
+}
+export async function ensureExecutionRuntime(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  command: Command = run,
+) {
+  const configuration = executionTarget(state);
+  if (!configuration) return undefined;
+  return ensureTarget(directory, state, env, command, configuration);
+}
+export async function stopExecutionRuntime(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  command: Command = run,
+): Promise<void> {
+  const configuration = executionTarget(state);
+  if (configuration)
+    await stopTarget(directory, state, env, command, configuration);
 }

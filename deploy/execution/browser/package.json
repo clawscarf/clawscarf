@@ -1,0 +1,10 @@
+{
+  "name": "@clawscarf/browser-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "httpxy": "0.5.5"
+  }
+}

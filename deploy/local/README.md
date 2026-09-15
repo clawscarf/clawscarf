@@ -53,10 +53,10 @@ pnpm exec tsx scripts/local.ts prepare \
   --directory .local/my-team --config /absolute/path/to/local-input.json
 ```
 
-Preparation first reserves both actual Docker bridge networks using Docker's allocator:
+Preparation reserves actual Docker bridge networks using Docker's allocator:
 one for companions and one for OpenShell. Each has installation/purpose labels and a
 recorded exact ID. Compose consumes the companion network as external; OpenShell uses
-its reserved runtime network. Startup verifies both IDs and ownership before starting
+its reserved runtime network. Startup verifies their IDs and ownership before starting
 processes. This establishes allocated capacity, not a speculative count from Docker's
 possibly absent address-pool metadata. It does not prove later service connectivity.
 
@@ -65,7 +65,9 @@ reconciles the matching owned network and records its ID. An absent network afte
 recorded attempt remains uncertain and requires operator inspection; it is never
 blindly allocated again. A partial setup retains its first network if reserving the
 second fails. Foreign, unlabeled, replaced or ambiguous networks are rejected, not
-adopted or deleted. No subnet ranges are hardcoded and no other projects are pruned.
+adopted or deleted. An optional browser adds an isolated internal bridge. Owned receipts pin its browser
+address and the relay address on the runtime network from Docker-selected subnets.
+No subnet ranges are hardcoded and no other projects are pruned.
 
 Preparation starts its own digest-pinned PostgreSQL container and owns separate
 named database and runtime-home volumes. It creates private random credentials once,
@@ -81,7 +83,8 @@ The installation directory contains its identity/input manifest, Compose configu
 controller state and private companion configuration. Keep the directory and volumes.
 Only explicit runtime configuration files mount into the companion; database-owner
 credentials and controller keys do not. OpenClaw receives neither. The local management
-certificate is trusted only by the companion, not installed in the workstation's trust
+certificate is trusted by the companion and, when Connections is activated, the
+Gateway. It is not installed in the workstation's trust
 store. Its private key and the session-encryption key remain in the private directory.
 
 Repeat preparation with the same input to reuse completed state. Existing configuration
@@ -91,6 +94,164 @@ native client-address attribution. Preparation and an identical second run passe
 against fresh local Docker/Postgres resources. Tests cover retained keys, foreign state
 and database privilege denials. Controller staging errors require operator inspection.
 Preparation never runs database migrations on API startup.
+
+## Optional Connections
+
+For a new installation, choose a local companion or a compatible external broker.
+Neither option requires company OIDC. Local mode supplies the account UI and broker:
+
+```json
+{
+  "connections": {
+    "mode": "local",
+    "projectId": "your-dedicated-project",
+    "apiKeyFile": "/absolute/private/composio-key",
+    "catalogDirectory": "/absolute/path/to/reviewed-catalog"
+  }
+}
+```
+
+Prepare a dedicated provider project and reviewed catalog using the
+[Connections catalog commands](../../services/connections/README.md#configuration-and-catalog).
+Configure the project's callback as the application's origin followed by
+`/_clawscarf/connections/verify`. Local evaluation uses its loopback application
+origin; team deployments use their HTTPS origin. Provider support for a chosen
+callback must be verified independently.
+
+Local preparation validates the key and complete catalog before allocating resources,
+copies them into the private installation directory, applies the existing
+Connections migrations with the database administrator and publishes the catalog.
+Only the companion receives the provider key and catalog. The application database
+login receives table DML, never schema ownership or migration authority. The runtime
+broker endpoint is the prepared management HTTPS listener at
+`https://host.docker.internal:<management-port>`, using its retained certificate.
+
+External mode uses an existing compatible broker and its account-management UI:
+
+```json
+{
+  "connections": {
+    "mode": "external",
+    "brokerUrl": "https://connections.example.com/team-broker",
+    "caFile": "/absolute/path/to/broker-ca.pem"
+  }
+}
+```
+
+`brokerUrl` accepts an HTTPS DNS hostname, explicit port and optional base path;
+credentials, query strings, fragments, IP addresses and `localhost` are rejected.
+Use `host.docker.internal` for a broker on this workstation. A trailing slash is
+removed consistently with the native plugin. Omit `caFile` for a public CA; otherwise
+supply a regular certificate file, not a symbolic link. External mode reads no local
+provider key or catalog, creates no Connections schema, mounts no Connections
+configuration into the companion and exposes no local account actions. Account setup
+and scoped runtime credential issuance belong to that external broker.
+
+Both modes retain the endpoint and optional CA privately before resource allocation,
+then add one exact Node HTTPS endpoint to the initial runtime policy. TLS passes
+through OpenShell; Node still verifies the server certificate. Neither preparation
+nor startup rewrites an authored policy. Repeating preparation retains matching
+inputs; a changed endpoint, trust certificate, key or catalog requires explicit
+reconfiguration rather than an implicit replacement. Omitting `connections` creates
+no Connections schema, loads no provider and exposes no account actions.
+
+Preparation does not activate native credentials. Endpoint preparation, configuration
+rejection, private retention and policy tests have passed. Full activation in the
+assembled runtime and the external-account journey remain tracked in [TODO.md](../../TODO.md).
+
+### Activate Connections
+
+For a local broker, sign in as a native administrator and use the
+[credential command](../../services/connections/README.md#configuration-and-catalog)
+to issue a private token file. An external broker supplies its own scoped token.
+Setup does not mint an administrator session or bypass native access checks.
+
+Stop the foreground installation, then start only its private controller in one terminal:
+
+```sh
+pnpm exec tsx scripts/controller.ts start --directory .local/my-team/controller
+```
+
+In another terminal, apply the scoped credential and prepared broker endpoint:
+
+```sh
+pnpm exec tsx scripts/local.ts connections configure --directory .local/my-team \
+  --credential-file /private/connections-token --yes
+pnpm exec tsx scripts/local.ts connections observe --directory .local/my-team
+```
+
+Configuration requires stopped, verified compute and exclusive access to its owned
+home volume. It retains the expected credential privately outside the companion's
+mount, transfers it through stdin, and uses OpenClaw's configuration SDK to change
+only the Connections package/endpoint settings. It preserves unrelated edits and
+an explicitly disabled plugin. The runtime launcher loads the scoped token and
+optional CA on its next start; shared provider keys stay outside OpenClaw.
+
+An interrupted change blocks ordinary startup. `observe` reads a read-only home
+mount and never repairs state. Inspect its result, then deliberately rerun
+`configure` with the current token to complete the change; no automatic rotation or
+mutation replay occurs. Stop the private controller and use normal `start` afterward.
+Observation uses OpenClaw's public core-only snapshot validation to inspect stored
+Connections settings without loading plugin metadata or creating SQLite sidecars.
+The pinned SDK regression verifies unchanged initialized and configured read-only
+homes, matching source-file hashes and refusal of invalid native core settings.
+Configuration changes retain full native validation. Observation does not load the
+package or establish that the running Gateway has accepted those settings.
+
+These commands configure retained state; their success does not establish that an
+external account is connected or that a native tool call has succeeded.
+The [image-only native test](../images/README.md#verified-limits) verifies the packaged
+credential, trusted TLS and native search path after restart. Local assembly's full
+broker-account journey remains unchecked in [TODO.md](../../TODO.md).
+
+## Shared browser
+
+The optional `browser` input composes the [Chromium image](../execution/browser/README.md)
+with the [fixed runtime relay and public-web proxy](../execution/network/README.md):
+
+```json
+{
+  "relayImage": "sha256:<built-relay-image-id>",
+  "browser": {
+    "image": "sha256:<built-browser-image-id>",
+    "egressImage": "sha256:<built-egress-image-id>",
+    "port": 19282
+  }
+}
+```
+
+Replace each placeholder with its exact built digest. The relay port must be distinct
+from every other listener. Setup generates a private CDP credential and a separate
+owned browser-state volume. Chromium joins only an isolated internal network. The
+relay publishes only browser CDP on loopback for readiness; native traffic uses
+`runtime.clawscarf.internal:9223` on the owned runtime network. Squid is unpublished
+and accepts only the browser's reserved address. It permits public HTTP/HTTPS and
+blocks private destinations. This is not a domain allowlist: authorized browsing
+can transmit team data to public sites.
+
+OpenClaw receives a private `team` remote-browser profile, not provider or controller
+credentials. With the execution worker configured, native sandbox defaults explicitly
+allow that shared browser and explicitly add its native tool to sandboxed sessions;
+other sandbox-tool denials and native role restrictions still apply. Browser profiles,
+cookies and logins belong to the trusted team. Stop/start retains that volume.
+Startup verifies authenticated CDP readiness before OpenClaw; a failed required browser
+process stops the supervised assembly. The network and browser components have actual
+Chromium acceptance; the combined native member/browser journey remains unqualified.
+Native navigation currently fails at the Gateway's public-destination DNS preflight
+under OpenShell. This option is an integration candidate, not a working browser
+feature; see [execution placement](../openshell/README.md#execution-placement).
+
+The shared `relayImage` is required exactly when worker or browser is configured.
+It forwards TCP to fixed destinations and never joins the companion network. SSH
+binds only the runtime-facing address; Chromium cannot reach that listener through
+the browser network. SSH host-key checks and browser authentication remain end-to-end.
+The native browser policy trusts only the exact CDP hostname, while the browser
+network separately restricts page traffic. There is no general private-network override.
+
+Both browser CDP and worker SSH use exact-host `protocol: tcp` OpenShell policies.
+The selected controller installs transparent TCP capture at compute creation; adding
+the first TCP endpoint to already-created compute requires replacement. Setup applies
+these choices before first creation, never by changing policy during refresh.
 
 ## Initial model setup
 
@@ -116,7 +277,7 @@ DNS endpoint reachable from the runtime—for a workstation gateway,
 LiteLLM companion and issuing its scoped key remain separate operator steps.
 
 Preparation validates these files before allocating Docker resources. It snapshots
-initial model material privately, derives the [private runtime policy](../../scripts/local/models.ts) from the
+initial model material privately, derives the [private runtime policy](../../scripts/local/policy.ts) from the
 shipped policy and allows only the Node executable to reach that exact gateway
 host/port. TLS passes through the policy proxy; Node still verifies the gateway
 certificate. First initialization atomically writes the scoped credential in
@@ -138,6 +299,53 @@ Regression tests cover invalid inputs, private credentials, unchanged-input requ
 and atomic initialization failures. Release-artifact clean-machine acceptance remains open.
 
 ## Run and stop
+
+### Separate execution worker
+
+A new installation can include an `execution` block alongside its other inputs:
+
+```json
+{
+  "relayImage": "sha256:REPLACE_WITH_RELAY_IMAGE_ID",
+  "execution": {
+    "image": "sha256:REPLACE_WITH_WORKER_IMAGE_ID",
+    "port": 19222,
+    "cpu": "1",
+    "memory": "512Mi"
+  }
+}
+```
+
+Build the [worker image](../execution/worker/README.md) and use a distinct loopback
+port. This path requires a rebuilt Gateway image containing both current volume
+initializers. Worker component confinement, lifecycle and assembled native member/
+administrator execution tests have passed on the local candidate. Browser use and
+release qualification remain open.
+
+Preparation creates a separate owned worker-home volume and worker-specific SSH
+keys. The Gateway receives only the client private key and pinned host identity;
+the worker receives only its host key and authorized client public key. Neither
+gets controller credentials. The Gateway policy permits `/usr/bin/ssh` to reach
+`runtime.clawscarf.internal:2222`; the fixed relay forwards to the operator-owned
+worker listener. The worker starts with denied outbound traffic.
+
+Vanilla OpenClaw uses its native SSH execution backend with all-session sandboxing.
+Remote workspaces are seeded once, then remain canonical on the worker volume;
+they are not synchronized back to Gateway files. Native `sandbox recreate` deletes
+the selected remote workspace. Team members share the worker's Unix identity;
+native role-required profiles still receive their own native directory scopes and
+read-only agent inputs. Those directories are not hostile-user isolation.
+
+Startup creates or resumes the worker under the same controller as the Gateway,
+checks pinned SSH authentication and its actual image/volume binding, then starts
+OpenClaw. Separate [allocation intent and UUID receipts](../../scripts/local/runtime.ts)
+track the worker independently from the Gateway. Uncertain absent targets are not automatically recreated.
+Shutdown stops the Gateway and worker before their controller; both volumes remain.
+No worker is allocated when `execution` is omitted. Browser execution uses a
+[separate browser component](../execution/browser/README.md); it is not enabled by
+this block and its network/native integration remains unfinished.
+
+### Supervised process
 
 Start the prepared installation with Node directly so terminal signals reach the
 supervising process throughout cleanup:
@@ -388,7 +596,8 @@ v2.45.1 test provider, signed tokens, TLS and the actual pinned OpenClaw runtime
 This test used an explicit private test certificate trust in the companion and browser,
 with hostnames resolved locally. It does not qualify public DNS, certificate renewal,
 a customer's IdP configuration or browser execution inside the sandbox. The access
-path is locally qualified; member execution and release qualification remain open.
+path and separate worker execution are locally qualified; native browser execution
+and release qualification remain open.
 A native configuration reload can briefly make management reads unavailable; a failed
 command is never automatically replayed.
 

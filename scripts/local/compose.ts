@@ -6,14 +6,99 @@ import { run } from "./process.js";
 // Exercised official Postgres 17 Alpine manifest; no mutable tag is used by setup.
 export const postgresImage =
   "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193";
-export function composeConfiguration(state: LocalState, directory: string) {
+export function composeConfiguration(
+  state: LocalState,
+  directory: string,
+  browserAddress?: string,
+  relayAddress?: string,
+) {
   const { input, ownerId } = state;
   const names = resourceNames(state);
   const privateDirectory = join(directory, "private");
   const labels = { "clawscarf.installation": ownerId };
+  if (input.browser && !browserAddress)
+    throw Error("The isolated browser address is required.");
+  if (input.relayImage && !relayAddress)
+    throw Error("The runtime relay address is required.");
+  const constrained = {
+    read_only: true,
+    cap_drop: ["ALL"],
+    security_opt: ["no-new-privileges:true"],
+    init: true,
+    labels,
+  };
   return {
     name: names.project,
     services: {
+      ...(input.browser
+        ? {
+            browser: {
+              ...constrained,
+              image: input.browser.image,
+              user: "1000:1000",
+              networks: {
+                browser: { ipv4_address: browserAddress, aliases: ["browser"] },
+              },
+              security_opt: [
+                ...constrained.security_opt,
+                `seccomp:${join(privateDirectory, "browser-seccomp.json")}`,
+              ],
+              environment: {
+                CLAWSCARF_BROWSER_TOKEN_FILE: "/state/.clawscarf-browser/token",
+                CLAWSCARF_BROWSER_PROXY_SERVER: "http://browser-egress:3128",
+              },
+              volumes: ["browser:/state"],
+              tmpfs: ["/tmp:rw,nosuid,nodev,size=512m"],
+              shm_size: "256m",
+              mem_limit: "1g",
+              pids_limit: 256,
+              stop_grace_period: "15s",
+              depends_on: ["browser-egress"],
+            },
+            "browser-egress": {
+              ...constrained,
+              image: input.browser.egressImage,
+              networks: {
+                default: {},
+                browser: { aliases: ["browser-egress"] },
+              },
+              volumes: [
+                `${join(privateDirectory, "browser-source.acl")}:/etc/squid/browser-source.acl:ro`,
+              ],
+              tmpfs: ["/tmp"],
+              mem_limit: "128m",
+              pids_limit: 64,
+            },
+          }
+        : {}),
+      ...(input.relayImage
+        ? {
+            "execution-relay": {
+              ...constrained,
+              image: input.relayImage,
+              user: "1000:1000",
+              networks: {
+                runtime: {
+                  ipv4_address: relayAddress,
+                  aliases: ["runtime.clawscarf.internal"],
+                },
+                ...(input.browser ? { browser: {} } : {}),
+              },
+              extra_hosts: ["host.docker.internal:host-gateway"],
+              volumes: [
+                `${join(privateDirectory, "runtime-relay.cfg")}:/usr/local/etc/haproxy/haproxy.cfg:ro`,
+              ],
+              ...(input.browser
+                ? {
+                    ports: [`127.0.0.1:${String(input.browser.port)}:9223`],
+                    depends_on: ["browser"],
+                  }
+                : {}),
+              mem_limit: "64m",
+              pids_limit: 64,
+            },
+          }
+        : {}),
       postgres: {
         image: postgresImage,
         environment: {
@@ -46,6 +131,7 @@ export function composeConfiguration(state: LocalState, directory: string) {
           "management-ca.pem",
           "management-cert.pem",
           "management-key.pem",
+          ...(input.connections?.mode === "local" ? ["connections"] : []),
           ...(input.team
             ? [
                 "application-cert.pem",
@@ -75,8 +161,21 @@ export function composeConfiguration(state: LocalState, directory: string) {
         file: join(privateDirectory, "database-admin-password"),
       },
     },
-    networks: { default: { external: true, name: `${names.project}_default` } },
-    volumes: { database: { external: true, name: names.databaseVolume } },
+    networks: {
+      ...(input.relayImage
+        ? { runtime: { external: true, name: names.sandbox } }
+        : {}),
+      default: { external: true, name: `${names.project}_default` },
+      ...(input.browser
+        ? { browser: { external: true, name: `${names.project}_browser` } }
+        : {}),
+    },
+    volumes: {
+      database: { external: true, name: names.databaseVolume },
+      ...(input.browser
+        ? { browser: { external: true, name: names.browserVolume } }
+        : {}),
+    },
   };
 }
 export function compose(directory: string, args: readonly string[]) {

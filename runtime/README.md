@@ -20,17 +20,23 @@ invite/external session catalogs, restricted Codex dynamic tools, separate widge
 origin, self-only sessions, disabled elevated execution and Chrome's sandbox.
 The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. Member policy requires native sandboxing;
-execution remains unavailable until a separate execution backend is qualified.
+the [local execution option](../deploy/local/README.md#separate-execution-worker)
+configures a separately owned SSH worker. Component confinement and assembled native
+member/administrator command and file-read probes passed on the local candidate;
+both used the worker and could not reach the four forbidden test destinations.
+This establishes neither per-person filesystem isolation nor working browser automation.
 
 Codex uses the pinned upstream image's bundled plugin and dependency closure.
 Lobster is registered from the separately included official release directory.
 Lobster remains subject to its native unsandboxed-context requirement. Chromium is
-configured headless with its sandbox required; its current placement is unqualified.
+configured headless with its sandbox required. The
+[separate browser image](../deploy/execution/browser/README.md) has component
+sandbox/authentication/persistence acceptance; its native/network integration is unfinished.
 Connections is bundled and registered without broker credentials; it contributes
 no executable tools until configured. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
 application settings. The [image guide](../deploy/images/README.md#verified-limits)
-owns exercised capability limits; [PLAN.md](../PLAN.md) tracks combined runtime and
+owns exercised capability limits; [TODO.md](../TODO.md) tracks combined runtime and
 release qualification.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
@@ -78,7 +84,7 @@ repairs retained material. The [runtime regression](../tests/runtime/configure-c
 uses the actual pinned SDK and verifies configured observation without SQLite
 sidecars or filesystem changes, source-file hashes, retained disablement and refusal
 of invalid native core settings. Observation checks stored configuration, not loaded
-tools; see [image acceptance](../deploy/images/README.md#verified-limits).
+tools; see [local activation](../deploy/local/README.md#activate-connections).
 
 Replacement images support an operator-controlled startup gate. When
 `CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
@@ -117,6 +123,22 @@ controls, not hot reload, menu hiding or shell authorization.
 OpenClaw 2026.9.4 still mounts its Plugins discovery surface independently of these
 loading controls. The public custom-page API adds pages; it does not remove core
 navigation. ClawHub/unselected browsing remains visible in this distribution;
-hiding is a future issue in [PLAN.md](../PLAN.md#deferred-or-undecided). Preserve
+hiding is a future issue in [TODO.md](../TODO.md#future-decisions). Preserve
 vanilla OpenClaw, with no UI patch or injected CSS. Loading restrictions do not
 establish a curated browsing UI.
+
+## External hosting boundary
+
+A hosting platform can supply current trusted-ingress identity/admission, model
+routing and a Connections broker. Do not run a second independent login authority
+or copy its organization/fleet database into this distribution. The consumer owns
+allocation, billing and infrastructure lifecycle; ClawScarf owns runtime artifacts.
+
+Adoption must explicitly map the exact artifact, transport/endpoints, persistent
+paths, UID ownership and supported operations. This runtime uses UID 1000 and a
+persistent `/home/node` volume. A consumer with a separate data disk must mount that
+state there rather than on disposable compute storage. Preserve allocation/volume
+fencing, acting-user management, credential-generation verification, source-bound
+inference authorization and revocation. Controller policy stays outside the runtime.
+Linux artifacts and one complete hosted installation need qualification before a
+consumer switches. No existing deployment or consumer integration is changed here.

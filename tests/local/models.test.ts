@@ -1,3 +1,7 @@
+import {
+  initialRuntimePolicy,
+  prepareRuntimePolicy,
+} from "../../scripts/local/policy.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -12,7 +16,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initialConfiguration } from "../../runtime/configuration.js";
 import {
-  initialRuntimePolicy,
   loadInitialModels,
   prepareInitialModels,
   withInitialModels,
@@ -158,7 +161,11 @@ await test("invalid optional model inputs fail without writing private setup or 
 
 await test("repeated preparation keeps private initial material and rejects changed source inputs", async (t) => {
   const { directory, input } = await fixture(t);
-  await prepareInitialModels(directory, input);
+  await prepareRuntimePolicy(
+    directory,
+    await prepareInitialModels(directory, input),
+    undefined,
+  );
   const keyPath = join(directory, "private/model-bootstrap.json");
   const policyPath = join(directory, "private/runtime-policy.json");
   const snapshot = await readFile(keyPath);
@@ -166,7 +173,11 @@ await test("repeated preparation keeps private initial material and rejects chan
   assert.equal((await stat(keyPath)).mode & 0o777, 0o600);
   assert.equal((await stat(policyPath)).mode & 0o777, 0o600);
   assert.equal(initialPolicy.includes("test-scoped-runtime-key"), false);
-  await prepareInitialModels(directory, input);
+  await prepareRuntimePolicy(
+    directory,
+    await prepareInitialModels(directory, input),
+    undefined,
+  );
   assert.deepEqual(await readFile(keyPath), snapshot);
   await writeFile(input.runtimeKeyFile, "replacement-key");
   await assert.rejects(
