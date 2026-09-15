@@ -3,6 +3,8 @@ import { promisify } from "node:util";
 
 const execute = promisify(execFile);
 type LocalSetupErrorCode =
+  | "runtime_binding_changed"
+  | "runtime_binding_unavailable"
   | "administrator_unverified"
   | "bootstrap_outcome_unknown"
   | "cleanup_failed"

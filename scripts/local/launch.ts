@@ -11,6 +11,7 @@ import { nodeEntrypoint } from "./entrypoint.js";
 import { LocalSetupError, run } from "./process.js";
 import { localLoginCode, verifyLocalAdministrator } from "./login.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
+import { verifyRuntimeBinding } from "./runtime-binding.js";
 
 export async function launchLocal(
   directoryInput: string,
@@ -114,7 +115,7 @@ export async function launchLocal(
       });
       report("Starting OpenClaw…");
       runtimeAttempted = true;
-      await ensureRuntime(directory, state, env);
+      const runtime = await ensureRuntime(directory, state, env);
       check();
       for (const [label, port] of [
         ["application", state.input.ports.native],
@@ -137,6 +138,7 @@ export async function launchLocal(
           );
         await response.body?.cancel();
       });
+      await verifyRuntimeBinding(state, runtime);
       report("Starting access and verifying administrator…");
       await compose(directory, ["up", "-d", "--wait", "companion"]);
       for (const service of ["companion", "postgres"])

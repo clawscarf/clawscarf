@@ -182,6 +182,11 @@ rules for every remaining change.
       no background overwrite daemon or duplicate OpenClaw dashboard.
 - [ ] **8. Qualify release operation.** Document persistent paths, secret handling,
       stop/start, logs, diagnostics and one supported upgrade preserving native edits.
+      The pinned controller changes images only through compute replacement. Preserve
+      current effective policy/settings and the owned home volume; bootstrap policy
+      is not an upgrade source. Verify actual image/mounts, confirmed old compute
+      removal and one replacement allocation. Native name-based deletion has no atomic
+      UUID precondition; do not claim otherwise or infer rollback from volume retention.
       Assemble one reproducible noninteractive setup sequence for controller, volume,
       native state, Postgres/migrations, private credentials, companions and forwarding;
       separate component commands are not a complete installation path. The

@@ -170,6 +170,18 @@ Foreign/replaced runtimes and terminal errors require inspection. Native start/s
 names, so UUID checks before and after detect replacement but cannot provide an atomic
 UUID precondition. The CLI cannot independently read the runtime's actual image through
 its current `get` output; do not treat receipt metadata as that verification.
+Before starting Access, the launcher therefore inspects the uniquely labeled Docker
+container, compares its actual immutable image ID and checks the exact writable,
+owned home-volume mount, rejecting additional mounts that shadow its contents.
+Missing, duplicate or changed bindings stop startup;
+failed observation is distinct from a verified mismatch. This is a read-only
+Docker-driver check, not an atomic replacement precondition or continuous monitoring.
+The [binding regression](../../tests/local/runtime-binding.test.ts) covers wrong
+images, runtime labels, missing/duplicate containers, foreign/read-only home mounts
+and incomplete observations. Its optional real Docker check uses
+`CLAWSCARF_TEST_LOCAL_BINDING_DIRECTORY` with an existing owned installation.
+Both that read-only check and normal startup through administrator verification
+passed against the retained development runtime.
 
 Private controller/forward logs are under `logs/` in the installation directory. Compose
 owns companion/Postgres logs. If network reservation fails, inspect Docker's address
