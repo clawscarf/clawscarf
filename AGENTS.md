@@ -91,5 +91,5 @@
   docs semantically as well as with `pnpm docs:check`. State what remains unverified.
   No repeated broad audit or test loop without a new finding that warrants it.
 - Make coherent commits, preserve unrelated work/notices, and push only when
-  authorized. Never modify donor deployments. Terminal installer and optional
-  capability selection require later discussion; do not implement them during handoff.
+  authorized. Never modify donor deployments. Installer and capability work follows
+  the owner-selected scope; a future idea or handoff does not authorize it.

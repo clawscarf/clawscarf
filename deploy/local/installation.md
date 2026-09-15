@@ -5,6 +5,13 @@ OpenShell, the protected shared worker and authenticated entry. The current targ
 is macOS arm64 with Docker Desktop. Published downloads, the interactive installer,
 local LiteLLM lifecycle and pack selection are unfinished.
 
+A fresh local installation passed preparation, native browser administrator login,
+worker SSH execution as UID 1000, stop, repeated preparation and restart. Native
+appearance settings and worker files survived; the worker had no Gateway configuration.
+This qualifies the local disabled-capability path, not optional-service or published
+release installation. Interrupted preparation resumed after Docker network capacity
+was restored without replacing its recorded installation identity.
+
 ## Development release
 
 Build components using their [image recipes](../images/README.md). Generate a

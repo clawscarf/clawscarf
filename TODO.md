@@ -19,14 +19,6 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Selected implementation — verify each step before proceeding
 
-- [ ] **1. Release definition, installation schema and unified CLI.** Replace manual
-      component inputs with `releaseFile` referencing the [release definition](scripts/release/definition.ts).
-      Reuse existing operators for validate/plan/apply/start/stop/status/logs/doctor/login
-      and explicit upgrades. Require OpenShell, protected shared worker and authenticated
-      entry. Verify configuration, stale previews, interrupted operations, native-edit
-      preservation and a complete local installation. Fresh apply currently stops because
-      Docker's address pools are exhausted; free capacity before advancing to step 2.
-      See [interface](docs/installation-interface.md).
 - [ ] **2. Wire optional capabilities through the same configuration.** Models
       disabled/external/local LiteLLM, Connections disabled/external/local Composio and
       native packs, with private credentials and prerequisites. Verify disabled paths,

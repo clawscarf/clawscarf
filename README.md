@@ -73,8 +73,9 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 ## Installation management direction
 
 **Initial implementation:** one validated installation document and CLI for local
-preparation and lifecycle. Fresh-install acceptance is blocked by local Docker address
-pool exhaustion. Optional integration completion, installer and publication remain in TODO.
+preparation and lifecycle. A fresh macOS arm64 installation passed local browser login,
+administrator bootstrap, protected worker access and stop/restart with native settings
+and worker files retained. Optional integration completion, installer and publication remain in TODO.
 The [v1 design and concrete examples](docs/installation-interface.md) define the target
 configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
 boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;
