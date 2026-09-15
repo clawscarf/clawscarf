@@ -27,6 +27,8 @@ COPY services/access/openapi.json ./services/access/openapi.json
 COPY services/access/migrations ./services/access/migrations
 COPY services/connections/openapi.json ./services/connections/openapi.json
 COPY services/connections/migrations ./services/connections/migrations
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/
+COPY services/connections/web/shared/shadcn/LICENSE.md /usr/share/licenses/clawscarf/shadcn-MIT.txt
 USER node
 ENV NODE_ENV=production
 EXPOSE 18800

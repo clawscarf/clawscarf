@@ -11,8 +11,9 @@ connect your team's tools and share useful setups through packs. Conversations a
 workspaces are stored on infrastructure you control; configured model and tool
 providers can receive data you send them. No RawClaw account is required.
 
-> **Early development:** components are implemented and undergoing integration testing.
-> There is no qualified distribution, complete quickstart or installer yet.
+> **Developer preview:** local administrator login, a real model/tool conversation
+> and retained-state restart have passed on macOS arm64 with Docker Desktop.
+> Shared-team use and a complete installable release are still being validated.
 > Follow the [implementation plan](PLAN.md) for the work remaining.
 
 ## What's in the repository
@@ -33,7 +34,7 @@ providers can receive data you send them. No RawClaw account is required.
   Lobster, Chromium and ClawScarf plugins packaged together. Dependencies being
   installed does not mean every execution path is qualified.
 
-The intended installation is container-based, without a separately provisioned VM.
+The local installation uses containers, without a separately provisioned VM.
 The terminal installer comes after the underlying components work together.
 
 ## Start here
@@ -53,8 +54,8 @@ The configured local installation has passed an administrator browser conversati
 with a real model and native file-read tool. This is a developer evaluation path,
 not a finished end-user quickstart or shared-team qualification.
 
-The current runtime checks target **macOS arm64 with Docker Desktop**. Linux and
-Windows/WSL are not yet qualified. See the measured
+The local setup command currently accepts **macOS arm64 with Docker Desktop** only.
+Linux and Windows/WSL setup are not supported yet. See the measured
 [development footprint](deploy/openshell/README.md#development-footprint) before
 building.
 Contributors can also [package the compiled operator](scripts/README.md#operator-archive)
@@ -72,6 +73,20 @@ The installation has three parts:
 
 Compose runs companions; OpenShell owns the OpenClaw runtime. Packs use native
 OpenClaw formats and do not need their own database.
+
+## Before you try it
+
+The developer path requires building images and obtaining the pinned controller
+executables. There is no published all-in-one download, installer or supported runtime
+upgrade yet. The [local setup guide](deploy/local/README.md) owns the exact steps.
+
+Administrator chat and file-read execution have passed. Ordinary-member shell execution
+is unavailable in the current preset, and packaged Chromium cannot start under the
+current sandbox policy. Their [execution placement](deploy/openshell/README.md#execution-placement)
+is still being resolved. Generic OIDC and managed Connections are implemented, but a
+real company-login deployment and external-account setup remain separate acceptance
+requirements. Do not choose this preview for a production team on the strength of
+component tests alone.
 
 ## Security with explicit boundaries
 

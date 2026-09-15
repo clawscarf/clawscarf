@@ -75,6 +75,7 @@ COPY --chmod=0755 runtime/openclaw.sh /app/clawscarf/bin/openclaw
 COPY runtime/models.ts /app/clawscarf/models.ts
 COPY --from=runtime-tools /out/ /app/clawscarf/
 COPY release/licenses/ /usr/share/licenses/clawscarf/
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/
 
 COPY --from=pack-tools /build/pack-tools/dist /app/clawscarf/pack-tools
 COPY --from=pack-tools /build/pack-tools/node_modules /app/clawscarf/pack-tools/node_modules

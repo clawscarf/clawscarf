@@ -57,8 +57,11 @@ closure without lifecycle scripts. Lobster's official release contains its embed
 [the downloader](native-plugins/download.mjs), then extracts the archive verbatim.
 Neither plugin needs a source patch. A symlink resolves their SDK imports to the
 image's one OpenClaw installation; no second OpenClaw distribution is installed.
-Pinned upstream license/notice copies ship under `/usr/share/licenses/clawscarf`;
-see [provenance](../../THIRD_PARTY_NOTICES.md). Debian package copyright files are retained.
+The recipe copies the root [license](../../LICENSE),
+[third-party notices](../../THIRD_PARTY_NOTICES.md) and pinned upstream license/notice
+files verbatim to `/usr/share/licenses/clawscarf`. Debian package copyright files
+are retained. The added root notices have not yet been checked in a rebuilt image;
+complete release license qualification remains open in the [plan](../../PLAN.md).
 
 ## Native registration
 

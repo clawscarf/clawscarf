@@ -45,6 +45,13 @@ qualification reports. Debian package copyright files remain under `/usr/share/d
 This initial inventory does not establish complete transitive license review;
 that release requirement remains in the plan.
 
+Both image recipes also copy this file and the root [license](LICENSE) verbatim
+to `/usr/share/licenses/clawscarf`. The companion recipe additionally copies the
+incorporated [shadcn notice](services/connections/web/shared/shadcn/LICENSE.md)
+there as `shadcn-MIT.txt`. These additions are source-level packaging changes;
+their retained contents still require verification in rebuilt images. Relative
+source links in this file refer to the source checkout, not image filesystem paths.
+
 When bundling or adapting software, record its exact version and source, retain its
 license and required notices, and identify modifications where required. Review
 plugins, executable dependencies and image contents individually. Publish the actual

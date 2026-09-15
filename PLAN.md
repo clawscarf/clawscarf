@@ -161,6 +161,9 @@ rules for every remaining change.
 - [ ] **3. Complete independent access.** Reuse RawClaw's working identity/ingress
       implementation through a standalone composition. Deliver protected loopback-only
       local administrator setup and generic company OIDC for shared deployment. Explicit
+      shared-team setup must compose that OIDC service with configured TLS/ingress and
+      native/widget endpoints; the current local operator only assembles local identity.
+      Component OIDC support alone does not complete this deployment path. Require an explicit
       first administrator; native roles thereafter, no first-login takeover. Verify two
       identities, role denial/handover, stable display identities, direct bookmarks,
       multiple tabs, logout/revocation of open streams, widgets and authenticated hooks.
@@ -196,7 +199,8 @@ rules for every remaining change.
       acceptance in release testing. Verify successful automatic subnet allocation on a
       clean Docker environment; the current workstation's pools are exhausted.
       Test missing/invalid optional services and interrupted setup. Produce exact
-      artifacts with license/provenance review. The compiled operator has a local
+      artifacts with license/provenance review; verify the retained notices in each
+      rebuilt image and archive, not only its recipe. The compiled operator has a local
       [archive command](scripts/README.md#operator-archive); full distribution artifacts
       and clean-machine runtime acceptance remain required. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.

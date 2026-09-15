@@ -1,6 +1,8 @@
 **
 !package.json
 !pnpm-lock.yaml
+!LICENSE
+!THIRD_PARTY_NOTICES.md
 !tsconfig*.json
 !apps/
 !apps/companion/
