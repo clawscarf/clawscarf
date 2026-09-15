@@ -20,16 +20,20 @@ to run the entire list automatically. Current configuration and limits are in
 ## Following slices
 
 - [ ] **2. Unify installation configuration and CLI.** Evolve existing operators into
-      one entry point and validated JSON schema: artifacts, resources/storage, URLs/TLS,
+      one entry point and validated JSON schema following the [v1 proposal](docs/installation-interface.md):
+      artifacts, resources/storage, URLs/TLS,
       access/bootstrap, execution/browser, models, Connections and packs/capabilities.
       Define required/optional fields, secret references, validation/preview and supported
       reconfiguration. Add coherent start/stop/status/logs/diagnostics; preserve existing
       login/upgrade operations, native edits, ownership and uncertain-effect handling.
       Use explicit development or released artifacts with the same implementation.
+      Define external ingress and directory-backed storage contracts for a hosting consumer;
+      keep simple complete example recipes, not a template engine.
 - [ ] **3. Complete administrator setup and ongoing People UX.** Initial setup must
       establish and verify the intended administrator without ad hoc component commands.
       Keep local evaluation and generic OIDC. Resolve the manual subject-ID enrollment
-      experience without automatic IdP-wide admission; People owns ongoing enrollment/
+      experience without automatic IdP-wide admission; choose owner-claim bootstrap and
+      request/approve versus invite-link enrollment before implementation. People owns ongoing enrollment/
       revocation, OpenClaw owns roles. Verify two-person login, handover and revocation.
 - [ ] **4. Compose optional integrations through that interface.** Support models
       disabled/external/local LiteLLM and Connections disabled/external/local Composio;
@@ -48,6 +52,13 @@ to run the entire list automatically. Current configuration and limits are in
       Download/select artifacts, collect configuration, preview, install/resume and print
       the working URL through the same CLI; support unattended use and existing installs.
       No duplicate orchestration, secrets in argv, or silent source-build fallback.
+
+## Consumer integration — separately selected
+
+- [ ] Adapt RawClaw behind its existing native provisioning boundary to consume ClawScarf
+      artifacts/configuration, retain its identity/ingress/model/broker ownership, map
+      persistent data and UID ownership, and qualify one fresh Linux hosted installation.
+      No existing-instance migration or consumer implementation is authorized by this proposal.
 
 ## Future decisions
 

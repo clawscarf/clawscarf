@@ -72,30 +72,16 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 
 ## Installation management direction
 
-**Planned, not yet a unified interface:** one ClawScarf CLI manages one installation
-from a validated JSON document and referenced private secret files. It will compose
-existing operator modules rather than introduce a second orchestrator. Configuration
-covers runtime/artifact selection, storage/resources, exposure/TLS, local or OIDC
-access, initial administrator, execution/browser, optional models/Connections and
-selected packs/capabilities. Native agent/role/conversation state remains in OpenClaw;
-the installation document is not a mirror of every native setting.
+**Planned, not yet a unified interface:** one validated installation document and
+one CLI, reused by people, the future terminal installer and external hosting.
+The [v1 design and concrete examples](docs/installation-interface.md) define proposed
+configuration, change semantics, recipes, bootstrap/People choices and the RawClaw
+consumer boundary. Today's commands remain in the [local operator guide](deploy/local/README.md).
 
-Initial setup establishes the administrator and proves login. Ongoing enrollment
-and removal belong in People; role definitions and assignments remain native.
-Authentication never automatically admits everyone from an identity provider.
-
-The CLI should validate and preview changes, prepare/start/stop, report status and
-logs, diagnose failures and perform explicit reconfiguration/upgrades. Retain native
-edits by default; show replacement/restart consequences before applying selected
-changes. Secret rotation and uncertain effects must not be silently replayed.
-A terminal wizard comes last and calls these same operations.
-
-Development uses explicitly selected local builds; releases use a manifest with
-verified artifact references. Both run the same implementation with installation
-state outside the executable package. There is no silent source-build fallback.
-Connections stays optional in the existing companion for now; extracting a separate
-process/authentication arrangement needs its own decision. See [TODO.md](TODO.md)
-for the ordered work and current browser blocker.
+OpenClaw retains its mutable application state. Applying selected installation
+settings must preserve unrelated native edits. External hosting must supply its own
+entry/admission, models and broker without a second login or fleet database.
+[TODO.md](TODO.md) owns unfinished work; the design does not authorize later slices.
 
 ## Code tour
 
