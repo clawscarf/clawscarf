@@ -54,8 +54,8 @@ USER root
 WORKDIR /build/runtime-tools
 COPY deploy/images/pack-tools/package*.json ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY runtime/initialize.ts runtime/initialize-main.ts ./
-RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts
+COPY runtime/initialize.ts runtime/initialize-main.ts runtime/trust.ts runtime/trust-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts trust.ts trust-main.ts
 
 FROM upstream
 

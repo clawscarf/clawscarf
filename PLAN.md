@@ -192,6 +192,8 @@ rules for every remaining change.
       matching network permission in that qualification: the current local setup
       initializes no model and starts with outbound traffic denied. A successful
       browser login alone does not establish an agent ready to do useful work.
+      Verify the rebuilt image's browser model/tool path with both OpenShell's
+      inherited CA and the private model gateway's CA before closing acceptance.
       Test missing/invalid optional services and interrupted setup. Produce exact
       artifacts with license/provenance review. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.

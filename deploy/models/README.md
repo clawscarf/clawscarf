@@ -31,9 +31,13 @@ transports the scoped key through authenticated exec stdin; it is never a comman
 argument. The helper writes a private credential generation in persistent runtime
 state and configures a native file SecretRef. The public CA is stored separately for the canonical launcher. Gateway restarts
 and operator commands use the same file-backed credential without token environment
-injection. The launcher supplies the CA through `NODE_EXTRA_CA_CERTS` only when an
-operator has not already set that variable. This extends trust for the Node process,
-not only this provider, and preserves certificate verification. A new or changed
+injection. The launcher combines this CA with any inherited `NODE_EXTRA_CA_CERTS`
+bundle, including OpenShell's proxy CA, and supplies the combined file to Node.
+Public bundles are stored by content digest under `clawscarf-models/trust`; repeated
+startup reuses the same bundle, and changed certificates produce a new one.
+Unreadable inherited trust or a mismatched existing bundle stops startup.
+This extends trust for the Node process, not only this provider, and preserves
+certificate verification. A new or changed
 CA requires an explicit Gateway restart. Applying without `--ca-file` removes this
 configured CA file; operator-provided environment trust remains untouched.
 
@@ -166,8 +170,9 @@ read tool enabled and a workspace file named model-proof.txt containing
 `controlled native tool result`. Use `configure-runtime` above with the private
 fixture configuration, scoped runtime key and public CA. The
 [probe](../../tests/models/openshell-probe.mjs) invokes the shipped canonical
-launcher with token/trust environment overrides absent: the key comes from its
-native file SecretRef and the launcher reads the explicitly configured public CA.
+launcher without injecting a model token or replacing inherited CA trust: the key comes from its
+native file SecretRef and the launcher combines the configured public CA with
+the inherited controller trust. The probe preserves that inherited trust variable.
 
 ```sh
 openshell sandbox exec --name YOUR_PROOF_SANDBOX -- node --input-type=module < tests/models/openshell-probe.mjs

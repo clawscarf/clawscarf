@@ -6,7 +6,6 @@ const root = "/home/node";
 const realModel = process.env.CLAWSCARF_TEST_REAL_MODEL === "1";
 const environment = { ...process.env };
 delete environment.CLAWSCARF_MODEL_TOKEN;
-delete environment.NODE_EXTRA_CA_CERTS;
 const result = spawnSync(
   "/app/clawscarf/bin/openclaw",
   [

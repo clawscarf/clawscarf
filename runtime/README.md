@@ -37,9 +37,12 @@ persistent home/state defaults and SQLite temporary directory before invoking th
 unmodified upstream executable. OpenShell operator execution does not inherit all
 Docker image environment variables, so image `ENV` alone is insufficient.
 When model setup installs a private gateway's public CA, the launcher adds it to
-Node's process-wide trust through `NODE_EXTRA_CA_CERTS`. Explicit operator environment
-configuration takes precedence. CA changes require a Gateway restart; no certificate
-verification is disabled. Model tokens remain separate private native file secrets.
+Node's process-wide trust through `NODE_EXTRA_CA_CERTS`. [trust.ts](trust.ts) combines
+the model CA with any inherited controller/operator CA bundle; neither replaces the
+other. It publishes immutable content-addressed public bundles before Node starts,
+and rejects unreadable inputs or mismatched existing contents. CA changes require a
+Gateway restart; no certificate verification is disabled. Model tokens remain separate
+private native file secrets.
 
 ## Capability controls
 
