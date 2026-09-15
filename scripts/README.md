@@ -14,6 +14,11 @@ pnpm check
 The root build compiles repository tooling, companion TypeScript and the Connections
 and Access plugins and both standalone browser surfaces; it does not produce an OpenClaw runtime image.
 Plugin packages own their separate SDK dependency, build and acceptance commands.
+The operator build also copies its [Python SDK transport](packs/transport.py) and
+locked dependency inputs beside the compiled pack CLI through
+[build-operator.ts](build-operator.ts). These files belong to the operator artifact,
+not the OpenClaw runtime image. The selected operator Python environment must install
+the pinned SDK dependencies as described in [pack setup](../packs/README.md).
 
 [check-docs.ts](check-docs.ts) checks tracked and unignored new Markdown files for
 relative file links, heading anchors, documented root pnpm commands and completed

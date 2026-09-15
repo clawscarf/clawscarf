@@ -7,6 +7,7 @@ import {
   writeFile,
   rm,
   symlink,
+  chmod,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -80,6 +81,49 @@ await test("pack source rejects symlinks instead of following files outside pack
   }
 });
 
+await test("pack digest distinguishes embedded delimiters from additional files", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "clawscarf-pack-framing-"));
+  try {
+    await cp(resolve("packs/research-team"), directory, { recursive: true });
+    await writeFile(join(directory, "a"), "alpha\0b\0beta");
+    const original = await openPack(directory);
+    await writeFile(join(directory, "a"), "alpha");
+    await writeFile(join(directory, "b"), "beta");
+    assert.notEqual((await openPack(directory)).digest, original.digest);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+await test("executable permission drift invalidates the reviewed pack before mutation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "clawscarf-pack-mode-"));
+  try {
+    await cp(resolve("packs/research-team"), directory, { recursive: true });
+    const file = join(directory, "helper.sh");
+    await writeFile(file, "#!/bin/sh\nexit 0\n", { mode: 0o600 });
+    const native = new FixtureClaws();
+    const plan = await planPack(
+      {
+        directory,
+        operation: "add",
+        member: "researcher",
+        workspace: join(directory, "workspace"),
+      },
+      native,
+    );
+    await chmod(file, 0o700);
+    await assert.rejects(applyPack(plan, native), /sources changed/);
+    assert.equal(
+      native.calls.some((args) => args.includes("--yes")),
+      false,
+    );
+    await chmod(file, 0o600);
+    assert.equal((await openPack(directory)).digest, plan.packDigest);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 await test("packaged runtime rejects connection bindings before reading operator credentials or changing native state", async () => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-pack-connection-"));
   try {
@@ -89,6 +133,7 @@ await test("packaged runtime rejects connection bindings before reading operator
       JSON.parse(await readFile(manifestPath, "utf8")),
     );
     assert.ok(manifest.members[0]);
+    manifest.members[0].connectionFile = "accounts.json";
     manifest.members[0].requirements.connections.push({
       slot: "documents",
       connectorId: "googledrive",

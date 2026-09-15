@@ -9,7 +9,7 @@
   },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "build": "tsc -b tsconfig.sdk.json && tsc -p tsconfig.build.json && pnpm connectors:plugin:build && pnpm connections:web:build && pnpm access:web:build && pnpm access:plugin:build",
+    "build": "tsc -b tsconfig.sdk.json && tsc -p tsconfig.build.json && node --import tsx scripts/build-operator.ts && pnpm connectors:plugin:build && pnpm connections:web:build && pnpm access:web:build && pnpm access:plugin:build",
     "check": "pnpm format:check && pnpm codegen:check && pnpm typecheck && pnpm lint && pnpm architecture:check && pnpm docs:check && pnpm test && pnpm connectors:plugin:check && pnpm access:plugin:check",
     "typecheck": "tsc -b tsconfig.sdk.json && tsc --noEmit",
     "lint": "eslint apps scripts services tests runtime plugins/access/src plugins/connections/src plugins/connections/tests plugins/connections/scripts eslint.config.mjs .dependency-cruiser.cjs",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { networkRequirementSchema, policyProofSchema } from "./policy.js";
 const id = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
 export const packSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -11,6 +12,10 @@ export const packSchema = z.strictObject({
       z.strictObject({
         id,
         source: z.string().regex(/^[a-z][a-z0-9/-]*$/),
+        connectionFile: z
+          .string()
+          .regex(/^[a-z][a-z0-9_-]*\.json$/)
+          .optional(),
         requirements: z.strictObject({
           model: z.enum(["configured-default", "none"]),
           connections: z.array(
@@ -27,15 +32,27 @@ export const packSchema = z.strictObject({
   execution: z.strictObject({
     location: z.literal("native-tools"),
     binaries: z.array(z.string().regex(/^[a-zA-Z0-9._+-]+$/)),
-    network: z.array(z.string().min(1)),
+    network: z.array(networkRequirementSchema),
   }),
 });
 export type Pack = z.infer<typeof packSchema>;
 export type Member = Pack["members"][number];
+export const targetSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("local") }),
+  z.strictObject({
+    kind: z.literal("openshell"),
+    gateway: z.string().min(1),
+    sandbox: z.string().min(1),
+    sandboxId: z.uuid(),
+  }),
+]);
+export type PackTarget = z.infer<typeof targetSchema>;
 export const planSchema = z.strictObject({
   schemaVersion: z.literal(1),
   pack: z.string(),
   packDigest: z.string(),
+  target: targetSchema,
+  targetPack: z.string(),
   member: id,
   operation: z.enum(["add", "update", "remove"]),
   workspace: z.string(),
@@ -43,11 +60,15 @@ export const planSchema = z.strictObject({
   planIntegrity: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   requirements: z.object({
     model: z.string().nullable(),
+    network: policyProofSchema.nullable(),
     connections: z.array(
       z.object({
         slot: z.string(),
         connectionId: z.string(),
+        serverId: z.uuid(),
         revision: z.number().int(),
+        name: z.string(),
+        connectorId: z.string(),
       }),
     ),
   }),

@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { Command } from "commander";
+import { Command, Option } from "commander";
+import { OpenShellClaws } from "./packs/openshell.js";
 import { NativeClaws } from "./packs/native.js";
 import { inspectPack, planPack, applyPack } from "./packs/lifecycle.js";
 import type { PackPlan } from "./packs/model.js";
@@ -8,11 +9,36 @@ const program = new Command("clawscarf-packs").option(
   "native OpenClaw command",
   "openclaw",
 );
-const native = () =>
-  new NativeClaws(
+if (process.env.CLAWSCARF_PACK_RUNTIME !== "1") {
+  program
+    .option("--sandbox <name>", "execute on this OpenShell sandbox")
+    .option("--gateway <name>", "OpenShell controller", "clawscarf")
+    .option("--openshell <executable>", "OpenShell CLI", "openshell")
+    .option(
+      "--python <executable>",
+      "operator Python with pinned OpenShell SDK",
+      "python3",
+    );
+}
+const native = () => {
+  const options = program.opts<{
+    sandbox?: string;
+    gateway: string;
+    openshell: string;
+    python: string;
+  }>();
+  if (options.sandbox)
+    return new OpenShellClaws({
+      executable: options.openshell,
+      python: options.python,
+      sandbox: options.sandbox,
+      gateway: options.gateway,
+    });
+  return new NativeClaws(
     program.opts<{ openclaw: string }>().openclaw,
     process.env.CLAWSCARF_PACK_RUNTIME !== "1",
   );
+};
 const print = (value: unknown) =>
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
 program.command("inspect <directory>").action(async (directory: string) => {
@@ -28,7 +54,11 @@ for (const operation of [
     .requiredOption("--member <id>")
     .requiredOption("--workspace <path>")
     .requiredOption("--plan <path>", "new reviewed-plan output file")
-    .option("--bindings <path>")
+    .addOption(
+      new Option("--bindings <path>").hideHelp(
+        process.env.CLAWSCARF_PACK_RUNTIME === "1",
+      ),
+    )
     .action(
       async (
         directory: string,
@@ -60,13 +90,18 @@ for (const operation of [
 program
   .command("apply <plan>")
   .requiredOption("--yes", "apply the exact reviewed native plan")
-  .option("--bindings <path>")
+  .addOption(
+    new Option("--bindings <path>").hideHelp(
+      process.env.CLAWSCARF_PACK_RUNTIME === "1",
+    ),
+  )
   .action(async (path: string, options: { bindings?: string }) => {
     const value: unknown = JSON.parse(await readFile(path, "utf8"));
     print(await applyPack(value, native(), options.bindings));
   });
 program.command("status <member>").action(async (member: string) => {
-  await native().version();
-  print(await native().run(["claws", "status", member, "--json"]));
+  const target = native();
+  await target.version();
+  print(await target.run(["claws", "status", member, "--json"]));
 });
 await program.parseAsync();

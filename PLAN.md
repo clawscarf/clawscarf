@@ -17,7 +17,7 @@ team boundary. Separate untrusted teams use separate installations.
 
 OpenClaw owns its native application and mutable configuration. ClawScarf owns the
 tested runtime combination, dependencies, integration packaging and operating
-procedures. RawClaw consumes ClawScarf artifacts and owns organizations, hosting,
+procedures. RawClaw will consume ClawScarf artifacts and retain organizations, hosting,
 provisioning, admission, optional billing and infrastructure lifecycle. The website
 is a future separate repository under the same parent/organization.
 
@@ -47,6 +47,8 @@ a member boundary against unrestricted local execution. Selection and qualificat
 of a separate native execution sandbox remain part of the first milestone; ordinary
 member shell access must stay denied until that boundary is verified. The runtime
 packaging decision is awaiting owner input, not silently replaced.
+The [execution-placement review](deploy/openshell/README.md#execution-placement)
+records the supported worker options and their actual credential requirements.
 
 Keep shared model/connection provider credentials outside OpenClaw. Limited runtime
 credentials remain credentials and require tested scoping and revocation. A broker
@@ -122,6 +124,15 @@ SSH launchers, ZFS binding checks, systemd units and fixed bridge addresses are 
 portable runtime interfaces. Preserve user-scoped management and uncertain outcomes;
 do not replace them with a shared all-powerful identity to simplify integration.
 
+The reviewed donor uses UID 2000 and `/opt/rawclaw`, while this image uses UID 1000
+and persistent `/home/node`. Adoption must map data ownership, trusted ingress and
+the hosted inference source address deliberately. Preserve the running plugin's
+credential-generation verification when replacing systemd-based checks. RawClaw's
+existing identity, broker and LiteLLM remain the owners in hosted mode; do not deploy
+duplicate standalone companions for those responsibilities. The current release
+manifest lists Darwin arm64 controller artifacts; Linux x86-64 artifacts and runtime
+qualification are prerequisites for Hetzner adoption, not an assumed image switch.
+
 ## Remaining implementation and qualification
 
 Completed component work lives in its implementation owner, not in this checklist.
@@ -159,15 +170,6 @@ rules for every remaining change.
       do not advertise per-human or per-operation authorization not actually enforced.
       Unconfigured integration has no unusable tools or dead-end actions. Keep native
       MCP, channels and other plugins as separate supported integration paths.
-- [ ] **6. Implement packs.** Use upstream Claws/bundles where they fit. A pack may
-      contain several agents, skills, plugins and workflows; bind models and connections
-      separately from secrets. Define required binaries, execution locations, network
-      permissions, compatibility and owned files/settings. Implement install, inspect,
-      explicit update/reapply and removal with dependency checks and preservation of
-      user changes/data. The included research pack's packaged lifecycle is qualified.
-      Finish operator-side connection verification combined with target execution,
-      without copying browser administrator credentials into the runtime, and bind a
-      real runtime network-policy verifier before enabling packs that require egress.
 - [ ] **7. Complete curation and configuration.** Support selected capability
       enable/disable through native interfaces. Qualify hiding ClawHub/unselected
       discovery independently of execution restrictions. Use supported UI extension
@@ -176,6 +178,9 @@ rules for every remaining change.
       no background overwrite daemon or duplicate OpenClaw dashboard.
 - [ ] **8. Qualify release operation.** Document persistent paths, secret handling,
       stop/start, logs, diagnostics and one supported upgrade preserving native edits.
+      Assemble one reproducible noninteractive setup sequence for controller, volume,
+      native state, Postgres/migrations, private credentials, companions and forwarding;
+      separate component commands are not a complete installation path.
       Test missing/invalid optional services and interrupted setup. Produce exact
       artifacts with license/provenance review. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.

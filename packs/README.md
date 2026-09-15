@@ -58,33 +58,86 @@ is required by a consumer of those packages.
 
 ## Requirements and bindings
 
-The manifest records model readiness, required connection slots, binaries, execution
-location and network requirements. `configured-default` checks the actual native
-`models status --json --check` result; it is credential/configuration readiness,
-not proof of a successful paid inference. It never sets a provider or copies keys.
-Required binaries are checked in the command's execution environment. Packs requiring
-extra network policy fail closed until a concrete runtime-policy verifier is bound;
-this command cannot claim that a declared endpoint is permitted by OpenShell.
+The manifest records model readiness, connection slots, binaries, execution location
+and network requirements. `configured-default` checks native model configuration
+and credential readiness, not a successful inference. It never sets a provider or
+copies keys. Required binaries are checked in the target runtime.
 
-Connection-dependent packs are **not yet supported by the packaged runtime**.
-Do not copy a browser administrator session into that runtime. Operator-side account
-verification plus authenticated target execution remains unfinished. The local
-source command can verify connection slots by ID using a private JSON file on the
-operator machine:
+For connection-dependent packs, operate from the controller machine. Install the
+released official OpenShell Python SDK using the [hashed dependency lock](../scripts/packs/requirements.txt):
+
+```sh
+uv venv --python 3.12 .local/pack-operator
+uv pip sync --python .local/pack-operator/bin/python scripts/packs/requirements.txt
+export OPENCLAW_EXPERIMENTAL_CLAWS=1
+pnpm packs --sandbox clawscarf --gateway clawscarf \
+  --python .local/pack-operator/bin/python \
+  add /path/to/pack --member assistant --workspace /home/node/workspaces/assistant \
+  --bindings /private/bindings.json --plan /private/assistant-plan.json
+pnpm packs --sandbox clawscarf --gateway clawscarf \
+  --python .local/pack-operator/bin/python \
+  apply /private/assistant-plan.json --bindings /private/bindings.json --yes
+```
+
+Use `--openshell` for a non-default CLI path. The [operator bridge](../scripts/packs/transport.py)
+uses official OpenShell **0.0.116** `SandboxClient` with the controller's existing
+TLS/OIDC configuration. It dispatches by the sandbox UUID recorded in the preview;
+reusing a deleted sandbox's name cannot redirect a mutation. No controller or browser
+credentials are copied to the runtime. The built operator artifact preserves this
+helper beside its compiled CLI; Python and its SDK environment stay on the operator
+machine. The runtime command deliberately omits remote and browser-binding options.
+
+A binding file contains:
 
 ```json
 {
   "origin": "https://team.example.com",
+  "brokerUrl": "https://team.example.com/_clawscarf/connections",
   "sessionFile": "/private/current-session",
   "connections": { "documents": "00000000-0000-4000-8000-000000000001" }
 }
 ```
 
-Pass `--bindings <file>` during preview and apply. The generated REST client checks
-the exact current account, connector type and agent grant as the signed-in native
-administrator. The pack contains no provider tokens. Native package requirements
-must still declare any plugin/skill dependencies they need; account bindings do not
-install an extension. The included research pack needs no connection bindings.
+Keep both files outside the pack. The generated REST client verifies the exact
+account ID/type, current account state and grant for the target agent using the
+administrator's current session. Missing selected-agent grants block preview;
+never widen access automatically. Initial installation can use an existing account
+already available to all agents. Once the pack exists, restrict that account to its
+agent and use update/apply. An account restricted to a not-yet-created agent needs
+an explicit two-stage setup; this command does not invent pre-admission grants. The target plugin's configured broker must match the explicit `brokerUrl`. `origin`
+is the administrator-facing management origin; these may differ in a local
+composition (for example, localhost versus a private runtime hostname). This is
+operator-owned deployment mapping, not discovery or cryptographic server identity.
+All selected accounts must belong to the same server and their server IDs are
+recorded in the reviewed plan. Public URL
+matching does not prove runtime-credential validity: the broker still checks that
+credential and current grants on each tool call.
+
+A connection-dependent member declares `connectionFile`, for example accounts.json.
+Its native [CLAW.md](research-team/researcher/CLAW.md) must explicitly include that file in `workspace.files`; the
+pack's instructions must tell its agent to read it. ClawScarf renders only that
+JSON file with schema version 1 and a `connections` array of slot, connectionId,
+name and connectorId. It performs no prompt templating and copies no credential.
+Native Claws previews and owns the file, including update/removal and preservation
+of user edits. An account slot is therefore concrete agent-readable configuration,
+not merely a successful prerequisite check.
+
+Preview uploads a fresh private source directory; it does not overwrite earlier
+staging directories or agent workspaces. Apply rechecks local/target digests, native
+plan integrity, account revisions/grants and policy before mutation. A changed
+account or source needs a new preview. No mutation is replayed automatically after
+an uncertain result. Staged source directories remain available for native ownership
+records and reviewed plans; deleting them invalidates those plans.
+
+Network requirements are explicit objects with `binary` (canonical absolute target
+path), `host` (exact DNS name), `port` and `protocol: "tcp"`. The operator checks the
+sandbox's effective policy against its acknowledged loaded revision, records exact
+hash/version/config revision and rechecks for changes. Only unconditional exact
+executable/TCP grants are supported. Global/provider-composed mismatches, wildcard,
+audit and conditional/L7 policies fail closed. Omitted native protocol means proxy
+passthrough, not transparent TCP, and does not satisfy a TCP requirement. This checks
+loaded policy coverage, not DNS/reachability, successful account operations or
+per-agent isolation when agents share an executable. It never changes policy.
 
 ## Verification
 
@@ -96,8 +149,16 @@ preservation independently of live inference. The packaged tool also completed i
 remove/apply for both unmodified research-pack members inside a disposable pinned
 OpenShell runtime with the configured-model prerequisite enabled; edited identities
 and unrelated files survived removal. This qualifies native lifecycle and model
-configuration readiness, not agent research quality. Connection-dependent packs and
-network-policy verification remain unfinished.
+configuration readiness, not agent research quality. [Operator binding checks](../tests/packs/connections.test.ts) cover current session,
+exact grants and revision drift. [Transport checks](../tests/packs/transport.test.ts)
+cover UUID dispatch and uncertain failure without replay. The optional
+[OpenShell binding test](../tests/packs/openshell.test.ts) uses controlled account HTTP
+with real SDK/native package ownership; this is not external OAuth/tool qualification.
+[Policy checks](../tests/packs/policy.test.ts) cover loaded acknowledgment and drift.
+A disposable runtime with the image's nftables 1.1.3/libnftnl 1.2.9 dependencies
+loaded an explicit TCP policy: verification accepted its exact process/host/port
+and rejected a different port. This qualifies policy observation and matching;
+it does not establish a successful connector request or application execution.
 
 Run `CLAWSCARF_TEST_NATIVE_PACKS=1 pnpm exec tsx --test tests/packs/native.test.ts`
 for the disposable native test. It writes isolated temporary state and uses the

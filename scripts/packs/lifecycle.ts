@@ -1,7 +1,7 @@
 import { join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { openPack } from "./source.js";
+import { openPack, prepareSource } from "./source.js";
 import { requirements } from "./requirements.js";
 import type { NativeClaws } from "./native.js";
 import { planSchema, type Member, type PackPlan } from "./model.js";
@@ -28,6 +28,7 @@ function argumentsFor(
 export async function inspectPack(directory: string, native: NativeClaws) {
   await native.version();
   const source = await openPack(directory);
+  const targetRoot = await native.source(source.root, source.digest);
   const members = [];
   for (const member of source.manifest.members)
     members.push({
@@ -35,7 +36,7 @@ export async function inspectPack(directory: string, native: NativeClaws) {
       native: await native.run([
         "claws",
         "inspect",
-        join(source.root, member.source),
+        join(targetRoot, member.source),
         "--json",
       ]),
     });
@@ -48,6 +49,7 @@ export async function planPack(
     operation: PackPlan["operation"];
     workspace: string;
     bindingsFile?: string;
+    targetPack?: string;
   },
   native: NativeClaws,
 ): Promise<PackPlan> {
@@ -59,11 +61,28 @@ export async function planPack(
   if (!member) throw Error("Unknown pack member.");
   const verified =
     input.operation === "remove"
-      ? { model: null, connections: [] }
-      : await requirements(source.manifest, member, native, input.bindingsFile);
+      ? { model: null, connections: [], network: null }
+      : await requirements(
+          source.manifest,
+          member,
+          native,
+          input.bindingsFile,
+          source.root,
+        );
+  const target = await native.target();
+  const targetRoot =
+    input.operation === "remove"
+      ? (input.targetPack ?? source.root)
+      : await prepareSource(
+          source,
+          member,
+          verified.connections,
+          native,
+          input.targetPack,
+        );
   const workspace = resolve(input.workspace);
   const nativePlan = await native.run([
-    ...argumentsFor(input.operation, source.root, member, workspace),
+    ...argumentsFor(input.operation, targetRoot, member, workspace),
     "--dry-run",
     "--json",
   ]);
@@ -99,6 +118,8 @@ export async function planPack(
     schemaVersion: 1,
     pack: source.root,
     packDigest: source.digest,
+    target,
+    targetPack: targetRoot,
     member: member.id,
     operation: input.operation,
     workspace,
@@ -113,6 +134,8 @@ export async function applyPack(
   bindingsFile?: string,
 ) {
   const plan = planSchema.parse(value);
+  if (!isDeepStrictEqual(await native.target(), plan.target))
+    throw Error("Pack target changed; review a new plan.");
   const source = await openPack(plan.pack);
   if (source.digest !== plan.packDigest)
     throw Error("Pack sources changed; review a new plan.");
@@ -122,11 +145,14 @@ export async function applyPack(
       member: plan.member,
       operation: plan.operation,
       workspace: plan.workspace,
+      targetPack: plan.targetPack,
       ...(bindingsFile ? { bindingsFile } : {}),
     },
     native,
   );
   if (
+    fresh.targetPack !== plan.targetPack ||
+    !isDeepStrictEqual(fresh.target, plan.target) ||
     fresh.planIntegrity !== plan.planIntegrity ||
     !isDeepStrictEqual(fresh.requirements, plan.requirements)
   )
@@ -136,7 +162,7 @@ export async function applyPack(
   );
   if (!member) throw Error("Pack member disappeared.");
   return native.run([
-    ...argumentsFor(plan.operation, source.root, member, plan.workspace),
+    ...argumentsFor(plan.operation, plan.targetPack, member, plan.workspace),
     "--yes",
     "--plan-integrity",
     plan.planIntegrity,

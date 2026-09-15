@@ -25,6 +25,16 @@ OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/3a9d69db
 is MIT. NVIDIA NemoClaw's [license](https://github.com/NVIDIA/NemoClaw/blob/main/LICENSE)
 is Apache-2.0. Referencing their architecture is not incorporating their code.
 OpenShell 0.0.116 is also [Apache-2.0 licensed](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/LICENSE).
+The pack operator uses the official `openshell` 0.0.116 Python SDK, with its complete
+dependency versions and artifact hashes in [requirements.txt](scripts/packs/requirements.txt).
+It is installed on the operator machine; no SDK source, controller credentials or
+Python environment is copied into the OpenClaw runtime image. Installed dependency
+distributions retain their own license metadata.
+
+The runtime builds unmodified nftables 1.1.3 and libnftnl 1.2.9 from official
+archives. Their GNU GPL notices are retained in the image. The
+[network-tools recipe](deploy/images/network-tools/README.md) owns exact hashes,
+build options and the corresponding-source export required for binary releases.
 
 The runtime image retains pinned [OpenClaw license](release/licenses/openclaw-MIT.txt)
 and [third-party notices](release/licenses/openclaw-THIRD_PARTY_NOTICES.txt), plus
