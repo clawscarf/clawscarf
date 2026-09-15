@@ -6,6 +6,9 @@ Bring your team, models and tools to [OpenClaw](https://github.com/openclaw/open
 ClawScarf packages its native application with company login, optional model and
 connection services, and reusable agent packs—on infrastructure you control.
 
+Keep the OpenClaw you know. Add a shared team environment, bring your own model
+provider and choose the tools your agents need. No RawClaw account is required.
+
 > **Early development:** components are implemented and undergoing integration testing.
 > There is no qualified distribution, complete quickstart or installer yet.
 > Follow the [implementation plan](PLAN.md) for the work remaining.
@@ -30,6 +33,30 @@ connection services, and reusable agent packs—on infrastructure you control.
 
 The intended installation is container-based, without a separately provisioned VM.
 The terminal installer comes after the underlying components work together.
+
+## Start here
+
+Developers can [build and check the repository](scripts/README.md) and follow the
+[local assembly work](deploy/local/README.md). Preparation has a real Docker/Postgres
+check. Supervised startup, local browser login and retained-state restart also passed;
+the full model/tool journey and company-login deployment remain unqualified.
+
+The current runtime checks target **macOS arm64 with Docker Desktop**. Linux and
+Windows/WSL are not yet qualified. See the measured
+[development footprint](deploy/openshell/README.md#development-footprint) before
+building.
+
+The installation has three parts:
+
+- **OpenClaw runtime:** the native application and installed capabilities, running
+  inside an OpenShell-managed container with a persistent home volume.
+- **Access companion:** local login or company OIDC, enrollment and browser sessions,
+  with PostgreSQL for durable identity and session state.
+- **Optional services:** LiteLLM and managed Connections, or existing external
+  services that provide those capabilities.
+
+Compose runs companions; OpenShell owns the OpenClaw runtime. Packs use native
+OpenClaw formats and do not need their own database.
 
 ## Security with explicit boundaries
 
@@ -60,8 +87,6 @@ NVIDIA distribution.
 The most useful early contributions are testing runtime compatibility, improving
 standalone team setup and defining a small set of useful, testable packs.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [plan](PLAN.md).
-Component build and test instructions are available now. A complete installation
-guide and supported-platform claims wait for clean-install qualification.
 
 Runtime contributors can inspect the [image recipe](deploy/images/Dockerfile),
 [sandbox policy](deploy/openshell/policy.yaml) and [component pins](release/components.json).

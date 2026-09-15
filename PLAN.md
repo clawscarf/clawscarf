@@ -180,7 +180,11 @@ rules for every remaining change.
       stop/start, logs, diagnostics and one supported upgrade preserving native edits.
       Assemble one reproducible noninteractive setup sequence for controller, volume,
       native state, Postgres/migrations, private credentials, companions and forwarding;
-      separate component commands are not a complete installation path.
+      separate component commands are not a complete installation path. The
+      [local assembly](deploy/local/README.md) has verified fresh preparation,
+      supervised launch, native administrator login and retained-state restart.
+      Complete model/tool and interrupted-allocation acceptance before qualifying
+      the whole setup path.
       Test missing/invalid optional services and interrupted setup. Produce exact
       artifacts with license/provenance review. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.
@@ -208,6 +212,10 @@ Use NemoClaw's practical patterns without copying its entire orchestration stack
   source builds are explicit, not a hidden fallback after a failed download.
 - Inspect an existing installation and distinguish configure/resume/upgrade/new.
   Show a real first successful model/tool interaction, not only process readiness.
+- Check ports and container-network capacity before changing resources. Report
+  startup stages, use bounded readiness checks and retain enough state to resume.
+  Print the actual application URL and operating commands only after their checks
+  succeed; optional-service warnings must not masquerade as a failed core startup.
 - Keep reproducible unattended commands beneath the eventual terminal wizard.
   Provide agent-readable instructions without asking users to put secrets in chat.
 - Measure our selected stack. NemoClaw's resource figures and platform claims do

@@ -207,3 +207,19 @@ Neither backend supports native sandboxed browser execution in this release; the
 rejects it. Browser placement requires its own supported integration and acceptance.
 The conservative current configuration keeps member execution unavailable while this
 decision remains open; it never mounts controller keys or a Docker socket into OpenClaw.
+
+A container-only candidate combines the
+[native SSH backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/gateway/sandboxing/ssh-backend.md)
+with a separately operated SSH worker and a
+[remote CDP browser](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/tools/browser/remote.md).
+The latter would use an attach-only profile, native host-browser permission and
+Chromium's own sandbox in a non-root container. It would not use native per-session
+browser provisioning. The operator must prevent both workers from reaching raw
+Gateway forwards and controller endpoints; separate containers alone do not prove
+that denial.
+
+This candidate awaits the owner's scope decision and live qualification. SSH
+session directories share a worker user, and one remote browser profile shares
+cookies/state across its users. It fits a trusted-team boundary only if those
+sharing rules are acceptable. It does not establish per-person OS/browser isolation.
+Worker files also become persistent state requiring explicit lifecycle ownership.
