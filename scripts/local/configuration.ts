@@ -124,7 +124,7 @@ const teamInput = z
     (value) => value.origin !== value.widgetOrigin,
     "Widgets need a separate origin.",
   );
-const localInput = z
+export const localInput = z
   .strictObject({
     team: teamInput.optional(),
     name: z

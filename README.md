@@ -72,18 +72,19 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 
 ## Installation management direction
 
-**Planned, not yet a unified interface:** one validated installation document and
-one CLI, reused by people, the future terminal installer and external hosting.
-The [v1 design and concrete examples](docs/installation-interface.md) define proposed
-configuration, change semantics, recipes, bootstrap/People choices and the RawClaw
-consumer boundary. Today's commands remain in the [local operator guide](deploy/local/README.md).
+**Initial implementation:** one validated installation document and CLI for local
+preparation and lifecycle. Fresh-install acceptance is blocked by local Docker address
+pool exhaustion. Optional integration completion, installer and publication remain in TODO.
+The [v1 design and concrete examples](docs/installation-interface.md) define the target
+configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
+boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;
+the [component operator guide](deploy/local/README.md) retains lower-level commands.
 
 The unified product design fixes OpenShell Gateway protection, a separate protected
 shared worker and authenticated entry/admission/revocation. Recipes vary deployment
 settings and optional capabilities, not these protections. The current developer
-operator can omit the worker for component work; enforcing the unified product
-contract remains in TODO. External access is a qualified delegation, not anonymous
-entry or an automatic standalone-service fallback.
+operator can omit the worker for component work; the unified CLI requires it. External
+access remains a proposed verified delegation, never anonymous entry.
 
 OpenClaw retains its mutable application state. Applying selected installation
 settings must preserve unrelated native edits. External hosting must supply its own

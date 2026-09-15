@@ -75,7 +75,13 @@ await test(
         maxBuffer: 4 * 1024 * 1024,
       },
     );
-    for (const command of ["local", "controller", "models", "packs"]) {
+    for (const command of [
+      "clawscarf",
+      "local",
+      "controller",
+      "models",
+      "packs",
+    ]) {
       const { stdout } = await execute(
         process.execPath,
         [`scripts/${command}.js`, "--help"],

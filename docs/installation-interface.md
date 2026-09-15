@@ -1,8 +1,7 @@
 # Installation interface — proposed v1
 
-This is a design for the next configuration/CLI slice, not an implemented schema or
-runnable command reference. [Local setup](../deploy/local/README.md) owns today's
-commands. [TODO.md](../TODO.md) owns selection and unfinished work. The installer,
+This describes the target installation interface. The [unified CLI guide](../deploy/local/installation.md)
+owns implemented commands and limits; the complete interface below is not yet implemented. [TODO.md](../TODO.md) owns selection and unfinished work. The installer,
 People changes and external hosting adoption require their own implementation slices.
 
 ## One installation, three callers
@@ -33,14 +32,16 @@ remove externally owned runtime protection or expose an unauthenticated Gateway.
 
 These are the unified interface's requirements, not claims of new schema enforcement.
 Today's [developer input](../scripts/local/configuration.ts) always requires OpenShell
-but can omit the separate worker for component work. The unified product schema must
-require the worker and reject attempts to disable the fixed protections; component-only
+but can omit the separate worker for component work. The initial unified schema requires
+the worker and rejects attempts to disable the fixed protections; component-only
 assemblies are not additional product recipes. Missing host prerequisites fail visibly,
 without falling back to host execution, privileged containers or an unsandboxed browser.
 
 ## Concrete standalone example
 
-**Proposed syntax; illustrative paths and endpoints, not accepted by today's CLI.**
+**Illustrative paths and endpoints: replace them with your release and private files.**
+This local example is accepted by the initial CLI; the broader modes below remain
+proposed where the CLI guide identifies missing work.
 This example uses the fixed OpenShell foundation with local operator login and an
 existing model gateway. Browser, Connections and packs are initially disabled/empty.
 A model-free setup changes `models` to `{ "mode": "disabled" }`; it does not establish
@@ -50,7 +51,7 @@ offline operation or an air-gapped release.
 {
   "schemaVersion": 1,
   "name": "team",
-  "artifacts": { "manifestFile": "./artifacts.lock.json" },
+  "releaseFile": "./clawscarf-release.json",
   "stateDirectory": "./state",
   "storage": { "mode": "docker-volumes" },
   "exposure": {
@@ -88,10 +89,10 @@ resolves and checks private secret files without printing contents. Deployment m
 materialize private copies/mounts; an upstream file change does not silently rotate a
 running credential. Rotation is an explicit operation.
 
-The generated artifact lock selects exact image digests and pinned controller tools
+The generated release file selects exact image digests and pinned controller tools
 with platform/checksum information. The existing [component manifest](../release/components.json) only pins
-components; it is not already this complete artifact lock. Development builds and
-published releases produce the same lock shape. No silent build/download fallback,
+components; it is not already this complete release file. Development builds and
+published releases produce the same release-file schema. No silent build/download fallback,
 mutable `latest` tags or hand-entering ten image IDs in the interactive installer.
 The operator validates host support, required component inventory and compatible
 artifact versions before applying changes. A digest pins an artifact; it does not
@@ -178,7 +179,7 @@ setup and account OAuth remain separate: installation can prepare the plugin wit
 connecting a human's Gmail/Outlook account or pretending that an account exists.
 
 Enabling the browser starts the existing browser/node/DNS/ingress components from the
-artifact lock. It must disclose the documented upstream limitation; the wizard must
+release file. It must disclose the documented upstream limitation; the wizard must
 not advertise ordinary browsing as qualified. Bundled capability selection should
 initially enumerate only reviewed capabilities and their prerequisites. Do not equate
 an image containing Lobster/Codex/Chromium with every associated feature being enabled
@@ -191,13 +192,13 @@ Proposed commands, implemented by evolving the existing modules:
 
 ```text
 clawscarf validate --config installation.json
-clawscarf plan --config installation.json --json
+clawscarf plan --config installation.json --output plan.json
 clawscarf apply --config installation.json --plan <plan-file> --yes
 clawscarf start --state ./state
 clawscarf stop --state ./state
-clawscarf status --state ./state --json
+clawscarf status --state ./state
 clawscarf logs --state ./state --service gateway
-clawscarf doctor --state ./state --json
+clawscarf doctor --config installation.json
 clawscarf login --state ./state
 ```
 
@@ -254,113 +255,15 @@ choose one first rather than implementing both. Standalone local evaluation can 
 one administrator. External hosting uses its existing enrollment UX instead of either
 standalone flow. This design resolves the subject-ID problem without duplicating roles.
 
-## RawClaw integration: concrete consumer plan
+## External hosting boundary
 
-The shared schema uses external exposure/access modes; there is no vendor-named mode, hosting
-SDK dependency or organization database inside ClawScarf. RawClaw remains a consumer.
-
-Current source evidence: RawClaw's [native initialization port](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/src/domains/installations/types/openclaw/bootstrap.ts),
-[SSH implementation](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/src/domains/installations/providers/ssh/openclaw/bootstrap.ts)
-and [runtime/storage layout](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/deploy/README.md).
-ClawScarf's [current hosting boundary](../runtime/README.md#external-hosting-boundary)
-already describes the intended ownership, but today's local operator does not implement
-an external-access profile. This is a consumer integration, not just an image substitution.
-
-| Owner     | Responsibilities                                                                                                                                                                                                                       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RawClaw   | Organizations, user admission, acting-user authorization, billing, VM/data-volume allocation, edge routing/DNS/TLS, user sessions and live stream revocation, shared LiteLLM and Connections broker, operation intent and credentials. |
-| ClawScarf | Exact runtime/worker/browser artifacts, supported native presets and plugins, local execution lifecycle/protection, persistent mount contract, explicit setup/change/status commands and diagnostics.                                  |
-| OpenClaw  | Native agents/roles/profiles, conversations, tools and mutable application configuration.                                                                                                                                              |
-
-The hosted configuration retains the same OpenShell Gateway and protected worker,
-with these deployment selections:
-
-```json
-{
-  "storage": {
-    "mode": "directory",
-    "root": "/var/lib/rawclaw/data/clawscarf"
-  },
-  "exposure": {
-    "mode": "external",
-    "applicationOrigin": "https://app-<installation>.rawclaw.raw-labs.com",
-    "widgetOrigin": "https://widgets-<installation>.rawclaw.raw-labs.com",
-    "ingressBindingFile": "./private/ingress-binding.json"
-  },
-  "access": {
-    "mode": "external",
-    "administratorIdentity": "<exact identity asserted by the platform>"
-  },
-  "models": {
-    "mode": "external",
-    "configurationFile": "./private/models.json",
-    "credentialFile": "./private/model-runtime-key"
-  },
-  "connections": {
-    "mode": "external",
-    "brokerUrl": "https://<platform-broker-endpoint>",
-    "credentialFile": "./private/connector-runtime-key"
-  }
-}
-```
-
-This is a selection excerpt, not an overlay format or runnable file. The consumer
-supplies a complete resolved document. Hostnames are illustrative; RawClaw's existing
-endpoint allocator supplies the actual application/widget origins.
-
-`ingressBindingFile` must describe a concrete authenticated transport, allowed caller
-certificates, exact native identity/forwarding-header mapping, application/widget routes
-and management entry. A URL or arbitrary trusted header alone is insufficient. Map the
-existing private mTLS relay into this contract; verify spoofed-header denial, correct
-names, native roles, current admission, logout and already-open stream revocation.
-Separate generic OIDC is not configured per installation: RawClaw's existing shared
-WorkOS integration authenticates users and its portal/edge routes them.
-
-External access starts no ClawScarf login/People service and hides its standalone
-navigation. With external models and Connections, it starts no local LiteLLM, broker
-or Access database either. The runtime still has its necessary machine/control
-transport. Today Connections shares the standalone Access companion; omitting both
-still requires implementing/qualifying this profile. External access combined with
-a local Connections service is unsupported in v1, not an implicit alternative.
-Current plugin/broker contracts must be compared explicitly; extraction provenance
-does not guarantee current wire compatibility. RawClaw's membership, generation and
-agent-grant checks remain authoritative at the broker.
-
-There are concrete naming/version differences to resolve as well: RawClaw's inspected
-runtime pins OpenClaw 2026.9.2, uses model references under `rawclaw/` and the
-`rawclaw-connectors` plugin; ClawScarf pins 2026.9.4 and uses its own model/plugin IDs.
-RawClaw's observation, AI apply and connector setup adapters must consume the selected
-artifact's native identifiers and supported operations. Merely replacing the VM
-image would leave those calls targeting the wrong settings. Do not add vendor aliases
-inside ClawScarf to hide this mismatch.
-
-Adoption sequence, inside a separately selected RawClaw slice:
-
-- Build/qualify Linux amd64 ClawScarf artifacts and its directory-backed storage on a
-  disposable host. RawClaw currently runs systemd OpenClaw/rootless Docker; ClawScarf
-  changes that execution topology to an external OpenShell controller and worker.
-  This protection is also required for hosted use; no systemd-only or unprotected
-  execution variant is introduced to make adoption easier.
-- Keep RawClaw's host provider/allocation and operation fencing. Add an adapter behind
-  its native initialization boundary to write private configuration and call the
-  ClawScarf CLI over existing authenticated SSH. Read structured status/endpoints;
-  the worker waits for milestones instead of holding a browser request open.
-- Map the supplied data volume to separate Gateway home, worker home, browser profile
-  and node identity directories with correct UID ownership. ClawScarf uses UID 1000;
-  RawClaw's existing native service uses UID 2000. Keep controller/ingress secrets and
-  authority outside agent-writable mounts. No anonymous/Docker-root-disk state that
-  disappears when compute is replaced. Preserve revocation independently of restored
-  runtime state; volume attachment alone does not qualify recovery.
-- Supply existing platform ingress, scoped model and connector credentials. Preserve
-  source-bound inference checks against the actual hosted VM transport, acting-user
-  native management, generation revocation and agent grants. Do not duplicate WorkOS
-  projects or install shared OpenRouter/Composio keys in customer runtimes.
-- Prove a fresh hosted installation end to end, including admin/member login, model
-  and connector calls, revocation and stop/start. Keep existing installations on their
-  bound artifact; converting retained UID/layout/native state is a separate migration.
-
-VM deletion and data-volume retention/deletion stay RawClaw responsibilities.
-ClawScarf's stop command never destroys a customer machine or claims an off-host backup.
+A hosting consumer owns allocation, its users/admission, authenticated ingress and
+shared model/broker services. ClawScarf owns its protected runtime and explicit
+installation lifecycle. External access and directory-backed state need separate
+implementation and qualification; they are not supported deployment modes today.
+The public integration contract must preserve exact native identities, private
+transport, revocation and persistent state without a second login authority.
+Consumer-specific adoption plans belong in the consumer repository.
 
 ## Recipes, packs and the eventual installer
 
@@ -377,7 +280,7 @@ require models, capabilities or a particular connected-account type. The include
 A proposed explicit selection is
 `{ "id": "research-team", "version": "0.1.0", "members": ["researcher", "reviewer"] }`
 in `packs`; these members are native agent packages, not people. Resolve the exact
-pack from the artifact lock and preview agent IDs/workspace locations and collisions.
+pack from the release file and preview agent IDs/workspace locations and collisions.
 Installation previews prerequisites first. If an external account must be connected
 interactively, leave that pack visibly pending for explicit continuation; do not
 invent OAuth credentials, grant every agent access, or roll back the whole server.
@@ -397,7 +300,7 @@ protection. An unmet prerequisite produces a concrete failure, not a weaker pres
 
 Build the schema/preview/CLI around the existing local path first; add coherent
 external transport/storage contracts so a consumer does not need a competing design.
-Do not claim RawClaw adoption until its adapter and one Linux hosted installation
+Do not claim external hosting adoption until its adapter and one Linux hosted installation
 pass. Choose the standalone first-admin and People admission flow before changing
 Access. Wire selected optional integrations next, qualify a release, then build the
 installer. The owner-managed upstream browser issue stays outside this work.

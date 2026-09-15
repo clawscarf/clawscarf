@@ -38,7 +38,8 @@
     "access:plugin:check": "npm --prefix plugins/access run check && npm --prefix plugins/access run validate",
     "packs": "node --import tsx scripts/packs.ts",
     "models": "node --import tsx scripts/models.ts",
-    "companion:start": "node --import tsx apps/companion/entry.ts"
+    "companion:start": "node --import tsx apps/companion/entry.ts",
+    "clawscarf": "node --import tsx scripts/clawscarf.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

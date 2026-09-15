@@ -9,6 +9,9 @@ import { z } from "zod";
 const execute = promisify(execFile);
 // Explicit operator payload: no companion server, source tooling or installation state.
 const payload = [
+  "scripts/clawscarf.js",
+  "scripts/installation",
+  "scripts/release",
   "scripts/local.js",
   "scripts/controller.js",
   "scripts/models.js",
@@ -73,6 +76,7 @@ export async function packageOperator(root: string, destination: string) {
           type: "module",
           license: "MIT",
           scripts: {
+            clawscarf: "node scripts/clawscarf.js",
             local: "node scripts/local.js",
             controller: "node scripts/controller.js",
             models: "node scripts/models.js",

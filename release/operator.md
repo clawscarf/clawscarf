@@ -13,6 +13,7 @@ pnpm 10.33.0. In the extracted `package` directory:
 
 ```sh
 pnpm install --prod --frozen-lockfile --ignore-scripts
+node scripts/clawscarf.js --help
 node scripts/local.js --help
 node scripts/models.js --help
 node scripts/packs.js --help

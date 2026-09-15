@@ -35,6 +35,7 @@ import { requireNoUpgrade } from "./upgrade-state.js";
 export async function launchLocal(
   directoryInput: string,
   report: (message: string) => void,
+  control: { signal?: AbortSignal; onReady?: () => void } = {},
 ) {
   const directory = resolve(directoryInput);
   const state = await readState(directory);
@@ -117,6 +118,8 @@ export async function launchLocal(
             "Local startup did not become ready before its deadline.",
           );
     }
+    control.signal?.addEventListener("abort", stopSignal, { once: true });
+    if (control.signal?.aborted) stopSignal();
     process.on("SIGINT", stopSignal);
     process.on("SIGTERM", stopSignal);
     let failure: Error | undefined;
@@ -271,6 +274,7 @@ Press Ctrl+C to stop. Your data will be retained.`);
           `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
         );
       }
+      control.onReady?.();
       await Promise.race([
         signal.promise,
         ...children.map((child) => child.done),
@@ -345,6 +349,7 @@ Press Ctrl+C to stop. Your data will be retained.`);
           "Local cleanup did not confirm every service stopped.",
         );
       }
+      control.signal?.removeEventListener("abort", stopSignal);
       process.off("SIGINT", stopSignal);
       process.off("SIGTERM", stopSignal);
     }

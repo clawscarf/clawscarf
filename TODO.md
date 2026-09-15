@@ -17,54 +17,37 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Following slices
+## Selected implementation — verify each step before proceeding
 
-- [ ] **2. Unify installation configuration and CLI.** Evolve existing operators into
-      one entry point and validated JSON schema following the [v1 proposal](docs/installation-interface.md):
-      artifacts, storage, URLs/TLS, access/bootstrap, resource sizing, optional browser,
-      models, Connections and packs/capabilities.
-      Enforce the fixed OpenShell Gateway/protected-worker/authenticated-entry foundation;
-      no execution-engine or protection-disable switches. Reject unsupported service
-      combinations, including external Access with local Connections, before allocation.
-      Define required/optional fields, secret references, validation/preview and supported
-      reconfiguration. Add coherent start/stop/status/logs/diagnostics; preserve existing
-      login/upgrade operations, native edits, ownership and uncertain-effect handling.
-      Use explicit development or released artifacts with the same implementation.
-      Define external ingress and directory-backed storage contracts for a hosting consumer;
-      keep simple complete example recipes, not a template engine.
-- [ ] **3. Complete administrator setup and ongoing People UX.** Initial setup must
-      establish and verify the intended administrator without ad hoc component commands.
-      Keep local evaluation and generic OIDC. Resolve the manual subject-ID enrollment
-      experience without automatic IdP-wide admission. Decide the initial-admin and
-      ongoing-admission UX first; owner-claim, request/approve and invite links remain
-      proposals, not selected requirements. People owns ongoing enrollment/
-      revocation, OpenClaw owns roles. Verify two-person login, handover and revocation.
-- [ ] **4. Compose optional integrations through that interface.** Support models
-      disabled/external/local LiteLLM and Connections disabled/external/local Composio;
-      include scoped credential provisioning, activation, rotation and explicit changes.
-      Verify an actual external-account/native-tool journey and no dead-end UI/tools when
-      omitted. Wire explicit pack/capability selection through native lifecycle and
-      prerequisites; no capability wishlist becomes mandatory. Do not split Connections
-      into another process in this slice.
-- [ ] **5. Qualify and publish one supported release.** Build current images/operator,
-      verify exact artifacts on a fresh machine: login, model/tool use, browser, widgets,
-      hooks, two-person access, restart and integrations disabled. Record platform/resource
-      limits; complete licenses/source obligations and private vulnerability reporting.
-      Publish verified downloads/checksums, not development tags. Current evidence is
-      macOS arm64/Docker Desktop; Linux/WSL and cross-version upgrades remain unqualified.
-- [ ] **6. Build the terminal installer last.** Discuss its opt-in choices first.
-      Download/select artifacts, collect configuration, preview, install/resume and print
-      the working URL through the same CLI; support unattended use and existing installs.
-      Use the validated deployment combinations and fixed security foundation; never
-      offer bypasses as installer choices. No duplicate orchestration, secrets in argv,
-      or silent source-build fallback.
+- [ ] **1. Release definition, installation schema and unified CLI.** Replace manual
+      component inputs with `releaseFile` referencing the [release definition](scripts/release/definition.ts).
+      Reuse existing operators for validate/plan/apply/start/stop/status/logs/doctor/login
+      and explicit upgrades. Require OpenShell, protected shared worker and authenticated
+      entry. Verify configuration, stale previews, interrupted operations, native-edit
+      preservation and a complete local installation. Fresh apply currently stops because
+      Docker's address pools are exhausted; free capacity before advancing to step 2.
+      See [interface](docs/installation-interface.md).
+- [ ] **2. Wire optional capabilities through the same configuration.** Models
+      disabled/external/local LiteLLM, Connections disabled/external/local Composio and
+      native packs, with private credentials and prerequisites. Verify disabled paths,
+      explicit changes and operation outcomes. Do not invent accounts or capability requirements.
+- [ ] **3. First terminal installer.** Collect the supported settings, write private
+      configuration and invoke the same CLI preview/apply/start implementation. Support
+      explicit development releases first; published releases use the same schema.
+      No protection switches, duplicate orchestration or silent build fallbacks.
+- [ ] **4. Qualify and publish the supported release.** Build exact images and operator;
+      generate the release file, verify it on a fresh installation, then publish downloads,
+      checksums/notices to GitHub Releases and images to GHCR. Report qualified platforms
+      and capability limits; the owner-managed browser issue is not an automatic task.
+      Published artifacts must not claim unverified Linux/WSL or team journeys.
 
-## Consumer integration — separately selected
+## Separate decisions and integrations
 
-- [ ] Adapt RawClaw behind its existing native provisioning boundary to consume ClawScarf
-      artifacts/configuration, retain its identity/ingress/model/broker ownership, map
-      persistent data and UID ownership, and qualify one fresh Linux hosted installation.
-      No existing-instance migration or consumer implementation is authorized by this proposal.
+- [ ] Decide standalone OIDC first-administrator and ongoing enrollment UX before changing
+      Access. Owner-claim, admission requests and invite links remain proposals. Current
+      explicit subject/email bootstrap remains; qualify two-person login and revocation.
+- [ ] Define and qualify generic external ingress and directory-backed storage for hosting
+      consumers. Consumer implementation belongs in its own repository.
 
 ## Future decisions
 

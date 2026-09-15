@@ -1,0 +1,137 @@
+import { dirname, join, resolve } from "node:path";
+import { mkdir, readFile } from "node:fs/promises";
+import { isDeepStrictEqual } from "node:util";
+import lockfile from "proper-lockfile";
+import { z } from "zod";
+import { prepareLocal } from "../local/prepare.js";
+import { readState, ensurePrivateFile, writePrivate } from "../local/state.js";
+import { fingerprint, readJson } from "./files.js";
+import { InstallationError } from "./errors.js";
+import { allocatePorts, resolveInstallation } from "./resolve.js";
+import { installationSchema } from "./configuration.js";
+
+export const planSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  stateDirectory: z.string(),
+  fingerprint: z.string(),
+  observedState: z.string().nullable(),
+  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(7),
+  action: z.enum(["prepare", "resume"]),
+  release: z.string(),
+  browser: z.boolean(),
+});
+async function observation(directory: string) {
+  try {
+    await readState(directory);
+    return fingerprint(await readFile(join(directory, "installation.json")));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+export async function withInstallationLock<T>(
+  directory: string,
+  work: () => Promise<T>,
+) {
+  await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
+  let unlock;
+  try {
+    unlock = await lockfile.lock(directory, {
+      realpath: false,
+      retries: 0,
+      lockfilePath: directory + ".operator-lock",
+    });
+  } catch {
+    throw new InstallationError(
+      "operation_busy",
+      "Another installation operation is active. Wait for it to finish.",
+    );
+  }
+  try {
+    return await work();
+  } finally {
+    await unlock();
+  }
+}
+export async function planInstallation(configFile: string) {
+  const config = installationSchema.parse(await readJson(configFile));
+  const directory = resolve(
+    dirname(resolve(configFile)),
+    config.stateDirectory,
+  );
+  const observed = await observation(directory);
+  const state = observed ? await readState(directory) : null;
+  const input = state?.input;
+  const internalPorts = input
+    ? [
+        input.ports.controller,
+        input.ports.management,
+        input.ports.native,
+        input.ports.nativeWidgets,
+        input.ports.database,
+        input.execution?.port ?? 0,
+        input.browser?.port ?? 65534,
+      ]
+    : await allocatePorts();
+  const resolved = await resolveInstallation(configFile, internalPorts);
+  if (resolved.config.connections.mode !== "disabled")
+    throw new InstallationError(
+      "change_unsupported",
+      "Unified Connections activation is not implemented yet. Use the component operator until that slice is complete.",
+    );
+  if (state && !isDeepStrictEqual(state.input, resolved.input))
+    throw new InstallationError(
+      "change_unsupported",
+      "This change requires an explicit configuration or upgrade operation. Prepare never replaces retained settings.",
+    );
+  return planSchema.parse({
+    schemaVersion: 1,
+    stateDirectory: directory,
+    fingerprint: resolved.fingerprint,
+    observedState: observed,
+    internalPorts,
+    action: state ? "resume" : "prepare",
+    release: resolved.release.version,
+    browser: config.browser.enabled,
+  });
+}
+export async function applyInstallation(configFile: string, planFile: string) {
+  const plan = planSchema.parse(await readJson(planFile));
+  const resolved = await resolveInstallation(configFile, plan.internalPorts);
+  if (
+    resolved.fingerprint !== plan.fingerprint ||
+    resolved.stateDirectory !== plan.stateDirectory
+  )
+    throw new InstallationError(
+      "stale_plan",
+      "Configuration or release inputs changed. Create a new plan.",
+    );
+  if (resolved.config.connections.mode !== "disabled")
+    throw new InstallationError(
+      "change_unsupported",
+      "Unified Connections activation is not implemented yet.",
+    );
+  return withInstallationLock(plan.stateDirectory, async () => {
+    if ((await observation(plan.stateDirectory)) !== plan.observedState)
+      throw new InstallationError(
+        "stale_plan",
+        "Installation state changed. Create a new plan before resuming.",
+      );
+    // The existing operator records identity before effects and verifies retained resource ownership.
+    await prepareLocal(resolved.stateDirectory, resolved.input);
+    await ensurePrivateFile(
+      join(resolved.stateDirectory, "release.json"),
+      JSON.stringify(resolved.release, null, 2),
+    );
+    await writePrivate(
+      join(resolved.stateDirectory, "configuration.json"),
+      JSON.stringify(resolved.config, null, 2),
+    );
+    return {
+      state: "prepared",
+      directory: resolved.stateDirectory,
+      release: resolved.release.version,
+    };
+  });
+}
