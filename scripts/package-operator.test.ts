@@ -32,6 +32,7 @@ await test(
     await assert.rejects(packageOperator(root, output), { code: "EEXIST" });
     const { stdout: listing } = await execute("tar", ["-tzf", archive]);
     assert.ok(listing.includes("package/services/access/migrations/"));
+    assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));
     assert.ok(listing.includes("package/pnpm-lock.yaml"));

@@ -41,7 +41,7 @@ project retains that check and consumes their generated declarations.
 The [local assembly](../deploy/local/README.md) uses `scripts/local.ts prepare`,
 `start` and `login` for private state, supervised operation and local entry. It
 remains unqualified until the combined clean-install acceptance is finished.
-The compiled operator includes the Access migrations, component pins and sandbox
+The compiled operator includes the Access and Connections migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
 
 ## Operator archive

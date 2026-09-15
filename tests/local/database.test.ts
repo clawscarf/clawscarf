@@ -110,6 +110,20 @@ await test(
       );
       await admin.query("DROP ROLE clawscarf_runtime");
       const result = await initializeLocalDatabase(input);
+      for (const current of [input, { ...input, connections: false }]) {
+        assert.deepEqual(await initializeLocalDatabase(current), result);
+        assert.deepEqual(
+          (
+            await admin.query<{
+              schema: string | null;
+              migrations: string | null;
+            }>(
+              "SELECT to_regnamespace('clawscarf_connections')::text AS schema, to_regclass('public.clawscarf_connections_migrations')::text AS migrations",
+            )
+          ).rows,
+          [{ schema: null, migrations: null }],
+        );
+      }
       assert.equal(
         decodeURIComponent(new URL(result.runtimeUrl).password),
         runtimePassword,
@@ -175,6 +189,100 @@ await test(
         failure("runtime_credentials_changed"),
       );
       assert.deepEqual(await initializeLocalDatabase(input), result);
+      // A failed optional migration preserves both retained Access data and its journal.
+      await admin.query("CREATE SCHEMA clawscarf_connections");
+      await admin.query(
+        "CREATE TABLE clawscarf_connections.keep_me (value text)",
+      );
+      await admin.query(
+        "INSERT INTO clawscarf_connections.keep_me VALUES ('retained')",
+      );
+      await assert.rejects(
+        initializeLocalDatabase({ ...input, connections: true }),
+        failure("database_setup_failed"),
+      );
+      assert.deepEqual(
+        (
+          await admin.query<{ value: string }>(
+            "SELECT value FROM clawscarf_connections.keep_me",
+          )
+        ).rows,
+        [{ value: "retained" }],
+      );
+      assert.equal(
+        (
+          await admin.query<{ count: string }>(
+            "SELECT count(*) FROM public.clawscarf_connections_migrations",
+          )
+        ).rows[0]?.count,
+        "0",
+      );
+      assert.equal(
+        (
+          await runtime.query<{ name: string }>(
+            "SELECT name FROM clawscarf_access.users WHERE id=$1",
+            [id],
+          )
+        ).rows[0]?.name,
+        "Updated",
+      );
+      await admin.query("DROP TABLE clawscarf_connections.keep_me");
+      await admin.query("DROP SCHEMA clawscarf_connections");
+      const enabled = { ...input, connections: true };
+      assert.deepEqual(await initializeLocalDatabase(enabled), result);
+      const connectionId = randomUUID();
+      const serverId = randomUUID();
+      await runtime.query(
+        "INSERT INTO clawscarf_connections.connections (id,server_id,connector_id,name,grant_policy,state,generation,revision,created_at,updated_at) VALUES ($1,$2,'test','Work','{\"mode\":\"all\"}','not_connected',1,1,now(),now())",
+        [connectionId, serverId],
+      );
+      await runtime.query(
+        "UPDATE clawscarf_connections.connections SET name='Retained' WHERE id=$1",
+        [connectionId],
+      );
+      for (const sql of [
+        "CREATE TABLE clawscarf_connections.forbidden (id int)",
+        "ALTER TABLE clawscarf_connections.connections ADD COLUMN forbidden text",
+        "TRUNCATE clawscarf_connections.connections CASCADE",
+        "SELECT * FROM public.clawscarf_connections_migrations",
+        "DELETE FROM public.clawscarf_connections_migrations",
+      ]) {
+        await assert.rejects(
+          runtime.query(sql),
+          (error: unknown) =>
+            error instanceof Error && "code" in error && error.code === "42501",
+          sql,
+        );
+      }
+      for (const current of [
+        enabled,
+        { ...input, connections: false },
+        input,
+        enabled,
+      ]) {
+        assert.deepEqual(await initializeLocalDatabase(current), result);
+        assert.deepEqual(
+          (
+            await runtime.query<{ name: string }>(
+              "SELECT name FROM clawscarf_connections.connections WHERE id=$1",
+              [connectionId],
+            )
+          ).rows,
+          [{ name: "Retained" }],
+        );
+      }
+      assert.equal(
+        (
+          await admin.query<{ count: string }>(
+            "SELECT count(*) FROM public.clawscarf_connections_migrations",
+          )
+        ).rows[0]?.count,
+        "1",
+      );
+      await runtime.query(
+        "DELETE FROM clawscarf_connections.connections WHERE id=$1",
+        [connectionId],
+      );
       await runtime.query("DELETE FROM clawscarf_access.users WHERE id=$1", [
         id,
       ]);

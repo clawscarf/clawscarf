@@ -22,6 +22,7 @@ const payload = [
   "services/access/generated/client",
   "services/connections/generated/client",
   "services/access/migrations",
+  "services/connections/migrations",
   "release/components.json",
   "deploy/openshell/policy.yaml",
 ];

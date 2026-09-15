@@ -11,6 +11,7 @@ const inputSchema = z.strictObject({
     .max(1024)
     .refine((v) => !v.includes("\0")),
   ownerId: z.uuid(),
+  connections: z.boolean().optional(),
 });
 export class LocalDatabaseError extends Error {
   constructor(
@@ -41,6 +42,7 @@ export async function initializeLocalDatabase(input: {
   adminUrl: string;
   runtimePassword: string;
   ownerId: string;
+  connections?: boolean;
 }): Promise<{ runtimeUrl: string }> {
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) throw new LocalDatabaseError("invalid_configuration");
@@ -163,6 +165,18 @@ export async function initializeLocalDatabase(input: {
       count: Infinity,
       logger: { debug: quiet, info: quiet, warn: quiet, error: quiet },
     });
+    if (input.connections) {
+      await runner({
+        dbClient: client,
+        dir: fileURLToPath(
+          new URL("../../services/connections/migrations", import.meta.url),
+        ),
+        direction: "up",
+        migrationsTable: "clawscarf_connections_migrations",
+        count: Infinity,
+        logger: { debug: quiet, info: quiet, warn: quiet, error: quiet },
+      });
+    }
     await client.query("BEGIN");
     try {
       await client.query(
@@ -189,6 +203,20 @@ export async function initializeLocalDatabase(input: {
       await client.query(
         "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA clawscarf_access TO clawscarf_runtime",
       );
+      if (input.connections) {
+        await client.query(
+          "REVOKE ALL ON SCHEMA clawscarf_connections FROM PUBLIC, clawscarf_runtime",
+        );
+        await client.query(
+          "GRANT USAGE ON SCHEMA clawscarf_connections TO clawscarf_runtime",
+        );
+        await client.query(
+          "REVOKE ALL ON ALL TABLES IN SCHEMA clawscarf_connections FROM PUBLIC, clawscarf_runtime",
+        );
+        await client.query(
+          "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA clawscarf_connections TO clawscarf_runtime",
+        );
+      }
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");

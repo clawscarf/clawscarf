@@ -19,6 +19,7 @@ await Promise.all(
 // Local setup runs migrations explicitly and consumes the pinned controller policy.
 for (const path of [
   "services/access/migrations",
+  "services/connections/migrations",
   "release/components.json",
   "deploy/openshell/policy.yaml",
 ]) {
