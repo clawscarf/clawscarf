@@ -6,9 +6,10 @@ Bring your team, models and tools to [OpenClaw](https://github.com/openclaw/open
 ClawScarf packages its native application with company login, optional model and
 connection services, and reusable agent packs—on infrastructure you control.
 
-Keep the OpenClaw you know. Bring your own models, connect your team's tools and
-share useful agents through reusable packs. Your conversations and workspaces stay
-on infrastructure you control. No RawClaw account is required.
+Use OpenClaw's own interface to work with your agents. Add company identity,
+connect your team's tools and share useful setups through packs. Conversations and
+workspaces are stored on infrastructure you control; configured model and tool
+providers can receive data you send them. No RawClaw account is required.
 
 > **Early development:** components are implemented and undergoing integration testing.
 > There is no qualified distribution, complete quickstart or installer yet.
