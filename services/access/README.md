@@ -28,6 +28,8 @@ configuration mount, preserving restrictive file permissions. The operator runs
 one-use sign-in code and receives the local sign-in URL. The code is exchanged for
 an HTTP-only session cookie, never a permanent anonymous administrator session.
 Issuing a new code invalidates any outstanding code.
+The command's `--json` option returns `{ "url": "…", "code": "…" }` for private
+operator tooling. Treat that output as a temporary credential; never log it as diagnostics.
 
 Team identity uses `mode: "oidc"`, `issuer`, `clientId`, `clientSecretFile`,
 `administratorSubject` and `administratorEmail`. Team mode requires an HTTPS origin.
