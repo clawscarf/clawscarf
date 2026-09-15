@@ -57,10 +57,11 @@ network policy for every companion.
 - Connections has broker/protocol and native plugin tests. The assembled activation
   and real external-account journey still need acceptance. Disabled operation works
   without provider credentials or a Connections schema.
-- **Browser integration is unfinished.** The direct-browser path fails the Gateway's
-  DNS preflight under OpenShell. The separate [browser-node experiment](deploy/execution/browser-node/README.md)
-  has component trials but is not wired into the operator; its private ingress/DNS
-  assembly is not qualified. It is not enabled by default.
+- **Browser operator integration is unfinished.** The private [browser-node assembly](deploy/execution/browser-node/README.md)
+  passed native member/administrator browsing with explicit node selection, TLS/DNS,
+  retained device identity and revocation after restart. Initial enrollment still needs
+  an authenticated administrator through Access; localhost trusted-proxy bootstrap is
+  rejected upstream. Gateway and worker retain OpenShell. Browser remains opt-in.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
   tests. Changed-upstream-version upgrades, clean-machine release installation,
   Linux/WSL, automated backups and the terminal installer are unfinished.

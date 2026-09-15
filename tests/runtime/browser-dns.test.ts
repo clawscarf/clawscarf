@@ -63,6 +63,42 @@ async function query(
   );
 }
 
+/** Inspect DNS REFUSED on the wire; resolver libraries map empty-question refusals differently. */
+async function refusal(container: string, server: string) {
+  const script = `
+    import {createSocket} from 'node:dgram';
+    const socket=createSocket('udp4');
+    const timer=setTimeout(()=>{socket.close();console.log('null')},2000);
+    socket.once('message',packet=>{
+      clearTimeout(timer);socket.close();
+      console.log(JSON.stringify(packet.length>=12 ? {
+        id:packet.readUInt16BE(0), response:Boolean(packet.readUInt16BE(2)&0x8000),
+        rcode:packet.readUInt16BE(2)&15
+      } : null));
+    });
+    socket.send(Buffer.from('cafe01000001000000000000076578616d706c6503636f6d0000010001','hex'),53,process.argv[1]);
+  `;
+  return z
+    .object({
+      id: z.literal(0xcafe),
+      response: z.literal(true),
+      rcode: z.literal(5),
+    })
+    .parse(
+      JSON.parse(
+        await docker([
+          "exec",
+          container,
+          "node",
+          "--input-type=module",
+          "-e",
+          script,
+          server,
+        ]),
+      ),
+    );
+}
+
 await test("DNS recipe requires an explicit deployment and pins the maintained resolver", async () => {
   const recipe = await readFile("deploy/execution/dns/Dockerfile", "utf8");
   assert.match(recipe, /unbound=1\.17\.1-2\+deb12u4/);
@@ -161,7 +197,13 @@ await test(
       "com.docker.network.bridge.gateway_mode_ipv4=isolated",
       internal,
     ]);
-    await allocate("network", outbound, ["network", "create", outbound]);
+    await allocate("network", outbound, [
+      "network",
+      "create",
+      "--subnet",
+      `10.${randomInt(130, 180)}.${randomInt(1, 255)}.0/24`,
+      outbound,
+    ]);
     const fixture = join(directory, "upstream.conf");
     await writeFile(
       fixture,
@@ -218,6 +260,7 @@ forward-zone:
       `server:
     interface: ${resolverIp}@53
     access-control: ${allowedIp}/32 allow
+    local-zone: "fixture.clawscarf.test." transparent
 forward-zone:
     name: "."
     forward-first: no
@@ -277,7 +320,10 @@ forward-zone:
       }
       await delay(100);
     }
-    assert.ok(ready, "The explicitly configured resolver must become ready.");
+    assert.ok(
+      ready,
+      `The explicitly configured resolver must become ready: ${JSON.stringify(await query(allowed, resolverIp, "public.fixture.clawscarf.test"))}`,
+    );
     await docker([
       "exec",
       resolver,
@@ -304,10 +350,7 @@ forward-zone:
         .min(1)
         .parse(JSON.parse(nativeLookup)).length,
     );
-    assert.deepEqual(await query(denied, resolverIp, "example.com"), {
-      ok: false,
-      code: "EREFUSED",
-    });
+    await refusal(denied, resolverIp);
     for (const name of ["loopback", "metadata", "private"]) {
       assert.equal(
         (await query(upstream, "127.0.0.1", `${name}.fixture.clawscarf.test`))

@@ -225,6 +225,20 @@ await test(
         ["operator.admin"],
       );
       await cleanupGateway.request<unknown>("exec.approvals.get", {});
+      if (browserEnabled) {
+        z.object({
+          config: z.object({
+            gateway: z.object({
+              nodes: z.object({
+                browser: z.object({
+                  mode: z.enum(["auto", "manual"]),
+                  node: z.string().min(1),
+                }),
+              }),
+            }),
+          }),
+        }).parse(await cleanupGateway.request<unknown>("config.get", {}));
+      }
       for (const probe of [
         { kind: "member", gateway: member },
         { kind: "administrator", gateway: cleanupGateway },
@@ -250,17 +264,26 @@ await test(
           const browserHistory = await chat(
             probe.gateway,
             session.key,
-            `Use only the native browser tool for this bounded test. With profile team and target host, open ${url} as a new tab, then snapshot that exact returned targetId, then close that same targetId. Do not inspect, navigate, or close other tabs. Do not use exec, curl, or web_fetch. Report the page heading and actual failures truthfully. Do not change configuration or permissions.`,
+            `Use only the native browser tool for this bounded test. With profile team and target node (use the configured browser node; do not select a different node), open ${url} as a new tab, then snapshot that exact returned targetId, then close that same targetId. Do not inspect, navigate, or close other tabs. Do not use exec, curl, or web_fetch. Report the page heading and actual failures truthfully. Do not change configuration or permissions.`,
           );
           const calls = toolCalls(browserHistory).filter(
             (call) => call.name === "browser",
           );
+          const successfulCalls = calls.filter((call) =>
+            browserHistory.messages.some(
+              (message) =>
+                message.role === "toolResult" &&
+                message.toolCallId === call.id &&
+                message.isError !== true,
+            ),
+          );
           const actions = ["open", "snapshot", "close"];
           for (const action of actions) {
-            const call = calls.find(
+            const call = successfulCalls.find(
               (entry) =>
                 entry.arguments.action === action &&
-                entry.arguments.profile === "team",
+                entry.arguments.profile === "team" &&
+                entry.arguments.target === "node",
             );
             assert.ok(
               call,
@@ -275,10 +298,10 @@ await test(
               `Native browser ${action} must succeed`,
             );
           }
-          const snapshot = calls.find(
+          const snapshot = successfulCalls.find(
             (entry) => entry.arguments.action === "snapshot",
           );
-          const close = calls.find(
+          const close = successfulCalls.find(
             (entry) => entry.arguments.action === "close",
           );
           assert.ok(

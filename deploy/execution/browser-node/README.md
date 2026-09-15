@@ -1,9 +1,9 @@
 # Native browser controller
 
-**Unfinished experiment:** not wired into the local operator. Private ingress, DNS,
-paired-node revocation and native member-tool acceptance remain in
-[TODO.md](../../../TODO.md). The composition requirements below are not a shipped
-assembly.
+**Operator integration is unfinished.** A disposable private TLS/DNS assembly passed
+native administrator/member browsing, retained device identity and revocation after
+restart. Initial authenticated enrollment and retained browser-profile acceptance
+remain in [TODO.md](../../../TODO.md). There is no automatic operator startup path.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The Gateway and SSH execution worker retain
@@ -104,17 +104,46 @@ changing its authorization: even after native approvals become `full/off`, shell
 execution is denied; uploads cannot replace config; unconfigured arbitrary MCP
 server names/URLs are rejected. This focused test captures only the RPC transport.
 
-A separate local trial paired the node with a live OpenShell-contained Gateway,
-verified the same execution denial through real native RPC, opened/navigated a
-public page through isolated Chromium and read its snapshot. Loopback, metadata
-and private navigation were denied. Test resources were removed. Final assembly,
-credential persistence/revocation after restart, member tool calls and Linux-host
-qualification remain separate acceptance requirements.
+A disposable assembly paired this image with a live OpenShell-contained Gateway
+through the private TLS ingress, using its pinned certificate and scoped native
+setup code. The node had no public TCP route; its private resolver handled public
+URL preflight and Chromium retained its separate public-web proxy. The [native tool regression](../../../tests/access/execution-live.test.ts) requires
+an explicitly selected browser node. Native member and administrator sessions
+opened, snapshotted and closed their own public tabs
+with `target=node`. Removing the one-use pairing file and restarting retained the
+node identity. Native `node.pair.remove` disconnected it and restart did not restore
+admission. The earlier paired trial also verified immutable execution denial and
+private/loopback/metadata navigation denial. Test containers and pairings were removed.
+These trials do not qualify normal operator startup, browser-profile persistence or
+Linux-host deployment.
+
+### Initial enrollment boundary
+
+The successful trials obtained `device.pair.setupCode` through an authenticated
+Access administrator. A fresh operator's direct localhost bootstrap attempt failed:
+OpenClaw requires a non-loopback client attribution for trusted-proxy authentication,
+even when the proxy itself may be loopback. Setting an invented forwarding address or
+creating another administrator ingress is not an accepted workaround. The remaining
+integration must use an authenticated Access session, coordinated with initial
+administrator setup, before starting and pinning the browser node. No automatic
+re-pair may undo native revocation. Prototype startup wiring is not in the shipped
+operator.
+
+Native agent routing has a separate usability limitation: its tool description says
+`host` is the default even when `gateway.nodes.browser.node` is pinned. In a live
+trial, the model explicitly selected `host` and hit the Gateway DNS denial. Explicit
+`target=node` succeeded for both members and administrators. There is no native tool
+or RPC rewrite in ClawScarf; operator integration must address this guidance without
+weakening Gateway confinement.
 
 Pinned upstream sources:
 
 - [Node CLI and lifecycle entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/cli/node-cli/register.ts)
   and [public package entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/index.ts).
+- [Trusted-proxy attribution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/ingress-attribution.ts)
+  and [authentication](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/auth.ts).
+- [Browser target guidance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/browser-tool.ts)
+  and [node routing](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/browser-tool.routing.ts).
 - [Native node execution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/node-host/invoke-system-run.ts)
   and [browser proxy](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/node-host/invoke-browser.ts).
 

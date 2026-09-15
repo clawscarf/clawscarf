@@ -236,7 +236,9 @@ other sandbox-tool denials and native role restrictions still apply. Browser pro
 cookies and logins belong to the trusted team. Stop/start retains that volume.
 Startup verifies authenticated CDP readiness before OpenClaw; a failed required browser
 process stops the supervised assembly. The network and browser components have actual
-Chromium acceptance; the combined native member/browser journey remains unqualified.
+Chromium acceptance. A separate private browser-node assembly passed member/admin
+native browsing; it is not wired into this operator. See its
+[enrollment boundary](../execution/browser-node/README.md#initial-enrollment-boundary).
 Native navigation currently fails at the Gateway's public-destination DNS preflight
 under OpenShell. This option is an integration candidate, not a working browser
 feature; see [execution placement](../openshell/README.md#execution-placement).

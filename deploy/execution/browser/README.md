@@ -115,7 +115,9 @@ Chromium composition. Raising native execution approvals to full did not permit
 commands on that node. The trial used administrator-authorized native RPC; it is
 not a member-tool or production-assembly qualification. The browser controller in
 that candidate runs outside OpenShell, with the Gateway and execution worker still
-inside OpenShell. Private machine ingress and member-tool qualification remain open;
+inside OpenShell. A separate [private browser-node assembly](../browser-node/README.md)
+also passed private ingress and member/admin native tool calls with explicit node
+selection. Automatic enrollment and operator startup remain unfinished;
 the shipped local assembly still uses direct
 CDP and encounters the Gateway DNS-preflight limitation described in
 [execution placement](../../openshell/README.md#execution-placement).

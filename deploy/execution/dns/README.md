@@ -2,7 +2,8 @@
 
 Unfinished component for the separate [browser node](../browser-node/README.md).
 It is not wired into the operator or a supported deployment. The image was built;
-the opt-in live network regression has not passed. See [remaining work](../../../TODO.md).
+the opt-in live network regression passed public resolution, source refusal, private
+IPv4/IPv6 answer filtering, denied direct public TCP and no recursive fallback. See [remaining work](../../../TODO.md).
 
 [Unbound configuration](unbound.conf) requires an explicit mounted deployment file.
 The [example](deployment.example.conf) binds a private interface, admits one node IP

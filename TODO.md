@@ -6,12 +6,13 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Next implementation
 
-- [ ] **1. Finish the shared browser integration.** The direct path fails Gateway
-      DNS preflight under OpenShell; browser-node/ingress/DNS components are not assembled.
-      Review that candidate, wire it through the existing operator and test native
-      administrator/member navigation, denied private destinations, pairing/revocation
-      and retained profile state. Keep Gateway/worker confinement. Report a concrete
-      upstream blocker before changing the design; do not expand into other capabilities.
+- [ ] **1. Finish browser operator integration.** Private TLS/DNS, native member/admin
+      browsing with explicit node selection, device reconnect and revocation passed.
+      Resolve initial enrollment through an authenticated Access administrator; native
+      trusted-proxy authentication rejects loopback client attribution. Do not invent
+      an IP or an administrator bypass. Then wire startup/stop and verify retained
+      browser profile state. Native tool guidance still advertises `host` as default;
+      decide supported node guidance or an upstream correction. Preserve OpenShell.
 
 ## Following slices
 

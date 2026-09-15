@@ -220,10 +220,15 @@ with exact-host TCP policies. Its runtime-facing SSH listener is inaccessible fr
 the browser network, and it forwards only to the operator-owned worker port.
 See [remaining runtime acceptance](../../TODO.md).
 
-Native browser navigation currently fails before Chromium navigates: OpenClaw
+The operator’s direct browser path currently fails before Chromium navigates: OpenClaw
 resolves the public destination in the Gateway for its navigation safety check,
 and the whole-Gateway OpenShell policy denies that DNS lookup. Successful CDP
 readiness and browser-container public-web tests do not qualify this path.
 Whole-runtime OpenShell confinement remains required. Resolve this integration
 through supported upstream interfaces; do not disable native navigation checks
 or remove confinement to make acceptance pass.
+
+A separate [private browser-node assembly](../execution/browser-node/README.md) passed
+native member/admin browsing with explicit node selection, TLS/DNS and device
+revocation across restart. Its authenticated initial enrollment is not wired into
+normal operator startup. Gateway/worker OpenShell protection remains unchanged.
