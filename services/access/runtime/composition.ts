@@ -14,7 +14,7 @@ import { PostgresAccessStore } from "../repo/postgres.js";
 import { SessionService } from "../service/session.js";
 import { createAccessHttp } from "./http.js";
 import { createIngress } from "../providers/ingress.js";
-import type { RuntimeRoute } from "../types/ingress.js";
+import type { CompanionApiRoute, RuntimeRoute } from "../types/ingress.js";
 import type { AccessConfiguration } from "./config.js";
 export async function composeAccess(
   config: AccessConfiguration,
@@ -27,6 +27,7 @@ export async function composeAccess(
   options: {
     native?: NativeAuthority;
     navigationLinks?: readonly NavigationLink[];
+    companionApi?: CompanionApiRoute;
   } = {},
 ) {
   const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
@@ -139,6 +140,7 @@ export async function composeAccess(
             }
           : {}),
       },
+      options.companionApi,
     );
     return {
       identity,

@@ -13,7 +13,11 @@ import { createProxyServer } from "httpxy";
 import { parseCookie } from "cookie";
 import { AccessError } from "../types/errors.js";
 import { SessionStreams, type TrackedStream } from "./streams.js";
-import type { IngressAuthority, RuntimeRoute } from "../types/ingress.js";
+import type {
+  CompanionApiRoute,
+  IngressAuthority,
+  RuntimeRoute,
+} from "../types/ingress.js";
 export function cleanHeaders(
   headers: IncomingMessage["headers"],
   nativeHook = false,
@@ -39,7 +43,27 @@ export function createIngress(
   localLogin: boolean,
   handleAccess: (request: IncomingMessage, response: ServerResponse) => void,
   tls: { management?: TlsOptions; application?: TlsOptions } = {},
+  companionApi?: CompanionApiRoute,
 ) {
+  if (companionApi) {
+    const origin = new URL(companionApi.origin);
+    const prefix = new URL(companionApi.pathPrefix, origin);
+    if (
+      !tls.management ||
+      origin.protocol !== "https:" ||
+      origin.origin !== companionApi.origin ||
+      routes.some((route) => new URL(route.origin).host === origin.host) ||
+      !companionApi.pathPrefix.startsWith("/_clawscarf/") ||
+      !companionApi.pathPrefix.endsWith("/") ||
+      prefix.origin !== origin.origin ||
+      prefix.pathname !== companionApi.pathPrefix ||
+      prefix.search ||
+      prefix.hash
+    )
+      throw new Error(
+        "The companion API requires a distinct HTTPS management origin and exact companion path prefix.",
+      );
+  }
   const streams = new SessionStreams(authority);
   const timer = setInterval(() => streams.tick(), 2000);
   timer.unref();
@@ -47,14 +71,28 @@ export function createIngress(
     req: IncomingMessage,
     res: ServerResponse | Socket,
     head?: Buffer,
+    management = false,
   ) {
     let stream: TrackedStream | undefined;
     try {
       const host = req.headers.host ?? "",
         path = req.url ?? "/";
+      if (!path.startsWith("/") || path.startsWith("//"))
+        throw new AccessError("forbidden", "Invalid request.");
+      if (companionApi && new URL(companionApi.origin).host === host) {
+        const url = new URL(path, companionApi.origin);
+        if (
+          !management ||
+          res instanceof Socket ||
+          url.host !== host ||
+          !url.pathname.startsWith(companionApi.pathPrefix)
+        )
+          throw new AccessError("forbidden", "Invalid companion API route.");
+        handleAccess(req, res);
+        return;
+      }
       const route = routes.find((r) => new URL(r.origin).host === host);
-      if (!route || !path.startsWith("/") || path.startsWith("//"))
-        throw new AccessError("forbidden", "Unknown server.");
+      if (!route) throw new AccessError("forbidden", "Unknown server.");
       const url = new URL(path, route.origin);
       if (url.host !== host)
         throw new AccessError("forbidden", "Invalid request.");
@@ -180,12 +218,15 @@ export function createIngress(
     ? createHttpsServer(tls.application, handler)
     : createServer(handler);
   const managementServer = tls.management
-    ? createHttpsServer(tls.management, handler)
+    ? createHttpsServer(tls.management, (req, res) => {
+        void forward(req, res, undefined, true);
+      })
     : undefined;
   const servers = managementServer ? [server, managementServer] : [server];
   for (const listener of servers)
     listener.on("upgrade", (req, socket, head) => {
-      if (socket instanceof Socket) void forward(req, socket, head);
+      if (socket instanceof Socket)
+        void forward(req, socket, head, listener === managementServer);
       else socket.destroy();
     });
   return {

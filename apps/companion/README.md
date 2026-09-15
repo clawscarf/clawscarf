@@ -81,6 +81,15 @@ a service credential. A configured Connections link appears in People only after
 its existing native administrator check succeeds. Session refresh does not add a
 Gateway RPC to discover navigation. Direct URLs still enforce current authority.
 
+When Connections and management TLS are configured, `runtime.managementOrigin`
+also exposes only `/_clawscarf/connections/v1/connector-runtime/` over that TLS
+listener, using its actual Host. This lets the native plugin use the existing REST
+broker with a scoped bearer credential and a trusted CA. Runtime authentication
+rejects missing, revoked and mixed bearer/session credentials. This origin does
+not expose account management, login, native HTTP or WebSocket paths. Connections
+omitted means this route is absent. Native credential provisioning and activation
+remain explicit operator work; enabling the broker does not configure the plugin.
+
 The process runs the existing Connections maintenance sweep once at startup and
 then once per minute without overlap. It processes persisted cleanup and retention
 work, never provisioning. Shutdown cancels the sweep and closes both services and
@@ -90,10 +99,12 @@ later sweep. Listen failures abort startup and close acquired resources.
 ## Verification
 
 [The composed application test](../../tests/companion/composition.test.ts) uses real
-PostgreSQL, HTTP ingress, sessions and service factories, with injected native and
+PostgreSQL, HTTP ingress, management TLS, sessions and service factories, with injected native and
 provider fixtures. It covers disabled operation without a Connections schema,
 enabled account creation, CSRF rejection, native member denial, logout revocation
-and invalid enabled configuration. Provider and native fixture results are not live
+and invalid enabled configuration. The HTTPS broker checks cover active, missing,
+invalid, mixed and revoked credentials, disabled routing and the management-path
+boundary. Provider and native fixture results are not live
 account or Gateway acceptance. Existing native access qualification is recorded in
 [Access](../../services/access/README.md#reuse-and-verification).
 

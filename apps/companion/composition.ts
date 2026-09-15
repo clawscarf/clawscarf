@@ -109,6 +109,16 @@ export async function composeCompanion(
       },
       {
         ...(adapters.native ? { native: adapters.native } : {}),
+        ...(config.connections &&
+        config.access.managementTls &&
+        config.access.runtime.managementOrigin
+          ? {
+              companionApi: {
+                origin: config.access.runtime.managementOrigin,
+                pathPrefix: "/_clawscarf/connections/v1/connector-runtime/",
+              },
+            }
+          : {}),
         navigationLinks: config.connections
           ? [{ label: "Connections", href: "/_clawscarf/connections/" }]
           : [],

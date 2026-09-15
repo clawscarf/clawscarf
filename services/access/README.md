@@ -98,6 +98,18 @@ handler and revocation tracking as the browser listener. Compose publishes this 
 on host loopback and trusts the private CA through `NODE_EXTRA_CA_CERTS` at
 `/run/clawscarf/management-ca.pem`. Certificate verification remains enabled.
 
+An application can additionally supply one typed
+[companion API route](types/ingress.ts) with a distinct HTTPS origin and a bounded
+`/_clawscarf/` path prefix. This origin is accepted only on the management TLS
+listener and dispatches HTTP directly to the companion handler. It has no native
+upstream, WebSocket upgrades, login paths or session injection. Authorization and
+Cookie headers reach the companion's existing authentication unchanged. The public
+listener rejects this origin; the original application Host on management TLS keeps
+its existing session authorization and native forwarding. The
+[listener boundary test](../../tests/access/companion-api.test.ts) covers Host,
+path, upgrade and disabled-route rejection. The composing app owns the concrete
+[Connections route](../../apps/companion/README.md).
+
 Local sign-in, native document forwarding, administrator proof and explicit native
 team preparation have passed through this Compose/OpenShell arrangement. The initial
 profile displays the configured administrator name. A real native regression also

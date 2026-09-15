@@ -6,6 +6,10 @@ import { dirname, join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { randomBytes, randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { request as httpsRequest } from "node:https";
+import { z } from "zod";
 import pg from "pg";
 import { composeCompanion } from "../../apps/companion/composition.js";
 import type { CompanionConfiguration } from "../../apps/companion/config.js";
@@ -62,6 +66,14 @@ await test(
       reservation.close((error) => (error ? reject(error) : resolve())),
     );
     const port = reserved.port;
+    reservation.listen(0, "127.0.0.1");
+    await once(reservation, "listening");
+    const managementAddress = reservation.address();
+    assert.ok(managementAddress && typeof managementAddress !== "string");
+    const managementPort = managementAddress.port;
+    await new Promise<void>((resolve) => reservation.close(() => resolve()));
+    const certificateFile = join(directory, "management-cert.pem");
+    const tlsKeyFile = join(directory, "management-key.pem");
     const config: CompanionConfiguration = {
       access: {
         origin: `http://127.0.0.1:${port}`,
@@ -70,7 +82,16 @@ await test(
         containerLoopbackPublication: false,
         databaseUrl: url.href,
         encryptionKeyFile: keyFile,
-        runtime: { origin: "http://127.0.0.1:9" },
+        runtime: {
+          origin: "http://127.0.0.1:9",
+          managementOrigin: `https://127.0.0.1:${managementPort}`,
+        },
+        managementTls: {
+          host: "127.0.0.1",
+          port: managementPort,
+          certificateFile,
+          keyFile: tlsKeyFile,
+        },
         identity: { mode: "local", name: "Fixture administrator" },
       },
     };
@@ -102,6 +123,9 @@ await test(
     ) => {
       current.ingress.server.listen(port, "127.0.0.1");
       await once(current.ingress.server, "listening");
+      assert.ok(current.ingress.managementServer);
+      current.ingress.managementServer.listen(managementPort, "127.0.0.1");
+      await once(current.ingress.managementServer, "listening");
       const address = current.ingress.server.address();
       assert.ok(address && typeof address !== "string");
       const code = token();
@@ -124,13 +148,69 @@ await test(
           }),
       };
     };
+    const runtimePath = "/_clawscarf/connections/v1/connector-runtime/search";
+    const credentialPath = "/_clawscarf/connections/v1/connection-credentials";
     try {
+      await promisify(execFile)("openssl", [
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-nodes",
+        "-days",
+        "1",
+        "-subj",
+        "/CN=localhost",
+        "-addext",
+        "subjectAltName=DNS:localhost,IP:127.0.0.1",
+        "-keyout",
+        tlsKeyFile,
+        "-out",
+        certificateFile,
+      ]);
+      const ca = await readFile(certificateFile);
+      // The native plugin sends the actual broker Host and no acting-human session.
+      const brokerRequest = (
+        headers: Record<string, string> = {},
+        path = runtimePath,
+      ) =>
+        new Promise<number | undefined>((resolve, reject) => {
+          const req = httpsRequest(
+            {
+              hostname: "127.0.0.1",
+              port: managementPort,
+              ca,
+              path,
+              method: "POST",
+              headers: { "content-type": "application/json", ...headers },
+            },
+            (res) => {
+              res.resume();
+              res.once("end", () => resolve(res.statusCode));
+            },
+          );
+          req.on("error", reject);
+          req.setTimeout(5000, () =>
+            req.destroy(new Error("Broker request timed out")),
+          );
+          req.end(
+            JSON.stringify({
+              context: { agentId: "research", toolCallId: "https-proof" },
+              query: "test",
+            }),
+          );
+        });
       await writeFile(keyFile, randomBytes(32));
       await writeFile(apiKeyFile, "fixture-only");
       await migrate("access");
       app = await composeCompanion(config, { native, connections: provider });
       const serverId = app.identity.serverId;
       const disabled = await listen(app);
+      assert.equal(
+        await brokerRequest(),
+        403,
+        "Disabled Connections has no management API alias",
+      );
       let response = await disabled.request(
         "/_clawscarf/connections/v1/connection-capabilities",
       );
@@ -236,6 +316,35 @@ await test(
         },
       );
       assert.equal(response.status, 201, await response.text());
+      response = await client.request(credentialPath, { method: "POST" });
+      assert.equal(response.status, 200);
+      const credential = z
+        .object({ token: z.string().min(1) })
+        .parse(await response.json());
+      const authorization = `Bearer ${credential.token}`;
+      assert.equal(await brokerRequest(), 401);
+      assert.equal(
+        await brokerRequest({ authorization: "Bearer invalid" }),
+        401,
+      );
+      assert.equal(await brokerRequest({ authorization }), 200);
+      assert.equal(
+        await brokerRequest({ authorization, cookie: client.headers.cookie }),
+        401,
+      );
+      assert.equal(
+        await brokerRequest({ authorization }, credentialPath),
+        403,
+        "The runtime credential cannot use management routes on the API origin",
+      );
+      response = await client.request(credentialPath, { method: "DELETE" });
+      assert.equal(response.status, 204);
+      await response.body?.cancel();
+      assert.equal(
+        await brokerRequest({ authorization }),
+        401,
+        "Revocation applies to the next HTTPS request",
+      );
       administrator = false;
       response = await client.request("/_clawscarf/connections/v1/connections");
       assert.equal(response.status, 403);
