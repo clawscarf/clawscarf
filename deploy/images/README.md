@@ -19,6 +19,9 @@ The image includes:
   `/app/clawscarf/access`, enabled only by the standalone navigation preset.
 - The [native launcher](../../runtime/README.md), at `/app/clawscarf/bin/openclaw`,
   used for Gateway startup and operator commands.
+- The [fresh-volume initializer](../../runtime/initialize.ts), with its compiled entry
+  point `/app/clawscarf/initialize-main.js`, used only by operator setup. It preserves
+  existing owned configuration and rejects foreign state.
 - The [model configuration helper](../../runtime/models.ts), at
   `/app/clawscarf/models.ts`, for applying a scoped gateway credential and selected
   native model settings through authenticated operator access.

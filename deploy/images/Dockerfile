@@ -49,6 +49,14 @@ COPY services/connections/generated/client/ ./services/connections/generated/cli
 RUN ./node_modules/.bin/tsc -p tsconfig.json \
     && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 
+FROM upstream AS runtime-tools
+USER root
+WORKDIR /build/runtime-tools
+COPY deploy/images/pack-tools/package*.json ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
+COPY runtime/initialize.ts runtime/initialize-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts
+
 FROM upstream
 
 USER root
@@ -65,6 +73,7 @@ COPY --from=native-plugins /build/native-plugins /app/clawscarf/native-plugins
 COPY --from=access /out /app/clawscarf/access
 COPY --chmod=0755 runtime/openclaw.sh /app/clawscarf/bin/openclaw
 COPY runtime/models.ts /app/clawscarf/models.ts
+COPY --from=runtime-tools /out/ /app/clawscarf/
 COPY release/licenses/ /usr/share/licenses/clawscarf/
 
 COPY --from=pack-tools /build/pack-tools/dist /app/clawscarf/pack-tools
