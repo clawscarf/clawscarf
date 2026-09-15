@@ -101,6 +101,21 @@ on Docker Desktop. Linux host routing needs separate qualification.
 Public application access and the widget origin go through the
 [access companion](../../services/access/README.md), never directly to these listeners.
 
+Probe Gateway health inside its application namespace:
+
+```sh
+/absolute/path/to/openshell sandbox exec --name clawscarf --gateway clawscarf \
+  --env HOME=/home/node --env OPENCLAW_STATE_DIR=/home/node/.openclaw \
+  -- /usr/local/bin/node /app/dist/docker-healthcheck.js
+```
+
+This is the unmodified upstream health probe; exit zero means the selected Gateway's
+`/healthz` endpoint responds successfully. It does not prove a working model, login or
+tool execution. OpenShell's `Ready` phase describes its sandbox, not application health.
+The runtime image disables the upstream Docker `HEALTHCHECK`: Docker executes it in
+the outer supervisor namespace, where it cannot reach the confined Gateway's loopback
+listener. Do not treat Docker container status as Gateway readiness.
+
 Standard forwarding multiplexes application TCP connections over one SSH transport
 per listener. Forty concurrent native CSS requests pass through the application
 companion without truncation. The alternative `forward service` command consumes
@@ -147,3 +162,48 @@ This proves retained-compute restart, not replacement/relink, backup restoration
 Gateway crash consistency, browser isolation or isolation between team members.
 The current run passed on macOS arm64/Docker Desktop with OpenShell 0.0.116 and
 its Docker driver. Other platforms remain unqualified.
+
+## Development footprint
+
+The arm64 runtime image occupies approximately 1.50 GB of unpacked Docker image
+data; the companion image is approximately 414 MB. These are not compressed
+download sizes. In the current idle local development composition, Docker reports
+roughly 600 MiB for the OpenShell/OpenClaw container, 43 MiB for Access/Connections,
+136 MiB for the test PostgreSQL container and 878 MiB for optional LiteLLM. The
+host-side controller uses about 50 MiB RSS; forwarding processes and Docker Desktop
+add their own overhead. Local model weights and inference are additional.
+
+These observations establish a development baseline, not a minimum hardware spec,
+peak-load budget or supported user count. Measure cold installation, active model/tool
+execution and the final selected member/browser sandbox layout before publishing
+capacity guidance. Image size comes from `docker image inspect`; container usage
+comes from `docker stats --no-stream`, and controller RSS from the host process table.
+
+## Execution placement
+
+The outer sandbox contains the Gateway and native plugins together. It does not
+separate member shell execution from the Gateway's loopback listeners. The shipped
+member preset therefore requires native sandboxing; no working member execution
+backend is claimed. Chromium also cannot launch with its sandbox under this policy.
+
+Source review of pinned OpenClaw 2026.9.4/OpenShell 0.0.116 identifies two candidate
+worker arrangements, neither selected or qualified here:
+
+- The [native OpenShell backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/openshell/src/backend.ts)
+  manages sibling workers through the external controller. A company-OIDC principal
+  can be an ordinary user in a dedicated execution workspace, with sandbox read/write
+  and config-read scopes. This permits lifecycle operations on every worker in that
+  workspace, not exec-only access to one worker. The Gateway's outer sandbox must
+  remain outside that workspace. Our local controller's mTLS credentials have broader
+  authority and must not be copied into the Gateway. Precreating a worker or copying
+  its SSH token does not remove the controller-authentication requirement.
+- OpenClaw's native SSH backend can use worker-specific SSH credentials against an
+  ordinary SSH endpoint. An external operator would own worker lifecycle. OpenShell's
+  current `ssh-proxy` still authenticates the controller user, so it is not such an
+  endpoint by itself.
+
+Neither backend supports native sandboxed browser execution in this release; the
+[native guard](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/agents/sandbox/context.ts)
+rejects it. Browser placement requires its own supported integration and acceptance.
+The conservative current configuration keeps member execution unavailable while this
+decision remains open; it never mounts controller keys or a Docker socket into OpenClaw.

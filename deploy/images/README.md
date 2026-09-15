@@ -3,6 +3,9 @@
 [Dockerfile](Dockerfile) extends the exact vanilla OpenClaw 2026.9.4 image with
 immutable runtime dependencies. Customer configuration, identities, model keys,
 connection credentials and writable state are initialized separately.
+OpenShell owns the runtime container. Its outer Docker health check is disabled;
+use the [native application probe](../openshell/README.md#application-transport)
+inside the sandbox to check Gateway health.
 
 ```sh
 docker build -f deploy/images/Dockerfile -t clawscarf-runtime:local .
@@ -32,7 +35,9 @@ The image includes:
   `node /app/clawscarf/native-plugins/node_modules/@openai/codex/bin/codex.js`.
 - Debian Chromium and its sandbox helper, version 152.0.7977.82-1~deb12u1.
   The browser executable is `/usr/bin/chromium`.
-- OpenShell's iproute2/nftables dependencies. `SQLITE_TMPDIR=/tmp` keeps native
+- OpenShell's iproute2 and [Netfilter dependencies](network-tools/README.md),
+  including unmodified nftables 1.1.3 built for the image's Debian 12 runtime.
+  `SQLITE_TMPDIR=/tmp` keeps native
   SQLite temporary files within the permitted writable paths.
 
 The pack executable is compiled from this repository's [CLI](../../scripts/packs.ts)

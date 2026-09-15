@@ -1,5 +1,14 @@
 FROM ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101 AS upstream
 
+FROM upstream AS network-tools
+USER root
+COPY deploy/images/network-tools/build.sh /build-network-tools.sh
+RUN sh /build-network-tools.sh
+
+FROM scratch AS network-sources
+COPY --from=network-tools /out/sources/ /
+COPY deploy/images/network-tools/build.sh /build.sh
+
 FROM upstream AS connections
 USER root
 WORKDIR /build/connections
@@ -44,12 +53,14 @@ FROM upstream
 
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends iproute2=6.1.0-3 nftables=1.0.6-2+deb12u2 \
+    && apt-get install -y --no-install-recommends iproute2=6.1.0-3 \
+       libmnl0=1.0.4-3 libgmp10=2:6.2.1+dfsg1-1.1 libjansson4=2.14-2 \
        chromium=152.0.7977.82-1~deb12u1 chromium-sandbox=152.0.7977.82-1~deb12u1 \
     && rm -rf /var/lib/apt/lists/* \
     && install -d -o node -g node -m 0700 /home/node/.openclaw \
     && install -d -o node -g node -m 0755 /workspace
 COPY --from=connections /out /app/clawscarf/connections
+COPY --from=network-tools /out/runtime/ /
 COPY --from=native-plugins /build/native-plugins /app/clawscarf/native-plugins
 COPY --from=access /out /app/clawscarf/access
 COPY --chmod=0755 runtime/openclaw.sh /app/clawscarf/bin/openclaw
@@ -65,4 +76,6 @@ COPY --chmod=0755 runtime/packs.sh /app/clawscarf/bin/packs
 USER node
 ENV SQLITE_TMPDIR=/tmp
 WORKDIR /workspace
+# OpenShell owns the outer container; probe Gateway inside its application namespace.
+HEALTHCHECK NONE
 CMD ["/app/clawscarf/bin/openclaw", "gateway"]
