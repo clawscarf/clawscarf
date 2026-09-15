@@ -65,7 +65,7 @@ reconciles the matching owned network and records its ID. An absent network afte
 recorded attempt remains uncertain and requires operator inspection; it is never
 blindly allocated again. A partial setup retains its first network if reserving the
 second fails. Foreign, unlabeled, replaced or ambiguous networks are rejected, not
-adopted or deleted. An optional browser adds an isolated internal bridge. Owned receipts pin its browser
+adopted or deleted. An optional browser adds separate isolated browser and machine bridges. Owned receipts pin their
 address and the relay address on the runtime network from Docker-selected subnets.
 No subnet ranges are hardcoded and no other projects are pruned.
 
@@ -215,6 +215,8 @@ with the [fixed runtime relay and public-web proxy](../execution/network/README.
   "browser": {
     "image": "sha256:<built-browser-image-id>",
     "egressImage": "sha256:<built-egress-image-id>",
+    "nodeImage": "sha256:<built-native-browser-node-image-id>",
+    "dnsImage": "sha256:<built-browser-dns-image-id>",
     "port": 19282
   }
 }
@@ -223,8 +225,8 @@ with the [fixed runtime relay and public-web proxy](../execution/network/README.
 Replace each placeholder with its exact built digest. The relay port must be distinct
 from every other listener. Setup generates a private CDP credential and a separate
 owned browser-state volume. Chromium joins only an isolated internal network. The
-relay publishes only browser CDP on loopback for readiness; native traffic uses
-`runtime.clawscarf.internal:9223` on the owned runtime network. Squid is unpublished
+relay publishes only browser CDP on loopback for operator readiness. The separate
+native browser node reaches Chromium directly on the isolated browser network. Squid is unpublished
 and accepts only the browser's reserved address. It permits public HTTP/HTTPS and
 blocks private destinations. This is not a domain allowlist: authorized browsing
 can transmit team data to public sites.
@@ -234,26 +236,19 @@ credentials. With the execution worker configured, native sandbox defaults expli
 allow that shared browser and explicitly add its native tool to sandboxed sessions;
 other sandbox-tool denials and native role restrictions still apply. Browser profiles,
 cookies and logins belong to the trusted team. Stop/start retains that volume.
-Startup verifies authenticated CDP readiness before OpenClaw; a failed required browser
-process stops the supervised assembly. The network and browser components have actual
-Chromium acceptance. A separate private browser-node assembly passed member/admin
-native browsing; it is not wired into this operator. See its
-[remaining integration](../execution/browser-node/README.md#remaining-integration-boundary).
-Native navigation currently fails at the Gateway's public-destination DNS preflight
-under OpenShell. This option is an integration candidate, not a working browser
-feature; see [execution placement](../openshell/README.md#execution-placement).
+Startup verifies authenticated CDP readiness before OpenClaw, then enrolls and waits
+for the [native browser node](../execution/browser-node/README.md#operator-lifecycle)
+before starting application access. The node uses a scoped native credential and
+private certificate-pinned TLS; its DNS resolver has a separate restricted source rule.
+The operator supervises and stops the node, ingress, resolver and browser, retaining
+owned volumes. No Gateway/worker OpenShell restrictions are removed.
 
 The shared `relayImage` is required exactly when worker or browser is configured.
-It forwards TCP to fixed destinations and never joins the companion network. SSH
-binds only the runtime-facing address; Chromium cannot reach that listener through
-the browser network. SSH host-key checks and browser authentication remain end-to-end.
-The native browser policy trusts only the exact CDP hostname, while the browser
-network separately restricts page traffic. There is no general private-network override.
-
-Both browser CDP and worker SSH use exact-host `protocol: tcp` OpenShell policies.
-The selected controller installs transparent TCP capture at compute creation; adding
-the first TCP endpoint to already-created compute requires replacement. Setup applies
-these choices before first creation, never by changing policy during refresh.
+It supplies the fixed readiness/SSH relay and private node ingress. Worker SSH uses
+an exact-host OpenShell TCP policy; the Gateway has no direct browser CDP egress.
+Initial native browser routing selects the uniquely named paired node. Native edits
+are not overwritten at restart. Explicit node browsing works; ordinary model-selected
+browsing still has the [owner-managed upstream issue](../execution/browser-node/README.md#upstream-browser-routing-bug).
 
 ## Initial model setup
 
@@ -345,7 +340,7 @@ track the worker independently from the Gateway. Uncertain absent targets are no
 Shutdown stops the Gateway and worker before their controller; both volumes remain.
 No worker is allocated when `execution` is omitted. Browser execution uses a
 [separate browser component](../execution/browser/README.md); it is not enabled by
-this block and its network/native integration remains unfinished.
+this block. Its ordinary model-selected routing limitation is documented there.
 
 ### Supervised process
 
@@ -598,8 +593,9 @@ v2.45.1 test provider, signed tokens, TLS and the actual pinned OpenClaw runtime
 This test used an explicit private test certificate trust in the companion and browser,
 with hostnames resolved locally. It does not qualify public DNS, certificate renewal,
 a customer's IdP configuration or browser execution inside the sandbox. The access
-path and separate worker execution are locally qualified; native browser execution
-and release qualification remain open.
+path and separate worker execution are locally qualified. Explicit native-node
+browsing also passed; ordinary model-selected routing and release qualification
+remain open.
 A native configuration reload can briefly make management reads unavailable; a failed
 command is never automatically replayed.
 

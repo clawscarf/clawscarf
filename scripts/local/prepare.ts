@@ -1,3 +1,5 @@
+import { ensureOwnedVolume } from "./volumes.js";
+import { prepareBrowserNode, browserNodeName } from "./browser-node.js";
 import { withInitialServices } from "./initial-services.js";
 import {
   loadInitialConnections,
@@ -39,7 +41,7 @@ import {
   resourceNames,
   type LocalState,
 } from "./state.js";
-import { composeConfiguration, compose, ensureOwnedVolume } from "./compose.js";
+import { composeConfiguration, compose } from "./compose.js";
 import { run, LocalSetupError } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import { requireNoUpgrade } from "./upgrade-state.js";
@@ -64,7 +66,14 @@ export async function prepareLocal(
     input.companionImage,
     ...(input.relayImage ? [input.relayImage] : []),
     ...(input.execution ? [input.execution.image] : []),
-    ...(input.browser ? [input.browser.image, input.browser.egressImage] : []),
+    ...(input.browser
+      ? [
+          input.browser.image,
+          input.browser.egressImage,
+          input.browser.nodeImage,
+          input.browser.dnsImage,
+        ]
+      : []),
   ])
     await run("docker", ["image", "inspect", image]);
   const state = await initializeState(directory, input);
@@ -83,12 +92,14 @@ export async function prepareLocal(
       directory,
       models,
       input.execution,
-      input.browser,
       connectionsEndpoint,
     );
     const execution = await prepareExecution(directory, state);
     await ensureLocalNetworks(directory, state);
     const browser = await prepareBrowser(directory, state);
+    const browserMachine = browser
+      ? await prepareBrowserNode(directory, state, browser.token)
+      : undefined;
     const relayAddress = await prepareRelay(directory, state);
     const names = resourceNames(state);
     if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
@@ -105,7 +116,13 @@ export async function prepareLocal(
     await ensurePrivateFile(
       join(directory, "compose.json"),
       JSON.stringify(
-        composeConfiguration(state, directory, browser?.address, relayAddress),
+        composeConfiguration(
+          state,
+          directory,
+          browser?.address,
+          relayAddress,
+          browserMachine,
+        ),
         null,
         2,
       ),
@@ -192,7 +209,12 @@ export async function prepareLocal(
       const native = JSON.stringify(
         withInitialServices(configured, {
           execution: Boolean(input.execution),
-          ...(browser ? { browserToken: browser.token } : {}),
+          ...(browser
+            ? {
+                browserToken: browser.token,
+                browserNode: browserNodeName(state),
+              }
+            : {}),
         }),
         null,
         2,

@@ -1,3 +1,5 @@
+import { startBrowserNode } from "./browser-node-pairing.js";
+import { verifyBrowserNode } from "./browser-node.js";
 import { verifyRelayConfiguration } from "./relay.js";
 import { requireNoConnectionsChange } from "./connections-runtime.js";
 import { verifyExecutionListener } from "./execution.js";
@@ -61,6 +63,7 @@ export async function launchLocal(
     await verifyLocalPorts(state);
     await verifyLocalNetworks(directory, state);
     await verifyBrowserConfiguration(directory, state);
+    await verifyBrowserNode(directory, state);
     await verifyRelayConfiguration(directory, state);
     const children: ManagedProcess[] = [];
     const lifetime = { stopped: false, childExited: false };
@@ -205,6 +208,20 @@ export async function launchLocal(
         await response.body?.cancel();
       });
       await verifyRuntimeBinding(state, runtime);
+      if (state.input.browser) {
+        report("Starting native browser node…");
+        await startBrowserNode(directory, state, cancellation.signal);
+        for (const service of [
+          "browser-node",
+          "browser-node-ingress",
+          "browser-node-dns",
+        ])
+          await spawn(
+            "docker",
+            ["compose", "-f", join(directory, "compose.json"), "wait", service],
+            `${service}-wait.log`,
+          );
+      }
       report(
         state.input.team
           ? "Starting company access…"
@@ -275,7 +292,13 @@ Press Ctrl+C to stop. Your data will be retained.`);
       report("Stopping local services; retaining data…");
       const errors: unknown[] = [];
       try {
-        await compose(directory, ["stop", "companion"]);
+        await compose(directory, [
+          "stop",
+          "companion",
+          ...(state.input.browser
+            ? ["browser-node", "browser-node-ingress", "browser-node-dns"]
+            : []),
+        ]);
       } catch (error) {
         errors.push(error);
       }

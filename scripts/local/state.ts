@@ -164,5 +164,7 @@ export function resourceNames(state: LocalState) {
     workerSandbox: `csw-${suffix}`,
     workerVolume: `clawscarf-${suffix}-worker`,
     browserVolume: `clawscarf-${suffix}-browser`,
+    browserNodeVolume: `clawscarf-${suffix}-browser-node`,
+    browserNodeConfigVolume: `clawscarf-${suffix}-browser-node-config`,
   };
 }

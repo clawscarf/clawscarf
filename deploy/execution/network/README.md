@@ -112,7 +112,9 @@ The composition must supply these operator-owned settings:
 - Native `gateway.nodes.pairing.autoApproveLocal: false`, without trusted-CIDR
   auto-approval. Forwarding to loopback must not create pairing authority.
 
-The service must not join the Chromium, worker or public application network.
+The listener must not bind the Chromium, worker or application-facing network.
+The operator gives ingress a separate internal machine interface and an upstream
+network attachment; it binds only the machine address and publishes no port.
 Gateway and worker OpenShell policy must deny this machine listener. The native
 paired-node credential authorizes the connection; network placement alone does not.
 
@@ -122,7 +124,8 @@ native upgrade forwarding using the actual HAProxy image. Set
 `CLAWSCARF_TEST_BROWSER_RELAY_IMAGE` and run that test with `node --import tsx --test`.
 Its upstream is a controlled handshake fixture; it does not establish native pairing,
 revocation or production network isolation. It publishes only a disposable loopback
-test listener. Combined private-node qualification remains open.
+test listener. Combined local private-node enrollment/navigation passed; ordinary model-selected
+routing and release qualification remain open. See the browser-node owner.
 
 ## Sources and rights
 

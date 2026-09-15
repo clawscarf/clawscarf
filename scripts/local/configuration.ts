@@ -161,7 +161,15 @@ const localInput = z
     memory,
     execution: z.strictObject({ image, port, cpu, memory }).optional(),
     relayImage: image.optional(),
-    browser: z.strictObject({ image, egressImage: image, port }).optional(),
+    browser: z
+      .strictObject({
+        image,
+        egressImage: image,
+        nodeImage: image,
+        dnsImage: image,
+        port,
+      })
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (Boolean(value.relayImage) !== Boolean(value.execution || value.browser))

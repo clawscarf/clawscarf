@@ -329,7 +329,6 @@ await test("external Connections retains only endpoint and CA, never reads provi
     policySource,
     undefined,
     undefined,
-    undefined,
     loaded.endpoint,
   );
   assert.deepEqual(policy.network_policies, {
@@ -344,20 +343,13 @@ await test("external Connections retains only endpoint and CA, never reads provi
     f.directory,
     undefined,
     undefined,
-    undefined,
     loaded.endpoint,
   );
   const path = join(f.directory, "private/runtime-policy.json");
   const authored = JSON.stringify({ ...policy, customSetting: "retained" });
   await writeFile(path, authored);
   await assert.rejects(
-    prepareRuntimePolicy(
-      f.directory,
-      undefined,
-      undefined,
-      undefined,
-      loaded.endpoint,
-    ),
+    prepareRuntimePolicy(f.directory, undefined, undefined, loaded.endpoint),
     code("configuration_changed"),
   );
   assert.equal(await readFile(path, "utf8"), authored);

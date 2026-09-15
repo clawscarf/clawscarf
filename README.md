@@ -57,11 +57,12 @@ network policy for every companion.
 - Connections has broker/protocol and native plugin tests. The assembled activation
   and real external-account journey still need acceptance. Disabled operation works
   without provider credentials or a Connections schema.
-- **Browser operator integration is unfinished.** The private [browser-node assembly](deploy/execution/browser-node/README.md)
-  passed native member/administrator browsing with explicit node selection, TLS/DNS,
-  retained device identity and revocation after restart. Unattended node-only enrollment
-  through the public SDK also passed. Startup wiring and native default-target guidance
-  remain unfinished. Gateway and worker retain OpenShell. Browser remains opt-in.
+- Optional [browser-node startup](deploy/execution/browser-node/README.md) uses local
+  public-SDK enrollment, private TLS/DNS and retained native identity. Native public
+  navigation and full stop/start with retained browser cookies passed.
+  Member/administrator explicit-node browsing and revocation passed
+  component acceptance. Ordinary model-selected browsing has an owner-managed upstream
+  routing bug. Gateway and worker retain OpenShell; Chromium retains its own sandbox.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
   tests. Changed-upstream-version upgrades, clean-machine release installation,
   Linux/WSL, automated backups and the terminal installer are unfinished.

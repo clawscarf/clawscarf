@@ -4,14 +4,18 @@ Work in this order, one selected slice at a time. This is a roadmap, not permiss
 to run the entire list automatically. Current configuration and limits are in
 [README.md](README.md#installation-management-direction).
 
-## Next implementation
+## Owner-managed browser issue — DO NOT PICK UP AUTOMATICALLY
 
-- [ ] **1. Finish browser operator integration.** Wire the verified local public-SDK
-      node-only enrollment into startup/stop; retain identity and native revocation.
-      Correct upstream browser-tool guidance: a configured node is used when target
-      is omitted, but the description still advertises `host`; disabling host control
-      also blocks nodes. No prompt/RPC workaround or weaker OpenShell policy. Then
-      verify ordinary member/admin browsing and retained browser profile state.
+- [ ] **Owner will take this upstream as a separate task.** OpenClaw 2026.9.4
+      routes an omitted browser target to the configured node, but its tool guidance
+      advertises `host`; an explicit `host` selects the protected Gateway and fails
+      public DNS preflight. `allowHostControl: false` also blocks node browsing.
+      Reproduce with `gateway.nodes.browser: { mode: "manual", node: "<paired node>" }`:
+      compare omitted target, `target: "node"` and `target: "host"`. Expected: guidance
+      matches effective routing, with explicit targets and sandbox policy preserved.
+      Evidence, pinned sources and limits are in the [browser integration report](deploy/execution/browser-node/README.md#upstream-browser-routing-bug).
+      Do not patch, report upstream, expand or resume this task automatically.
+      Ordinary model-selected member/admin browsing awaits that supported correction.
 
 ## Following slices
 

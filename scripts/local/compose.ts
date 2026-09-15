@@ -1,3 +1,8 @@
+import {
+  browserNodeServices,
+  browserNodeVolumes,
+} from "./browser-node-compose.js";
+import type { BrowserMachineAddresses } from "./browser-node.js";
 import { join } from "node:path";
 import type { LocalState } from "./state.js";
 import { resourceNames } from "./state.js";
@@ -11,13 +16,16 @@ export function composeConfiguration(
   directory: string,
   browserAddress?: string,
   relayAddress?: string,
+  browserMachine?: { addresses: BrowserMachineAddresses; fingerprint: string },
 ) {
   const { input, ownerId } = state;
   const names = resourceNames(state);
   const privateDirectory = join(directory, "private");
   const labels = { "clawscarf.installation": ownerId };
-  if (input.browser && !browserAddress)
-    throw Error("The isolated browser address is required.");
+  if (input.browser && (!browserAddress || !browserMachine))
+    throw Error(
+      "The isolated browser address and prepared native node are required.",
+    );
   if (input.relayImage && !relayAddress)
     throw Error("The runtime relay address is required.");
   const constrained = {
@@ -30,6 +38,9 @@ export function composeConfiguration(
   return {
     name: names.project,
     services: {
+      ...(input.browser && browserAddress && browserMachine
+        ? browserNodeServices(state, directory, browserAddress, browserMachine)
+        : {}),
       ...(input.browser
         ? {
             browser: {
@@ -167,13 +178,19 @@ export function composeConfiguration(
         : {}),
       default: { external: true, name: `${names.project}_default` },
       ...(input.browser
-        ? { browser: { external: true, name: `${names.project}_browser` } }
+        ? {
+            browser: { external: true, name: `${names.project}_browser` },
+            machine: { external: true, name: `${names.project}_machine` },
+          }
         : {}),
     },
     volumes: {
       database: { external: true, name: names.databaseVolume },
       ...(input.browser
-        ? { browser: { external: true, name: names.browserVolume } }
+        ? {
+            browser: { external: true, name: names.browserVolume },
+            ...browserNodeVolumes(state),
+          }
         : {}),
     },
   };
@@ -184,30 +201,4 @@ export function compose(directory: string, args: readonly string[]) {
     ["compose", "-f", join(directory, "compose.json"), ...args],
     { timeout: 120_000 },
   );
-}
-export async function ensureOwnedVolume(name: string, ownerId: string) {
-  const listed = (
-    await run("docker", ["volume", "ls", "--format", "{{.Name}}"])
-  )
-    .trim()
-    .split("\n");
-  if (!listed.includes(name))
-    await run("docker", [
-      "volume",
-      "create",
-      "--label",
-      `clawscarf.installation=${ownerId}`,
-      name,
-    ]);
-  const label = (
-    await run("docker", [
-      "volume",
-      "inspect",
-      name,
-      "--format",
-      '{{index .Labels "clawscarf.installation"}}',
-    ])
-  ).trim();
-  if (label !== ownerId)
-    throw Error("A volume with this name belongs to a different installation.");
 }

@@ -1,17 +1,16 @@
-# Browser DNS experiment
+# Browser node DNS
 
-Unfinished component for the separate [browser node](../browser-node/README.md).
-It is not wired into the operator or a supported deployment. The image was built;
-the opt-in live network regression passed public resolution, source refusal, private
-IPv4/IPv6 answer filtering, denied direct public TCP and no recursive fallback. See [remaining work](../../../TODO.md).
+Optional private resolver for the [native browser node](../browser-node/README.md),
+selected by the local operator's `browser.dnsImage`. Chromium uses its separate
+public-web proxy; this resolver supplies the node's native destination preflight.
 
-[Unbound configuration](unbound.conf) requires an explicit mounted deployment file.
-The [example](deployment.example.conf) binds a private interface, admits one node IP
-and forwards to fixed resolvers without fallback. It filters private answers and
-disables query logs and remote administration. These settings alone do not prove
-network isolation; an isolated node/ingress/DNS assembly still needs validation.
+[Unbound configuration](unbound.conf) requires an operator-owned deployment file.
+The operator binds one private machine address, admits only the browser node's IP
+and forwards to fixed resolvers without recursive fallback. Private IPv4/IPv6 answers,
+query logging and remote administration are disabled. No DNS port is published.
 
 [Dockerfile](Dockerfile) pins the resolver package and base image.
-[Tests](../../../tests/runtime/browser-dns.test.ts) contain recipe checks and an opt-in
-network test using `CLAWSCARF_TEST_BROWSER_DNS_IMAGE`. No startup path selects this
-image. Decide the browser architecture before extending this experiment.
+[Tests](../../../tests/runtime/browser-dns.test.ts), enabled with
+`CLAWSCARF_TEST_BROWSER_DNS_IMAGE`, passed public resolution, source refusal,
+private-answer filtering and denied direct public TCP. The combined local node
+assembly also passed native browser navigation. Linux/release qualification remains open.

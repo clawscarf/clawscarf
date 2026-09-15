@@ -55,7 +55,8 @@ pnpm exec tsx scripts/package-operator.ts --output .local/operator-artifacts
 
 The command uses the system tar utility and emits a development `.tgz` plus `SHA256SUMS`.
 It refuses an existing output directory. The archive includes its frozen dependency
-lockfile, required migrations/policies/SDK clients, browser seccomp profile, Python transport and notices; it
+lockfile, required migrations/policies/SDK clients, browser seccomp profile, native
+browser-node helpers/private-ingress configuration, Python transport and notices; it
 excludes companion servers, contributor tooling and installation state. It does not
 download images, include provider credentials, publish a release or build missing
 components. Its README links to the included [archive instructions](../release/operator.md).

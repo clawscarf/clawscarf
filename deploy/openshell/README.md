@@ -215,20 +215,16 @@ for a temporary member and the administrator: commands and file reads ran as UID
 1000 on the SSH worker, Gateway configuration was absent, and Gateway loopback,
 host-forwarded Gateway, controller and undeclared public-egress probes failed. Member
 administrative RPC was denied; test identities, sessions and files were removed.
-Native SSH and CDP use the owned `runtime.clawscarf.internal` relay
-with exact-host TCP policies. Its runtime-facing SSH listener is inaccessible from
+Native SSH uses the owned `runtime.clawscarf.internal` relay
+with an exact-host TCP policy. Its runtime-facing SSH listener is inaccessible from
 the browser network, and it forwards only to the operator-owned worker port.
 See [remaining runtime acceptance](../../TODO.md).
 
-The operator’s direct browser path currently fails before Chromium navigates: OpenClaw
-resolves the public destination in the Gateway for its navigation safety check,
-and the whole-Gateway OpenShell policy denies that DNS lookup. Successful CDP
-readiness and browser-container public-web tests do not qualify this path.
-Whole-runtime OpenShell confinement remains required. Resolve this integration
-through supported upstream interfaces; do not disable native navigation checks
-or remove confinement to make acceptance pass.
-
-A separate [private browser-node assembly](../execution/browser-node/README.md) passed
-native member/admin browsing with explicit node selection, TLS/DNS and device
-revocation across restart. Local public-SDK enrollment also passed; the browser-node
-path is not wired into normal operator startup. Gateway/worker OpenShell protection remains unchanged.
+The operator starts a separate [native browser node](../execution/browser-node/README.md)
+with scoped enrollment, private TLS/DNS and immutable shell-execution denial. It
+performs browser-control preflight outside OpenShell while the Gateway and worker
+remain protected. Chromium retains its own namespace sandbox and restricted public-web
+proxy. Explicit node browsing works. OpenClaw's tool guidance can still select `host`,
+which attempts Gateway-side preflight and fails public DNS under OpenShell. This
+[upstream routing issue](../execution/browser-node/README.md#upstream-browser-routing-bug)
+is owner-managed; no prompt workaround or confinement bypass is supplied.

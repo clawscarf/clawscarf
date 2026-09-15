@@ -13,7 +13,6 @@ export function initialRuntimePolicy(
   source: string,
   models: InitialModels | undefined,
   execution?: LocalInput["execution"],
-  browser?: LocalInput["browser"],
   connections?: InitialConnectionsEndpoint,
 ) {
   const document = parseDocument(source);
@@ -46,21 +45,6 @@ export function initialRuntimePolicy(
                 },
               ],
               binaries: [{ path: connections.network.binary }],
-            },
-          }
-        : {}),
-      ...(browser
-        ? {
-            team_browser: {
-              name: "Team browser",
-              endpoints: [
-                {
-                  host: runtimeRelayHost,
-                  port: 9223,
-                  protocol: "tcp",
-                },
-              ],
-              binaries: [{ path: "/usr/local/bin/node" }],
             },
           }
         : {}),
@@ -102,7 +86,6 @@ export async function prepareRuntimePolicy(
   directory: string,
   models: InitialModels | undefined,
   execution: LocalInput["execution"],
-  browser?: LocalInput["browser"],
   connections?: InitialConnectionsEndpoint,
 ) {
   const policy = initialRuntimePolicy(
@@ -112,7 +95,6 @@ export async function prepareRuntimePolicy(
     ),
     models,
     execution,
-    browser,
     connections,
   );
   await ensurePrivateFile(

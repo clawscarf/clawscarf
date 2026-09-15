@@ -24,6 +24,7 @@ for (const path of [
   "deploy/openshell/policy.yaml",
   "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",
+  "deploy/execution/network/node-ingress.cfg",
   "deploy/execution/browser/LICENSE.playwright",
 ]) {
   const destination = new URL(`../dist/${path}`, import.meta.url);

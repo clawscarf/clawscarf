@@ -10,7 +10,7 @@ import { ensurePrivateFile, resourceNames, type LocalState } from "./state.js";
 const networkId = z.string().regex(/^[a-f0-9]{64}$/);
 const intentSchema = z.strictObject({
   ownerId: z.uuid(),
-  purpose: z.enum(["companion", "runtime", "browser"]),
+  purpose: z.enum(["companion", "runtime", "browser", "machine"]),
   name: z.string().min(1),
 });
 const browserAddressSchema = z.strictObject({
@@ -21,12 +21,13 @@ const browserAddressSchema = z.strictObject({
 const receiptSchema = intentSchema
   .extend({
     id: networkId,
-    browser: browserAddressSchema.optional(),
+    isolated: browserAddressSchema.optional(),
     relay: browserAddressSchema.optional(),
   })
   .refine(
     (receipt) =>
-      (receipt.purpose === "browser") === (receipt.browser !== undefined) &&
+      ["browser", "machine"].includes(receipt.purpose) ===
+        (receipt.isolated !== undefined) &&
       (receipt.purpose === "runtime" || receipt.relay === undefined),
   );
 type Intent = z.infer<typeof intentSchema>;
@@ -225,10 +226,9 @@ async function observe(
         found.id,
       ]),
     );
-    const browser =
-      intent.purpose === "browser"
-        ? browserInspectedSchema.safeParse(raw)
-        : undefined;
+    const browser = ["browser", "machine"].includes(intent.purpose)
+      ? browserInspectedSchema.safeParse(raw)
+      : undefined;
     const relay = reserveRelay
       ? inspectedSchema
           .extend({ IPAM: browserInspectedSchema.shape.IPAM })
@@ -248,7 +248,7 @@ async function observe(
     return {
       id: network.Id,
       ...(browser?.success
-        ? { browser: reservedAddress(browser.data.IPAM.Config[0]) }
+        ? { isolated: reservedAddress(browser.data.IPAM.Config[0]) }
         : {}),
       ...(relay?.success
         ? { relay: reservedAddress(relay.data.IPAM.Config[0]) }
@@ -283,6 +283,11 @@ function intents(state: LocalState): Intent[] {
             purpose: "browser" as const,
             name: `${names.project}_browser`,
           },
+          {
+            ownerId: state.ownerId,
+            purpose: "machine" as const,
+            name: `${names.project}_machine`,
+          },
         ]
       : []),
   ];
@@ -304,7 +309,7 @@ export async function ensureLocalNetworks(
     if (
       saved.receipt &&
       (id !== saved.receipt.id ||
-        !isDeepStrictEqual(observed?.browser, saved.receipt.browser) ||
+        !isDeepStrictEqual(observed?.isolated, saved.receipt.isolated) ||
         !isDeepStrictEqual(observed?.relay, saved.receipt.relay))
     )
       changed();
@@ -320,7 +325,7 @@ export async function ensureLocalNetworks(
             "--driver",
             "bridge",
             ...(intent.purpose === "runtime" ? ["--attachable"] : []),
-            ...(intent.purpose === "browser"
+            ...(["browser", "machine"].includes(intent.purpose)
               ? [
                   "--internal",
                   "--opt",
@@ -348,7 +353,7 @@ export async function ensureLocalNetworks(
         JSON.stringify({
           ...intent,
           id,
-          ...(observed?.browser ? { browser: observed.browser } : {}),
+          ...(observed?.isolated ? { isolated: observed.isolated } : {}),
           ...(observed?.relay ? { relay: observed.relay } : {}),
         }) + "\n",
       );
@@ -374,7 +379,7 @@ export async function verifyLocalNetworks(
     if (!observed) uncertain(intent.purpose);
     if (
       observed.id !== saved.receipt.id ||
-      !isDeepStrictEqual(observed.browser, saved.receipt.browser) ||
+      !isDeepStrictEqual(observed.isolated, saved.receipt.isolated) ||
       !isDeepStrictEqual(observed.relay, saved.receipt.relay)
     )
       changed();
@@ -399,11 +404,11 @@ export async function observedBrowserAddress(
   if (!observed) uncertain(intent.purpose);
   if (
     observed.id !== saved.receipt.id ||
-    !observed.browser ||
-    !isDeepStrictEqual(observed.browser, saved.receipt.browser)
+    !observed.isolated ||
+    !isDeepStrictEqual(observed.isolated, saved.receipt.isolated)
   )
     changed();
-  return observed.browser.address;
+  return observed.isolated.address;
 }
 
 /** Observe the runtime-only relay address before binding SSH or admitting native traffic. */
@@ -430,4 +435,35 @@ export async function observedRelayAddress(
   )
     changed();
   return observed.relay.address;
+}
+
+/** Separate private bridge: only the browser node, its ingress and DNS attach. */
+export async function observedBrowserMachineAddresses(
+  directory: string,
+  state: LocalState,
+  command: typeof run = run,
+) {
+  const intent = intents(state).find((value) => value.purpose === "machine");
+  if (!intent) return undefined;
+  const saved = await records(directory, intent);
+  if (!saved.receipt)
+    throw new LocalSetupError(
+      "network_unprepared",
+      "The private browser-node network is not prepared.",
+    );
+  const observed = await observe(intent, command);
+  if (
+    !observed ||
+    observed.id !== saved.receipt.id ||
+    !observed.isolated ||
+    !isDeepStrictEqual(observed.isolated, saved.receipt.isolated)
+  )
+    changed();
+  const bytes = ipaddr.IPv4.parse(observed.isolated.address).toByteArray();
+  const last = bytes[3];
+  if (last === undefined || last < 3) changed();
+  const ingress = [...bytes.slice(0, 3), last - 1].join(".");
+  const dns = [...bytes.slice(0, 3), last - 2].join(".");
+  if ([ingress, dns].includes(observed.isolated.gateway ?? "")) changed();
+  return { node: observed.isolated.address, ingress, dns };
 }

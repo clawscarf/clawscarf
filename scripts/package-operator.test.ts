@@ -37,6 +37,14 @@ await test(
     assert.ok(listing.includes("package/release/components.json"));
     assert.ok(listing.includes("package/pnpm-lock.yaml"));
     assert.ok(
+      listing.includes(
+        "package/deploy/execution/browser-node/configuration.js",
+      ),
+    );
+    assert.ok(
+      listing.includes("package/deploy/execution/browser-node/operator.js"),
+    );
+    assert.ok(
       !listing.includes("node_modules") && !listing.includes(".local/"),
     );
     assert.ok(!listing.includes(".env") && !listing.includes("check-docs"));
@@ -49,6 +57,7 @@ await test(
     for (const path of [
       "deploy/execution/worker/policy.yaml",
       "deploy/execution/browser/seccomp.json",
+      "deploy/execution/network/node-ingress.cfg",
       "deploy/execution/browser/LICENSE.playwright",
     ]) {
       assert.deepEqual(

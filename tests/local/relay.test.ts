@@ -61,6 +61,8 @@ function state(execution = true, browser = true): LocalState {
             browser: {
               image: `sha256:${"e".repeat(64)}`,
               egressImage: `sha256:${"f".repeat(64)}`,
+              nodeImage: `sha256:${"a".repeat(64)}`,
+              dnsImage: `sha256:${"b".repeat(64)}`,
               port: 17219,
             },
           }

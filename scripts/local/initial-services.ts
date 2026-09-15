@@ -5,7 +5,7 @@ import type { withInitialModels } from "./models.js";
 /** Compose a fresh native preset. Existing native state is never reconciled through this helper. */
 export function withInitialServices(
   native: ReturnType<typeof withInitialModels>,
-  services: { execution: boolean; browserToken?: string },
+  services: { execution: boolean; browserToken?: string; browserNode?: string },
 ) {
   const browser =
     services.browserToken === undefined
@@ -13,6 +13,17 @@ export function withInitialServices(
       : browserDefaults(services.browserToken);
   return {
     ...native,
+    ...(browser && services.browserNode
+      ? {
+          gateway: {
+            ...native.gateway,
+            nodes: {
+              pairing: { autoApproveLocal: false },
+              browser: { mode: "manual", node: services.browserNode },
+            },
+          },
+        }
+      : {}),
     ...(browser ? { browser: { ...native.browser, ...browser } } : {}),
     ...(browser && services.execution
       ? {

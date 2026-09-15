@@ -1,9 +1,9 @@
 # Native browser controller
 
-**Operator integration is unfinished.** A disposable private TLS/DNS assembly passed
-native administrator/member browsing, retained device identity and revocation after
-restart. Unattended node-only enrollment through the public SDK also passed.
-Operator startup wiring and retained browser-profile acceptance remain in [TODO.md](../../../TODO.md). There is no automatic operator startup path.
+The [local operator](../../local/README.md#shared-browser) prepares, enrolls,
+starts and stops this optional controller. Prepared-stack startup and explicit native
+navigation passed locally. Ordinary model-selected browsing remains blocked by the
+[upstream routing bug](#upstream-browser-routing-bug), assigned to the owner separately.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The Gateway and SSH execution worker retain
@@ -61,7 +61,7 @@ export `issueDeviceBootstrapToken` with the Gateway's actual state directory and
 proxy identity or shared Gateway password. It needs installation-owner access to the
 Gateway state, outside agent-controlled execution. The live trial used UID 1000,
 `HOME=/home/node`, `SQLITE_TMPDIR=/tmp` and `baseDir: "/home/node/.openclaw"`.
-This is a verified component path, not an implemented operator command.
+The [operator helper](operator.ts) uses this local SDK path during initial startup.
 
 The native setup-code payload carries the private Gateway URL and the scoped bootstrap
 token. Mount its one-use code at `/configuration/pairing-code`, read-only and mode
@@ -71,7 +71,7 @@ scopes. The launcher reads the code privately and invokes the package's exported
 The pinned package exports its root at `/app/dist/index.js`; the launcher uses
 that public entry. No hashed private bundle entry is used by production code.
 
-Remove the pairing-code mount after enrollment. Subsequent starts retain `/state`
+The operator removes the pairing-code file after confirmed enrollment. Subsequent starts retain `/state`
 and use the native paired device credential. Lost state requires a new scoped
 pairing; never replace it with a shared Gateway password or administrator token.
 Use native `node.pair.remove` to revoke and disconnect the node.
@@ -104,7 +104,7 @@ failed public resolution on the tested Docker Desktop installation, so isolated
 assembly needs an explicit reviewed DNS path. The separate
 [browser network](../network/README.md) owns Chromium's public-web egress and
 private-destination denial. This README is a composition contract, not a claim
-that production node network isolation has been qualified.
+that Linux or production deployment has been qualified.
 
 ## Verification and upstream ownership
 
@@ -123,22 +123,37 @@ with `target=node`. Removing the one-use pairing file and restarting retained th
 node identity. Native `node.pair.remove` disconnected it and restart did not restore
 admission. The earlier paired trial also verified immutable execution denial and
 private/loopback/metadata navigation denial. Test containers and pairings were removed.
-These trials do not qualify normal operator startup, browser-profile persistence or
-Linux-host deployment.
+These component trials do not qualify ordinary model-selected browser use or Linux-host deployment.
 
-### Remaining integration boundary
+## Operator lifecycle
 
-A local public-SDK-issued node-only token paired the browser node through private
-TLS without an administrator session for issuance. Native browser navigation,
-retained device reconnect and revocation after restart passed against the pinned
-2026.9.4 runtime. Administrator authentication was used only to inspect the node,
-exercise browser commands and revoke it. Startup integration must retain this
-separation and never automatically re-pair a revoked node.
+[Preparation](../../../scripts/local/browser-node.ts) creates owned node/configuration
+volumes, a private TLS certificate and fixed network files. The node receives a separate
+internal machine network for its Gateway ingress and DNS resolver, plus Chromium's
+isolated CDP network. No node/ingress/DNS ports are published. The ingress and resolver
+bind only their reserved machine addresses; their second network supplies upstream
+connectivity, not a public listener. The certificate is pinned and checked on startup;
+expired or changed material fails visibly rather than being silently replaced.
 
-Trusted-proxy authentication rejects loopback client attribution; local provisioning
-must not impersonate a proxied user or invent a forwarding address. The public SDK
-issuance path avoids that failed bootstrap approach. Operator startup/stop wiring
-and retained browser-profile acceptance remain unfinished.
+[Startup](../../../scripts/local/browser-node-pairing.ts) verifies the owned Gateway
+binding, records pairing intent and issues one node-only bootstrap. It waits for the
+public SDK's admitted node record and a connection timestamp from the current container
+start. On success it records the device ID privately and removes the bootstrap file.
+Restarts require that same admitted device; revocation, lost identity or uncertain
+initial enrollment never triggers automatic re-pairing. Changed/ambiguous identity,
+container exit and readiness timeout fail visibly, with retained state for inspection.
+No user login, shared Gateway password or administrator credential authorizes the node.
+The operator supervises all three services and stops them before the Gateway.
+
+Fresh-stack automatic enrollment, administrator verification and native public navigation
+passed using exact local images on macOS arm64/Docker Desktop. A full operator
+stop/start retained both the admitted node identity and a browser profile cookie,
+and native public navigation succeeded again. After native revocation, operator
+startup refused to re-enroll the device and stopped its services with data retained.
+
+## Upstream browser routing bug
+
+**Owner-managed: do not implement or resume automatically.**
 
 Native routing has an upstream guidance mismatch. With a configured browser node,
 an omitted target selects that node; an explicit `host` selects Gateway-side control.

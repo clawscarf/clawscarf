@@ -46,6 +46,8 @@ const input = {
 const browser = {
   image: `sha256:${"c".repeat(64)}`,
   egressImage: `sha256:${"e".repeat(64)}`,
+  nodeImage: `sha256:${"a".repeat(64)}`,
+  dnsImage: `sha256:${"b".repeat(64)}`,
   port: 17218,
 };
 function state(configured = true): LocalState {
@@ -90,6 +92,46 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     "/private/browser-test",
     "10.75.2.30",
     "10.76.2.30",
+    {
+      addresses: {
+        node: "10.77.2.30",
+        ingress: "10.77.2.29",
+        dns: "10.77.2.28",
+      },
+      fingerprint: "ab".repeat(32),
+    },
+  );
+  const node = compose.services["browser-node"];
+  const ingress = compose.services["browser-node-ingress"];
+  const dns = compose.services["browser-node-dns"];
+  assert.ok(node && ingress && dns);
+  for (const container of [node, ingress, dns]) {
+    assert.equal("ports" in container, false);
+    assert.equal(container.read_only, true);
+    assert.deepEqual(container.cap_drop, ["ALL"]);
+    assert.ok(container.security_opt.includes("no-new-privileges:true"));
+  }
+  assert.deepEqual(Object.keys(node.networks).sort(), ["browser", "machine"]);
+  assert.equal(
+    node.environment.CLAWSCARF_BROWSER_NODE_GATEWAY_URL,
+    "wss://10.77.2.29:18803",
+  );
+  assert.equal(
+    ingress.environment.CLAWSCARF_NODE_INGRESS_ADDRESS,
+    "10.77.2.29",
+  );
+  assert.ok(node.volumes.includes("browser-node-config:/configuration:ro"));
+  assert.equal(
+    node.volumes.some((value) => /docker.sock|worker|controller/.test(value)),
+    false,
+  );
+  assert.throws(() =>
+    composeConfiguration(
+      installation,
+      "/private/browser-test",
+      "10.75.2.30",
+      "10.76.2.30",
+    ),
   );
   const service = compose.services.browser;
   const relay = compose.services["execution-relay"];
@@ -143,7 +185,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
   );
 });
 
-await test("browser profile attaches with its scoped token and policy authorizes only the native Node relay connection", () => {
+await test("browser profile retains a scoped credential without granting Gateway CDP egress", () => {
   const token = "f".repeat(64);
   const defaults = browserDefaults(token);
   assert.equal(defaults.allowSystemProfileImport, false);
@@ -160,17 +202,8 @@ await test("browser profile attaches with its scoped token and policy authorizes
     "network_policies: {}",
     undefined,
     undefined,
-    browser,
   );
-  assert.deepEqual(policy.network_policies, {
-    team_browser: {
-      name: "Team browser",
-      endpoints: [
-        { host: "runtime.clawscarf.internal", port: 9223, protocol: "tcp" },
-      ],
-      binaries: [{ path: "/usr/local/bin/node" }],
-    },
-  });
+  assert.deepEqual(policy.network_policies, {});
   assert.ok(
     !JSON.stringify(
       composeConfiguration(
@@ -178,13 +211,21 @@ await test("browser profile attaches with its scoped token and policy authorizes
         "/private/browser-test",
         "10.75.2.30",
         "10.76.2.30",
+        {
+          addresses: {
+            node: "10.77.2.30",
+            ingress: "10.77.2.29",
+            dns: "10.77.2.28",
+          },
+          fingerprint: "ab".repeat(32),
+        },
       ),
     ).includes(token),
   );
 });
 
 await test("browser inputs reject mutable images and collisions with execution or native listeners", () => {
-  for (const key of ["image", "egressImage"])
+  for (const key of ["image", "egressImage", "nodeImage", "dnsImage"])
     assert.throws(() =>
       parseLocalInput({
         ...input,
@@ -235,7 +276,7 @@ async function preparationFixture(t: TestContext) {
       {
         ...intent,
         id,
-        browser: {
+        isolated: {
           subnet: "10.75.2.0/27",
           gateway: "10.75.2.1",
           address: "10.75.2.30",

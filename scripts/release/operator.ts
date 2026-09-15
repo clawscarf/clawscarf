@@ -40,6 +40,9 @@ const payload = [
   "deploy/openshell/policy.yaml",
   "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",
+  "deploy/execution/browser-node/configuration.js",
+  "deploy/execution/browser-node/operator.js",
+  "deploy/execution/network/node-ingress.cfg",
   "deploy/execution/browser/LICENSE.playwright",
 ];
 
