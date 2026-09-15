@@ -71,9 +71,10 @@ own trusted-ingress identity and omit standalone account navigation.
   shell execution is unavailable, and packaged Chromium cannot launch** under the
   current policy. Their [execution placement](deploy/openshell/README.md#execution-placement)
   still needs resolving.
-- Company OIDC and managed Connections have component tests; the complete company-login
-  journey and real external-account setup remain unqualified. Native Claws used by
-  packs are experimental.
+- The assembled [team profile](deploy/local/README.md#team-profile-under-qualification)
+  passed Dex browser login, enrollment, handover and revocation. Combined widget/hook
+  access and public deployment remain under qualification.
+  Real external-account setup remains unqualified. Native Claws used by packs are experimental.
 - There is no published all-in-one download or terminal installer. Linux and
   Windows/WSL setup are not supported yet. The [compiled operator archive](scripts/README.md#operator-archive)
   is a local development artifact, separate from runtime and companion images.

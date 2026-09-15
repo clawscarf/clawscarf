@@ -63,7 +63,7 @@ export type StartLoginData = {
 
 export type StartLoginErrors = {
     /**
-     * Failure
+     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
      */
     default: Problem;
 };
@@ -72,7 +72,7 @@ export type StartLoginError = StartLoginErrors[keyof StartLoginErrors];
 
 export type StartLoginResponses = {
     /**
-     * Failure
+     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
      */
     default: Problem;
 };
@@ -94,7 +94,7 @@ export type CompleteLoginData = {
 
 export type CompleteLoginErrors = {
     /**
-     * Failure
+     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
      */
     default: Problem;
 };
@@ -103,7 +103,7 @@ export type CompleteLoginError = CompleteLoginErrors[keyof CompleteLoginErrors];
 
 export type CompleteLoginResponses = {
     /**
-     * Failure
+     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
      */
     default: Problem;
 };
@@ -123,7 +123,7 @@ export type LocalLoginData = {
 
 export type LocalLoginErrors = {
     /**
-     * Failure
+     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
      */
     default: Problem;
 };

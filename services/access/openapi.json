@@ -48,11 +48,16 @@
             "description": "Redirect"
           },
           "default": {
-            "description": "Failure",
+            "description": "Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -78,11 +83,16 @@
             "description": "Redirect"
           },
           "default": {
-            "description": "Failure",
+            "description": "Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -156,11 +166,16 @@
             }
           },
           "default": {
-            "description": "Failure",
+            "description": "Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }

@@ -8,8 +8,8 @@ The implementation contains a session service, Postgres persistence, generated
 OpenAPI handlers/client, a native streaming reverse proxy and separate CLI entry
 points. Native enrollment has REST, CLI and a People page. Administrator proof and team
 preparation, member enrollment, member administrator denial and administrator
-self-revocation pass against native OpenClaw 2026.9.4. Interactive company-login enrollment remains unverified; this is not yet a fully
-qualified team deployment.
+self-revocation pass against native OpenClaw 2026.9.4. The assembled [team profile](../../deploy/local/README.md#team-profile-under-qualification)
+also has Dex/browser enrollment and handover acceptance; full team qualification remains open.
 
 ## Configuration and operation
 
@@ -73,7 +73,11 @@ checks; this fragment is not a finished local installer.
 ## Security and state
 
 Login uses PKCE, state, nonce, verified identity claims and one-use transactions.
-Only admitted subjects receive sessions. Session authentication checks current
+Only admitted subjects receive sessions. Browser sign-in failures show a concise page
+with a fresh sign-in link; they retain the failure HTTP status and never replay the
+request or display provider details. API clients retain typed Problem Details. Failed
+callbacks clear the login cookie.
+Session authentication checks current
 admission revisions; revocation cannot revive after a later admission. Stored logout
 hints are encrypted and bound to their session. Browser mutations require exact
 Origin and CSRF validation. Local enrollment is disabled in OIDC mode.
@@ -98,7 +102,8 @@ profile displays the configured administrator name. A real native regression als
 verifies 40 concurrent authenticated page requests, member enrollment, explicit
 administrator promotion, self-revocation and
 closure of an already-open Gateway connection while preserving another administrator.
-Company-login browser enrollment remains unverified.
+See the [assembled team acceptance](../../deploy/local/README.md#team-profile-under-qualification)
+for browser login, enrollment and two-tab revocation through a separate Dex provider.
 The configured runtime must not be reachable by untrusted
 callers bypassing ingress. Application and widget origins must be distinct; widget
 requests retain native capability authorization rather than receiving user identity.

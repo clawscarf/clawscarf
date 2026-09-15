@@ -1,4 +1,9 @@
-import { localSignInPage, signedOutPage } from "./pages.js";
+import {
+  localSignInPage,
+  signedOutPage,
+  signInFailurePage,
+  signInPagePolicy,
+} from "./pages.js";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import cookie from "@fastify/cookie";
 import staticFiles from "@fastify/static";
@@ -150,6 +155,29 @@ export async function createAccessHttp(
         : typeof error === "object" && error !== null && "validation" in error
           ? "invalid_request"
           : "dependency_unavailable");
+    if (
+      req.headers.accept?.includes("text/html") &&
+      [
+        "/_clawscarf/login",
+        "/_clawscarf/callback",
+        "/_clawscarf/local",
+        "/_clawscarf/local-sign-in",
+      ].includes(req.routeOptions.url ?? "")
+    ) {
+      void reply
+        .code(errorStatus[code])
+        .header("Content-Security-Policy", signInPagePolicy)
+        .type("text/html")
+        .send(
+          signInFailurePage(
+            code,
+            code !== "forbidden" &&
+              (req.routeOptions.url === "/_clawscarf/local" ||
+                req.routeOptions.url === "/_clawscarf/local-sign-in"),
+          ),
+        );
+      return;
+    }
     void reply
       .code(errorStatus[code])
       .type("application/problem+json")
@@ -287,10 +315,7 @@ export async function createAccessHttp(
     },
     async (req, reply) =>
       reply
-        .header(
-          "Content-Security-Policy",
-          "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
-        )
+        .header("Content-Security-Policy", signInPagePolicy)
         .header("Referrer-Policy", "same-origin")
         .type("text/html")
         .send(localSignInPage(safeReturn(req.query?.returnTo ?? "/"))),

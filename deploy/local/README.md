@@ -139,10 +139,11 @@ and atomic initialization failures. Release-artifact clean-machine acceptance re
 
 ## Run and stop
 
-Start the prepared installation:
+Start the prepared installation with Node directly so terminal signals reach the
+supervising process throughout cleanup:
 
 ```sh
-pnpm exec tsx scripts/local.ts start --directory .local/my-team
+node --import tsx scripts/local.ts start --directory .local/my-team
 ```
 
 It runs in the foreground, starts the private controller, creates or resumes its owned
@@ -363,6 +364,23 @@ member enrollment use the existing Access service and People page; no RawClaw se
 is involved. TLS transport tests cover trusted/untrusted certificates on both listeners and a
 private management probe whose public routing Host differs from its certificate name.
 The People page observes preparation requirements before enrollment; its desktop/mobile
-interaction has controlled-response browser coverage. The complete company-login
-browser journey remains unqualified. Do not expose this preview as a
-qualified team deployment on the strength of configuration tests.
+interaction has controlled-response browser coverage. A fresh assembled deployment also passed browser acceptance with a separate Dex
+v2.45.1 test provider, signed tokens, TLS and the actual pinned OpenClaw runtime:
+
+- The configured administrator signed in and enabled native team access through People.
+- An unenrolled identity was denied; after enrollment through People, it opened native
+  OpenClaw with its own display name and member role.
+- Native administrator promotion and handover changed current People permissions;
+  the companion did not maintain a duplicate role assignment.
+- Removing that person closed both open native tabs and invalidated the session.
+  Removing the last usable administrator was rejected. Browser logout reached the
+  signed-out page without automatic re-entry.
+- A renewed administrator session and the other person’s revocation survived restarting
+  the runtime, companion and PostgreSQL.
+
+This test used an explicit private test certificate trust in the companion and browser,
+with hostnames resolved locally. It does not qualify public DNS, certificate renewal,
+a customer's IdP configuration or browser execution inside the sandbox. Widgets and
+hooks have separate native acceptance; the combined team-origin widget/hook journey remains open. Do not expose this preview as a
+fully qualified team deployment. A native configuration reload can briefly make
+management reads unavailable; a failed command is never automatically replayed.
