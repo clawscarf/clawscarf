@@ -47,8 +47,15 @@ The private [configuration helper](src/configuration.ts) adds a scoped environme
 SecretRef and package path through OpenClaw's public mutation SDK. It preserves
 unrelated edits, explicit disablement, allow/deny lists and per-agent overrides.
 An explicit configure request may add the three tools to sandbox `alsoAllow` when
-there is no explicit sandbox allow list. Observation does not write. The caller
-owns restart and confirmation of deliberate reconfiguration.
+there is no explicit sandbox allow list. Observation uses the public snapshot API
+with observation disabled, isolated environment resolution and `core-only` plugin
+validation. This validates native core settings and checks the stored Connections
+entry, SecretRef, provider, package path and enable policy without resolving plugin
+metadata from SQLite. It preserves the source-file hash and requires no reader
+sidecars, including on a read-only stopped home. Configuration mutations retain full
+native validation. Stored configuration does not prove package loading or tool
+readiness; the caller owns restart and native execution verification. See
+[runtime credential delivery](../../runtime/README.md).
 
 ## Build and verify
 

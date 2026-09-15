@@ -53,8 +53,8 @@ USER root
 WORKDIR /build/runtime-tools
 COPY deploy/images/pack-tools/package*.json ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY runtime/initialize.ts runtime/initialize-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
-RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts start-gate.ts start-gate-main.ts
+COPY runtime/initialize.ts runtime/initialize-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/connections-configuration.ts runtime/configure-connections.ts runtime/configure-connections-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts connections-configuration.ts configure-connections.ts configure-connections-main.ts start-gate.ts start-gate-main.ts
 
 FROM upstream
 LABEL io.clawscarf.start-gate="1"
@@ -68,6 +68,7 @@ RUN apt-get update \
     && install -d -o node -g node -m 0700 /home/node/.openclaw \
     && install -d -o node -g node -m 0755 /workspace
 COPY --from=connections /out /app/clawscarf/connections
+RUN ln -s /app /app/clawscarf/connections/node_modules/openclaw
 COPY --from=network-tools /out/runtime/ /
 COPY --from=native-plugins /build/native-plugins /app/clawscarf/native-plugins
 COPY --from=access /out /app/clawscarf/access

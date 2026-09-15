@@ -1,5 +1,6 @@
 import { Type, type Static } from "typebox";
 import { Check } from "typebox/value";
+import { readConfigFileSnapshot } from "openclaw/plugin-sdk/health";
 import {
   mutateConfigFile,
   readConfigFileSnapshotForWrite,
@@ -66,7 +67,14 @@ function managedProvider(value: unknown): boolean {
 
 export async function configureConnections(request: ConfigurationRequest) {
   const brokerUrl = brokerEndpoint(request.brokerUrl);
-  const { snapshot } = await readConfigFileSnapshotForWrite();
+  const snapshot =
+    request.kind === "configure"
+      ? (await readConfigFileSnapshotForWrite()).snapshot
+      : await readConfigFileSnapshot({
+          observe: false,
+          isolateEnv: true,
+          pluginValidation: "core-only",
+        });
   if (!snapshot.valid || !snapshot.exists || !snapshot.hash)
     throw new Error("A valid installation configuration is required.");
   if (request.kind === "configure") {
@@ -118,7 +126,13 @@ export async function configureConnections(request: ConfigurationRequest) {
       },
     });
   }
-  const { snapshot: observed } = await readConfigFileSnapshotForWrite();
+  const observed = await readConfigFileSnapshot({
+    observe: false,
+    isolateEnv: true,
+    // Inspect stored settings without resolving plugin metadata from native SQLite state.
+    // Mutation retains full validation; this result does not establish loaded tool readiness.
+    pluginValidation: "core-only",
+  });
   const config = observed.sourceConfig;
   const entry = config.plugins?.entries?.[PLUGIN_ID];
   if (!observed.valid || !observed.hash)

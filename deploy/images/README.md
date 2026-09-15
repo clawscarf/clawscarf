@@ -14,7 +14,8 @@ docker build -f deploy/images/Dockerfile -t clawscarf-runtime:local .
 The image includes:
 
 - The built [Connections plugin](../../plugins/connections/README.md), at
-  `/app/clawscarf/connections`.
+  `/app/clawscarf/connections`. Its operator configuration helper resolves the
+  OpenClaw SDK through a peer symlink to the image's single upstream installation.
 - The native [account navigation plugin](../../plugins/access/README.md), at
   `/app/clawscarf/access`, enabled only by the standalone navigation preset.
 - The [native launcher](../../runtime/README.md), at `/app/clawscarf/bin/openclaw`,
@@ -24,6 +25,10 @@ The image includes:
   initializes optional scoped model credentials with native state and makes a fresh
   home owner-only (0700). It preserves existing owned configuration and rejects
   foreign state; repeated initialization does not repair retained permissions.
+- The stopped [Connections configuration helper](../../runtime/configure-connections.ts),
+  at `/app/clawscarf/configure-connections-main.js`, and the launcher's scoped credential
+  loader. The invoking operator owns stopped-volume access; provider keys are never
+  supplied to these helpers.
 - The [model configuration helper](../../runtime/models.ts), at
   `/app/clawscarf/models.ts`, for applying a scoped gateway credential and selected
   native model settings through authenticated operator access.
@@ -109,6 +114,20 @@ This command uses no existing installation state and makes no provider calls. It
 does not run the OpenShell supervisor or qualify its execution boundary.
 Codex model execution and its filesystem/network isolation still require runtime
 qualification; CLI startup is not evidence of those properties.
+
+The [Connections image regression](../../tests/runtime/connections-image.test.ts)
+passed configuration and scoped credential/CA delivery through the real launcher,
+native `connections_search` with agent context, and retained Gateway restart:
+
+```sh
+CLAWSCARF_TEST_CONNECTIONS_IMAGE=sha256:REPLACE_WITH_RUNTIME_IMAGE_ID \
+  pnpm exec tsx --test tests/runtime/connections-image.test.ts
+```
+
+It uses a disposable tmpfs home and a controlled TLS broker inside a container with
+networking disabled. Initialization runs as root; configuration and Gateway run as
+UID 1000. It touches no existing installation, provider account or external service.
+This qualifies image packaging, not the complete OpenShell/companion account journey.
 
 Chromium is installed but does **not** launch under that policy: `no_new_privs`
 prevents its setuid sandbox and user-namespace creation is denied. Keep the browser

@@ -65,6 +65,21 @@ handling and rejected material, and the
 [HTTPS trust regression](../tests/models/trust.test.ts) verifies all three CA sources
 while rejecting an unrelated server certificate.
 
+The stopped-volume [configuration helper](configure-connections.ts) accepts the
+[strict input/result protocol](connections-configuration.ts) over stdin. It verifies
+the installation owner/server marker and private paths, then delivers the scoped
+credential and invokes the existing native plugin configuration helper. Each credential
+file is replaced atomically; the file changes and native mutation are not one
+transaction. A failure after delivery begins reports an incomplete outcome and
+retains material for explicit inspection or reapplication. Successful configuration
+requires matching native settings and reread credential bytes, while preserving
+explicit plugin disablement. Observation requires a read-only home mount and never
+repairs retained material. The [runtime regression](../tests/runtime/configure-connections.test.ts)
+uses the actual pinned SDK and verifies configured observation without SQLite
+sidecars or filesystem changes, source-file hashes, retained disablement and refusal
+of invalid native core settings. Observation checks stored configuration, not loaded
+tools; see [image acceptance](../deploy/images/README.md#verified-limits).
+
 Replacement images support an operator-controlled startup gate. When
 `CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
 root-owned `/etc/clawscarf-start-ready` marker before starting OpenClaw. The operator
