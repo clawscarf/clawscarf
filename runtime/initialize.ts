@@ -1,5 +1,6 @@
 import {
   chown,
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -104,6 +105,7 @@ export async function initializeHome(
       }
     }
     for (const path of ownedPaths) await chown(path, uid, gid);
+    await chmod(home, 0o700);
     await rename(staging, target);
   } finally {
     await rm(staging, { recursive: true, force: true });

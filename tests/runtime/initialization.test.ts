@@ -8,6 +8,7 @@ import {
   writeFile,
   lstat,
   readdir,
+  chmod,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -62,6 +63,17 @@ const initial = {
 };
 const uid = process.getuid?.() ?? 1000;
 const gid = process.getgid?.() ?? 1000;
+
+await test("fresh pre-created volume home becomes private without changing retained home permissions", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "clawscarf-volume-permissions-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  await chmod(home, 0o755);
+  await initializeHome(home, initial, uid, gid);
+  assert.equal((await lstat(home)).mode & 0o777, 0o700);
+  await chmod(home, 0o750);
+  await initializeHome(home, initial, uid, gid);
+  assert.equal((await lstat(home)).mode & 0o777, 0o750);
+});
 
 await test("initial model credentials are private, owned and preserved with native edits on repeat preparation", async (t) => {
   const home = await mkdtemp(join(tmpdir(), "clawscarf-model-home-"));
