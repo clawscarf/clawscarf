@@ -191,7 +191,9 @@ rules for every remaining change.
       acceptance in release testing. Verify successful automatic subnet allocation on a
       clean Docker environment; the current workstation's pools are exhausted.
       Test missing/invalid optional services and interrupted setup. Produce exact
-      artifacts with license/provenance review. Full backups and rollback automation
+      artifacts with license/provenance review. The compiled operator has a local
+      [archive command](scripts/README.md#operator-archive); full distribution artifacts
+      and clean-machine runtime acceptance remain required. Full backups and rollback automation
       remain outside this work; make no data-recovery promise from an image rebuild.
       Run a clean-machine acceptance from release artifacts without RawClaw source,
       account, API, database or hostname: protected login, real model/tool response,

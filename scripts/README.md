@@ -44,6 +44,37 @@ remains unqualified until the combined clean-install acceptance is finished.
 The compiled operator includes the Access migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
 
+## Operator archive
+
+After a fresh build, package the explicit compiled operator payload into a new
+ignored output directory:
+
+```sh
+pnpm exec tsx scripts/package-operator.ts --output .local/operator-artifacts
+```
+
+The command uses the system tar utility and emits a development `.tgz` plus `SHA256SUMS`.
+It refuses an existing output directory. The archive includes its frozen dependency
+lockfile, required migrations/policy/SDK clients, Python transport and notices; it
+excludes companion servers, contributor tooling and installation state. It does not
+download images, include provider credentials, publish a release or build missing
+components. Its README links to the included [archive instructions](../release/operator.md).
+
+The opt-in archive acceptance extracts into a temporary directory outside the
+checkout, installs only frozen production dependencies and starts all four compiled
+command entry points, then renders model configuration without a provider call:
+
+```sh
+CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.test.ts
+```
+
+The archive also passed retained-installation preparation and supervised startup
+through verified native administrator access from an extracted directory outside
+the checkout. Its migrations, policy and spawned controller/helpers were resolved
+from that archive; the pinned images and controller binaries remained external inputs.
+This packaging check is separate from a clean-machine runtime installation and
+does not qualify a published release or an upgrade.
+
 ## Provenance
 
 Adapted from RawClaw revision

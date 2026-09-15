@@ -57,6 +57,9 @@ The current runtime checks target **macOS arm64 with Docker Desktop**. Linux and
 Windows/WSL are not yet qualified. See the measured
 [development footprint](deploy/openshell/README.md#development-footprint) before
 building.
+Contributors can also [package the compiled operator](scripts/README.md#operator-archive)
+for use outside the checkout. This development archive is separate from the runtime
+and companion images; it is not a published end-user release.
 
 The installation has three parts:
 

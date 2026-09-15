@@ -1,0 +1,93 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { test } from "node:test";
+import { promisify } from "node:util";
+import { packageOperator } from "./release/operator.js";
+
+const execute = promisify(execFile);
+await test(
+  "compiled operator archive runs outside the checkout with frozen production dependencies",
+  {
+    skip: process.env.CLAWSCARF_TEST_OPERATOR_ARCHIVE !== "1",
+    timeout: 240000,
+  },
+  async (t) => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const directory = await mkdtemp(join(tmpdir(), "clawscarf-archive-test-"));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const output = join(directory, "artifacts");
+    const archive = await packageOperator(root, output);
+    const digest = createHash("sha256")
+      .update(await readFile(archive))
+      .digest("hex");
+    assert.equal(
+      (await readFile(join(output, "SHA256SUMS"), "utf8")).split(" ")[0],
+      digest,
+    );
+    await assert.rejects(packageOperator(root, output), { code: "EEXIST" });
+    const { stdout: listing } = await execute("tar", ["-tzf", archive]);
+    assert.ok(listing.includes("package/services/access/migrations/"));
+    assert.ok(listing.includes("package/scripts/packs/transport.py"));
+    assert.ok(listing.includes("package/release/components.json"));
+    assert.ok(listing.includes("package/pnpm-lock.yaml"));
+    assert.ok(
+      !listing.includes("node_modules") && !listing.includes(".local/"),
+    );
+    assert.ok(!listing.includes(".env") && !listing.includes("check-docs"));
+    assert.ok(
+      !listing.includes("apps/companion") && !listing.includes(".test."),
+    );
+    await execute("tar", ["-xzf", archive, "-C", directory]);
+    const cwd = join(directory, "package");
+    await execute(
+      "pnpm",
+      ["install", "--prod", "--frozen-lockfile", "--ignore-scripts"],
+      {
+        cwd,
+        timeout: 180000,
+        maxBuffer: 4 * 1024 * 1024,
+      },
+    );
+    for (const command of ["local", "controller", "models", "packs"]) {
+      const { stdout } = await execute(
+        process.execPath,
+        [`scripts/${command}.js`, "--help"],
+        { cwd, timeout: 15000 },
+      );
+      assert.match(stdout, /Usage:/);
+    }
+    const configuration = join(directory, "models.json");
+    const rendered = join(directory, "gateway.json");
+    await copyFile(
+      join(root, "deploy/models/config.example.json"),
+      configuration,
+    );
+    await execute(
+      process.execPath,
+      [
+        "scripts/models.js",
+        "render",
+        "--config",
+        configuration,
+        "--output",
+        rendered,
+      ],
+      { cwd },
+    );
+    assert.match(
+      await readFile(rendered, "utf8"),
+      /openrouter\/openai\/gpt-5\.4/,
+    );
+    const { stdout } = await execute(
+      "pnpm",
+      ["list", "--depth", "0", "--json"],
+      { cwd },
+    );
+    assert.ok(!stdout.includes('"typescript"') && !stdout.includes('"tsx"'));
+  },
+);
