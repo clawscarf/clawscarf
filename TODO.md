@@ -21,8 +21,11 @@ to run the entire list automatically. Current configuration and limits are in
 
 - [ ] **2. Unify installation configuration and CLI.** Evolve existing operators into
       one entry point and validated JSON schema following the [v1 proposal](docs/installation-interface.md):
-      artifacts, resources/storage, URLs/TLS,
-      access/bootstrap, execution/browser, models, Connections and packs/capabilities.
+      artifacts, storage, URLs/TLS, access/bootstrap, resource sizing, optional browser,
+      models, Connections and packs/capabilities.
+      Enforce the fixed OpenShell Gateway/protected-worker/authenticated-entry foundation;
+      no execution-engine or protection-disable switches. Reject unsupported service
+      combinations, including external Access with local Connections, before allocation.
       Define required/optional fields, secret references, validation/preview and supported
       reconfiguration. Add coherent start/stop/status/logs/diagnostics; preserve existing
       login/upgrade operations, native edits, ownership and uncertain-effect handling.
@@ -32,8 +35,9 @@ to run the entire list automatically. Current configuration and limits are in
 - [ ] **3. Complete administrator setup and ongoing People UX.** Initial setup must
       establish and verify the intended administrator without ad hoc component commands.
       Keep local evaluation and generic OIDC. Resolve the manual subject-ID enrollment
-      experience without automatic IdP-wide admission; choose owner-claim bootstrap and
-      request/approve versus invite-link enrollment before implementation. People owns ongoing enrollment/
+      experience without automatic IdP-wide admission. Decide the initial-admin and
+      ongoing-admission UX first; owner-claim, request/approve and invite links remain
+      proposals, not selected requirements. People owns ongoing enrollment/
       revocation, OpenClaw owns roles. Verify two-person login, handover and revocation.
 - [ ] **4. Compose optional integrations through that interface.** Support models
       disabled/external/local LiteLLM and Connections disabled/external/local Composio;
@@ -51,7 +55,9 @@ to run the entire list automatically. Current configuration and limits are in
 - [ ] **6. Build the terminal installer last.** Discuss its opt-in choices first.
       Download/select artifacts, collect configuration, preview, install/resume and print
       the working URL through the same CLI; support unattended use and existing installs.
-      No duplicate orchestration, secrets in argv, or silent source-build fallback.
+      Use the validated deployment combinations and fixed security foundation; never
+      offer bypasses as installer choices. No duplicate orchestration, secrets in argv,
+      or silent source-build fallback.
 
 ## Consumer integration — separately selected
 

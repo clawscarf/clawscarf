@@ -12,17 +12,39 @@ composes existing operators. A person can author the document, an installer can
 collect choices and generate it, or a hosting platform can generate it unattended.
 All use the same validation, preview and application implementation.
 
-The document selects artifacts, persistent storage, exposure, access, execution,
-models, Connections and optional packs. It does not mirror conversations, native
-roles, people, every agent setting or every OpenClaw configuration key. OpenClaw
-remains mutable and authoritative for its application state.
+The document configures an agreed foundation; it does not choose that foundation.
+The fixed v1 consists of vanilla OpenClaw under externally controlled OpenShell,
+a separate OpenShell-protected shared execution worker, and authenticated entry with
+admission and session revocation. Neither recipes nor the installer offer switches
+for these protections or alternative execution engines. Controller credentials stay
+outside Gateway/worker state. Native plugins still execute in the Gateway; this is
+not a claim that every tool runs on the worker or that team members are OS-isolated.
+
+Actual choices are deployment settings (resources, persistent storage, URLs/TLS and
+who supplies authenticated access) and optional capabilities (browser, managed models,
+Connections and packs). External access delegates the required entry/admission to a
+verified platform integration; it never disables authentication. Local evaluation
+retains its one-use operator login and loopback-only entry.
+
+The document does not mirror conversations, native roles, people, every agent setting
+or every OpenClaw configuration key. OpenClaw remains mutable and authoritative for
+its application state. Preserving native edits does not authorize the installer to
+remove externally owned runtime protection or expose an unauthenticated Gateway.
+
+These are the unified interface's requirements, not claims of new schema enforcement.
+Today's [developer input](../scripts/local/configuration.ts) always requires OpenShell
+but can omit the separate worker for component work. The unified product schema must
+require the worker and reject attempts to disable the fixed protections; component-only
+assemblies are not additional product recipes. Missing host prerequisites fail visibly,
+without falling back to host execution, privileged containers or an unsandboxed browser.
 
 ## Concrete standalone example
 
 **Proposed syntax; illustrative paths and endpoints, not accepted by today's CLI.**
-This example selects local operator login, OpenShell execution and an existing
-model gateway. Browser, Connections and packs are optional and initially omitted.
-A fully offline/model-free setup changes `models` to `{ "mode": "disabled" }`.
+This example uses the fixed OpenShell foundation with local operator login and an
+existing model gateway. Browser, Connections and packs are initially disabled/empty.
+A model-free setup changes `models` to `{ "mode": "disabled" }`; it does not establish
+offline operation or an air-gapped release.
 
 ```json
 {
@@ -40,12 +62,11 @@ A fully offline/model-free setup changes `models` to `{ "mode": "disabled" }`.
     "mode": "local",
     "administratorName": "Miguel"
   },
-  "execution": {
-    "mode": "openshell",
+  "resources": {
     "gateway": { "cpu": "2", "memory": "2Gi" },
-    "worker": { "cpu": "2", "memory": "2Gi" },
-    "browser": { "enabled": false }
+    "worker": { "cpu": "2", "memory": "2Gi" }
   },
+  "browser": { "enabled": false },
   "models": {
     "mode": "external",
     "configurationFile": "./models.json",
@@ -72,7 +93,11 @@ with platform/checksum information. The existing [component manifest](../release
 components; it is not already this complete artifact lock. Development builds and
 published releases produce the same lock shape. No silent build/download fallback,
 mutable `latest` tags or hand-entering ten image IDs in the interactive installer.
-The operator validates host support and includes prerequisite failures in preview.
+The operator validates host support, required component inventory and compatible
+artifact versions before applying changes. A digest pins an artifact; it does not
+prove its provenance or security. Development artifacts remain explicit operator-owned
+builds of this foundation. There is no arbitrary Compose override or recipe hook that
+skips the fixed protections.
 
 Public application/widget ports are explicit. Internal ports and network addresses
 are allocated and retained by the operator, with collision checks; an optional
@@ -111,17 +136,35 @@ The owner-claim flow below is proposed. Today's OIDC operator instead requires a
 explicit administrator subject and email. Hosting behind an existing reverse proxy
 uses an explicit supported transport binding; it must not infer trust from headers.
 
-## Other supported selections
+## Proposed deployment settings and optional capabilities
 
 | Area        | Proposed v1 selections                                                                                               | Existing basis / missing work                                                                                                                                                             |
 | ----------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Exposure    | Local loopback; HTTPS with application/widget origins and certificate/key file references; external platform ingress | Local and HTTPS team profiles exist. External ingress needs a qualified consumer binding. Automatic public DNS/ACME provisioning is not implied.                                          |
 | Access      | Local operator login; generic OIDC; external platform identity/entry                                                 | Local/OIDC work today. A company IdP is not an admission list. External mode must not start a second login authority or People database.                                                  |
-| Execution   | OpenShell Gateway plus shared protected worker; optional native browser node                                         | Current operators implement these components. Browser target-selection bug remains owner-managed. No new VM provider or alternative sandbox backend in v1.                                |
+| Resources   | Gateway/worker CPU and memory, within qualified host limits                                                          | Both components are required by the product design. Sizing changes neither execution engine nor protection.                                                                               |
+| Browser     | Disabled; protected shared native browser node                                                                       | Existing node/Chromium components; enabled browsing retains its sandbox and restricted transport. Upstream target-selection issue remains owner-managed.                                  |
 | Models      | Disabled; existing gateway; local LiteLLM                                                                            | Config/render/apply and gateway components exist. Unified lifecycle for local LiteLLM, secret delivery and rotation still needs wiring.                                                   |
 | Connections | Disabled; existing broker; local service with Composio                                                               | Existing modules/plugin/catalog and activation path. Unified lifecycle and real external-account acceptance remain. Local mode uses the existing companion, not a new service extraction. |
 | Packs       | Explicit versioned selections plus member/prerequisite bindings                                                      | Native Claws group manifest and preview/apply exist. Group selection must compose them, not invent another agent installer.                                                               |
 | Storage     | Owned Docker volumes; host-supplied directory tree                                                                   | Docker volumes exist. Directory-backed state needs mount/UID/ownership support before hosted use. ZFS is not required by ClawScarf.                                                       |
+
+These are not independent mix-and-match switches. The proposed v1 accepts only:
+
+| Exposure                  | Required access owner                                                        | Connections ownership                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Local loopback            | Standalone local operator login                                              | Disabled, external broker, or local service with its actual callback prerequisites satisfied. |
+| Standalone HTTPS          | Standalone generic OIDC and admission                                        | Disabled, external broker, or local service with its actual callback prerequisites satisfied. |
+| External platform ingress | Platform authentication, admission and revocation through a verified binding | Disabled or external broker.                                                                  |
+
+The local Connections service requires the standalone Access session/native-authority
+ports. V1 rejects `access.mode: external` with `connections.mode: local`; supporting
+that combination needs the separately deferred authentication/service integration.
+It must not silently start a second Access service. External exposure and standalone
+OIDC are not interchangeable: a generic reverse proxy alone does not implement the
+platform binding. Unsupported combinations fail validation before resource allocation.
+Managed models remain optional in all three deployments; where local LiteLLM is
+selected, its complete private transport/credential prerequisites remain mandatory.
 
 For `models.mode: litellm`, reference the current route configuration and a private
 upstream-key environment file. Compose the pinned LiteLLM service, private transport,
@@ -134,7 +177,7 @@ and optional `caFile`. A shared Composio project key stays in the broker. Connec
 setup and account OAuth remain separate: installation can prepare the plugin without
 connecting a human's Gmail/Outlook account or pretending that an account exists.
 
-A browser selection starts the existing browser/node/DNS/ingress components from the
+Enabling the browser starts the existing browser/node/DNS/ingress components from the
 artifact lock. It must disclose the documented upstream limitation; the wizard must
 not advertise ordinary browsing as qualified. Bundled capability selection should
 initially enumerate only reviewed capabilities and their prerequisites. Do not equate
@@ -177,7 +220,7 @@ A successful preparation is not proof that login or a model response has succeed
 | First installation                             | Initialize only fresh owned state; configure selected components and intended administrator; report individual readiness results.                                                                                  |
 | Ordinary start/status/refresh                  | Observe/start retained state; never reapply native defaults or silently enroll a revoked identity.                                                                                                                 |
 | Model catalogue/default or broker endpoint/key | Preview precisely the selected native settings and secret replacement; preserve other providers, agent overrides and unrelated native edits. Reapply requires explicit selection even if the file has not changed. |
-| Enable/disable integration                     | Show plugin/service and network-policy changes, restarts and effect on existing agents. Disable retains data and revokes access deliberately; it is not deletion.                                                  |
+| Enable/disable integration                     | Only optional capabilities can be disabled. Preview affected plugin/service and narrowly scoped network-policy changes, restarts and credential revocation; retain data and the fixed protection/entry foundation. |
 | Pack add/update/remove                         | Use native preview/lifecycle per member, observed ownership and prerequisites. Show partial completion; never replay uncertain agent creation. Removal/data consequences need confirmation.                        |
 | Resources, exposure or runtime image           | Use reviewed stop/replacement/upgrade paths. Reject unsupported changes before mutation; no implied live migration.                                                                                                |
 | Identity issuer, storage root or ownership     | Immutable in initial v1. Explicit migration is separate; changing a JSON string must not transfer existing users/data.                                                                                             |
@@ -213,7 +256,7 @@ standalone flow. This design resolves the subject-ID problem without duplicating
 
 ## RawClaw integration: concrete consumer plan
 
-The shared schema calls this `external` mode; there is no vendor-named mode, hosting
+The shared schema uses external exposure/access modes; there is no vendor-named mode, hosting
 SDK dependency or organization database inside ClawScarf. RawClaw remains a consumer.
 
 Current source evidence: RawClaw's [native initialization port](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/src/domains/installations/types/openclaw/bootstrap.ts),
@@ -229,7 +272,8 @@ an external-access profile. This is a consumer integration, not just an image su
 | ClawScarf | Exact runtime/worker/browser artifacts, supported native presets and plugins, local execution lifecycle/protection, persistent mount contract, explicit setup/change/status commands and diagnostics.                                  |
 | OpenClaw  | Native agents/roles/profiles, conversations, tools and mutable application configuration.                                                                                                                                              |
 
-The hosted configuration uses the same core document with these selections:
+The hosted configuration retains the same OpenShell Gateway and protected worker,
+with these deployment selections:
 
 ```json
 {
@@ -276,7 +320,8 @@ External access starts no ClawScarf login/People service and hides its standalon
 navigation. With external models and Connections, it starts no local LiteLLM, broker
 or Access database either. The runtime still has its necessary machine/control
 transport. Today Connections shares the standalone Access companion; omitting both
-is straightforward conceptually but still requires implementing/qualifying this profile.
+still requires implementing/qualifying this profile. External access combined with
+a local Connections service is unsupported in v1, not an implicit alternative.
 Current plugin/broker contracts must be compared explicitly; extraction provenance
 does not guarantee current wire compatibility. RawClaw's membership, generation and
 agent-grant checks remain authoritative at the broker.
@@ -294,6 +339,8 @@ Adoption sequence, inside a separately selected RawClaw slice:
 - Build/qualify Linux amd64 ClawScarf artifacts and its directory-backed storage on a
   disposable host. RawClaw currently runs systemd OpenClaw/rootless Docker; ClawScarf
   changes that execution topology to an external OpenShell controller and worker.
+  This protection is also required for hosted use; no systemd-only or unprotected
+  execution variant is introduced to make adoption easier.
 - Keep RawClaw's host provider/allocation and operation fencing. Add an adapter behind
   its native initialization boundary to write private configuration and call the
   ClawScarf CLI over existing authenticated SSH. Read structured status/endpoints;
@@ -320,8 +367,9 @@ ClawScarf's stop command never destroys a customer machine or claims an off-host
 Keep three starter recipes as ordinary complete configuration examples: local
 operator evaluation, standalone OIDC team, and externally managed hosting. They may
 select packs, but have no inheritance, template expressions, arbitrary shell hooks,
-recipe registry or separate application lifecycle. The installer copies/generates
-one complete document; later edits apply to that document, not a changing recipe.
+recipe registry or separate application lifecycle. Every recipe retains the same
+OpenShell/worker/entry foundation. The installer copies/generates one complete document;
+later edits apply to that document, not a changing recipe.
 
 Packs are application content: a pack can contain several native Claws/agents and
 require models, capabilities or a particular connected-account type. The included
@@ -337,11 +385,13 @@ Only actual selected dependencies are requirements. A general pack marketplace i
 outside v1; existing native Claws remain experimental at the pinned release.
 
 The future terminal installer selects a recipe and artifact source, asks the relevant
-access/exposure/integration questions, writes private secrets and configuration,
-shows the same CLI preview, applies and starts. It reports the working URL and the
-remaining human steps. An existing installation opens a reconfiguration flow rather
+access/exposure/integration questions from the valid combinations above, writes
+private secrets and configuration, shows the same CLI preview, applies and starts.
+It reports the working URL and the remaining human steps. An existing installation opens a reconfiguration flow rather
 than overwriting its state. The same complete document supports unattended deployment.
-Installer visual style and precise opt-in choices remain a later discussion.
+Installer visual style and optional-capability choices remain a later discussion.
+It never asks whether to use OpenShell, bypass authentication or disable sandbox
+protection. An unmet prerequisite produces a concrete failure, not a weaker preset.
 
 ## Implementation boundaries
 

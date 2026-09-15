@@ -35,6 +35,14 @@
   accounts and distinct native users/roles. OpenShell retains externally owned
   Gateway/worker protection. Declare actual execution locations; do not infer
   hostile-tenant isolation from containers or safe actions from MCP/skill visibility.
+- Preserve agreed security foundations in designs, schemas, examples and installers.
+  OpenShell Gateway protection, the separate protected shared worker and authenticated
+  entry/admission/revocation are fixed product requirements, not feature flags or recipe
+  choices. Resource sizing and external ownership do not make those protections optional.
+  Optional capabilities cannot weaken them; unsupported hosts/combinations must fail,
+  not fall back. Distinguish current developer-component flexibility from the intended
+  product contract. Validate example combinations against actual service dependencies;
+  a proposed UX or unqualified integration must not become an accepted requirement.
 - Ingress owns entry and session revocation; OpenClaw owns application permissions
   and execution. Do not filter native RPC methods or periodically disconnect valid
   streams. Verify effective native authority, identity freshness and last-admin

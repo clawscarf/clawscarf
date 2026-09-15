@@ -78,6 +78,13 @@ The [v1 design and concrete examples](docs/installation-interface.md) define pro
 configuration, change semantics, recipes, bootstrap/People choices and the RawClaw
 consumer boundary. Today's commands remain in the [local operator guide](deploy/local/README.md).
 
+The unified product design fixes OpenShell Gateway protection, a separate protected
+shared worker and authenticated entry/admission/revocation. Recipes vary deployment
+settings and optional capabilities, not these protections. The current developer
+operator can omit the worker for component work; enforcing the unified product
+contract remains in TODO. External access is a qualified delegation, not anonymous
+entry or an automatic standalone-service fallback.
+
 OpenClaw retains its mutable application state. Applying selected installation
 settings must preserve unrelated native edits. External hosting must supply its own
 entry/admission, models and broker without a second login or fleet database.
