@@ -28,8 +28,9 @@ configured headless with its sandbox required; its current placement is unqualif
 Connections is bundled and registered without broker credentials; it contributes
 no executable tools until configured. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
-application settings. This file does not establish working browser, Codex, Lobster
-or widget acceptance; those remain in [PLAN.md](../PLAN.md).
+application settings. The [image guide](../deploy/images/README.md#verified-limits)
+owns exercised capability limits; [PLAN.md](../PLAN.md) tracks combined runtime and
+release qualification.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
 Use it for the canonical Gateway command and operator CLI execution. It sets the
@@ -70,6 +71,13 @@ An empty `plugins.allow` does not restrict loading. Native slot selections and
 explicitly enabled bundled channels can take precedence over that allowlist;
 explicit denies and disabled entries are evaluated earlier. Do not describe an
 allowlist alone as a universal execution restriction.
+
+The image's [capability probe](../tests/runtime/capabilities.mjs) exercises native
+CLI plugin disable/enable and individual skill eligibility in a disposable
+configuration. Disabling Lobster removes it from loaded plugins while leaving Codex
+loaded; reenabling restores it. Skill disable/enable changes native eligibility,
+and these edits preserve unrelated configuration. This checks the image's native
+controls, not hot reload, menu hiding or shell authorization.
 
 OpenClaw 2026.9.4 still mounts its Plugins discovery surface independently of these
 loading controls. The public custom-page API adds pages; it does not remove core

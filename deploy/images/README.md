@@ -89,6 +89,19 @@ The image built on Linux arm64. On the current pinned OpenShell Docker driver an
 versions; Codex CLI reports 0.153.4 and a Lobster local deterministic pipeline
 returns its expected JSON. Those checks are reproduced by
 [the capability probe](../../tests/runtime/capabilities.mjs).
+The probe also checks plugin disable/enable and skill eligibility using native CLI
+commands against a temporary configuration. Run that image-only check with an exact
+locally built image ID:
+
+```sh
+docker run --rm --network none --read-only --tmpfs /tmp:rw,size=256m \
+  --entrypoint node \
+  --mount "type=bind,source=$PWD/tests/runtime/capabilities.mjs,target=/tmp/capabilities.mjs,readonly" \
+  sha256:REPLACE_WITH_RUNTIME_IMAGE_ID /tmp/capabilities.mjs
+```
+
+This command uses no existing installation state and makes no provider calls. It
+does not run the OpenShell supervisor or qualify its execution boundary.
 Codex model execution and its filesystem/network isolation still require runtime
 qualification; CLI startup is not evidence of those properties.
 

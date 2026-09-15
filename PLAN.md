@@ -167,7 +167,9 @@ rules for every remaining change.
       Unconfigured integration has no unusable tools or dead-end actions. Keep native
       MCP, channels and other plugins as separate supported integration paths.
 - [ ] **7. Complete curation and configuration.** Support selected capability
-      enable/disable through native interfaces. Qualify hiding ClawHub/unselected
+      enable/disable through native interfaces. The image's native plugin/skill CLI
+      controls have [disposable-configuration acceptance](runtime/README.md#capability-controls);
+      live application behavior remains part of combined qualification. Qualify hiding ClawHub/unselected
       discovery independently of execution restrictions. Use supported UI extension
       points; if a patch is necessary, obtain a maintenance decision rather than quietly
       weakening the requirement. Keep native administration and explicit reapplication;
