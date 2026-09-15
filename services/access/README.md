@@ -149,13 +149,22 @@ replayed.
 
 `pnpm test:access` runs isolated tests. Supplying `CLAWSCARF_TEST_DATABASE_URL` enables
 the real Postgres/REST cases; use a disposable database, as those tests create and
-remove their schema. Without it, the database case is explicitly skipped. Native
-OpenClaw/browser/production qualification is separate from these tests.
+remove their schema. Without it, the database cases are explicitly skipped.
+The signed local IdP also exercises the registered login/callback and enrollment
+handlers: browser-cookie binding, callback replay, two identities, CSRF, uncertain
+native enrollment remaining closed, removal/rejoin without old-session revival,
+and the provider logout return. Native authority is controlled in these Postgres
+cases; OpenClaw/browser/production qualification is separate.
 
 [The opt-in native regression](../../tests/access/native-live.test.ts) uses
 `CLAWSCARF_NATIVE_TEST_CONFIG` and `CLAWSCARF_NATIVE_TEST_SESSION_FILE` for a
 disposable, already-prepared native server and a private current administrator
 session file. Run it with `pnpm exec tsx --test tests/access/native-live.test.ts`,
 with the management CA trusted through `NODE_EXTRA_CA_CERTS`. It creates and
-removes its own fixture member through native APIs; it does not qualify an OIDC
-provider or interactive company enrollment.
+removes only fixture users through native APIs, retaining the original administrator.
+A signed local IdP and the registered HTTP handlers exercise two fixture identities
+against the real Gateway: member denial, native administrator promotion and handover,
+rejoin resetting prior administrator authority, and logout closing only the affected
+native stream. The test IdP is composed into test handlers without changing the
+running companion's identity configuration. These checks do not qualify an external
+company IdP, its deployed callback/TLS configuration, or interactive browser enrollment.

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import pg from "pg";
+import { z } from "zod";
 import { PostgresAccessStore } from "../../services/access/repo/postgres.js";
 import { SessionService, hash } from "../../services/access/service/session.js";
 import { EnrollmentService } from "../../services/access/service/enrollment.js";
@@ -386,6 +387,234 @@ await test(
         { code: "invalid_authorization" },
       );
     } finally {
+      await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
+      await pool.end();
+      await oidc.close();
+    }
+  },
+);
+
+await test(
+  "signed OIDC HTTP enrollment stays closed until native confirmation and old sessions cannot revive",
+  { skip: !url },
+  async () => {
+    const { oidcFixture } = await import("./oidc.js");
+    const { beginOidcBrowserLogin } = await import("./oidc-http.js");
+    const { DeploymentOidcProvider } =
+      await import("../../services/access/providers/oidc.js");
+    const oidc = await oidcFixture(true);
+    const pool = new pg.Pool({ connectionString: url });
+    const origin = "http://127.0.0.1:18800";
+    let app: Awaited<ReturnType<typeof createAccessHttp>> | undefined;
+    try {
+      const migration = await readFile(
+        new URL(
+          "../../services/access/migrations/001_access.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      const repo = new PostgresAccessStore(pool, randomBytes(32), {
+        issuer: oidc.origin,
+        subject: "alice",
+        email: "alice@example.test",
+        name: "Alice",
+      });
+      const identity = await repo.initialize();
+      const service = new SessionService(
+        repo,
+        new DeploymentOidcProvider({
+          issuer: oidc.origin,
+          clientId: oidc.clientId,
+          clientSecret: oidc.clientSecret,
+          redirectUri: origin + "/_clawscarf/callback",
+        }),
+        origin,
+      );
+      let nativeCompletion = false;
+      let enrollmentCalls = 0;
+      // This case tests HTTP/session/admission boundaries. Native permission
+      // enforcement and promotion are exercised by native-live.test.ts.
+      const native: NativeAuthority = {
+        verifyAdministrator: (actor) => {
+          if (actor.identity !== identity.administrator.identity)
+            return Promise.reject(new NativeFailure("access_denied"));
+          return Promise.resolve({ agentIds: ["main"] });
+        },
+        prepareTeam: () => Promise.resolve(),
+        enroll: async (actor, credential, person, target) => {
+          enrollmentCalls++;
+          assert.equal(
+            (await service.authenticate(credential)).user.identity,
+            actor.identity,
+          );
+          assert.equal(
+            (await service.authenticate(target)).user.identity,
+            person.identity,
+          );
+          if (!nativeCompletion) throw new NativeFailure("outcome_unknown");
+        },
+        revoke: () => Promise.resolve(),
+      };
+      const team = new EnrollmentService(repo, native, origin, oidc.origin);
+      app = await createAccessHttp(service, origin, undefined, team);
+      const first = await beginOidcBrowserLogin(app, "/settings/models");
+      assert.equal((await first.complete("another-browser")).statusCode, 400);
+      const callback = await first.complete();
+      assert.equal(callback.statusCode, 302);
+      assert.equal(callback.headers.location, "/settings/models");
+      assert.equal((await first.complete()).statusCode, 400);
+      const adminCookie = callback.cookies.find(
+        (cookie) => cookie.name === "clawscarf_session",
+      );
+      assert.ok(adminCookie?.value);
+      assert.equal(adminCookie.httpOnly, true);
+      const administrator = await service.authenticate(adminCookie.value);
+      const headers = {
+        cookie: "clawscarf_session=" + adminCookie.value,
+        origin,
+        "x-csrf-token": administrator.csrfToken,
+      };
+      const input = { subject: "bob", email: "bob@example.test", name: "Bob" };
+      const enrollment = {
+        method: "POST" as const,
+        url: "/_clawscarf/people",
+        headers,
+        payload: input,
+      };
+      assert.equal(
+        (
+          await app.inject({
+            ...enrollment,
+            headers: { ...headers, origin: "http://evil.example" },
+          })
+        ).statusCode,
+        403,
+      );
+      assert.equal(enrollmentCalls, 0);
+      oidc.setUser("bob");
+      assert.equal(
+        (await (await beginOidcBrowserLogin(app, "/")).complete()).statusCode,
+        403,
+      );
+      assert.equal((await app.inject(enrollment)).statusCode, 503);
+      assert.equal(enrollmentCalls, 1);
+      assert.equal(
+        (await (await beginOidcBrowserLogin(app, "/")).complete()).statusCode,
+        403,
+      );
+      assert.equal(
+        enrollmentCalls,
+        1,
+        "Login never retries native enrollment.",
+      );
+      nativeCompletion = true;
+      assert.equal((await app.inject(enrollment)).statusCode, 200);
+      assert.equal(enrollmentCalls, 2);
+      const memberResponse = await (
+        await beginOidcBrowserLogin(app, "/_clawscarf/team/")
+      ).complete();
+      assert.equal(memberResponse.statusCode, 302);
+      assert.equal(memberResponse.headers.location, "/_clawscarf/team/");
+      const memberCookie = memberResponse.cookies.find(
+        (cookie) => cookie.name === "clawscarf_session",
+      );
+      assert.ok(memberCookie?.value);
+      const member = await service.authenticate(memberCookie.value);
+      assert.notEqual(member.user.id, administrator.user.id);
+      assert.equal(member.user.email, "bob@example.test");
+      assert.equal(
+        (
+          await app.inject({
+            url: "/_clawscarf/people",
+            cookies: { clawscarf_session: memberCookie.value },
+          })
+        ).statusCode,
+        403,
+      );
+      const pendingLogin = await beginOidcBrowserLogin(app, "/");
+      assert.equal(
+        (
+          await app.inject({
+            method: "DELETE",
+            url: "/_clawscarf/people/" + member.user.id,
+            headers,
+          })
+        ).statusCode,
+        200,
+      );
+      assert.equal((await pendingLogin.complete()).statusCode, 403);
+      assert.equal(
+        (
+          await app.inject({
+            url: "/_clawscarf/session",
+            cookies: { clawscarf_session: memberCookie.value },
+          })
+        ).statusCode,
+        401,
+      );
+      assert.equal((await app.inject(enrollment)).statusCode, 200);
+      assert.equal((await pendingLogin.complete()).statusCode, 400);
+      assert.equal(
+        (
+          await app.inject({
+            url: "/_clawscarf/session",
+            cookies: { clawscarf_session: memberCookie.value },
+          })
+        ).statusCode,
+        401,
+      );
+      const rejoined = await (await beginOidcBrowserLogin(app, "/")).complete();
+      assert.equal(rejoined.statusCode, 302);
+      const freshCookie = rejoined.cookies.find(
+        (cookie) => cookie.name === "clawscarf_session",
+      );
+      assert.ok(freshCookie?.value);
+      assert.equal(
+        (await service.authenticate(freshCookie.value)).user.id,
+        member.user.id,
+      );
+      const logout = await app.inject({
+        method: "POST",
+        url: "/_clawscarf/logout",
+        headers,
+      });
+      assert.equal(logout.statusCode, 200);
+      assert.equal(
+        logout.cookies.find((cookie) => cookie.name === "clawscarf_session")
+          ?.maxAge,
+        0,
+      );
+      assert.equal(
+        (await app.inject({ url: "/_clawscarf/session", headers })).statusCode,
+        401,
+      );
+      assert.equal(
+        (
+          await app.inject({
+            url: "/_clawscarf/session",
+            cookies: { clawscarf_session: freshCookie.value },
+          })
+        ).statusCode,
+        200,
+      );
+      const destination = z
+        .object({ redirect: z.url() })
+        .parse(logout.json<unknown>()).redirect;
+      const providerLogout = await fetch(destination, { redirect: "manual" });
+      await providerLogout.body?.cancel();
+      assert.equal(providerLogout.status, 302);
+      assert.equal(
+        providerLogout.headers.get("location"),
+        origin + "/_clawscarf/signed-out",
+      );
+      assert.equal(
+        (await app.inject({ url: "/_clawscarf/signed-out" })).statusCode,
+        200,
+      );
+    } finally {
+      await app?.close();
       await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
       await pool.end();
       await oidc.close();
