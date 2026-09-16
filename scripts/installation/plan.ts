@@ -1,10 +1,13 @@
 import { dirname, join, resolve } from "node:path";
-import { mkdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
-import lockfile from "proper-lockfile";
 import { z } from "zod";
 import { prepareLocal } from "../local/prepare.js";
-import { readState, ensurePrivateFile } from "../local/state.js";
+import {
+  readState,
+  ensurePrivateFile,
+  withInstallationLock,
+} from "../local/state.js";
 import { fingerprint, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
@@ -35,30 +38,6 @@ async function observation(directory: string) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT")
       return null;
     throw error;
-  }
-}
-export async function withInstallationLock<T>(
-  directory: string,
-  work: () => Promise<T>,
-) {
-  await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
-  let unlock;
-  try {
-    unlock = await lockfile.lock(directory, {
-      realpath: false,
-      retries: 0,
-      lockfilePath: directory + ".operator-lock",
-    });
-  } catch {
-    throw new InstallationError(
-      "operation_busy",
-      "Another installation operation is active. Wait for it to finish.",
-    );
-  }
-  try {
-    return await work();
-  } finally {
-    await unlock();
   }
 }
 export async function planInstallation(configFile: string) {

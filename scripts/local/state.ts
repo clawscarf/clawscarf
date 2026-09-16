@@ -141,13 +141,31 @@ export async function initializeState(path: string, input: LocalInput) {
     );
   }
 }
-export async function withLocalLock<T>(
+export async function withInstallationLock<T>(
   directory: string,
   work: () => Promise<T>,
 ) {
-  const release = await lockfile.lock(join(directory, "installation.json"), {
-    retries: 0,
-  });
+  directory = resolve(directory);
+  await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
+  let release;
+  try {
+    release = await lockfile.lock(directory, {
+      realpath: false,
+      retries: 0,
+      lockfilePath: directory + ".operator-lock",
+    });
+  } catch (error) {
+    if (!(
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "ELOCKED"
+    ))
+      throw error;
+    throw new LocalSetupError(
+      "operation_busy",
+      "Another installation operation is active. Wait for it to finish.",
+    );
+  }
   try {
     return await work();
   } finally {

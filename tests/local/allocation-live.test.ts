@@ -8,7 +8,7 @@ import { z } from "zod";
 import {
   readState,
   resourceNames,
-  withLocalLock,
+  withInstallationLock,
 } from "../../scripts/local/state.js";
 import { ensureRuntime, stopRuntime } from "../../scripts/local/runtime.js";
 import { run } from "../../scripts/local/process.js";
@@ -64,7 +64,7 @@ await test(
         ),
       );
     }
-    await withLocalLock(directory, async () => {
+    await withInstallationLock(directory, async () => {
       // This opt-in test must never adopt or interrupt an existing installation runtime.
       for (const file of ["runtime-create.json", "runtime.json"])
         await assert.rejects(lstat(join(directory, file)), { code: "ENOENT" });

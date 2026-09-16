@@ -13,11 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **6. Use one installation-operation lock.** Consolidate the outer operator lock
-      in [plan/apply](scripts/installation/plan.ts) and the retained-state lock in
-      [local state](scripts/local/state.ts). Shared operation entry points acquire it
-      once, including before initial directory creation; internal functions do not
-      reacquire it. Cover prepare/start/upgrade/Connections concurrency before removal.
 - [ ] **7. Consolidate model/pack command entry points.** Register existing model and
       pack command factories under the public CLI and use its error presentation;
       remove independent operator parsers/entry points. Keep the tiny pack executable

@@ -331,3 +331,7 @@ Changing retained configuration is not silently applied by `prepare` or `start`.
 The `upgrade` subcommand exposes the existing explicit Gateway-only upgrade; it does
 not yet upgrade a complete release. A changed release/configuration that is unsupported
 is rejected, not reinitialized. Keep both the state directory and owned data volumes.
+
+Apply, start, upgrade and Connections operations share one exclusive lock beside the
+state directory. It covers initial creation and the full foreground lifetime; competing
+operations return `operation_busy`. Internal preparation and launch do not reacquire it.

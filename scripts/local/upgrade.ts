@@ -9,7 +9,7 @@ import { parseLocalInput } from "./configuration.js";
 import {
   readState,
   resourceNames,
-  withLocalLock,
+  withInstallationLock,
   writePrivate,
 } from "./state.js";
 import { readUpgrade, snapshotSchema, type Upgrade } from "./upgrade-state.js";
@@ -38,7 +38,7 @@ export async function upgradeLocal(
   command: typeof run = run,
 ) {
   const directory = resolve(directoryInput);
-  await withLocalLock(directory, async () => {
+  await withInstallationLock(directory, async () => {
     const state = await readState(directory);
     const next = {
       ...state,

@@ -40,7 +40,6 @@ import {
 import { initializeLocalDatabase } from "./database.js";
 import {
   initializeState,
-  withLocalLock,
   writePrivate,
   ensurePrivateFile,
   resourceNames,
@@ -51,6 +50,7 @@ import { run, LocalSetupError } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import { requireNoUpgrade } from "./upgrade-state.js";
 
+/** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function prepareLocal(
   directoryInput: string,
   inputValue: unknown,
@@ -87,224 +87,215 @@ export async function prepareLocal(
   ])
     await run("docker", ["image", "inspect", image]);
   const state = await initializeState(directory, input);
-  await withLocalLock(directory, async () => {
-    await requireNoUpgrade(directory);
-    if (capabilities)
-      await ensurePrivateFile(
-        join(directory, "inputs.sha256"),
-        capabilities.inputFingerprint,
-      );
-    await verifyLocalExecutables(state);
-    await verifyLocalPorts(state);
-    const privateDirectory = join(directory, "private");
-    await ensureCertificates(privateDirectory);
-    const connectionsEndpoint = await prepareInitialConnections(
-      directory,
-      connections,
-    );
-    await prepareModelGateway(directory, state);
-    const execution = await prepareExecution(directory, state);
-    await ensureLocalNetworks(directory, state);
-    const browser = await prepareBrowser(directory, state);
-    const browserMachine = browser
-      ? await prepareBrowserNode(directory, state, browser.token)
-      : undefined;
-    const relayAddress = await prepareRelay(directory, state);
-    const names = resourceNames(state);
-    if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
-    await ensureOwnedVolume(names.databaseVolume, state.ownerId);
-    await ensureOwnedVolume(names.volume, state.ownerId);
-    if (input.modelGateway)
-      await ensureOwnedVolume(`${names.project}-models`, state.ownerId);
-    if (execution) {
-      await ensureOwnedVolume(names.workerVolume, state.ownerId);
-      await initializeExecutionVolume(state, execution);
-    }
-    if (browser) {
-      await ensureOwnedVolume(names.browserVolume, state.ownerId);
-      await initializeBrowserVolume(state, browser.token);
-    }
+  await requireNoUpgrade(directory);
+  if (capabilities)
     await ensurePrivateFile(
-      join(directory, "compose.json"),
-      JSON.stringify(
-        composeConfiguration(
-          state,
-          directory,
-          browser?.address,
-          relayAddress,
-          browserMachine,
-        ),
-        null,
-        2,
-      ),
+      join(directory, "inputs.sha256"),
+      capabilities.inputFingerprint,
     );
-    await prepareModelCredential(directory, state);
-    const models = await prepareInitialModels(directory, input.models);
-    await prepareRuntimePolicy(
-      directory,
-      models,
-      input.execution,
-      connectionsEndpoint,
-    );
-    try {
-      await compose(directory, [
-        "up",
-        "-d",
-        "--wait",
-        "--wait-timeout",
-        "90",
-        "postgres",
-      ]);
-    } catch {
-      throw new LocalSetupError(
-        "database_start_failed",
-        "PostgreSQL startup did not confirm success. Inspect this installation's Compose status/logs and Docker network address-pool capacity before retrying. Setup does not remove existing networks or volumes.",
-      );
-    }
-    const adminUrl = new URL(
-      `postgresql://postgres@127.0.0.1:${String(input.ports.database)}/clawscarf`,
-    );
-    adminUrl.password = await readFile(
-      join(privateDirectory, "database-admin-password"),
-      "utf8",
-    );
-    const { runtimeUrl } = await initializeLocalDatabase({
-      adminUrl: adminUrl.toString(),
-      runtimePassword: await readFile(
-        join(privateDirectory, "database-runtime-password"),
-        "utf8",
-      ),
-      ownerId: state.ownerId,
-      connections: connections?.mode === "local",
-    });
-    if (connections?.mode === "local") {
-      const operatorPool = new pg.Pool({
-        connectionString: adminUrl.toString(),
-      });
-      try {
-        await publishInitialConnections(operatorPool, connections);
-      } finally {
-        await operatorPool.end();
-      }
-    }
-    const pool = new pg.Pool({ connectionString: runtimeUrl });
-    try {
-      const store = new PostgresAccessStore(
-        pool,
-        await readFile(join(privateDirectory, "encryption.key")),
-        {
-          issuer: input.team?.issuer ?? "urn:clawscarf:local",
-          subject: input.team?.administratorSubject ?? "administrator",
-          email: input.team?.administratorEmail ?? "administrator@localhost",
-          name: input.administratorName,
-        },
-      );
-      const identity = await store.initialize();
-      const connectionCredential =
-        capabilities?.connections && connectionsEndpoint
-          ? await initialConnectionsCredential({
-              directory,
-              serverId: identity.serverId,
-              endpoint: connectionsEndpoint,
-              database: pool,
-              ...capabilities.connections,
-            })
-          : undefined;
-      const insideDatabase = new URL(runtimeUrl);
-      insideDatabase.hostname = "postgres";
-      insideDatabase.port = "5432";
-      const generated = generateLocalConfiguration({
-        input,
-        directory: privateDirectory,
-        encryptionKeyPath: join(privateDirectory, "encryption.key"),
-        managementCertificatePath: join(
-          privateDirectory,
-          "management-cert.pem",
-        ),
-        managementKeyPath: join(privateDirectory, "management-key.pem"),
-        runtimeDatabaseUrl: insideDatabase.toString(),
-        administratorIdentity: identity.administrator.identity,
-      });
-      // Native configuration is an initialization input; it is never re-applied on resume.
-      await ensurePrivateFile(
-        join(privateDirectory, "access.json"),
-        JSON.stringify(generated.access, null, 2),
-      );
-      await ensurePrivateFile(
-        join(privateDirectory, "companion.json"),
-        JSON.stringify(generated.companion, null, 2),
-      );
-      const configured = withInitialModels(generated.native, models);
-      const native = JSON.stringify(
-        withInitialServices(configured, {
-          execution: Boolean(input.execution),
-          ...(connectionCredential
-            ? { connectionsBrokerUrl: connectionCredential.brokerUrl }
-            : {}),
-          ...(browser
-            ? {
-                browserToken: browser.token,
-                browserNode: browserNodeName(state),
-              }
-            : {}),
-        }),
-        null,
-        2,
-      );
-      await initializeNativeVolume(
+  await verifyLocalExecutables(state);
+  await verifyLocalPorts(state);
+  const privateDirectory = join(directory, "private");
+  await ensureCertificates(privateDirectory);
+  const connectionsEndpoint = await prepareInitialConnections(
+    directory,
+    connections,
+  );
+  await prepareModelGateway(directory, state);
+  const execution = await prepareExecution(directory, state);
+  await ensureLocalNetworks(directory, state);
+  const browser = await prepareBrowser(directory, state);
+  const browserMachine = browser
+    ? await prepareBrowserNode(directory, state, browser.token)
+    : undefined;
+  const relayAddress = await prepareRelay(directory, state);
+  const names = resourceNames(state);
+  if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
+  await ensureOwnedVolume(names.databaseVolume, state.ownerId);
+  await ensureOwnedVolume(names.volume, state.ownerId);
+  if (input.modelGateway)
+    await ensureOwnedVolume(`${names.project}-models`, state.ownerId);
+  if (execution) {
+    await ensureOwnedVolume(names.workerVolume, state.ownerId);
+    await initializeExecutionVolume(state, execution);
+  }
+  if (browser) {
+    await ensureOwnedVolume(names.browserVolume, state.ownerId);
+    await initializeBrowserVolume(state, browser.token);
+  }
+  await ensurePrivateFile(
+    join(directory, "compose.json"),
+    JSON.stringify(
+      composeConfiguration(
         state,
-        native,
-        identity.serverId,
-        models?.credential,
-        execution,
-        connectionCredential,
-      );
-      await writePrivate(
-        join(directory, "identity.json"),
-        JSON.stringify(identity, null, 2),
-      );
-    } finally {
-      await pool.end();
-    }
-    const controller = join(directory, "controller");
+        directory,
+        browser?.address,
+        relayAddress,
+        browserMachine,
+      ),
+      null,
+      2,
+    ),
+  );
+  await prepareModelCredential(directory, state);
+  const models = await prepareInitialModels(directory, input.models);
+  await prepareRuntimePolicy(
+    directory,
+    models,
+    input.execution,
+    connectionsEndpoint,
+  );
+  try {
+    await compose(directory, [
+      "up",
+      "-d",
+      "--wait",
+      "--wait-timeout",
+      "90",
+      "postgres",
+    ]);
+  } catch {
+    throw new LocalSetupError(
+      "database_start_failed",
+      "PostgreSQL startup did not confirm success. Inspect this installation's Compose status/logs and Docker network address-pool capacity before retrying. Setup does not remove existing networks or volumes.",
+    );
+  }
+  const adminUrl = new URL(
+    `postgresql://postgres@127.0.0.1:${String(input.ports.database)}/clawscarf`,
+  );
+  adminUrl.password = await readFile(
+    join(privateDirectory, "database-admin-password"),
+    "utf8",
+  );
+  const { runtimeUrl } = await initializeLocalDatabase({
+    adminUrl: adminUrl.toString(),
+    runtimePassword: await readFile(
+      join(privateDirectory, "database-runtime-password"),
+      "utf8",
+    ),
+    ownerId: state.ownerId,
+    connections: connections?.mode === "local",
+  });
+  if (connections?.mode === "local") {
+    const operatorPool = new pg.Pool({
+      connectionString: adminUrl.toString(),
+    });
     try {
-      await lstat(controller);
-    } catch (error) {
-      if (!(
-        error instanceof Error &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ))
-        throw error;
-      await run(process.execPath, [
-        ...nodeEntrypoint("../controller"),
-        "init",
-        "--directory",
-        controller,
-        "--gateway",
-        input.openshellGateway,
-        "--cli",
-        input.openshellCli,
-        "--name",
-        names.sandbox,
-        "--port",
-        String(input.ports.controller),
-      ]);
+      await publishInitialConnections(operatorPool, connections);
+    } finally {
+      await operatorPool.end();
     }
-    // The existing helper owns controller configuration; partial initialization must be explicit.
-    z.object({
-      name: z.literal(names.sandbox),
-      port: z.literal(input.ports.controller),
-      cli: z.literal(input.openshellCli),
-      gateway: z.literal(input.openshellGateway),
-    }).parse(
-      JSON.parse(await readFile(join(controller, "controller.json"), "utf8")),
+  }
+  const pool = new pg.Pool({ connectionString: runtimeUrl });
+  try {
+    const store = new PostgresAccessStore(
+      pool,
+      await readFile(join(privateDirectory, "encryption.key")),
+      {
+        issuer: input.team?.issuer ?? "urn:clawscarf:local",
+        subject: input.team?.administratorSubject ?? "administrator",
+        email: input.team?.administratorEmail ?? "administrator@localhost",
+        name: input.administratorName,
+      },
+    );
+    const identity = await store.initialize();
+    const connectionCredential =
+      capabilities?.connections && connectionsEndpoint
+        ? await initialConnectionsCredential({
+            directory,
+            serverId: identity.serverId,
+            endpoint: connectionsEndpoint,
+            database: pool,
+            ...capabilities.connections,
+          })
+        : undefined;
+    const insideDatabase = new URL(runtimeUrl);
+    insideDatabase.hostname = "postgres";
+    insideDatabase.port = "5432";
+    const generated = generateLocalConfiguration({
+      input,
+      directory: privateDirectory,
+      encryptionKeyPath: join(privateDirectory, "encryption.key"),
+      managementCertificatePath: join(privateDirectory, "management-cert.pem"),
+      managementKeyPath: join(privateDirectory, "management-key.pem"),
+      runtimeDatabaseUrl: insideDatabase.toString(),
+      administratorIdentity: identity.administrator.identity,
+    });
+    // Native configuration is an initialization input; it is never re-applied on resume.
+    await ensurePrivateFile(
+      join(privateDirectory, "access.json"),
+      JSON.stringify(generated.access, null, 2),
+    );
+    await ensurePrivateFile(
+      join(privateDirectory, "companion.json"),
+      JSON.stringify(generated.companion, null, 2),
+    );
+    const configured = withInitialModels(generated.native, models);
+    const native = JSON.stringify(
+      withInitialServices(configured, {
+        execution: Boolean(input.execution),
+        ...(connectionCredential
+          ? { connectionsBrokerUrl: connectionCredential.brokerUrl }
+          : {}),
+        ...(browser
+          ? {
+              browserToken: browser.token,
+              browserNode: browserNodeName(state),
+            }
+          : {}),
+      }),
+      null,
+      2,
+    );
+    await initializeNativeVolume(
+      state,
+      native,
+      identity.serverId,
+      models?.credential,
+      execution,
+      connectionCredential,
     );
     await writePrivate(
-      join(directory, "prepared.json"),
-      JSON.stringify({ ownerId: state.ownerId }),
+      join(directory, "identity.json"),
+      JSON.stringify(identity, null, 2),
     );
-  });
+  } finally {
+    await pool.end();
+  }
+  const controller = join(directory, "controller");
+  try {
+    await lstat(controller);
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+      throw error;
+    await run(process.execPath, [
+      ...nodeEntrypoint("../controller"),
+      "init",
+      "--directory",
+      controller,
+      "--gateway",
+      input.openshellGateway,
+      "--cli",
+      input.openshellCli,
+      "--name",
+      names.sandbox,
+      "--port",
+      String(input.ports.controller),
+    ]);
+  }
+  // The existing helper owns controller configuration; partial initialization must be explicit.
+  z.object({
+    name: z.literal(names.sandbox),
+    port: z.literal(input.ports.controller),
+    cli: z.literal(input.openshellCli),
+    gateway: z.literal(input.openshellGateway),
+  }).parse(
+    JSON.parse(await readFile(join(controller, "controller.json"), "utf8")),
+  );
+  await writePrivate(
+    join(directory, "prepared.json"),
+    JSON.stringify({ ownerId: state.ownerId }),
+  );
   return state;
 }
 

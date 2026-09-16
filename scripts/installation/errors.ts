@@ -5,7 +5,6 @@ export type InstallationErrorCode =
   | "stale_plan"
   | "change_unsupported"
   | "not_running"
-  | "operation_busy"
   | "unavailable";
 export class InstallationError extends Error {
   constructor(

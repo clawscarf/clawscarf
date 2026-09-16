@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   initializeState,
-  withLocalLock,
+  withInstallationLock,
   resourceNames,
 } from "../../scripts/local/state.js";
 import { parseLocalInput } from "../../scripts/local/configuration.js";
@@ -55,9 +55,9 @@ await test("local preparation retains private identity/secrets and rejects forei
     await assert.rejects(
       initializeState(directory, { ...input, administratorName: "Other" }),
     );
-    await withLocalLock(directory, () =>
+    await withInstallationLock(directory, () =>
       assert.rejects(
-        withLocalLock(directory, () => Promise.resolve(undefined)),
+        withInstallationLock(directory, () => Promise.resolve(undefined)),
       ),
     );
     const other = join(parent, "foreign");

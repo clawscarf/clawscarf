@@ -4,9 +4,8 @@ import { request } from "node:http";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { launchLocal } from "../local/launch.js";
-import { readState } from "../local/state.js";
+import { readState, withInstallationLock } from "../local/state.js";
 import { localLogNames } from "../local/logs.js";
-import { withInstallationLock } from "./plan.js";
 import { InstallationError } from "./errors.js";
 import { activatePacks, packOutcomeSchema, type PackOutcome } from "./packs.js";
 
@@ -23,23 +22,23 @@ export async function startInstallation(
   report: (message: string) => void,
 ) {
   directory = resolve(directory);
-  const state = await readState(directory);
-  if (!state.input.execution)
-    throw new InstallationError(
-      "invalid_configuration",
-      "A protected execution worker is required.",
-    );
-  if (!state.input.modelGateway && !state.input.models)
-    throw new InstallationError(
-      "invalid_configuration",
-      "Bundled or existing LiteLLM is required.",
-    );
-  if (Buffer.byteLength(socketPath(directory)) > 100)
-    throw new InstallationError(
-      "invalid_configuration",
-      "Use a shorter state directory for the local control socket.",
-    );
   return withInstallationLock(directory, async () => {
+    const state = await readState(directory);
+    if (!state.input.execution)
+      throw new InstallationError(
+        "invalid_configuration",
+        "A protected execution worker is required.",
+      );
+    if (!state.input.modelGateway && !state.input.models)
+      throw new InstallationError(
+        "invalid_configuration",
+        "Bundled or existing LiteLLM is required.",
+      );
+    if (Buffer.byteLength(socketPath(directory)) > 100)
+      throw new InstallationError(
+        "invalid_configuration",
+        "Use a shorter state directory for the local control socket.",
+      );
     const stop = new AbortController();
     let supervisor: "starting" | "running" | "stopping" = "starting";
     let packs: PackOutcome[] = [];

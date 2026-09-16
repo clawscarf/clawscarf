@@ -4,6 +4,7 @@ import { constants } from "node:os";
 
 const execute = promisify(execFile);
 type LocalSetupErrorCode =
+  | "operation_busy"
   | "invalid_team_configuration"
   | "upgrade_pending"
   | "upgrade_refused"

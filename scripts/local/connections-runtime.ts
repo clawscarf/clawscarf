@@ -11,7 +11,7 @@ import { readInitialConnectionsEndpoint } from "./connections.js";
 import {
   readState,
   resourceNames,
-  withLocalLock,
+  withInstallationLock,
   writePrivate,
 } from "./state.js";
 import { runtimeManager } from "./runtime.js";
@@ -91,8 +91,7 @@ export async function operateConnectionsRuntime(
   command: typeof run = run,
 ) {
   const directory = resolve(directoryInput);
-  await readState(directory);
-  return withLocalLock(directory, async () => {
+  return withInstallationLock(directory, async () => {
     const state = await readState(directory);
     await requireNoUpgrade(directory);
     const endpoint = await readInitialConnectionsEndpoint(directory);

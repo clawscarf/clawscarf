@@ -6,13 +6,9 @@ import { join } from "node:path";
 import { installationSchema } from "./installation/configuration.js";
 import { releaseSchema } from "./release/definition.js";
 import { fingerprint } from "./installation/files.js";
-import {
-  planInstallation,
-  applyInstallation,
-  withInstallationLock,
-} from "./installation/plan.js";
+import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { resolveInstallation } from "./installation/resolve.js";
-import { initializeState } from "./local/state.js";
+import { initializeState, withInstallationLock } from "./local/state.js";
 import { liteLlmImage, postgresImage } from "./local/images.js";
 import { monitoredServices } from "./local/logs.js";
 import { monitorComposeServices } from "./local/service-monitors.js";
@@ -142,6 +138,11 @@ await test(
     assert.ok(!JSON.stringify(enabled).includes("private-test-key"));
     const enabledPreview = join(directory, "enabled.json");
     await writeFile(enabledPreview, JSON.stringify(enabled));
+    await withInstallationLock(enabled.stateDirectory, () =>
+      assert.rejects(applyInstallation(path, enabledPreview), {
+        code: "operation_busy",
+      }),
+    );
     await writeFile(join(directory, "keys.env"), "PROVIDER_KEY=changed\n");
     await assert.rejects(applyInstallation(path, enabledPreview), {
       code: "stale_plan",
@@ -177,13 +178,30 @@ await test("concurrent operators cannot mutate the same installation", async (t)
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-lock-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const state = join(directory, "state");
-  await mkdir(state, { mode: 0o700 });
   await withInstallationLock(state, async () => {
-    await assert.rejects(
-      withInstallationLock(state, () => Promise.resolve(undefined)),
-      { code: "operation_busy" },
-    );
+    const { startInstallation } = await import("./installation/lifecycle.js");
+    const { upgradeLocal } = await import("./local/upgrade.js");
+    const { operateConnectionsRuntime } =
+      await import("./local/connections-runtime.js");
+    for (const operation of [
+      () => withInstallationLock(state, () => Promise.resolve(undefined)),
+      () => startInstallation(state, () => {}),
+      () => upgradeLocal(state, "unused", "unused", () => {}),
+      () => operateConnectionsRuntime(state, { kind: "observe" }),
+      () =>
+        operateConnectionsRuntime(state, {
+          kind: "configure",
+          credentialFile: "unused",
+        }),
+    ])
+      await assert.rejects(operation(), { code: "operation_busy" });
   });
+  await assert.rejects(
+    withInstallationLock(state, async () => {
+      throw new Error("operation failed");
+    }),
+    /operation failed/,
+  );
   await withInstallationLock(state, () => Promise.resolve(undefined));
 });
 

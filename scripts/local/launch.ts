@@ -14,7 +14,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
-import { readState, resourceNames, withLocalLock } from "./state.js";
+import { readState, resourceNames } from "./state.js";
 import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
 import { startProcess, type ManagedProcess } from "./supervisor.js";
@@ -34,6 +34,7 @@ import {
 } from "./runtime-binding.js";
 import { requireNoUpgrade } from "./upgrade-state.js";
 
+/** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function launchLocal(
   directoryInput: string,
   report: (message: string) => void,
@@ -63,320 +64,309 @@ export async function launchLocal(
     XDG_DATA_HOME: join(controller, "data"),
   };
   const name = resourceNames(state).sandbox;
-  await withLocalLock(directory, async () => {
-    await requireNoUpgrade(directory);
-    await requireNoConnectionsChange(directory, state.ownerId);
-    await verifyLocalExecutables(state);
-    await verifyLocalPorts(state);
-    await verifyLocalNetworks(directory, state);
-    await verifyBrowserConfiguration(directory, state);
-    await verifyBrowserNode(directory, state);
-    await verifyRelayConfiguration(directory, state);
-    const children: ManagedProcess[] = [];
-    const lifetime = { stopped: false, childExited: false };
-    let runtimeAttempted = false;
-    let executionAttempted = false;
-    let relayAttempted = false;
-    const signal = Promise.withResolvers<undefined>();
-    const cancellation = new AbortController();
-    const stopSignal = () => {
-      lifetime.stopped = true;
-      cancellation.abort();
-      signal.resolve(undefined);
-    };
-    async function spawn(
-      executable: string,
-      args: string[],
-      log: LocalLogFile,
-    ) {
-      const child = await startProcess(executable, args, {
-        env,
-        logFile: join(logs, log),
-      });
-      children.push(child);
-      void child.done.then(() => {
-        lifetime.childExited = true;
-      });
-      return child;
-    }
-    const check = () => {
-      if (lifetime.stopped || lifetime.childExited)
-        throw new LocalSetupError(
-          "startup_interrupted",
-          "Local processes stopped. Inspect this installation's private logs before resuming.",
-        );
-    };
-    async function waitFor(probe: () => Promise<void>) {
-      const deadline = Date.now() + 90_000;
-      let lastFailure: unknown;
-      while (Date.now() < deadline) {
-        check();
-        try {
-          await probe();
-          check();
-          return;
-        } catch (error) {
-          check();
-          lastFailure = error;
-          await delay(500);
-        }
-      }
-      throw lastFailure instanceof Error
-        ? lastFailure
-        : new LocalSetupError(
-            "startup_timed_out",
-            "Local startup did not become ready before its deadline.",
-          );
-    }
-    control.signal?.addEventListener("abort", stopSignal, { once: true });
-    if (control.signal?.aborted) stopSignal();
-    process.on("SIGINT", stopSignal);
-    process.on("SIGTERM", stopSignal);
-    let failure: Error | undefined;
-    try {
-      report("Starting controller…");
-      await spawn(
-        process.execPath,
-        [
-          ...nodeEntrypoint("../controller"),
-          "start",
-          "--directory",
-          controller,
-        ],
-        "controller.log",
+  await requireNoUpgrade(directory);
+  await requireNoConnectionsChange(directory, state.ownerId);
+  await verifyLocalExecutables(state);
+  await verifyLocalPorts(state);
+  await verifyLocalNetworks(directory, state);
+  await verifyBrowserConfiguration(directory, state);
+  await verifyBrowserNode(directory, state);
+  await verifyRelayConfiguration(directory, state);
+  const children: ManagedProcess[] = [];
+  const lifetime = { stopped: false, childExited: false };
+  let runtimeAttempted = false;
+  let executionAttempted = false;
+  let relayAttempted = false;
+  const signal = Promise.withResolvers<undefined>();
+  const cancellation = new AbortController();
+  const stopSignal = () => {
+    lifetime.stopped = true;
+    cancellation.abort();
+    signal.resolve(undefined);
+  };
+  async function spawn(executable: string, args: string[], log: LocalLogFile) {
+    const child = await startProcess(executable, args, {
+      env,
+      logFile: join(logs, log),
+    });
+    children.push(child);
+    void child.done.then(() => {
+      lifetime.childExited = true;
+    });
+    return child;
+  }
+  const check = () => {
+    if (lifetime.stopped || lifetime.childExited)
+      throw new LocalSetupError(
+        "startup_interrupted",
+        "Local processes stopped. Inspect this installation's private logs before resuming.",
       );
-      await waitFor(async () => {
-        await run(
-          state.input.openshellCli,
-          ["sandbox", "list", "--gateway", name, "--output", "json"],
-          { env, timeout: 5000 },
-        );
-      });
-      if (state.input.modelGateway) {
-        report("Starting model gateway…");
-        await compose(directory, [
-          "up",
-          "-d",
-          "--wait",
-          "--wait-timeout",
-          "120",
-          "models",
-        ]);
-        await monitorComposeServices(
-          directory,
-          ["models", "models-database"],
-          spawn,
-        );
-        check();
-      }
-      if (state.input.execution) {
-        report("Starting execution worker…");
-        executionAttempted = true;
-        const execution = await ensureExecutionRuntime(directory, state, env);
-        if (!execution)
-          throw new LocalSetupError(
-            "configuration_changed",
-            "The execution worker is not configured.",
-          );
-        await spawn(
-          state.input.openshellCli,
-          [
-            "forward",
-            "start",
-            String(state.input.execution.port),
-            execution.name,
-            "--gateway",
-            name,
-          ],
-          "execution.log",
-        );
-        const port = state.input.execution.port;
-        await waitFor(() => verifyExecutionListener(directory, port));
-        await verifyExecutionBinding(state, execution);
-      }
-      if (state.input.relayImage) {
-        report("Starting execution relay…");
-        relayAttempted = true;
-        await compose(directory, ["up", "-d", "execution-relay"]);
-        if (state.input.browser) {
-          const browserPort = state.input.browser.port;
-          await waitFor(() => verifyBrowserListener(directory, browserPort));
-        }
-        await monitorComposeServices(
-          directory,
-          [
-            "execution-relay",
-            ...(state.input.browser
-              ? (["browser", "browser-egress"] as const)
-              : []),
-          ],
-          spawn,
-        );
-      }
-      report("Starting OpenClaw…");
-      runtimeAttempted = true;
-      const runtime = await ensureRuntime(directory, state, env);
+  };
+  async function waitFor(probe: () => Promise<void>) {
+    const deadline = Date.now() + 90_000;
+    let lastFailure: unknown;
+    while (Date.now() < deadline) {
       check();
-      for (const [label, port] of [
-        ["application", state.input.ports.native],
-        ["widgets", state.input.ports.nativeWidgets],
-      ] as const)
-        await spawn(
-          state.input.openshellCli,
-          ["forward", "start", String(port), name, "--gateway", name],
-          `${label}.log`,
+      try {
+        await probe();
+        check();
+        return;
+      } catch (error) {
+        check();
+        lastFailure = error;
+        await delay(500);
+      }
+    }
+    throw lastFailure instanceof Error
+      ? lastFailure
+      : new LocalSetupError(
+          "startup_timed_out",
+          "Local startup did not become ready before its deadline.",
         );
+  }
+  control.signal?.addEventListener("abort", stopSignal, { once: true });
+  if (control.signal?.aborted) stopSignal();
+  process.on("SIGINT", stopSignal);
+  process.on("SIGTERM", stopSignal);
+  let failure: Error | undefined;
+  try {
+    report("Starting controller…");
+    await spawn(
+      process.execPath,
+      [...nodeEntrypoint("../controller"), "start", "--directory", controller],
+      "controller.log",
+    );
+    await waitFor(async () => {
+      await run(
+        state.input.openshellCli,
+        ["sandbox", "list", "--gateway", name, "--output", "json"],
+        { env, timeout: 5000 },
+      );
+    });
+    if (state.input.modelGateway) {
+      report("Starting model gateway…");
+      await compose(directory, [
+        "up",
+        "-d",
+        "--wait",
+        "--wait-timeout",
+        "120",
+        "models",
+      ]);
+      await monitorComposeServices(
+        directory,
+        ["models", "models-database"],
+        spawn,
+      );
+      check();
+    }
+    if (state.input.execution) {
+      report("Starting execution worker…");
+      executionAttempted = true;
+      const execution = await ensureExecutionRuntime(directory, state, env);
+      if (!execution)
+        throw new LocalSetupError(
+          "configuration_changed",
+          "The execution worker is not configured.",
+        );
+      await spawn(
+        state.input.openshellCli,
+        [
+          "forward",
+          "start",
+          String(state.input.execution.port),
+          execution.name,
+          "--gateway",
+          name,
+        ],
+        "execution.log",
+      );
+      const port = state.input.execution.port;
+      await waitFor(() => verifyExecutionListener(directory, port));
+      await verifyExecutionBinding(state, execution);
+    }
+    if (state.input.relayImage) {
+      report("Starting execution relay…");
+      relayAttempted = true;
+      await compose(directory, ["up", "-d", "execution-relay"]);
+      if (state.input.browser) {
+        const browserPort = state.input.browser.port;
+        await waitFor(() => verifyBrowserListener(directory, browserPort));
+      }
+      await monitorComposeServices(
+        directory,
+        [
+          "execution-relay",
+          ...(state.input.browser
+            ? (["browser", "browser-egress"] as const)
+            : []),
+        ],
+        spawn,
+      );
+    }
+    report("Starting OpenClaw…");
+    runtimeAttempted = true;
+    const runtime = await ensureRuntime(directory, state, env);
+    check();
+    for (const [label, port] of [
+      ["application", state.input.ports.native],
+      ["widgets", state.input.ports.nativeWidgets],
+    ] as const)
+      await spawn(
+        state.input.openshellCli,
+        ["forward", "start", String(port), name, "--gateway", name],
+        `${label}.log`,
+      );
+    await waitFor(async () => {
+      const response = await fetch(
+        `http://127.0.0.1:${String(state.input.ports.native)}/healthz`,
+        { signal: AbortSignal.timeout(3000) },
+      );
+      if (!response.ok)
+        throw new LocalSetupError(
+          "native_unavailable",
+          "OpenClaw has not become healthy.",
+        );
+      await response.body?.cancel();
+    });
+    await verifyRuntimeBinding(state, runtime);
+    if (state.input.browser) {
+      report("Starting native browser node…");
+      await startBrowserNode(directory, state, cancellation.signal);
+      await monitorComposeServices(
+        directory,
+        ["browser-node", "browser-node-ingress", "browser-node-dns"],
+        spawn,
+      );
+    }
+    report(
+      state.input.team
+        ? "Starting company access…"
+        : "Starting access and verifying administrator…",
+    );
+    await compose(directory, ["up", "-d", "--wait", "companion"]);
+    await monitorComposeServices(directory, ["companion", "postgres"], spawn);
+    if (state.input.team) {
+      await waitFor(() =>
+        probeTeamAccess(
+          directory,
+          state.input,
+          AbortSignal.any([cancellation.signal, AbortSignal.timeout(3000)]),
+        ),
+      );
+      check();
+      report(`Open ${state.input.team.origin}/_clawscarf/team/
+Sign in as the configured administrator to verify access and enroll your team.
+Press Ctrl+C to stop. Your data will be retained.`);
+    } else {
+      const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
       await waitFor(async () => {
-        const response = await fetch(
-          `http://127.0.0.1:${String(state.input.ports.native)}/healthz`,
-          { signal: AbortSignal.timeout(3000) },
-        );
+        const response = await fetch(origin + "/_clawscarf/health", {
+          signal: AbortSignal.timeout(3000),
+        });
         if (!response.ok)
           throw new LocalSetupError(
             "native_unavailable",
-            "OpenClaw has not become healthy.",
+            "The access companion has not become healthy.",
           );
         await response.body?.cancel();
       });
-      await verifyRuntimeBinding(state, runtime);
-      if (state.input.browser) {
-        report("Starting native browser node…");
-        await startBrowserNode(directory, state, cancellation.signal);
-        await monitorComposeServices(
-          directory,
-          ["browser-node", "browser-node-ingress", "browser-node-dns"],
-          spawn,
-        );
-      }
-      report(
-        state.input.team
-          ? "Starting company access…"
-          : "Starting access and verifying administrator…",
+      // This may create a one-use login, so it is deliberately not retried by waitFor.
+      await verifyLocalAdministrator(
+        directory,
+        origin,
+        AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
       );
-      await compose(directory, ["up", "-d", "--wait", "companion"]);
-      await monitorComposeServices(directory, ["companion", "postgres"], spawn);
-      if (state.input.team) {
-        await waitFor(() =>
-          probeTeamAccess(
-            directory,
-            state.input,
-            AbortSignal.any([cancellation.signal, AbortSignal.timeout(3000)]),
-          ),
-        );
-        check();
-        report(`Open ${state.input.team.origin}/_clawscarf/team/
-Sign in as the configured administrator to verify access and enroll your team.
-Press Ctrl+C to stop. Your data will be retained.`);
-      } else {
-        const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
-        await waitFor(async () => {
-          const response = await fetch(origin + "/_clawscarf/health", {
-            signal: AbortSignal.timeout(3000),
-          });
-          if (!response.ok)
-            throw new LocalSetupError(
-              "native_unavailable",
-              "The access companion has not become healthy.",
-            );
-          await response.body?.cancel();
-        });
-        // This may create a one-use login, so it is deliberately not retried by waitFor.
-        await verifyLocalAdministrator(
-          directory,
-          origin,
-          AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
-        );
-        check();
-        const login = await localLoginCode(directory);
-        report(
-          `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
-        );
-      }
-      await control.activate?.();
       check();
-      control.onReady?.();
-      await Promise.race([
-        signal.promise,
-        ...children.map((child) => child.done),
-      ]);
-      if (!lifetime.stopped)
-        throw new LocalSetupError(
-          "process_exited",
-          "A required local process exited. Inspect this installation's private logs.",
-        );
-    } catch (error) {
-      failure =
-        error instanceof Error
-          ? error
-          : new LocalSetupError(
-              "startup_failed",
-              "Local startup could not be verified. Inspect this installation before retrying.",
-            );
-    } finally {
-      report("Stopping local services; retaining data…");
-      const errors: unknown[] = [];
-      try {
-        await compose(directory, [
-          "stop",
-          "companion",
-          ...(state.input.browser
-            ? ["browser-node", "browser-node-ingress", "browser-node-dns"]
-            : []),
-        ]);
-      } catch (error) {
-        errors.push(error);
-      }
-      for (const child of children.slice(1).reverse()) {
-        if ((await child.stop()).kind === "failed")
-          errors.push(Error("Forward cleanup failed."));
-      }
-      if (runtimeAttempted)
-        try {
-          await stopRuntime(directory, state, env);
-        } catch (error) {
-          errors.push(error);
-        }
-      if (executionAttempted)
-        try {
-          await stopExecutionRuntime(directory, state, env);
-        } catch (error) {
-          errors.push(error);
-        }
-      if (relayAttempted)
-        try {
-          await compose(directory, [
-            "stop",
-            "execution-relay",
-            ...(state.input.browser ? ["browser", "browser-egress"] : []),
-          ]);
-        } catch (error) {
-          errors.push(error);
-        }
-      const first = children[0];
-      if (first && (await first.stop()).kind === "failed")
-        errors.push(Error("Controller cleanup failed."));
-      try {
-        await compose(directory, [
-          "stop",
-          "postgres",
-          ...(state.input.modelGateway ? ["models", "models-database"] : []),
-        ]);
-      } catch (error) {
-        errors.push(error);
-      }
-      if (errors.length) {
-        report(
-          "Some local services could not be confirmed stopped. Inspect this installation before restarting; data was retained.",
-        );
-        failure ??= new LocalSetupError(
-          "cleanup_failed",
-          "Local cleanup did not confirm every service stopped.",
-        );
-      }
-      control.signal?.removeEventListener("abort", stopSignal);
-      process.off("SIGINT", stopSignal);
-      process.off("SIGTERM", stopSignal);
+      const login = await localLoginCode(directory);
+      report(
+        `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
+      );
     }
-    if (failure) throw failure;
-  });
+    await control.activate?.();
+    check();
+    control.onReady?.();
+    await Promise.race([
+      signal.promise,
+      ...children.map((child) => child.done),
+    ]);
+    if (!lifetime.stopped)
+      throw new LocalSetupError(
+        "process_exited",
+        "A required local process exited. Inspect this installation's private logs.",
+      );
+  } catch (error) {
+    failure =
+      error instanceof Error
+        ? error
+        : new LocalSetupError(
+            "startup_failed",
+            "Local startup could not be verified. Inspect this installation before retrying.",
+          );
+  } finally {
+    report("Stopping local services; retaining data…");
+    const errors: unknown[] = [];
+    try {
+      await compose(directory, [
+        "stop",
+        "companion",
+        ...(state.input.browser
+          ? ["browser-node", "browser-node-ingress", "browser-node-dns"]
+          : []),
+      ]);
+    } catch (error) {
+      errors.push(error);
+    }
+    for (const child of children.slice(1).reverse()) {
+      if ((await child.stop()).kind === "failed")
+        errors.push(Error("Forward cleanup failed."));
+    }
+    if (runtimeAttempted)
+      try {
+        await stopRuntime(directory, state, env);
+      } catch (error) {
+        errors.push(error);
+      }
+    if (executionAttempted)
+      try {
+        await stopExecutionRuntime(directory, state, env);
+      } catch (error) {
+        errors.push(error);
+      }
+    if (relayAttempted)
+      try {
+        await compose(directory, [
+          "stop",
+          "execution-relay",
+          ...(state.input.browser ? ["browser", "browser-egress"] : []),
+        ]);
+      } catch (error) {
+        errors.push(error);
+      }
+    const first = children[0];
+    if (first && (await first.stop()).kind === "failed")
+      errors.push(Error("Controller cleanup failed."));
+    try {
+      await compose(directory, [
+        "stop",
+        "postgres",
+        ...(state.input.modelGateway ? ["models", "models-database"] : []),
+      ]);
+    } catch (error) {
+      errors.push(error);
+    }
+    if (errors.length) {
+      report(
+        "Some local services could not be confirmed stopped. Inspect this installation before restarting; data was retained.",
+      );
+      failure ??= new LocalSetupError(
+        "cleanup_failed",
+        "Local cleanup did not confirm every service stopped.",
+      );
+    }
+    control.signal?.removeEventListener("abort", stopSignal);
+    process.off("SIGINT", stopSignal);
+    process.off("SIGTERM", stopSignal);
+  }
+  if (failure) throw failure;
 }
