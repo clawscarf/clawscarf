@@ -1,3 +1,4 @@
+import { monitorComposeServices } from "./service-monitors.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
 import { verifyBrowserNode } from "./browser-node.js";
 import { verifyRelayConfiguration } from "./relay.js";
@@ -156,6 +157,11 @@ export async function launchLocal(
           "120",
           "models",
         ]);
+        await monitorComposeServices(
+          directory,
+          ["models", "models-database"],
+          spawn,
+        );
         check();
       }
       if (state.input.execution) {
@@ -230,16 +236,11 @@ export async function launchLocal(
       if (state.input.browser) {
         report("Starting native browser node…");
         await startBrowserNode(directory, state, cancellation.signal);
-        for (const service of [
-          "browser-node",
-          "browser-node-ingress",
-          "browser-node-dns",
-        ])
-          await spawn(
-            "docker",
-            ["compose", "-f", join(directory, "compose.json"), "wait", service],
-            `${service}-wait.log`,
-          );
+        await monitorComposeServices(
+          directory,
+          ["browser-node", "browser-node-ingress", "browser-node-dns"],
+          spawn,
+        );
       }
       report(
         state.input.team
@@ -247,12 +248,7 @@ export async function launchLocal(
           : "Starting access and verifying administrator…",
       );
       await compose(directory, ["up", "-d", "--wait", "companion"]);
-      for (const service of ["companion", "postgres"])
-        await spawn(
-          "docker",
-          ["compose", "-f", join(directory, "compose.json"), "wait", service],
-          `${service}-wait.log`,
-        );
+      await monitorComposeServices(directory, ["companion", "postgres"], spawn);
       if (state.input.team) {
         await waitFor(() =>
           probeTeamAccess(

@@ -36,8 +36,8 @@ The image includes:
   at `/app/clawscarf/configure-connections-main.js`, and the launcher's scoped credential
   loader. The [local activation procedure](../local/README.md#activate-connections)
   owns their use; provider keys are never supplied to these helpers.
-- The [model configuration helper](../../runtime/models.ts), at
-  `/app/clawscarf/models.ts`, for applying a scoped gateway credential and selected
+- The compiled [model configuration helper](../../runtime/models.ts), at
+  `/app/clawscarf/models-main.js`, for applying a scoped gateway credential and selected
   native model settings through authenticated operator access.
 - The compiled [pack tool](../../packs/README.md) at `/app/clawscarf/bin/packs`
   and included research pack at `/app/clawscarf/packs/research-team`. Its

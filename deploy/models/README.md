@@ -1,8 +1,8 @@
 # Model gateways
 
 OpenClaw uses its native OpenAI-compatible provider support. Choose an existing
-existing LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
-No RawClaw service, account, inference proxy or billing hook is required.
+LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
+No external hosting control plane or billing hook is required.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
 For a new local installation, [initial model setup](../local/README.md#initial-model-setup)
@@ -27,7 +27,8 @@ Disabled models are excluded. A null `defaultModel` preserves the current defaul
 For the OpenShell deployment, run the host command from this checkout with its
 Node/pnpm dependencies. Select the controller's isolated XDG configuration as in
 [controller setup](../openshell/README.md#contributor-controller-setup). The runtime
-image contains the dependency-free [configuration helper](../../runtime/models.ts);
+image contains the compiled [configuration helper](../../runtime/models.ts) and its
+pinned Zod validation dependency;
 it does not need this checkout or pnpm. Supply a scoped runtime key, never a
 LiteLLM master or upstream-provider key:
 
@@ -64,6 +65,10 @@ retain their selected model; this command does not rewrite conversations. Native
 config validation/reload owns runtime activation. Check the effective model in
 OpenClaw before using it. Repeating the confirmed command deliberately reapplies
 those same selected settings; there is no background configuration controller.
+The runtime helper validates a strict request and returns structured outcomes.
+Invalid input/state, unavailable execution and rejected validation are distinct
+from an uncertain apply. Lost or malformed execution responses remain uncertain
+after dispatch; the controller never retries a mutation automatically.
 Dry-run leaves native configuration unchanged and removes its temporary credential.
 A confirmed or uncertain apply retains its private credential generation; previous
 generations are retained because a live Gateway may still be using them while it
@@ -75,7 +80,7 @@ success.
 user configuration or revoke an already-issued key. Revoke the key explicitly when
 retiring gateway access, then select another model in OpenClaw.
 
-## Optional LiteLLM
+## Bundled LiteLLM
 
 [compose.yaml](compose.yaml) pins the donor's LiteLLM image. It exposes only a
 loopback port. A container/OpenShell runtime needs an explicitly authorized private
@@ -108,6 +113,11 @@ pnpm exec tsx scripts/models.ts issue-key --config /private/models.json --origin
 pnpm exec tsx scripts/models.ts revoke-key --origin http://127.0.0.1:14000 --master-key-file /private/master-key --key-file /private/runtime-key --yes
 ```
 
+Both credential commands accept `--ca-file /private/management-ca.pem` for a
+private HTTPS management endpoint. The option adds explicit CA trust for that
+command; certificate and hostname verification remain enabled. Omit it for
+publicly trusted HTTPS or the loopback HTTP component example above.
+
 Issued keys have LiteLLM's `llm_api` type: inference only, with no administration
 access. The output file is created mode 0600 without overwrite; secrets never print.
 For rotation, issue a new key, replace the runtime secret, then revoke the old key.
@@ -124,6 +134,13 @@ Hosted admission, accounting, model inheritance and source-IP checks are omitted
 LiteLLM's own virtual-key authorization replaces that deployment-specific hook.
 See upstream [virtual keys](https://docs.litellm.ai/docs/proxy/virtual_keys) and
 [native LiteLLM provider](https://docs.openclaw.ai/providers/litellm).
+
+[Credential CLI tests](../../tests/models/credentials.test.ts) exercise issuance and
+revocation against a local HTTPS server: missing CA trust fails before either
+request, explicit trust succeeds, and scoped credentials do not print.
+[Runtime failure tests](../../tests/models/runtime-errors.test.ts) cover strict
+input validation, definite dry-run failure, missing executables, uncertain applies,
+credential retention and structured failure transport without replay.
 
 [Native tests](../../tests/models/native.test.ts) passed against OpenClaw 2026.9.4:
 validation without writes, atomic application, customer provider/default fallback

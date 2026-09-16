@@ -19,9 +19,6 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Selected cleanup — implementation and independent review
 
-- [ ] Support private model-gateway CA trust throughout credential CLI commands; supervise
-      enabled model services after startup.
-- [ ] Use strict model runtime envelopes and structured failure outcomes.
 - [ ] Verify pack execution requirements on the worker and bind both runtime identities.
 
 ## Next installation slices — select before implementation

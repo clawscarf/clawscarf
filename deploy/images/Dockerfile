@@ -53,8 +53,8 @@ USER root
 WORKDIR /build/runtime-tools
 COPY deploy/images/pack-tools/package*.json ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY runtime/initialize.ts runtime/initialize-main.ts runtime/initialize-worker.ts runtime/initialize-worker-main.ts runtime/initialize-browser.ts runtime/initialize-browser-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/connections-configuration.ts runtime/configure-connections.ts runtime/configure-connections-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
-RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out initialize.ts initialize-main.ts initialize-worker.ts initialize-worker-main.ts initialize-browser.ts initialize-browser-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts connections-configuration.ts configure-connections.ts configure-connections-main.ts start-gate.ts start-gate-main.ts
+COPY runtime/models.ts runtime/models-main.ts runtime/model-contract.ts runtime/initialize.ts runtime/initialize-main.ts runtime/initialize-worker.ts runtime/initialize-worker-main.ts runtime/initialize-browser.ts runtime/initialize-browser-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/connections-configuration.ts runtime/configure-connections.ts runtime/configure-connections-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out models.ts models-main.ts model-contract.ts initialize.ts initialize-main.ts initialize-worker.ts initialize-worker-main.ts initialize-browser.ts initialize-browser-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts connections-configuration.ts configure-connections.ts configure-connections-main.ts start-gate.ts start-gate-main.ts
 
 FROM upstream
 LABEL io.clawscarf.start-gate="1"
@@ -73,7 +73,7 @@ COPY --from=network-tools /out/runtime/ /
 COPY --from=native-plugins /build/native-plugins /app/clawscarf/native-plugins
 COPY --from=access /out /app/clawscarf/access
 COPY --chmod=0755 runtime/openclaw.sh /app/clawscarf/bin/openclaw
-COPY runtime/models.ts /app/clawscarf/models.ts
+COPY --from=runtime-tools /build/runtime-tools/node_modules/zod /app/clawscarf/node_modules/zod
 COPY --from=runtime-tools /out/ /app/clawscarf/
 COPY release/licenses/ /usr/share/licenses/clawscarf/
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/

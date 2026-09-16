@@ -42,9 +42,9 @@ builds, the pinned controller tools, **macOS arm64 and Docker Desktop**. Check t
 
 Local evaluation requires no company IdP, public DNS, cloud account or VM allocation.
 The [team profile](deploy/local/README.md#team-profile) adds HTTPS and generic OIDC.
-Models, Connections and packs are explicit choices; without model configuration,
-the Gateway starts with outbound traffic denied. That policy is not a blanket
-network policy for every companion.
+The installer requires bundled or existing LiteLLM; Connections and packs are optional.
+Lower-level component tests can omit models, in which case the Gateway starts with
+outbound traffic denied. That policy is not a blanket network policy for every companion.
 
 ## Current verification and limits
 

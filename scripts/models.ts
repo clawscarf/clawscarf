@@ -1,3 +1,4 @@
+import { ModelConfigurationError } from "../runtime/model-contract.js";
 import { configureRuntimeModels } from "./models/runtime.js";
 import { Command } from "commander";
 import { writeFile } from "node:fs/promises";
@@ -77,6 +78,10 @@ program
   .requiredOption("--config <file>")
   .requiredOption("--origin <url>", "Private LiteLLM management origin")
   .requiredOption("--master-key-file <file>")
+  .option(
+    "--ca-file <file>",
+    "CA certificate for private LiteLLM management TLS",
+  )
   .requiredOption(
     "--output <file>",
     "New private file receiving only the runtime key",
@@ -86,6 +91,7 @@ program
       config: string;
       origin: string;
       masterKeyFile: string;
+      caFile?: string;
       output: string;
     }) => {
       await issueRuntimeCredential({
@@ -99,12 +105,17 @@ program
   .command("revoke-key")
   .requiredOption("--origin <url>")
   .requiredOption("--master-key-file <file>")
+  .option(
+    "--ca-file <file>",
+    "CA certificate for private LiteLLM management TLS",
+  )
   .requiredOption("--key-file <file>")
   .option("--yes", "Revoke this runtime credential")
   .action(
     async (options: {
       origin: string;
       masterKeyFile: string;
+      caFile?: string;
       keyFile: string;
       yes?: boolean;
     }) => {
@@ -115,9 +126,14 @@ program
   );
 try {
   await program.parseAsync();
-} catch {
-  process.stderr.write(
-    "Model configuration failed. Check the configuration, runtime credential and native CLI. No mutation is retried.\n",
-  );
+} catch (error) {
+  if (error instanceof ModelConfigurationError) {
+    process.stderr.write(
+      `Model configuration failed (${error.code}).${error.code === "outcome_unknown" ? " Inspect native settings before retrying an apply." : ""}\n`,
+    );
+  } else
+    process.stderr.write(
+      "Model configuration failed. Check the configuration, runtime credential and native CLI. No mutation is retried.\n",
+    );
   process.exitCode = 1;
 }

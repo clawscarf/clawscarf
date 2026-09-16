@@ -145,7 +145,7 @@ uses an explicit supported transport binding; it must not infer trust from heade
 | Access      | Local operator login; generic OIDC; external platform identity/entry                                                 | Local/OIDC work today. A company IdP is not an admission list. External mode must not start a second login authority or People database.                                                                  |
 | Resources   | Gateway/worker CPU and memory, within qualified host limits                                                          | Both components are required by the product design. Sizing changes neither execution engine nor protection.                                                                                               |
 | Browser     | Disabled; protected shared native browser node                                                                       | Existing node/Chromium components; enabled browsing retains its sandbox and restricted transport. Upstream target-selection issue remains owner-managed.                                                  |
-| Models      | Disabled; existing gateway; local LiteLLM                                                                            | Config/render/apply and gateway components exist. Initial local LiteLLM lifecycle and secret delivery are wired; unified reconfiguration/rotation remain.                                                 |
+| Models      | Existing LiteLLM; bundled LiteLLM                                                                                    | Config/render/apply and gateway components exist. Initial local LiteLLM lifecycle and secret delivery are wired; unified reconfiguration/rotation remain.                                                 |
 | Connections | Disabled; existing broker; local service with Composio                                                               | Existing modules/plugin/catalog and activation path. Initial unified activation is wired; real external-account acceptance remains. Local mode uses the existing companion, not a new service extraction. |
 | Packs       | Explicit versioned selections plus member/prerequisite bindings                                                      | Native Claws group manifest and preview/apply exist. Initial explicit group/member selections compose them; changes use the component pack operator.                                                      |
 | Storage     | Owned Docker volumes; host-supplied directory tree                                                                   | Docker volumes exist. Directory-backed state needs mount/UID/ownership support before hosted use. ZFS is not required by ClawScarf.                                                                       |
@@ -164,8 +164,8 @@ that combination needs the separately deferred authentication/service integratio
 It must not silently start a second Access service. External exposure and standalone
 OIDC are not interchangeable: a generic reverse proxy alone does not implement the
 platform binding. Unsupported combinations fail validation before resource allocation.
-Managed models remain optional in all three deployments; where local LiteLLM is
-selected, its complete private transport/credential prerequisites remain mandatory.
+Managed inference requires LiteLLM in all three deployments. Bundled and externally
+operated LiteLLM must satisfy their transport, credential and model-catalog prerequisites.
 
 For `models.mode: litellm`, reference the current route configuration and a private
 upstream-key environment file. Compose the pinned LiteLLM service, private transport,

@@ -1,3 +1,8 @@
+import {
+  modelResultSchema,
+  ModelConfigurationError,
+  type ModelState,
+} from "../../runtime/model-contract.js";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { nativeAssignments, type ModelConfiguration } from "./configuration.js";
@@ -14,7 +19,7 @@ export async function configureRuntimeModels(options: {
   if (!assignments.length) return "disabled";
   const token = (await readFile(options.keyFile, "utf8")).trim();
   if (!token || token.length > 65536)
-    throw Error("A scoped runtime key is required.");
+    throw new ModelConfigurationError("invalid_input");
   const ca = options.caFile ? await readFile(options.caFile, "utf8") : null;
   const input = JSON.stringify({
     assignments,
@@ -22,9 +27,7 @@ export async function configureRuntimeModels(options: {
     ca,
     apply: options.apply,
   });
-  return await new Promise<
-    "configured" | "configured_restart_required" | "validated"
-  >((resolve, reject) => {
+  return await new Promise<ModelState>((resolve, reject) => {
     let output = "";
     const child = spawn(
       options.openshell,
@@ -40,31 +43,52 @@ export async function configureRuntimeModels(options: {
         "45",
         "--",
         "node",
-        "/app/clawscarf/models.ts",
+        "/app/clawscarf/models-main.js",
       ],
       { stdio: ["pipe", "pipe", "ignore"], timeout: 60000 },
     );
+    let spawned = false;
+    const transportFailure = () =>
+      new ModelConfigurationError(
+        options.apply && spawned ? "outcome_unknown" : "unavailable",
+      );
+    child.once("spawn", () => {
+      spawned = true;
+    });
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
       output += chunk;
       if (output.length > 1024) {
         child.kill();
-        reject(Error("Unexpected runtime output."));
+        reject(transportFailure());
       }
     });
-    child.once("error", reject);
-    child.stdin.on("error", reject);
+    child.once("error", () => {
+      reject(transportFailure());
+    });
+    child.stdin.on("error", () => {
+      reject(transportFailure());
+    });
     child.once("close", (code) => {
-      const state = output.trim();
-      if (
-        code === 0 &&
-        (state === "configured" ||
-          state === "configured_restart_required" ||
-          state === "validated")
-      )
-        resolve(state);
-      else
-        reject(Error("Runtime configuration failed; inspect before retrying."));
+      try {
+        const value: unknown = JSON.parse(output);
+        const result = modelResultSchema.safeParse(value);
+        if (!result.success) {
+          reject(transportFailure());
+          return;
+        }
+        if (!result.data.ok) {
+          reject(new ModelConfigurationError(result.data.error));
+          return;
+        }
+        if (code !== 0) {
+          reject(transportFailure());
+          return;
+        }
+        resolve(result.data.state);
+      } catch {
+        reject(transportFailure());
+      }
     });
     child.stdin.end(input);
   });

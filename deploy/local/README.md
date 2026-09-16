@@ -367,7 +367,9 @@ automatically. Later startup verifies access without reapplying those native set
 
 Ctrl+C stops the companion, forwards, runtime, controller and database; the directory,
 volumes and reserved networks remain. Process-group supervision also cleans up SSH children after a forward
-exits. Companion/Postgres exits are monitored through Compose, and signal handling
+exits. Companion/Postgres and enabled LiteLLM/model-database exits are monitored through
+Compose. Any required service exit ends the foreground lifetime and triggers retained-data
+shutdown; these monitors do not imply continuous application-health checks. Signal handling
 remains active throughout cleanup. Only one foreground owner can run for an installation.
 This is a local evaluation process, not a daemon/service installation or unattended
 recovery system.
