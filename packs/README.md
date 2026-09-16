@@ -39,7 +39,7 @@ Keep the Gateway running for native removal, including monitor cleanup. Plans an
 workspaces are written to the persistent home volume, never the image.
 
 For development with a local OpenClaw **2026.9.4** installation, invoke
-`pnpm exec tsx scripts/packs.ts` in place of `pack`, using the normal native
+`pnpm clawscarf packs` in place of `pack`, using the normal native
 `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH`. That source command is not required
 inside the packaged runtime.
 
@@ -73,11 +73,11 @@ released official OpenShell Python SDK using the [hashed dependency lock](../scr
 uv venv --python 3.12 .local/pack-operator
 uv pip sync --python .local/pack-operator/bin/python scripts/packs/requirements.txt
 export OPENCLAW_EXPERIMENTAL_CLAWS=1
-pnpm packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
+pnpm clawscarf packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
   --python .local/pack-operator/bin/python \
   add /path/to/pack --member assistant --workspace /home/node/workspaces/assistant \
   --bindings /private/bindings.json --plan /private/assistant-plan.json
-pnpm packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
+pnpm clawscarf packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
   --python .local/pack-operator/bin/python \
   apply /private/assistant-plan.json --bindings /private/bindings.json --yes
 ```

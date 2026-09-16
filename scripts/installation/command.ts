@@ -1,6 +1,12 @@
+import { modelsCommand } from "../models/command.js";
+import { packsCommand } from "../packs/command.js";
+import {
+  configurationInput,
+  initialConfiguration,
+} from "../../runtime/configuration.js";
 import { createDevelopmentRelease } from "../release/create.js";
 import { Command } from "commander";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { planInstallation, applyInstallation } from "./plan.js";
 import {
@@ -216,6 +222,26 @@ export function installationCommand() {
           credentialFile: options.credentialFile,
         }),
       );
+    });
+  program.addCommand(modelsCommand());
+  program.addCommand(packsCommand());
+  program
+    .command("config")
+    .description("Render native configuration from an explicit preset")
+    .command("render-native")
+    .requiredOption("--input <file>", "Preset JSON")
+    .requiredOption("--output <file>", "New native configuration file")
+    .action(async (options: { input: string; output: string }) => {
+      const config = initialConfiguration(
+        configurationInput.parse(
+          JSON.parse(await readFile(options.input, "utf8")),
+        ),
+      );
+      await writeFile(options.output, JSON.stringify(config, null, 2) + "\n", {
+        flag: "wx",
+        mode: 0o600,
+      });
+      output({ state: "created", file: options.output });
     });
   return program;
 }

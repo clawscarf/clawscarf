@@ -56,7 +56,8 @@ await test("credential CLI issues and revokes over private TLS only with the tru
     const issue = [
       "--import",
       "tsx",
-      "scripts/models.ts",
+      "scripts/clawscarf.ts",
+      "models",
       "issue-key",
       "--config",
       "deploy/models/config.example.json",
@@ -73,7 +74,8 @@ await test("credential CLI issues and revokes over private TLS only with the tru
     const revoke = [
       "--import",
       "tsx",
-      "scripts/models.ts",
+      "scripts/clawscarf.ts",
+      "models",
       "revoke-key",
       ...common,
       "--key-file",

@@ -39,8 +39,6 @@ const payload = [
   "scripts/release/create.js",
   "scripts/release/definition.js",
   "scripts/controller.js",
-  "scripts/models.js",
-  "scripts/packs.js",
   "scripts/local",
   "scripts/models",
   "scripts/packs",
@@ -90,8 +88,6 @@ export async function packageOperator(root: string, destination: string) {
       [
         "scripts/clawscarf.js",
         "scripts/controller.js",
-        "scripts/models.js",
-        "scripts/packs.js",
         "services/connections/credential-command.js",
       ],
       {
@@ -99,8 +95,6 @@ export async function packageOperator(root: string, destination: string) {
         scripts: {
           clawscarf: "node scripts/clawscarf.js",
           controller: "node scripts/controller.js",
-          models: "node scripts/models.js",
-          packs: "node scripts/packs.js",
           "connections-credential":
             "node services/connections/credential-command.js",
         },

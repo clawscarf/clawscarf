@@ -35,8 +35,8 @@ it does not need this checkout or pnpm. Supply a scoped runtime key, never a
 LiteLLM master or upstream-provider key:
 
 ```sh
-pnpm exec tsx scripts/models.ts configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem
-pnpm exec tsx scripts/models.ts configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem --yes
+pnpm clawscarf models configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem
+pnpm clawscarf models configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem --yes
 ```
 
 Omit `--ca-file` for a gateway with a publicly trusted certificate. The controller
@@ -98,7 +98,7 @@ to that directory as `gateway.env`, mode 0600, and replace every example value.
 material. Both and upstream provider credentials stay in this companion only.
 
 ```sh
-pnpm exec tsx scripts/models.ts render --config /private/models.json --output /private/gateway/models.json
+pnpm clawscarf models render --config /private/models.json --output /private/gateway/models.json
 CLAWSCARF_MODELS_DIRECTORY=/private/gateway docker compose -f deploy/models/compose.yaml up -d
 ```
 
@@ -111,8 +111,8 @@ Use LiteLLM's built-in key management to issue a runtime key limited to the enab
 model IDs. Put the administrator key alone in a separate private file for the CLI:
 
 ```sh
-pnpm exec tsx scripts/models.ts issue-key --config /private/models.json --origin http://127.0.0.1:14000 --master-key-file /private/master-key --output /private/runtime-key
-pnpm exec tsx scripts/models.ts revoke-key --origin http://127.0.0.1:14000 --master-key-file /private/master-key --key-file /private/runtime-key --yes
+pnpm clawscarf models issue-key --config /private/models.json --origin http://127.0.0.1:14000 --master-key-file /private/master-key --output /private/runtime-key
+pnpm clawscarf models revoke-key --origin http://127.0.0.1:14000 --master-key-file /private/master-key --key-file /private/runtime-key --yes
 ```
 
 Both credential commands accept `--ca-file /private/management-ca.pem` for a

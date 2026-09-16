@@ -3,7 +3,7 @@
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Gateway, worker and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset. Generate a
-new file with `node --import tsx scripts/runtime-config.ts --input setup.json
+new file with `pnpm clawscarf config render-native --input setup.json
 --output openclaw.json`. The input contains `publicOrigin`, `widgetOrigin` and the
 exact `administratorIdentity` produced by the [access service](../services/access/README.md)
 or a hosting platform's trusted ingress. The preset does not assign an identity

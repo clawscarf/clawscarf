@@ -16,8 +16,8 @@ pnpm 10.33.0. In the extracted `package` directory:
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
 node scripts/clawscarf.js install --release /absolute/clawscarf-release.json --directory /absolute/new-team
-node scripts/models.js --help
-node scripts/packs.js --help
+node scripts/clawscarf.js models --help
+node scripts/clawscarf.js packs --help
 node scripts/clawscarf.js connections --help
 node services/connections/credential-command.js --help
 ```

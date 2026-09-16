@@ -13,11 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **7. Consolidate model/pack command entry points.** Register existing model and
-      pack command factories under the public CLI and use its error presentation;
-      remove independent operator parsers/entry points. Keep the tiny pack executable
-      required inside the runtime image. Move the documented native-preset renderer
-      under the public CLI without introducing another configuration implementation.
 - [ ] **8. Remove Connections algorithm duplication and file fragmentation.** Share
       the repeated JSON traversal/canonicalization currently in domain validation,
       catalog artifacts and Composio wire handling; preserve each boundary's limits

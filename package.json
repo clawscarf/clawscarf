@@ -36,8 +36,6 @@
     "access:plugin:setup": "npm --prefix plugins/access ci --ignore-scripts",
     "access:plugin:build": "npm --prefix plugins/access run build",
     "access:plugin:check": "npm --prefix plugins/access run check && npm --prefix plugins/access run validate",
-    "packs": "node --import tsx scripts/packs.ts",
-    "models": "node --import tsx scripts/models.ts",
     "companion:start": "node --import tsx apps/companion/entry.ts",
     "clawscarf": "node --import tsx scripts/clawscarf.ts"
   },

@@ -85,12 +85,7 @@ await test(
         maxBuffer: 4 * 1024 * 1024,
       },
     );
-    for (const command of [
-      "clawscarf",
-      "controller",
-      "models",
-      "packs",
-    ]) {
+    for (const command of ["clawscarf", "controller"]) {
       const { stdout } = await execute(
         process.execPath,
         [`scripts/${command}.js`, "--help"],
@@ -100,6 +95,8 @@ await test(
     }
     for (const args of [
       ["scripts/clawscarf.js", "install", "--help"],
+      ["scripts/clawscarf.js", "packs", "--help"],
+      ["scripts/clawscarf.js", "config", "render-native", "--help"],
       ["scripts/clawscarf.js", "connections", "configure", "--help"],
       ["services/connections/credential-command.js", "--help"],
     ]) {
@@ -129,7 +126,8 @@ await test(
     await execute(
       process.execPath,
       [
-        "scripts/models.js",
+        "scripts/clawscarf.js",
+        "models",
         "render",
         "--config",
         configuration,
