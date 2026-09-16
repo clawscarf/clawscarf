@@ -77,9 +77,10 @@ preparation and lifecycle. A fresh macOS arm64 installation passed local browser
 administrator bootstrap, protected worker access and stop/restart with native settings
 and worker files retained. Initial optional models/Connections and pack selections are implemented; retained-install
 capability reconfiguration and publication remain in TODO. The terminal installer
-collects supported initial settings and uses the same preview/apply/start operators;
+offers release-bundled recipes and revisitable settings, with the same configuration
+and preview/apply/start operators available noninteractively;
 it requires a prepared release and refuses existing installation directories.
-The [v1 design and concrete examples](docs/installation-interface.md) define the target
+The [installation design and concrete examples](docs/installation-interface.md) define the target
 configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
 boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;
 the [component operator guide](deploy/local/README.md) retains lower-level commands.

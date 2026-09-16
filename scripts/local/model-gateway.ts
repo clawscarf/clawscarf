@@ -1,11 +1,11 @@
+import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
-import { z } from "zod";
 import {
   configurationSchema,
-  modelSchema,
+  gatewayRoutesSchema,
   liteLlmConfiguration,
 } from "../models/configuration.js";
 import { issueRuntimeCredential } from "../models/credentials.js";
@@ -17,12 +17,9 @@ export async function loadGatewayConfiguration(
   configurationFile: string,
   environmentFile: string,
 ) {
-  const routes = z
-    .strictObject({
-      models: z.array(modelSchema).min(1).max(512),
-      defaultModel: z.string().min(1),
-    })
-    .parse(JSON.parse(await readFile(configurationFile, "utf8")));
+  const routes = gatewayRoutesSchema.parse(
+    JSON.parse(await readFile(configurationFile, "utf8")),
+  );
   const configuration = configurationSchema.parse({
     ...routes,
     mode: "litellm",

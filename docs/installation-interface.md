@@ -1,4 +1,4 @@
-# Installation interface — proposed v1
+# Installation design
 
 This describes the target installation interface. The [unified CLI guide](../deploy/local/installation.md)
 owns implemented commands and limits; the complete interface below is not yet implemented. [TODO.md](../TODO.md) owns selection and unfinished work. Initial terminal
@@ -12,7 +12,7 @@ collect choices and generate it, or a hosting platform can generate it unattende
 All use the same validation, preview and application implementation.
 
 The document configures an agreed foundation; it does not choose that foundation.
-The fixed v1 consists of vanilla OpenClaw under externally controlled OpenShell,
+The required foundation consists of vanilla OpenClaw under externally controlled OpenShell,
 a separate OpenShell-protected shared execution worker, and authenticated entry with
 admission and session revocation. Neither recipes nor the installer offer switches
 for these protections or alternative execution engines. Controller credentials stay
@@ -230,7 +230,7 @@ An installation is identified by persisted ownership, not its display name or JS
 filename. Deleting the document never deletes volumes. There is no continuously
 running desired-state reconciler that undoes native administration.
 
-## Login and People: recommendation to decide before implementation
+## Login and People
 
 There are two different jobs:
 
@@ -248,7 +248,7 @@ There are two different jobs:
    Existing native enrollment/removal handles approval and revocation; OpenClaw owns
    role editing. No SMTP, directory sync or invitation platform is necessary for this.
 
-These are proposed UX choices, not already implemented promises. An explicit known
+The first-administrator owner-claim flow is selected but unfinished. Ongoing enrollment remains a separate choice. An explicit known
 issuer/subject bootstrap remains useful for unattended automation. If request/approve
 is undesirable, an administrator-created single-use invite link is an alternative;
 choose one first rather than implementing both. Standalone local evaluation can remain
@@ -267,8 +267,9 @@ Consumer-specific adoption plans belong in the consumer repository.
 
 ## Recipes, packs and the installer
 
-Keep three starter recipes as ordinary complete configuration examples: local
-operator evaluation, standalone OIDC team, and externally managed hosting. They may
+Release files bundle validated recipe definitions from [deploy/recipes](../deploy/recipes/README.md).
+The initial Team documents recipe is illustrative; Custom supplies baseline settings.
+Local versus OIDC access is a configuration section, not a separate application recipe. They may
 select packs, but have no inheritance, template expressions, arbitrary shell hooks,
 recipe registry or separate application lifecycle. Every recipe retains the same
 OpenShell/worker/entry foundation. The installer copies/generates one complete document;
@@ -281,19 +282,23 @@ The implemented selection uses an explicit source directory and members,
 `{ "directory": "./packs/research-team", "members": ["researcher", "reviewer"] }`
 in `packs`; these members are native agent packages, not people. The preview fingerprints
 the source content. Release-indexed pack resolution remains future work.
-Installation previews prerequisites first. If an external account must be connected
-interactively, leave that pack visibly pending for explicit continuation; do not
-invent OAuth credentials, grant every agent access, or roll back the whole server.
+Installation previews prerequisites first. If a selected pack requires an external account, setup remains incomplete until that
+requirement is satisfied. Expose a resumable action; do not invent credentials, grant
+every agent access or report a fully working recipe from service startup alone.
 Only actual selected dependencies are requirements. A general pack marketplace is
 outside v1; existing native Claws remain experimental at the pinned release.
 
 The [current terminal installer](../deploy/local/installation.md#terminal-installer)
-uses an explicit release file, asks the supported access/exposure/integration questions,
-imports private credential files and writes configuration. It offers the same CLI preview,
-preparation and foreground startup, with readiness and login output. Existing directories
-are refused; a retained-install reconfiguration flow remains unfinished. The same complete
-document supports unattended deployment. Recipe selection and release downloading are
-future work, not additional installer behavior today.
+selects a release-owned recipe or Custom and presents revisitable configuration sections.
+Its settings and private-file writer are shared with noninteractive `configure`.
+Connections defaults to disabled; enabling it requires its existing provider/broker
+configuration. Account OAuth guidance is future work. Recipe defaults are copied once;
+no dynamic inheritance or generic script hooks are supported. The illustrative recipe
+records GPT-6 Astra / medium as a suggestion, not an applied or verified model route.
+A complete document supports both automated deployment and terminal preview/apply/start.
+Publishing, automatic release discovery, retained-install reconfiguration and the
+selected OIDC owner claim remain unfinished. Explicit `--release` and `--recipes`
+overrides support development without a source-selection menu.
 It never asks whether to use OpenShell, bypass authentication or disable sandbox
 protection. An unmet prerequisite produces a concrete failure, not a weaker preset.
 
@@ -302,7 +307,7 @@ protection. An unmet prerequisite produces a concrete failure, not a weaker pres
 Build the schema/preview/CLI around the existing local path first; add coherent
 external transport/storage contracts so a consumer does not need a competing design.
 Do not claim external hosting adoption until its adapter and one Linux hosted installation
-pass. Choose the standalone first-admin and People admission flow before changing
-Access. Initial optional integration and the first terminal installer are implemented;
+pass. Implement the selected first-admin claim separately; choose the ongoing People flow
+before changing enrollment. Initial optional integration and the first terminal installer are implemented;
 retained-install changes and release qualification remain unfinished. The owner-managed
 upstream browser issue stays outside this work.

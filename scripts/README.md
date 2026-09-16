@@ -45,9 +45,13 @@ The compiled operator includes the Access and Connections migrations, component 
 policy consumed by setup; the companion never runs setup migrations on startup.
 
 The [unified installation CLI](../deploy/local/installation.md) is in `installation/`.
-Its `installer/` module collects terminal answers, writes private initial configuration,
-and calls the same plan/doctor/apply/start functions. It has no separate provisioning
-engine. Run `pnpm clawscarf install` for the wizard or use the noninteractive commands.
+[Setup](installation/setup.ts) owns recipe defaults and section replacement;
+[configuration writing](installation/save.ts) owns private files. The `installer/sections/`
+modules collect feature-specific answers; shared prompts render the revisitable menu.
+`configure` uses the same defaults/writer without terminal prompts; `install` calls the
+same plan/doctor/apply/start functions. Neither has a separate provisioning engine.
+Recipes are bundled release data from [deploy/recipes](../deploy/recipes/README.md).
+Run `pnpm clawscarf install --release /absolute/clawscarf-release.json` during development.
 
 ## Operator archive
 

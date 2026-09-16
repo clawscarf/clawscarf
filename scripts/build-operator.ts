@@ -21,6 +21,7 @@ for (const path of [
   "services/access/migrations",
   "services/connections/migrations",
   "release/components.json",
+  "deploy/recipes",
   "deploy/openshell/policy.yaml",
   "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",

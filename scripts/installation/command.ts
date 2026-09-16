@@ -12,6 +12,8 @@ import { doctorInstallation } from "./doctor.js";
 import { localLoginCode } from "../local/login.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../local/upgrade.js";
+import { configureInstallation } from "./configure.js";
+import { setupContext, type SetupOptions } from "./setup.js";
 import { runInstaller } from "./installer/run.js";
 
 const output = (value: unknown) => {
@@ -26,9 +28,54 @@ export function installationCommand() {
     .description(
       "Interactively configure and optionally start a new installation",
     )
-    .option("--release <file>", "Explicit ClawScarf release file")
+    .option(
+      "--release <file>",
+      "Developer override: local ClawScarf release file",
+    )
+    .option(
+      "--recipes <directory>",
+      "Developer override: local recipe catalogue",
+    )
+    .option("--recipe <id>", "Starting recipe, or custom")
     .option("--directory <path>", "New private installation directory")
     .action(runInstaller);
+  program
+    .command("recipes")
+    .description("List the release's recipe defaults as JSON")
+    .option("--release <file>")
+    .option("--recipes <directory>")
+    .action(async (options: SetupOptions) => {
+      const context = await setupContext(options);
+      output({
+        release: context.release.version,
+        recipes: context.recipes,
+        custom: true,
+      });
+    });
+  program
+    .command("configure")
+    .description(
+      "Write a new installation configuration without prompts or provisioning",
+    )
+    .option("--release <file>")
+    .option("--recipes <directory>")
+    .requiredOption("--recipe <id>", "Recipe ID, or custom")
+    .requiredOption("--directory <path>", "New private installation directory")
+    .option(
+      "--settings <file>",
+      "JSON section overrides; input paths are relative to this file",
+    )
+    .action(
+      async (
+        options: SetupOptions & {
+          recipe: string;
+          directory: string;
+          settings?: string;
+        },
+      ) => {
+        output(await configureInstallation(options));
+      },
+    );
   program
     .command("release-create")
     .description(

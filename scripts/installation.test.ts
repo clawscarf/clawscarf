@@ -71,6 +71,7 @@ await test(
       version: "0.1.0",
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
+      recipes: [],
       images: {
         postgres: postgresImage,
         models: liteLlmImage,

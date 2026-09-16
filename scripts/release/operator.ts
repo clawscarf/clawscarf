@@ -42,6 +42,7 @@ const payload = [
   "services/connections/types/errors.js",
   "services/access/migrations",
   "release/components.json",
+  "deploy/recipes",
   "deploy/openshell/policy.yaml",
   "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",

@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { loadRecipes } from "../installation/recipes/load.js";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
@@ -30,6 +32,9 @@ export async function createDevelopmentRelease(options: {
     throw Error("A release requires the protected worker and relay.");
   const release = releaseSchema.parse({
     schemaVersion: 1,
+    recipes: await loadRecipes(
+      fileURLToPath(new URL("../../deploy/recipes", import.meta.url)),
+    ),
     version: options.version,
     sourceRevision: options.sourceRevision,
     platforms: ["darwin-arm64"],

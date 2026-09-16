@@ -11,6 +11,9 @@ export const installationSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
     name: localInput.shape.name,
+    recipe: z
+      .strictObject({ id: z.string().min(1), release: z.string().min(1) })
+      .optional(),
     releaseFile: path,
     stateDirectory: path,
     storage: z.strictObject({ mode: z.literal("docker-volumes") }),

@@ -16,6 +16,10 @@ export const modelSchema = z.strictObject({
     })
     .optional(),
 });
+export const gatewayRoutesSchema = z.strictObject({
+  models: z.array(modelSchema).min(1).max(512),
+  defaultModel: z.string().min(1),
+});
 export const configurationSchema = z
   .discriminatedUnion("mode", [
     z.strictObject({ mode: z.literal("disabled") }),

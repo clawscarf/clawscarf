@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recipesSchema } from "../installation/recipes/definition.js";
 
 import { liteLlmImage, postgresImage } from "../local/images.js";
 
@@ -13,6 +14,7 @@ const file = z.strictObject({ file: z.string().min(1), sha256: digest });
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
+  recipes: recipesSchema,
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
   platforms: z.array(z.literal("darwin-arm64")).min(1).max(1),
   images: z.strictObject({

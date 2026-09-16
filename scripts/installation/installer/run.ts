@@ -9,7 +9,7 @@ import {
   terminalPrompts,
   type InstallerPrompts,
 } from "./prompts.js";
-import { saveConfiguration } from "./inputs.js";
+import { saveConfiguration } from "../save.js";
 import { planInstallation, applyInstallation } from "../plan.js";
 import { doctorInstallation } from "../doctor.js";
 import { startInstallation } from "../lifecycle.js";
@@ -46,7 +46,7 @@ export async function installFromAnswers(
   operator = operations,
   task: typeof progress = async (_message, work) => work(),
 ) {
-  const { directory, config } = await collectInstallation(ui, options);
+  const { directory, config, inputs } = await collectInstallation(ui, options);
   ui.note(summary(config), "Installation");
   if (
     !(await ui.confirm(
@@ -54,7 +54,7 @@ export async function installFromAnswers(
     ))
   )
     return { state: "cancelled" };
-  const configFile = await saveConfiguration(directory, config);
+  const configFile = await saveConfiguration(directory, config, inputs);
   const planFile = join(directory, "preview.json");
   const stateDirectory = join(directory, "state");
   ui.note(
@@ -131,9 +131,7 @@ function quote(value: string) {
 export async function runInstaller(options: InstallOptions) {
   requireTerminal();
   clack.intro("ClawScarf — protected OpenClaw for your team");
-  clack.log.info(
-    "Initial installation only. Have Docker and the release's images/tools ready before preparing the server.",
-  );
+  clack.log.info("Choose a starting point, then review your settings.");
   try {
     const result = await installFromAnswers(
       options,

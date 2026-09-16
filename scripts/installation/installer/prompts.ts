@@ -11,7 +11,8 @@ export interface InstallerPrompts {
       value: string,
     ) => string | undefined | Promise<string | undefined>,
   ): Promise<string>;
-  select(message: string, choices: Choice[]): Promise<string>;
+  password(message: string): Promise<string>;
+  select(message: string, choices: Choice[], initial?: string): Promise<string>;
   multiselect(message: string, choices: Choice[]): Promise<string[]>;
   confirm(message: string): Promise<boolean>;
   note(message: string, title: string): void;
@@ -36,8 +37,22 @@ export const terminalPrompts: InstallerPrompts = {
       }),
     );
   },
-  async select(message, options) {
-    return answer<string>(await clack.select({ message, options }));
+  async password(message) {
+    return answer<string>(
+      await clack.password({
+        message,
+        validate: (value) => (value?.trim() ? undefined : "Enter a value."),
+      }),
+    );
+  },
+  async select(message, options, initial) {
+    return answer<string>(
+      await clack.select({
+        message,
+        options,
+        ...(initial === undefined ? {} : { initialValue: initial }),
+      }),
+    );
   },
   async multiselect(message, options) {
     return answer<string[]>(

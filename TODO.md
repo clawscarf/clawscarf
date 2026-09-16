@@ -17,7 +17,7 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Selected implementation — verify each step before proceeding
+## Next installation slices — select before implementation
 
 - [ ] **2. Finish retained-install capability changes.** Initial models, Connections
       and pack selections are wired. Add reviewed capability change/reapply operations
@@ -25,17 +25,26 @@ to run the entire list automatically. Current configuration and limits are in
       enable/disable and pack selection changes. Reuse the existing component operators;
       preserve native edits, revoked credentials and uncertain outcomes. Current
       preparation rejects changed inputs rather than silently applying them.
+- [ ] Finish the development build-to-release command and published release selection
+      (latest stable by default, explicit version override); no test-directory inputs
+      or developer-source selection in the interactive menu.
 - [ ] **4. Qualify and publish the supported release.** Build exact images and operator;
       generate the release file, verify it on a fresh installation, then publish downloads,
       checksums/notices to GitHub Releases and images to GHCR. Report qualified platforms
       and capability limits; the owner-managed browser issue is not an automatic task.
       Published artifacts must not claim unverified Linux/WSL or team journeys.
+- [ ] Implement the selected private, expiring, one-use first-administrator setup link
+      for OIDC: authenticate its holder, atomically bind the identity and verify native
+      authority. Preserve explicit subject bootstrap for unattended configuration.
+- [ ] Develop and qualify the illustrative Team documents recipe separately. Intended
+      default: GPT-6 Astra / medium; decide its actual packs, provider configuration and
+      whether Connections belongs in it. Do not turn the example into an automatic task.
 
 ## Separate decisions and integrations
 
-- [ ] Decide standalone OIDC first-administrator and ongoing enrollment UX before changing
-      Access. Owner-claim, admission requests and invite links remain proposals. Current
-      explicit subject/email bootstrap remains; qualify two-person login and revocation.
+- [ ] Decide ongoing People enrollment UX (admission requests or invite links); qualify
+      two-person login and revocation. Connections account OAuth guidance through the
+      installer is separate future work; Connections currently defaults to disabled.
 - [ ] Define and qualify generic external ingress and directory-backed storage for hosting
       consumers. Consumer implementation belongs in its own repository.
 

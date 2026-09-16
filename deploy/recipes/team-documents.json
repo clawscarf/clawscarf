@@ -1,0 +1,14 @@
+{
+  "id": "team-documents",
+  "name": "Team documents",
+  "description": "Illustrative starting point for a team document assistant. Document workflows and pack content are not supplied yet.",
+  "maturity": "example",
+  "defaults": {
+    "resources": {
+      "gateway": { "cpu": "2", "memory": "2Gi" },
+      "worker": { "cpu": "2", "memory": "2Gi" }
+    },
+    "browser": { "enabled": false }
+  },
+  "suggestedModel": { "name": "GPT-6 Astra", "thinking": "medium" }
+}

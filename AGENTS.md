@@ -68,6 +68,10 @@
 
 ## Implementation and verification
 
+- Installer menus collect and present; shared CLI operations own configuration and
+  effects. Keep capability-specific prompts in their modules, preserve answers across
+  sections, and offer equivalent noninteractive operations. Recipes are validated data,
+  not scripts or a second deployment engine. Example recipes are not qualified workflows.
 - Maintain only the current contract: no legacy aliases, permissive old inputs or
   compatibility machinery unless the owner requests it. Preserve failure and data
   integrity guarantees; update callers, tests and docs together.

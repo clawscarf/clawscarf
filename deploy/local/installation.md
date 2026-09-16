@@ -48,24 +48,37 @@ From the checkout, with an already prepared release:
 pnpm clawscarf install --release /absolute/clawscarf-release.json --directory ./team
 ```
 
-Both flags are optional; the wizard asks for missing values. It requires an interactive
-terminal, a **new directory whose parent exists**, and the release's exact local images
-and OpenShell executables. It never downloads or builds missing components. The same
-release schema is used by the CLI and the installer; publishing a release is separate.
+Without `--release`, the operator looks for **clawscarf-release.json** in its
+**release** directory. No published bundle exists yet: development uses
+an explicit release from `release-create`, which now embeds the recipe catalogue.
+There is no release-path prompt or software-source menu. `--recipes <directory>`
+replaces that catalogue for development; `--recipe <id>` skips the starting-point picker.
+The directory must be new and its parent must exist. The installer requires an interactive
+terminal and the release's exact local images/OpenShell executables; it does not build
+or download missing components.
 
-The wizard collects local or HTTPS/OIDC access, resource sizes, optional browser,
-model gateway, Connections and native pack selections. OpenShell, the protected
-worker and authenticated entry are mandatory. Only capabilities present in the release
-are offered; browser selection explicitly describes its upstream limitation. OIDC
-requires existing DNS/TLS and a registered client, and still uses the known administrator
-subject/email bootstrap. It shows the actual login and post-logout callback URLs.
+Choose a recipe or **Custom**, then revisit Name and administrator, Access, Models,
+Connections, Packs, Resources and (when packaged) Browser in the configuration menu.
+Answers survive section changes. Pack dependencies are shown before review; changing
+Models or Connections cannot bypass those dependencies. Security foundations remain fixed.
+Connections defaults to off. The bundled **Team documents** recipe is explicitly an
+example: it suggests GPT-6 Astra with medium thinking, but does not configure that model,
+install a document assistant or promise a document workflow. Recipe completion is separate work.
 
-Model catalogs, connector catalogs and pack sources use their existing documented
-file formats; this first wizard does not author them or create external accounts.
-Credentials are imported from private operator-owned files into a new `secrets/`
-directory (0700), with files and generated configuration/preview at 0600. Secret
-values are never shown in prompts or written into the installation JSON. Other input
-paths become absolute references; keep those release/catalog/source files available.
+OIDC currently requires DNS/TLS, a registered client and the known administrator's
+subject/email. The private one-use authenticated owner-claim flow is selected future
+work, not implemented by this menu. Local mode retains its one-use login code.
+The Access section shows the actual login and post-logout callback URLs.
+
+Model catalogues, connector catalogues and pack sources retain their existing file
+formats; this menu does not create external accounts or conduct account OAuth.
+Secret prompts offer masked entry or private-file import. LiteLLM can collect each
+provider key required by the selected route file, or import its private environment file.
+TLS private keys and pack binding documents use file import. Entered secrets stay
+in memory until confirmation; only secrets referenced by the final configuration are
+saved. Files go into a private `secrets/` directory (0700), with credentials and
+configuration/preview at 0600. Ordinary configuration and notes contain no secret values.
+Other input paths remain absolute references; keep those files available.
 
 After confirming file creation, it validates inputs and saves the normal CLI preview.
 Choose **Save preview and exit**, **Prepare installation**, or **Prepare and start**.
@@ -79,8 +92,37 @@ are never automatically retried.
 The installer refuses existing directories, including empty ones or symlinks. Resume
 through the CLI below; unified retained-install capability changes are still unfinished.
 The wizard's save-only path is exercised in a real terminal. Automated tests cover
-prompt choices, private files, preview integrity and delegation/order for prepare/start;
+revisiting sections, recipe/CLI equivalence, optional feature removal, private files,
+preview integrity and delegation/order for prepare/start;
 they do not constitute a new full runtime or OIDC qualification.
+
+### Configure without prompts
+
+The same recipe/default and configuration writer are available to scripts and coding
+agents. This command writes configuration only; it does not claim the server is ready.
+
+```sh
+pnpm clawscarf recipes --release /absolute/clawscarf-release.json
+pnpm clawscarf configure --release /absolute/clawscarf-release.json \
+  --recipe team-documents --settings ./settings.json --directory ./team
+```
+
+Settings replace complete sections rather than recursively merging obsolete fields:
+
+```json
+{
+  "name": "documents",
+  "access": { "mode": "local", "administratorName": "Sam" }
+}
+```
+
+Use `--recipe custom` for the same baseline without a recipe. Input-file references in
+settings resolve against that file; generated state remains relative to the new
+installation. The saved configuration records recipe ID/release as provenance only:
+subsequent startup does not reload or inherit changing recipe definitions.
+Continue with `validate`, `doctor`, `plan`, `apply` and `start` below. These remain
+the authority for actual file, runtime and dependency verification. All CLI configuration
+and operation results are JSON; interactive presentation is separate.
 
 ### Author the configuration directly
 
