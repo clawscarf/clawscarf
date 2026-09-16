@@ -1,13 +1,19 @@
-import { fileURLToPath } from "node:url";
-import { loadRecipes } from "../installation/recipes/load.js";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { parseLocalInput } from "../local/configuration.js";
-
+import { dirname, resolve } from "node:path";
+import { z } from "zod";
 import { releaseSchema } from "./definition.js";
-import { liteLlmImage, postgresImage } from "../local/images.js";
+
+// Build inputs use the release contract, replacing tool digests with source paths.
+const inputSchema = releaseSchema.extend({
+  tools: z.strictObject({
+    openshell: releaseSchema.shape.tools.shape.openshell.extend({
+      cli: z.string().min(1),
+      gateway: z.string().min(1),
+    }),
+  }),
+});
 
 async function tool(file: string) {
   const hash = createHash("sha256");
@@ -15,52 +21,25 @@ async function tool(file: string) {
     if (!Buffer.isBuffer(bytes)) throw Error("Invalid file stream");
     hash.update(bytes);
   }
-  return { file: resolve(file), sha256: hash.digest("hex") };
+  return { file, sha256: hash.digest("hex") };
 }
-/** Build a development release from explicit, already-built component inputs. */
+
+/** Build release metadata from explicit, already-built component inputs. */
 export async function createDevelopmentRelease(options: {
   inputFile: string;
   outputFile: string;
-  version: string;
-  sourceRevision: string;
-  openshellVersion: string;
 }) {
-  const input = parseLocalInput(
+  const input = inputSchema.parse(
     JSON.parse(await readFile(options.inputFile, "utf8")),
   );
-  if (!input.execution || !input.relayImage)
-    throw Error("A release requires the protected worker and relay.");
+  const directory = dirname(resolve(options.inputFile));
   const release = releaseSchema.parse({
-    schemaVersion: 1,
-    recipes: await loadRecipes(
-      fileURLToPath(new URL("../../deploy/recipes", import.meta.url)),
-    ),
-    version: options.version,
-    sourceRevision: options.sourceRevision,
-    platforms: ["darwin-arm64"],
-    images: {
-      postgres: postgresImage,
-      gateway: input.runtimeImage,
-      worker: input.execution.image,
-      companion: input.companionImage,
-      relay: input.relayImage,
-      models: liteLlmImage,
-      ...(input.browser
-        ? {
-            browser: {
-              chromium: input.browser.image,
-              node: input.browser.nodeImage,
-              dns: input.browser.dnsImage,
-              egress: input.browser.egressImage,
-            },
-          }
-        : {}),
-    },
+    ...input,
     tools: {
       openshell: {
-        version: options.openshellVersion,
-        cli: await tool(input.openshellCli),
-        gateway: await tool(input.openshellGateway),
+        ...input.tools.openshell,
+        cli: await tool(resolve(directory, input.tools.openshell.cli)),
+        gateway: await tool(resolve(directory, input.tools.openshell.gateway)),
       },
     },
   });

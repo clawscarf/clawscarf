@@ -87,7 +87,6 @@ await test(
     );
     for (const command of [
       "clawscarf",
-      "local",
       "controller",
       "models",
       "packs",

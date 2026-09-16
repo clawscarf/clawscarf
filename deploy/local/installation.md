@@ -24,14 +24,20 @@ external account OAuth, or paid provider inference for this assembly.
 ## Development release
 
 Build components using their [image recipes](../images/README.md). Generate a
-release file from an existing complete component input (including the worker and
-relay); this is a build command, not an alternative customer configuration:
+release file from explicit built-component inputs:
 
 ```sh
 pnpm clawscarf release-create --input /absolute/built-components.json \
-  --output /absolute/clawscarf-release.json --version 0.1.0-dev \
-  --source-revision <full-source-commit> --openshell-version 0.0.116
+  --output /absolute/clawscarf-release.json
 ```
+
+The input follows the [release contract](../../scripts/release/definition.ts):
+`schemaVersion`, `version`, `sourceRevision`, `platforms`, `images`, `recipes` and `tools`.
+Use exact image digests, the pinned PostgreSQL/LiteLLM images, and recipe objects from
+[deploy/recipes](../recipes/README.md). Under `tools.openshell`, provide `version` and
+`cli`/`gateway` as executable file paths relative to the input file; the builder computes
+checksums and writes absolute paths. No administrator, secrets, ports or installation
+state are release inputs. Output creation refuses to overwrite an existing release.
 
 The release file pins images, executable checksums and supported platforms. Tool
 file paths resolve relative to the release file. It contains no installation secrets.

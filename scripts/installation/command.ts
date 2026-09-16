@@ -89,27 +89,13 @@ export function installationCommand() {
     )
     .requiredOption("--input <file>")
     .requiredOption("--output <file>")
-    .requiredOption("--version <version>")
-    .requiredOption("--source-revision <sha>")
-    .requiredOption("--openshell-version <version>")
-    .action(
-      async (options: {
-        input: string;
-        output: string;
-        version: string;
-        sourceRevision: string;
-        openshellVersion: string;
-      }) => {
-        const release = await createDevelopmentRelease({
-          inputFile: options.input,
-          outputFile: options.output,
-          version: options.version,
-          sourceRevision: options.sourceRevision,
-          openshellVersion: options.openshellVersion,
-        });
-        output({ version: release.version, file: options.output });
-      },
-    );
+    .action(async (options: { input: string; output: string }) => {
+      const release = await createDevelopmentRelease({
+        inputFile: options.input,
+        outputFile: options.output,
+      });
+      output({ version: release.version, file: options.output });
+    });
   program
     .command("validate")
     .requiredOption("--config <file>")

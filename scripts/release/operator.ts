@@ -7,8 +7,33 @@ import { promisify } from "node:util";
 import { writeRuntimePackage } from "./runtime-package.js";
 
 const execute = promisify(execFile);
+const assets = [
+  "scripts/local/upgrade-rpc.py",
+  "scripts/packs/transport.py",
+  "scripts/packs/requirements.in",
+  "scripts/packs/requirements.txt",
+  "services/access/migrations",
+  "services/connections/migrations",
+  "release/components.json",
+  "deploy/recipes",
+  "deploy/openshell/policy.yaml",
+  "deploy/execution/worker/policy.yaml",
+  "deploy/execution/browser/seccomp.json",
+  "deploy/execution/network/node-ingress.cfg",
+  "deploy/execution/browser/LICENSE.playwright",
+];
+
+export async function stageOperatorAssets(root: string) {
+  for (const path of assets) {
+    const target = join(root, "dist", path);
+    await mkdir(resolve(target, ".."), { recursive: true });
+    await cp(join(root, path), target, { recursive: true });
+  }
+}
+
 // Explicit operator payload: no companion server, source tooling or installation state.
 const payload = [
+  ...assets.filter((path) => !path.startsWith("scripts/")),
   "scripts/clawscarf.js",
   "scripts/installation",
   "scripts/release/create.js",
@@ -27,7 +52,6 @@ const payload = [
   "services/access/generated",
   "services/connections/generated",
   "services/connections/credential-command.js",
-  "services/connections/migrations",
   "services/connections/providers/catalog/provider.js",
   "services/connections/providers/catalog/artifact.js",
   "services/connections/providers/catalog/validation.js",
@@ -42,16 +66,8 @@ const payload = [
   "services/connections/service/catalog-publication.js",
   "services/connections/shared/errors.js",
   "services/connections/types/errors.js",
-  "services/access/migrations",
-  "release/components.json",
-  "deploy/recipes",
-  "deploy/openshell/policy.yaml",
-  "deploy/execution/worker/policy.yaml",
-  "deploy/execution/browser/seccomp.json",
   "deploy/execution/browser-node/configuration.js",
   "deploy/execution/browser-node/operator.js",
-  "deploy/execution/network/node-ingress.cfg",
-  "deploy/execution/browser/LICENSE.playwright",
 ];
 
 /** Package an already built operator; dependency installation and publication are separate. */

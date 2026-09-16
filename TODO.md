@@ -13,11 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **5. Separate release inputs from installation inputs.** Change
-      [release creation](scripts/release/create.ts) to accept images, tools, version/source
-      and recipes from the release contract; eliminate dummy administrator, port and
-      deployment settings. Give non-TypeScript payload staging one owner in
-      [release packaging](scripts/release/operator.ts), shared by build and archive creation.
 - [ ] **6. Use one installation-operation lock.** Consolidate the outer operator lock
       in [plan/apply](scripts/installation/plan.ts) and the retained-state lock in
       [local state](scripts/local/state.ts). Shared operation entry points acquire it
