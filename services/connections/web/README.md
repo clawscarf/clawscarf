@@ -4,8 +4,8 @@ The standalone account manager lives at `/_clawscarf/connections/`; native
 OpenClaw pages remain unchanged. HTTP registration can serve this Vite build with
 the Access session and CSRF boundary through the
 [companion application](../../../apps/companion/README.md). The browser uses the
-[generated Connections client](../generated/client/sdk.gen.ts) and the
-[generated access client](../../access/generated/client/sdk.gen.ts).
+[generated Connections client](../generated/sdk.gen.ts) and the
+[generated access client](../../access/generated/sdk.gen.ts).
 
 Administrators can browse the configured catalog, create named accounts, complete
 or resume provider setup, reconnect, change agent grants and disconnect. Agent

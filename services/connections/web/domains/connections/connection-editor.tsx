@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Connection } from "../../../generated/client/types.gen.js";
+import type { Connection } from "../../../generated/types.gen.js";
 import { connectionMutationUncertain } from "./mutation-outcome.js";
 import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import { Feedback } from "../../shared/ui/feedback.js";

@@ -10,8 +10,8 @@
     "tsBuildInfoFile": "dist/sdk.tsbuildinfo"
   },
   "include": [
-    "services/access/generated/client/**/*.ts",
-    "services/connections/generated/client/**/*.ts"
+    "services/access/generated/**/*.ts",
+    "services/connections/generated/**/*.ts"
   ],
   "exclude": [],
   "references": []

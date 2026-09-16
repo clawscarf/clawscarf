@@ -7,7 +7,7 @@ import {
 import type {
   Connection,
   Connector,
-} from "../../../generated/client/types.gen.js";
+} from "../../../generated/types.gen.js";
 import { api, data, request, requestSignal } from "../../shared/api/client.js";
 export const connectionPath = (connection: Pick<Connection, "id">) => ({
   connectionId: connection.id,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import * as api from "../generated/client/sdk.gen.js";
-import type { User } from "../generated/client/types.gen.js";
+import * as api from "../generated/sdk.gen.js";
+import type { User } from "../generated/types.gen.js";
 import { request } from "./request.js";
 export function usePeopleState(csrfToken: string) {
   const cache = useQueryClient();

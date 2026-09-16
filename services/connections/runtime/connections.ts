@@ -1,4 +1,4 @@
-import type { RouteHandlers } from "../generated/server/fastify.gen.js";
+import type { RouteHandlers } from "../generated/fastify.gen.js";
 import { page } from "../shared/pagination.js";
 import { principal } from "./authentication.js";
 import type { ConnectionService } from "../service/connection-service.js";

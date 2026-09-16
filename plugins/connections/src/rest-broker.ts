@@ -1,5 +1,5 @@
 import { brokerEndpoint } from "./endpoint.ts";
-import { createClient, createConfig } from "./generated/client/index.js";
+import { createClient, createConfig } from "./generated/index.js";
 import {
   callConnectorRuntime,
   describeConnectorRuntime,

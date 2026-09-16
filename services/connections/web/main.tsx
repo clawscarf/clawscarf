@@ -7,7 +7,7 @@ import {
   useMutation,
 } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { logout, session } from "../../access/generated/client/sdk.gen.js";
+import { logout, session } from "../../access/generated/sdk.gen.js";
 import {
   api,
   request,

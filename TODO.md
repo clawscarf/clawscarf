@@ -13,11 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **3. Generate each API contract once.** Generate schema types, fetch SDK and
-      Fastify handler types together for Access and Connections. Remove the separate
-      server generator configurations and duplicate schema outputs: 310 Access lines
-      plus 1,826 Connections lines. Update handler imports, generators and packaging;
-      retain generated clients and contract validation. Do not hand-edit generated files.
 - [ ] **4. Remove the parallel local CLI.** Move the unique Connections observe/configure
       commands from [local.ts](scripts/local.ts) into the
       [public CLI](scripts/installation/command.ts), then delete that 137-line alternate

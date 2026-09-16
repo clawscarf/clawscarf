@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { readFile } from "node:fs/promises";
-import * as api from "../generated/client/sdk.gen.js";
+import * as api from "../generated/sdk.gen.js";
 const command = new Command("clawscarf-access")
   .description("Manage admission to one ClawScarf server.")
   .requiredOption("--origin <url>", "Server origin")

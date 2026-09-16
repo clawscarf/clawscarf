@@ -50,7 +50,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(access/(runtime/config\\.ts|repo/postgres\\.ts|generated/client/)|connections/(generated/client/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
+          "^services/(access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/(generated/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
       },
     },
     ...["access", "connections"].flatMap((domain) => {
@@ -104,7 +104,7 @@ module.exports = {
       from: { path: "^services/connections/" },
       to: {
         path: "^services/access/",
-        pathNot: "^services/access/(types/native\\.ts$|generated/client/)",
+        pathNot: "^services/access/(types/native\\.ts$|generated/)",
       },
     },
     {

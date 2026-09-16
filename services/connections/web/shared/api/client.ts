@@ -9,4 +9,4 @@ export function setCsrfToken(value: string | undefined) {
   csrfToken = value;
 }
 export { data, ApiError, requestSignal } from "./transport.js";
-export * as api from "../../../generated/client/sdk.gen.js";
+export * as api from "../../../generated/sdk.gen.js";

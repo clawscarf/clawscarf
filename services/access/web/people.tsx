@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import type { NavigationLink } from "../generated/client/types.gen.js";
+import type { NavigationLink } from "../generated/types.gen.js";
 import { problem } from "./request.js";
 import { Loading } from "./loading.js";
 import { usePeopleState } from "./people-state.js";

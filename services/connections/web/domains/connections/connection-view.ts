@@ -1,4 +1,4 @@
-import type { Connection } from "../../../generated/client/types.gen.js";
+import type { Connection } from "../../../generated/types.gen.js";
 import type { ConnectionSetupView } from "./connection-setup.js";
 import type { ConnectionRowView, ConnectorChoice } from "./presentation.js";
 

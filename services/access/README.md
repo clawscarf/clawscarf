@@ -220,3 +220,6 @@ rejoin resetting prior administrator authority, and logout closing only the affe
 native stream. The test IdP is composed into test handlers without changing the
 running companion's identity configuration. These checks do not qualify an external
 company IdP, its deployed callback/TLS configuration, or interactive browser enrollment.
+
+API generation emits one shared schema/type set, the fetch SDK and Fastify handler
+types in `generated/` from this component's OpenAPI contract.

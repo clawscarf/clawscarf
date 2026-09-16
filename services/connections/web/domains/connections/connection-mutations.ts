@@ -4,7 +4,7 @@ import type {
   CreateConnection,
   StartConnectionSetup,
   UpdateConnection,
-} from "../../../generated/client/types.gen.js";
+} from "../../../generated/types.gen.js";
 import { api, data, request } from "../../shared/api/client.js";
 import {
   connectionPath,

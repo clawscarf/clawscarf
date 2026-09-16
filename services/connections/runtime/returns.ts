@@ -1,4 +1,4 @@
-import type { RouteHandlers } from "../generated/server/fastify.gen.js";
+import type { RouteHandlers } from "../generated/fastify.gen.js";
 import { principal, sessionCookie } from "./authentication.js";
 import type { ConnectionReturnService } from "../service/return-service.js";
 import { CONNECTION_RETURN_TTL_SECONDS } from "../types/returns.js";

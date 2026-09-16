@@ -6,7 +6,7 @@ import { z } from "zod";
 import { fileURLToPath } from "node:url";
 import type { AccessRuntimeApi } from "../../access/types/native.js";
 import type { ConnectionsService } from "../composition.js";
-import type { RouteHandlers } from "../generated/server/fastify.gen.js";
+import type { RouteHandlers } from "../generated/fastify.gen.js";
 import {
   isDomainError,
   CommonError,

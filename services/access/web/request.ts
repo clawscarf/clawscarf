@@ -1,4 +1,4 @@
-import type { Problem } from "../generated/client/types.gen.js";
+import type { Problem } from "../generated/types.gen.js";
 export const request = {
   baseUrl: window.location.origin,
   credentials: "same-origin",

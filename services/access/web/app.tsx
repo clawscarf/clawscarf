@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import * as api from "../generated/client/sdk.gen.js";
+import * as api from "../generated/sdk.gen.js";
 import { request, problem } from "./request.js";
 import { Loading } from "./loading.js";
 import { People } from "./people.js";

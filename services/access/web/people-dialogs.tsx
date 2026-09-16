@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import * as api from "../generated/client/sdk.gen.js";
+import * as api from "../generated/sdk.gen.js";
 import { request, problem } from "./request.js";
 import { Loading } from "./loading.js";
 import type { PeopleState } from "./people-state.js";

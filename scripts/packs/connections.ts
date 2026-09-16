@@ -1,8 +1,8 @@
 import { readFile, realpath } from "node:fs/promises";
 import { sep } from "node:path";
 import { z } from "zod";
-import { createClient } from "../../services/connections/generated/client/client/index.js";
-import { getConnection } from "../../services/connections/generated/client/sdk.gen.js";
+import { createClient } from "../../services/connections/generated/client/index.js";
+import { getConnection } from "../../services/connections/generated/sdk.gen.js";
 import type { NativeClaws } from "./native.js";
 import type { Member, PackPlan } from "./model.js";
 const bindingsSchema = z.strictObject({

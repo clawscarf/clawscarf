@@ -120,3 +120,6 @@ connection forms and regressions. RawClaw's organization/admission/host policies
 plugin deployment operations are omitted; standalone access and explicit runtime
 credentials replace those boundaries. The plugin wire protocol remains compatible.
 See [third-party notices](../../THIRD_PARTY_NOTICES.md).
+
+API generation emits one shared schema/type set, the fetch SDK and Fastify handler
+types in `generated/` from this component's OpenAPI contract.

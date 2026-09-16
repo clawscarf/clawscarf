@@ -44,7 +44,7 @@ COPY deploy/images/pack-tools/ ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
 COPY scripts/packs.ts ./scripts/packs.ts
 COPY scripts/packs/ ./scripts/packs/
-COPY services/connections/generated/client/ ./services/connections/generated/client/
+COPY services/connections/generated/ ./services/connections/generated/
 RUN ./node_modules/.bin/tsc -p tsconfig.json \
     && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 

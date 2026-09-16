@@ -10,8 +10,8 @@ import type {
 } from "../../services/access/types/native.js";
 import { AccessError } from "../../services/access/types/errors.js";
 import { registerConnectionsHttp } from "../../services/connections/runtime/http.js";
-import { createClient } from "../../services/connections/generated/client/client/index.js";
-import * as api from "../../services/connections/generated/client/sdk.gen.js";
+import { createClient } from "../../services/connections/generated/client/index.js";
+import * as api from "../../services/connections/generated/sdk.gen.js";
 const origin = "http://127.0.0.1:18899";
 const base = "/_clawscarf/connections/v1";
 export async function createConnectionsHttpFixture(

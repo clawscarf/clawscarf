@@ -1,13 +1,13 @@
 import { open, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { Command } from "commander";
-import { createClient as accessClient } from "../access/generated/client/client/index.js";
-import { session } from "../access/generated/client/sdk.gen.js";
-import { createClient } from "./generated/client/client/index.js";
+import { createClient as accessClient } from "../access/generated/client/index.js";
+import { session } from "../access/generated/sdk.gen.js";
+import { createClient } from "./generated/client/index.js";
 import {
   rotateConnectionCredential,
   revokeConnectionCredential,
-} from "./generated/client/sdk.gen.js";
+} from "./generated/sdk.gen.js";
 
 const program = new Command("connections-credential")
   .description(

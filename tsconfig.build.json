@@ -8,8 +8,8 @@
   "exclude": [
     "scripts/**/*.test.ts",
     "tests/**/*.ts",
-    "services/access/generated/client",
-    "services/connections/generated/client",
+    "services/access/generated",
+    "services/connections/generated",
     "services/connections/web",
     "services/access/web",
     "ui"

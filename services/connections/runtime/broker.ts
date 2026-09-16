@@ -1,4 +1,4 @@
-import type { RouteHandlers } from "../generated/server/fastify.gen.js";
+import type { RouteHandlers } from "../generated/fastify.gen.js";
 import type { ConnectorBrokerService } from "../service/broker-service.js";
 import { connectorPrincipal } from "./authentication.js";
 

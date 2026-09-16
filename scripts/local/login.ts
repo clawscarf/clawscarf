@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { compose } from "./compose.js";
-import * as access from "../../services/access/generated/client/sdk.gen.js";
+import * as access from "../../services/access/generated/sdk.gen.js";
 import { LocalSetupError } from "./process.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";

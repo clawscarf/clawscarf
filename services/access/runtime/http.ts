@@ -25,7 +25,7 @@ import type { FastifyRequest } from "fastify";
 import { classifyFailure, failureDiagnostic } from "./failures.js";
 import { AccessError } from "../types/errors.js";
 import type { SessionService } from "../service/session.js";
-import type { RouteHandlers } from "../generated/server/fastify.gen.js";
+import type { RouteHandlers } from "../generated/fastify.gen.js";
 export async function createAccessHttp(
   service: Pick<
     SessionService,

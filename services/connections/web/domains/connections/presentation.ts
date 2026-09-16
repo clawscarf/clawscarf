@@ -1,4 +1,4 @@
-import type { ConnectorAgentGrant } from "../../../generated/client/types.gen.js";
+import type { ConnectorAgentGrant } from "../../../generated/types.gen.js";
 
 export interface ConnectorChoice {
   id: string;

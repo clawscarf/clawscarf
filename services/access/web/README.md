@@ -2,7 +2,7 @@
 
 The account page at `/_clawscarf/account/` shows the signed-in identity and Sign out
 without requesting administrator authority. The People page at `/_clawscarf/team/` manages admission to one server. It uses
-[the Access generated client](../generated/client/sdk.gen.ts) and TanStack Query;
+[the Access generated client](../generated/sdk.gen.ts) and TanStack Query;
 OpenClaw continues to own application roles and agents. Team mode permits a current
 native administrator to enroll a provider subject as a member and revoke access.
 The shared page header offers OpenClaw and Sign out. Sign out revokes the current
