@@ -22,7 +22,6 @@ const configuration = {
   name: "team",
   releaseFile: "release.json",
   stateDirectory: "state",
-  storage: { mode: "docker-volumes" },
   exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },
   access: { mode: "local", administratorName: "Owner" },
   resources: {

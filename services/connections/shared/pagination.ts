@@ -1,5 +1,4 @@
 import { CommonError } from "./errors.js";
-import { requireId } from "./validation.js";
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;
@@ -35,4 +34,13 @@ export function page(limit: number | string | null, cursor: string | null) {
     }
   }
   return { limit: n, cursor: after };
+}
+
+function requireId(value: string): void {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  )
+    throw new CommonError("invalid_request", "Provide a valid resource ID.");
 }

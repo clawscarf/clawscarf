@@ -152,7 +152,6 @@ files must be regular, private files owned by the operator. A minimal example:
   "name": "team",
   "releaseFile": "./clawscarf-release.json",
   "stateDirectory": "./state",
-  "storage": { "mode": "docker-volumes" },
   "exposure": {
     "mode": "local",
     "applicationPort": 18800,

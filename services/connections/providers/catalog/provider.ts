@@ -18,8 +18,6 @@ import {
 import { readCatalogDetail, readCatalogIndex } from "./validation.js";
 import { readCatalogFile } from "./files.js";
 
-export { checkConnectorCatalogRetirement } from "./retirement.js";
-
 export async function openConnectorCatalog(
   directory: string,
   options: { verifyDetails?: boolean } = {},

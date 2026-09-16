@@ -1,8 +1,76 @@
 # Remaining work
 
-Work in this order, one selected slice at a time. This is a roadmap, not permission
-to run the entire list automatically. Current configuration and limits are in
+Select one slice at a time. This checklist does not authorize automatic continuation.
+Code reduction comes before new installation features. Current configuration and limits are in
 [README.md](README.md#installation-management-direction).
+
+## Code reduction — selected work
+
+Preserve protected Gateway/worker execution, authenticated team entry and revocation,
+LiteLLM, optional Connections and existing native edits. These are requirements;
+the current files, command surfaces and orchestration mechanisms are not.
+After each slice, update affected docs and callers, run relevant checks, and report
+net changes separately for authored implementation, tests and generated code.
+Moving code or deleting a one-caller wrapper is not a substantial code reduction.
+
+- [ ] **2. Shorten [AGENTS.md](AGENTS.md).** Keep scope, documentation accuracy,
+      product/security boundaries and practical implementation/verification rules.
+      Remove repetition and rules that prescribe machinery rather than required
+      behavior. Do not replace them with another process framework.
+- [ ] **3. Generate each API contract once.** Generate schema types, fetch SDK and
+      Fastify handler types together for Access and Connections. Remove the separate
+      server generator configurations and duplicate schema outputs: 310 Access lines
+      plus 1,826 Connections lines. Update handler imports, generators and packaging;
+      retain generated clients and contract validation. Do not hand-edit generated files.
+- [ ] **4. Remove the parallel local CLI.** Move the unique Connections observe/configure
+      commands from [local.ts](scripts/local.ts) into the
+      [public CLI](scripts/installation/command.ts), then delete that 137-line alternate
+      entry point and its package/archive commands. Reuse existing operation functions;
+      update developer instructions and tests without compatibility aliases.
+- [ ] **5. Separate release inputs from installation inputs.** Change
+      [release creation](scripts/release/create.ts) to accept images, tools, version/source
+      and recipes from the release contract; eliminate dummy administrator, port and
+      deployment settings. Give non-TypeScript payload staging one owner in
+      [release packaging](scripts/release/operator.ts), shared by build and archive creation.
+- [ ] **6. Use one installation-operation lock.** Consolidate the outer operator lock
+      in [plan/apply](scripts/installation/plan.ts) and the retained-state lock in
+      [local state](scripts/local/state.ts). Shared operation entry points acquire it
+      once, including before initial directory creation; internal functions do not
+      reacquire it. Cover prepare/start/upgrade/Connections concurrency before removal.
+- [ ] **7. Consolidate model/pack command entry points.** Register existing model and
+      pack command factories under the public CLI and use its error presentation;
+      remove independent operator parsers/entry points. Keep the tiny pack executable
+      required inside the runtime image. Move the documented native-preset renderer
+      under the public CLI without introducing another configuration implementation.
+- [ ] **8. Remove Connections algorithm duplication and file fragmentation.** Share
+      the repeated JSON traversal/canonicalization currently in domain validation,
+      catalog artifacts and Composio wire handling; preserve each boundary's limits
+      and error translation. Move the sole-use `paged` helper into its connection store
+      and remove [repo/pagination.ts](services/connections/repo/pagination.ts).
+      Do not inline the revision parser twice or replace small helpers with a framework.
+
+## Larger code reductions — decide the replacement or lost behavior first
+
+- [ ] Verify a supported shared fetch-runtime dependency before replacing the three
+      identical generated transport trees (1,926 lines each; 3,852 duplicate lines).
+      The installed generator supports an external runtime package, not a shared-local-path
+      setting. Do not patch emitted imports or delete transitively used generated helpers.
+- [ ] Decide whether to retain the custom local replacement/upgrade feature or defer it.
+      Its [upgrade implementation](scripts/local/upgrade.ts), state and Python helper total
+      580 lines, with additional startup-gate code/tests. The gate exists for this workflow;
+      removing it alone would break replacement. Retained-volume startup remains required.
+- [ ] Specify a smaller owner for local process/network orchestration before replacing
+      [launch/supervision](scripts/local/launch.ts), private status/stop control,
+      network allocation and runtime receipts. Identify the exact Compose/OpenShell
+      operations taking over each responsibility. None of these modules is dead code;
+      preserve two protected runtimes, resource ownership and reliable stop/start.
+- [ ] Decide which optional Connections extras to keep: offline retirement preflight
+      (86-line helper plus CLI/types), extracted file-field hints (57-line helper plus
+      contract/import paths), and large saved-result paging (481 lines across five modules
+      plus API/plugin/SQL paths). Removing them loses those specific capabilities.
+      Keep exact account grants, execution receipts, no-blind-replay guarantees and
+      eventual cleanup of cancelled/disconnected provider accounts. Live catalog
+      publication is a separate 376-line feature needing a safe update replacement.
 
 ## Owner-managed browser issue — DO NOT PICK UP AUTOMATICALLY
 
@@ -17,9 +85,9 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Next installation slices — select before implementation
+## Installation backlog — after code reduction, select before implementation
 
-- [ ] **2. Finish retained-install capability changes.** Initial models, Connections
+- [ ] **Finish retained-install capability changes.** Initial models, Connections
       and pack selections are wired. Add reviewed capability change/reapply operations
       to the unified installation CLI: model routes/keys, broker settings/keys,
       enable/disable and pack selection changes. Reuse the existing component operators;
@@ -28,7 +96,7 @@ to run the entire list automatically. Current configuration and limits are in
 - [ ] Finish the development build-to-release command and published release selection
       (latest stable by default, explicit version override); no test-directory inputs
       or developer-source selection in the interactive menu.
-- [ ] **4. Qualify and publish the supported release.** Build exact images and operator;
+- [ ] **Verify and publish the supported release.** Build exact images and operator;
       generate the release file, verify it on a fresh installation, then publish downloads,
       checksums/notices to GitHub Releases and images to GHCR. Report qualified platforms
       and capability limits; the owner-managed browser issue is not an automatic task.

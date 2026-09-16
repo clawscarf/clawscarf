@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 import { Plus, RefreshCw, Search } from "lucide-react";
 import { Badge } from "../../../../../ui/shadcn/components/ui/badge.js";
 import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "../../../../../ui/shadcn/components/ui/dialog.js";
 import { Input } from "../../../../../ui/shadcn/components/ui/input.js";
 import { Feedback, Loading } from "../../shared/ui/feedback.js";
@@ -45,18 +44,15 @@ interface ConnectorCatalogProps {
 export function ConnectorCatalogDialog({
   open,
   onOpenChange,
-  trigger,
   onCloseAutoFocus,
   ...props
 }: ConnectorCatalogProps & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger?: ReactNode;
   onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         aria-describedby={undefined}
         className="flex h-[min(46rem,calc(100dvh-2rem))] flex-col overflow-hidden sm:max-w-5xl"
@@ -72,7 +68,7 @@ export function ConnectorCatalogDialog({
 }
 
 // Layout adapted from Kora's ExtensionCatalogPicker at 44287507be2070df8ecaf75725ed0f6616b6d15a.
-export function ConnectorCatalogPicker({
+function ConnectorCatalogPicker({
   catalog,
   connectedCounts,
   disabled,

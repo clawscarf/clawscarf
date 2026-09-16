@@ -4,7 +4,7 @@ import { isDeepStrictEqual } from "node:util";
 import lockfile from "proper-lockfile";
 import { z } from "zod";
 import { prepareLocal } from "../local/prepare.js";
-import { readState, ensurePrivateFile, writePrivate } from "../local/state.js";
+import { readState, ensurePrivateFile } from "../local/state.js";
 import { fingerprint, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
@@ -140,10 +140,6 @@ export async function applyInstallation(configFile: string, planFile: string) {
     await ensurePrivateFile(
       join(resolved.stateDirectory, "release.json"),
       JSON.stringify(resolved.release, null, 2),
-    );
-    await writePrivate(
-      join(resolved.stateDirectory, "configuration.json"),
-      JSON.stringify(resolved.config, null, 2),
     );
     await ensurePrivateFile(
       join(resolved.stateDirectory, "packs.json"),

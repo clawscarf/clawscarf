@@ -1,7 +1,5 @@
-import type { ReactNode } from "react";
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -15,7 +13,6 @@ import { Feedback } from "./feedback.js";
 export function ConfirmAction({
   open,
   onOpenChange,
-  trigger,
   title,
   description,
   confirmLabel,
@@ -26,7 +23,6 @@ export function ConfirmAction({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger?: ReactNode;
   title: string;
   description: string;
   confirmLabel: string;
@@ -42,7 +38,6 @@ export function ConfirmAction({
         if (!pending) onOpenChange(next);
       }}
     >
-      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

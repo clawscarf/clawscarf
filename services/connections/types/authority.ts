@@ -14,10 +14,6 @@ export type ConnectorManagementPermission =
   | "installation-connections:read"
   | "installation-connections:write"
   | "installation-connection-invocations:read";
-export type ConnectorSetupPermission = Extract<
-  ConnectorManagementPermission,
-  "installation-connections:read" | "installation-connections:write"
->;
 export interface ConnectorSetupAdmission extends ConnectorServerScope {
   userId: string;
   sessionHash: string;

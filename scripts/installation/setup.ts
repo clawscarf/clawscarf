@@ -66,7 +66,6 @@ export function recipeConfiguration(
     name: "team",
     releaseFile: context.releaseFile,
     stateDirectory: "./state",
-    storage: { mode: "docker-volumes" },
     exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },
     access: { mode: "local", administratorName: "Administrator" },
     resources: {

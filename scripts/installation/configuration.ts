@@ -27,7 +27,6 @@ export const installationSchema = z
       .optional(),
     releaseFile: path,
     stateDirectory: path,
-    storage: z.strictObject({ mode: z.literal("docker-volumes") }),
     exposure: z.discriminatedUnion("mode", [
       z.strictObject({
         mode: z.literal("local"),

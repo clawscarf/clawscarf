@@ -53,7 +53,6 @@ choices; direct-provider setup is not an installation mode.
   "name": "team",
   "releaseFile": "./clawscarf-release.json",
   "stateDirectory": "./state",
-  "storage": { "mode": "docker-volumes" },
   "exposure": {
     "mode": "local",
     "applicationPort": 18800,
