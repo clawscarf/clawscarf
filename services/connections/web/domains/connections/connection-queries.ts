@@ -4,10 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type {
-  Connection,
-  Connector,
-} from "../../../generated/types.gen.js";
+import type { Connection, Connector } from "../../../generated/types.gen.js";
 import { api, data, request, requestSignal } from "../../shared/api/client.js";
 export const connectionPath = (connection: Pick<Connection, "id">) => ({
   connectionId: connection.id,

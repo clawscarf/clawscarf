@@ -41,6 +41,7 @@ project retains that check and consumes their generated declarations.
 The [local assembly](../deploy/local/README.md) uses the public CLI’s `apply`,
 `start` and `login` for private state, supervised operation and local entry. It
 has local acceptance evidence in that guide; clean-machine release qualification remains separate.
+The build clears its compiled output first so removed source files cannot survive in an archive.
 The compiled operator includes the Access and Connections migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
 

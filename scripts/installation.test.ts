@@ -197,9 +197,9 @@ await test("concurrent operators cannot mutate the same installation", async (t)
       await assert.rejects(operation(), { code: "operation_busy" });
   });
   await assert.rejects(
-    withInstallationLock(state, async () => {
-      throw new Error("operation failed");
-    }),
+    withInstallationLock(state, () =>
+      Promise.reject(new Error("operation failed")),
+    ),
     /operation failed/,
   );
   await withInstallationLock(state, () => Promise.resolve(undefined));
