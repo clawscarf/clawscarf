@@ -25,10 +25,6 @@ to run the entire list automatically. Current configuration and limits are in
       enable/disable and pack selection changes. Reuse the existing component operators;
       preserve native edits, revoked credentials and uncertain outcomes. Current
       preparation rejects changed inputs rather than silently applying them.
-- [ ] **3. First terminal installer.** Collect the supported settings, write private
-      configuration and invoke the same CLI preview/apply/start implementation. Support
-      explicit development releases first; published releases use the same schema.
-      No protection switches, duplicate orchestration or silent build fallbacks.
 - [ ] **4. Qualify and publish the supported release.** Build exact images and operator;
       generate the release file, verify it on a fresh installation, then publish downloads,
       checksums/notices to GitHub Releases and images to GHCR. Report qualified platforms

@@ -65,7 +65,7 @@ network policy for every companion.
   routing bug. Gateway and worker retain OpenShell; Chromium retains its own sandbox.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
   tests. Changed-upstream-version upgrades, clean-machine release installation,
-  Linux/WSL, automated backups and the terminal installer are unfinished.
+  Linux/WSL and automated backups are unfinished.
 
 [TODO.md](TODO.md) contains only open work and future decisions. Lobster and other
 optional capabilities are not release requirements. Vanilla ClawHub discovery stays.
@@ -76,7 +76,9 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 preparation and lifecycle. A fresh macOS arm64 installation passed local browser login,
 administrator bootstrap, protected worker access and stop/restart with native settings
 and worker files retained. Initial optional models/Connections and pack selections are implemented; retained-install
-capability reconfiguration, installer and publication remain in TODO.
+capability reconfiguration and publication remain in TODO. The terminal installer
+collects supported initial settings and uses the same preview/apply/start operators;
+it requires a prepared release and refuses existing installation directories.
 The [v1 design and concrete examples](docs/installation-interface.md) define the target
 configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
 boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;

@@ -4,8 +4,8 @@ This operator path assembles the existing components for local evaluation on mac
 arm64 with Docker Desktop. `prepare` initializes private configuration, the database
 and native volume. `start` supervises the runtime and companions. Fresh startup, native administrator
 browser login, a configured model/tool interaction and retained-state restart have
-passed. The terminal wizard remains separate
-and last.
+passed. The [terminal installer](installation.md#terminal-installer) collects a unified
+installation document and calls these same operators for initial setup.
 
 Build the [runtime](../images/README.md) and [companion](../../apps/companion/README.md)
 images and obtain the pinned [controller executables](../openshell/README.md#contributor-controller-setup).

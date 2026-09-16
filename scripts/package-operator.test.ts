@@ -90,6 +90,7 @@ await test(
       assert.match(stdout, /Usage:/);
     }
     for (const args of [
+      ["scripts/clawscarf.js", "install", "--help"],
       ["scripts/local.js", "connections", "configure", "--help"],
       ["services/connections/credential-command.js", "--help"],
     ]) {
@@ -99,6 +100,17 @@ await test(
       });
       assert.match(stdout, /Usage:/);
     }
+    await assert.rejects(
+      execute(process.execPath, ["scripts/clawscarf.js", "install"], {
+        cwd,
+        timeout: 15000,
+      }),
+      (error: unknown) =>
+        error instanceof Error &&
+        "stderr" in error &&
+        typeof error.stderr === "string" &&
+        error.stderr.includes("interactive terminal"),
+    );
     const configuration = join(directory, "models.json");
     const rendered = join(directory, "gateway.json");
     await copyFile(

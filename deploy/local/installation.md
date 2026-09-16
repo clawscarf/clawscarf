@@ -2,7 +2,8 @@
 
 The unified CLI composes the existing [local operators](README.md). It requires
 OpenShell, the protected shared worker and authenticated entry. The current target
-is macOS arm64 with Docker Desktop. Published downloads and the interactive installer are unfinished. Optional models, Connections and pack selections
+is macOS arm64 with Docker Desktop. Published downloads remain unfinished. The
+terminal installer covers initial setup. Optional models, Connections and pack selections
 are wired into initial preparation and startup.
 
 A fresh local installation passed preparation, native browser administrator login,
@@ -38,6 +39,50 @@ The current generator refers to local executable files; it does not publish/down
 release tools or qualify a release. Local image IDs work for development only.
 
 ## Configure and run
+
+### Terminal installer
+
+From the checkout, with an already prepared release:
+
+```sh
+pnpm clawscarf install --release /absolute/clawscarf-release.json --directory ./team
+```
+
+Both flags are optional; the wizard asks for missing values. It requires an interactive
+terminal, a **new directory whose parent exists**, and the release's exact local images
+and OpenShell executables. It never downloads or builds missing components. The same
+release schema is used by the CLI and the installer; publishing a release is separate.
+
+The wizard collects local or HTTPS/OIDC access, resource sizes, optional browser,
+model gateway, Connections and native pack selections. OpenShell, the protected
+worker and authenticated entry are mandatory. Only capabilities present in the release
+are offered; browser selection explicitly describes its upstream limitation. OIDC
+requires existing DNS/TLS and a registered client, and still uses the known administrator
+subject/email bootstrap. It shows the actual login and post-logout callback URLs.
+
+Model catalogs, connector catalogs and pack sources use their existing documented
+file formats; this first wizard does not author them or create external accounts.
+Credentials are imported from private operator-owned files into a new `secrets/`
+directory (0700), with files and generated configuration/preview at 0600. Secret
+values are never shown in prompts or written into the installation JSON. Other input
+paths become absolute references; keep those release/catalog/source files available.
+
+After confirming file creation, it validates inputs and saves the normal CLI preview.
+Choose **Save preview and exit**, **Prepare installation**, or **Prepare and start**.
+Save-only does not call Docker or provision resources. Preparation first runs `doctor`
+and applies that exact preview. Start uses the ordinary foreground supervisor and its
+readiness/login output; Ctrl+C stops it and retains data. Cancellation during a long
+preparation step waits for that operation to settle and prevents the next step from
+starting. Failures retain saved files and show CLI resumption instructions; mutations
+are never automatically retried.
+
+The installer refuses existing directories, including empty ones or symlinks. Resume
+through the CLI below; unified retained-install capability changes are still unfinished.
+The wizard's save-only path is exercised in a real terminal. Automated tests cover
+prompt choices, private files, preview integrity and delegation/order for prepare/start;
+they do not constitute a new full runtime or OIDC qualification.
+
+### Author the configuration directly
 
 Installation paths resolve relative to the installation configuration file. Secret
 files must be regular, private files owned by the operator. A minimal example:

@@ -3,7 +3,8 @@
 This development archive contains compiled local setup, controller, model and pack
 commands. It runs outside the contributor checkout. It is not the complete
 distribution: runtime/companion images and the pinned OpenShell executables are
-separate inputs. There is no automatic installer or published release yet.
+separate inputs. The interactive installer guides initial setup from a supplied
+release file; it does not download/build missing components. Published releases remain unfinished.
 
 ## Run the archive
 
@@ -14,6 +15,7 @@ pnpm 10.33.0. In the extracted `package` directory:
 ```sh
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
+node scripts/clawscarf.js install --release /absolute/clawscarf-release.json --directory /absolute/new-team
 node scripts/local.js --help
 node scripts/models.js --help
 node scripts/packs.js --help
@@ -26,7 +28,14 @@ declarations are retained solely to match that lockfile; `--prod` excludes them.
 No TypeScript compiler, contributor source or build step is needed to run the commands.
 The current local assembly supports macOS arm64 with Docker Desktop only.
 
-With the separately prepared local input file and exact images/executables:
+The installer uses the unified installation document and preview/apply/start operations.
+It offers local or OIDC access and optional models, Connections and packs, imports
+private credential files, and refuses existing installation directories. Choose save-only,
+prepare, or prepare/start in the foreground. It requires an interactive terminal; automation
+uses `validate`, `plan`, `apply` and `start` instead. Retained-install capability changes
+remain separate component operations. Keep release/catalog/pack input files available.
+
+For the lower-level component operator, with a separately prepared input file and exact images/executables:
 
 ```sh
 node scripts/local.js prepare --directory /absolute/private/installation --config /absolute/local-input.json

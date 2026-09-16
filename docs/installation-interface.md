@@ -1,8 +1,8 @@
 # Installation interface — proposed v1
 
 This describes the target installation interface. The [unified CLI guide](../deploy/local/installation.md)
-owns implemented commands and limits; the complete interface below is not yet implemented. [TODO.md](../TODO.md) owns selection and unfinished work. The installer,
-People changes and external hosting adoption require their own implementation slices.
+owns implemented commands and limits; the complete interface below is not yet implemented. [TODO.md](../TODO.md) owns selection and unfinished work. Initial terminal
+installation exists; retained-install changes, People changes and external hosting adoption remain separate slices.
 
 ## One installation, three callers
 
@@ -265,7 +265,7 @@ The public integration contract must preserve exact native identities, private
 transport, revocation and persistent state without a second login authority.
 Consumer-specific adoption plans belong in the consumer repository.
 
-## Recipes, packs and the eventual installer
+## Recipes, packs and the installer
 
 Keep three starter recipes as ordinary complete configuration examples: local
 operator evaluation, standalone OIDC team, and externally managed hosting. They may
@@ -287,12 +287,13 @@ invent OAuth credentials, grant every agent access, or roll back the whole serve
 Only actual selected dependencies are requirements. A general pack marketplace is
 outside v1; existing native Claws remain experimental at the pinned release.
 
-The future terminal installer selects a recipe and artifact source, asks the relevant
-access/exposure/integration questions from the valid combinations above, writes
-private secrets and configuration, shows the same CLI preview, applies and starts.
-It reports the working URL and the remaining human steps. An existing installation opens a reconfiguration flow rather
-than overwriting its state. The same complete document supports unattended deployment.
-Installer visual style and optional-capability choices remain a later discussion.
+The [current terminal installer](../deploy/local/installation.md#terminal-installer)
+uses an explicit release file, asks the supported access/exposure/integration questions,
+imports private credential files and writes configuration. It offers the same CLI preview,
+preparation and foreground startup, with readiness and login output. Existing directories
+are refused; a retained-install reconfiguration flow remains unfinished. The same complete
+document supports unattended deployment. Recipe selection and release downloading are
+future work, not additional installer behavior today.
 It never asks whether to use OpenShell, bypass authentication or disable sandbox
 protection. An unmet prerequisite produces a concrete failure, not a weaker preset.
 
@@ -302,5 +303,6 @@ Build the schema/preview/CLI around the existing local path first; add coherent
 external transport/storage contracts so a consumer does not need a competing design.
 Do not claim external hosting adoption until its adapter and one Linux hosted installation
 pass. Choose the standalone first-admin and People admission flow before changing
-Access. Wire selected optional integrations next, qualify a release, then build the
-installer. The owner-managed upstream browser issue stays outside this work.
+Access. Initial optional integration and the first terminal installer are implemented;
+retained-install changes and release qualification remain unfinished. The owner-managed
+upstream browser issue stays outside this work.

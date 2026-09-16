@@ -40,9 +40,14 @@ project retains that check and consumes their generated declarations.
 
 The [local assembly](../deploy/local/README.md) uses `scripts/local.ts prepare`,
 `start` and `login` for private state, supervised operation and local entry. It
-remains unqualified until the combined clean-install acceptance is finished.
+has local acceptance evidence in that guide; clean-machine release qualification remains separate.
 The compiled operator includes the Access and Connections migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
+
+The [unified installation CLI](../deploy/local/installation.md) is in `installation/`.
+Its `installer/` module collects terminal answers, writes private initial configuration,
+and calls the same plan/doctor/apply/start functions. It has no separate provisioning
+engine. Run `pnpm clawscarf install` for the wizard or use the noninteractive commands.
 
 ## Operator archive
 

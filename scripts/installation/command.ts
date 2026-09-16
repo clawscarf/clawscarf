@@ -12,6 +12,7 @@ import { doctorInstallation } from "./doctor.js";
 import { localLoginCode } from "../local/login.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../local/upgrade.js";
+import { runInstaller } from "./installer/run.js";
 
 const output = (value: unknown) => {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -20,6 +21,14 @@ export function installationCommand() {
   const program = new Command("clawscarf").description(
     "Install and operate a protected OpenClaw team server.",
   );
+  program
+    .command("install")
+    .description(
+      "Interactively configure and optionally start a new installation",
+    )
+    .option("--release <file>", "Explicit ClawScarf release file")
+    .option("--directory <path>", "New private installation directory")
+    .action(runInstaller);
   program
     .command("release-create")
     .description(

@@ -21,6 +21,9 @@ The runtime recipe references pinned OpenClaw and OpenShell artifacts in
 [release/components.json](release/components.json). The access adapter imports
 the published `@openclaw/gateway-client` package. Dependencies and their versions
 are recorded in lockfiles; upstream source is not vendored here.
+The terminal installer uses MIT-licensed `@clack/prompts` 1.8.1. It is installed
+from the operator lockfile and retains its upstream license with the dependency;
+the installer does not vendor or modify the prompt library.
 OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/LICENSE)
 is MIT. NVIDIA NemoClaw's [license](https://github.com/NVIDIA/NemoClaw/blob/main/LICENSE)
 is Apache-2.0. Referencing their architecture is not incorporating their code.
