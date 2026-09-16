@@ -15,10 +15,17 @@ export const planSchema = z.strictObject({
   stateDirectory: z.string(),
   fingerprint: z.string(),
   observedState: z.string().nullable(),
-  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(7),
+  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(8),
   action: z.enum(["prepare", "resume"]),
   release: z.string(),
   browser: z.boolean(),
+  capabilities: z.strictObject({
+    models: z.enum(["disabled", "external", "litellm"]),
+    connections: z.enum(["disabled", "external", "local"]),
+    packs: z.array(
+      z.strictObject({ directory: z.string(), members: z.array(z.string()) }),
+    ),
+  }),
 });
 async function observation(directory: string) {
   try {
@@ -72,19 +79,16 @@ export async function planInstallation(configFile: string) {
         input.ports.database,
         input.execution?.port ?? 0,
         input.browser?.port ?? 65534,
+        input.modelGateway?.port ?? 65533,
       ]
     : await allocatePorts();
   const resolved = await resolveInstallation(configFile, internalPorts);
-  if (resolved.config.connections.mode !== "disabled")
-    throw new InstallationError(
-      "change_unsupported",
-      "Unified Connections activation is not implemented yet. Use the component operator until that slice is complete.",
-    );
   if (state && !isDeepStrictEqual(state.input, resolved.input))
     throw new InstallationError(
       "change_unsupported",
       "This change requires an explicit configuration or upgrade operation. Prepare never replaces retained settings.",
     );
+  await verifyRetainedInputs(directory, resolved.fingerprint);
   return planSchema.parse({
     schemaVersion: 1,
     stateDirectory: directory,
@@ -94,6 +98,14 @@ export async function planInstallation(configFile: string) {
     action: state ? "resume" : "prepare",
     release: resolved.release.version,
     browser: config.browser.enabled,
+    capabilities: {
+      models: config.models.mode,
+      connections: config.connections.mode,
+      packs: resolved.packSelection.packs.map(({ directory, members }) => ({
+        directory,
+        members,
+      })),
+    },
   });
 }
 export async function applyInstallation(configFile: string, planFile: string) {
@@ -107,19 +119,24 @@ export async function applyInstallation(configFile: string, planFile: string) {
       "stale_plan",
       "Configuration or release inputs changed. Create a new plan.",
     );
-  if (resolved.config.connections.mode !== "disabled")
-    throw new InstallationError(
-      "change_unsupported",
-      "Unified Connections activation is not implemented yet.",
-    );
   return withInstallationLock(plan.stateDirectory, async () => {
     if ((await observation(plan.stateDirectory)) !== plan.observedState)
       throw new InstallationError(
         "stale_plan",
         "Installation state changed. Create a new plan before resuming.",
       );
+    await verifyRetainedInputs(resolved.stateDirectory, resolved.fingerprint);
     // The existing operator records identity before effects and verifies retained resource ownership.
-    await prepareLocal(resolved.stateDirectory, resolved.input);
+    await prepareLocal(resolved.stateDirectory, resolved.input, {
+      inputFingerprint: resolved.fingerprint,
+      ...(resolved.config.connections.mode === "disabled"
+        ? {}
+        : {
+            connections: resolved.connectorCredentialFile
+              ? { credentialFile: resolved.connectorCredentialFile }
+              : {},
+          }),
+    });
     await ensurePrivateFile(
       join(resolved.stateDirectory, "release.json"),
       JSON.stringify(resolved.release, null, 2),
@@ -128,10 +145,27 @@ export async function applyInstallation(configFile: string, planFile: string) {
       join(resolved.stateDirectory, "configuration.json"),
       JSON.stringify(resolved.config, null, 2),
     );
+    await ensurePrivateFile(
+      join(resolved.stateDirectory, "packs.json"),
+      JSON.stringify(resolved.packSelection),
+    );
     return {
       state: "prepared",
       directory: resolved.stateDirectory,
       release: resolved.release.version,
     };
   });
+}
+
+async function verifyRetainedInputs(directory: string, expected: string) {
+  try {
+    if ((await readFile(join(directory, "inputs.sha256"), "utf8")) !== expected)
+      throw new InstallationError(
+        "change_unsupported",
+        "Prepared capability inputs changed. Use the explicit model, Connections or pack operator; prepare does not reapply or rotate native settings.",
+      );
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+      throw error;
+  }
 }

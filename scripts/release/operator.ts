@@ -35,6 +35,8 @@ const payload = [
   "services/connections/providers/catalog/retirement.js",
   "services/connections/repo/catalog-publication.js",
   "services/connections/repo/database.js",
+  "services/connections/repo/bootstrap.js",
+  "services/connections/repo/credential-store.js",
   "services/connections/service/catalog-publication.js",
   "services/connections/shared/errors.js",
   "services/connections/types/errors.js",

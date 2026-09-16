@@ -36,10 +36,11 @@ node scripts/local.js start --directory /absolute/private/installation
 Keep installation data outside this extracted package. Stopping the foreground
 process retains state; replacing an operator archive is not a runtime upgrade or
 backup. The pack operator additionally needs the pinned Python environment from
-`scripts/packs/requirements.txt`. Optional models need their configured gateway;
-this archive contains no model/provider credentials. Optional Connections includes
-the administrator credential command and stopped-runtime activation; it does not
-issue a credential merely by preparing or starting an installation.
+`scripts/packs/requirements.txt`. Optional models use an external gateway or the unified configuration’s pinned local
+LiteLLM service. This archive contains no model/provider credentials. Unified preparation
+can issue initial scoped model and Connections credentials for fresh installations;
+normal start never rotates or reactivates them. The component Connections operator
+retains its explicit credential/configuration commands.
 
 The source checkout owns full local setup, model and pack qualification instructions.
 [Third-party notices](../THIRD_PARTY_NOTICES.md) are retained verbatim; their relative source references refer

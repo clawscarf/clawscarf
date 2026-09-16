@@ -19,10 +19,12 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Selected implementation — verify each step before proceeding
 
-- [ ] **2. Wire optional capabilities through the same configuration.** Models
-      disabled/external/local LiteLLM, Connections disabled/external/local Composio and
-      native packs, with private credentials and prerequisites. Verify disabled paths,
-      explicit changes and operation outcomes. Do not invent accounts or capability requirements.
+- [ ] **2. Finish retained-install capability changes.** Initial models, Connections
+      and pack selections are wired. Add reviewed capability change/reapply operations
+      to the unified installation CLI: model routes/keys, broker settings/keys,
+      enable/disable and pack selection changes. Reuse the existing component operators;
+      preserve native edits, revoked credentials and uncertain outcomes. Current
+      preparation rejects changed inputs rather than silently applying them.
 - [ ] **3. First terminal installer.** Collect the supported settings, write private
       configuration and invoke the same CLI preview/apply/start implementation. Support
       explicit development releases first; published releases use the same schema.

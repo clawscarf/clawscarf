@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { postgresImage } from "../local/compose.js";
+
+import { liteLlmImage, postgresImage } from "../local/images.js";
 
 export const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const image = z
@@ -20,6 +21,7 @@ export const releaseSchema = z.strictObject({
     worker: image,
     companion: image,
     relay: image,
+    models: z.literal(liteLlmImage).optional(),
     browser: z
       .strictObject({ chromium: image, node: image, dns: image, egress: image })
       .optional(),

@@ -5,6 +5,12 @@ The [OpenClaw plugin](../../plugins/connections/README.md) exposes search, descr
 and call tools; accounts, provider credentials, grants and receipts stay here.
 [OpenAPI](openapi.json) owns the browser, CLI and plugin contract.
 
+The [unified installation CLI](../../deploy/local/installation.md#connections)
+can bootstrap local Connections on a fresh installation, including its initial scoped
+runtime credential and native plugin settings. Offline bootstrap uses the repository
+transaction and never replaces or reactivates existing credentials. External mode
+accepts an existing scoped broker token; disabled mode creates no Connections schema.
+
 ## Ownership and authority
 
 The access companion supplies current sessions and a verifier that acts through

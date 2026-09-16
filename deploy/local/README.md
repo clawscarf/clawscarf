@@ -95,6 +95,10 @@ against fresh local Docker/Postgres resources. Tests cover retained keys, foreig
 and database privilege denials. Controller staging errors require operator inspection.
 Preparation never runs database migrations on API startup.
 
+The [unified CLI](installation.md#optional-capabilities) additionally initializes
+selected model/Connections credentials and native pack members. The lower-level
+component commands below do not implicitly activate Connections.
+
 ## Optional Connections
 
 For a new installation, choose a local companion or a compatible external broker.

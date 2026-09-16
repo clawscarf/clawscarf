@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { setTimeout } from "node:timers/promises";
 import pg from "pg";
+import { initializeConnectionCredential } from "../../services/connections/repo/bootstrap.js";
 import {
   initializeLocalDatabase,
   LocalDatabaseError,
@@ -230,6 +231,57 @@ await test(
       await admin.query("DROP SCHEMA clawscarf_connections");
       const enabled = { ...input, connections: true };
       assert.deepEqual(await initializeLocalDatabase(enabled), result);
+      const credentials = new pg.Pool({ connectionString: result.runtimeUrl });
+      try {
+        const initial = {
+          serverId: randomUUID(),
+          credentialId: randomUUID(),
+          credentialGeneration: 1,
+          hash: randomBytes(32).toString("hex"),
+          state: "active" as const,
+        };
+        await Promise.all([
+          initializeConnectionCredential(credentials, initial),
+          initializeConnectionCredential(credentials, initial),
+        ]);
+        await credentials.query(
+          "UPDATE clawscarf_connections.connection_credentials SET state='revoked' WHERE id=$1",
+          [initial.credentialId],
+        );
+        await initializeConnectionCredential(credentials, initial);
+        assert.deepEqual(
+          (
+            await credentials.query<{ state: string }>(
+              "SELECT state FROM clawscarf_connections.connection_credentials WHERE id=$1",
+              [initial.credentialId],
+            )
+          ).rows,
+          [{ state: "revoked" }],
+        );
+        await assert.rejects(
+          initializeConnectionCredential(credentials, {
+            ...initial,
+            credentialId: randomUUID(),
+          }),
+        );
+        await assert.rejects(
+          initializeConnectionCredential(credentials, {
+            ...initial,
+            hash: randomBytes(32).toString("hex"),
+          }),
+        );
+        assert.equal(
+          (
+            await credentials.query<{ count: string }>(
+              "SELECT count(*) FROM clawscarf_connections.connection_credentials WHERE server_id=$1",
+              [initial.serverId],
+            )
+          ).rows[0]?.count,
+          "1",
+        );
+      } finally {
+        await credentials.end();
+      }
       const connectionId = randomUUID();
       const serverId = randomUUID();
       await runtime.query(

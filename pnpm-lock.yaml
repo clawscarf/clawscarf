@@ -89,6 +89,9 @@ importers:
       tw-animate-css:
         specifier: 1.4.0
         version: 1.4.0
+      undici:
+        specifier: 8.10.2
+        version: 8.10.2
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -156,9 +159,6 @@ importers:
       typescript-eslint:
         specifier: 8.70.0
         version: 8.70.0(eslint@10.10.0(jiti@2.7.0))(typescript@6.0.3)
-      undici:
-        specifier: 8.10.2
-        version: 8.10.2
       vite:
         specifier: 8.2.2
         version: 8.2.2(@types/node@24.10.13)(jiti@2.7.0)(tsx@4.20.6)(yaml@2.9.1)

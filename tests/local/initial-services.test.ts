@@ -152,3 +152,18 @@ await test("resuming initialization preserves deliberate native browser, tool an
   await initializeHome(home, input, uid, gid);
   assert.equal(await readFile(path, "utf8"), edited);
 });
+
+await test("Connections composes with model secrets and protected browser execution without embedding a provider key", () => {
+  const result = withInitialServices(withInitialModels(preset(), models), {
+    execution: true,
+    browserToken: token,
+    connectionsBrokerUrl: "https://broker.example.test",
+  });
+  assert.ok("secrets" in result);
+  assert.ok("clawscarf-models" in result.secrets.providers);
+  assert.ok("clawscarf-connections" in result.secrets.providers);
+  assert.ok(result.plugins.entries["clawscarf-connections"].enabled);
+  assert.match(JSON.stringify(result.tools), /connections_search/);
+  assert.match(JSON.stringify(result.tools), /browser/);
+  assert.ok(!JSON.stringify(result).includes(models.credential.token));
+});

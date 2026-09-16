@@ -9,6 +9,12 @@ For a new local installation, [initial model setup](../local/README.md#initial-m
 combines this configuration, a scoped runtime key and its network permission before
 first startup. Existing installations use the explicit configuration commands below.
 
+For bundled models in a new complete installation, use the
+[unified LiteLLM selection](../local/installation.md#models). It owns the private
+TLS listener, separate model database, initial scoped key and start/stop lifecycle.
+The component commands below remain available for explicit model operations; their
+full configuration includes the endpoint, unlike the unified route-only input.
+
 ## Configure OpenClaw
 
 Copy [config.example.json](config.example.json) to private deployment configuration.

@@ -1,11 +1,13 @@
 import { open, readFile, unlink } from "node:fs/promises";
 import { z } from "zod";
+import { Agent, fetch } from "undici";
 import { type ModelConfiguration } from "./configuration.js";
 export async function issueRuntimeCredential(input: {
   origin: string;
   masterKeyFile: string;
   output: string;
   configuration: ModelConfiguration;
+  caFile?: string;
 }) {
   if (input.configuration.mode !== "litellm")
     throw Error("Key provisioning requires bundled LiteLLM mode.");
@@ -20,10 +22,13 @@ export async function issueRuntimeCredential(input: {
   const masterKey = (await readFile(input.masterKeyFile, "utf8")).trim();
   if (!masterKey.startsWith("sk-"))
     throw Error("Invalid LiteLLM management credential.");
+  const ca = input.caFile ? await readFile(input.caFile, "utf8") : undefined;
   const output = await open(input.output, "wx", 0o600);
+  const dispatcher = ca ? new Agent({ connect: { ca } }) : undefined;
   let stored = false;
   try {
     const response = await fetch(new URL("/key/generate", input.origin), {
+      ...(dispatcher ? { dispatcher } : {}),
       method: "POST",
       redirect: "error",
       signal: AbortSignal.timeout(30000),
@@ -43,9 +48,11 @@ export async function issueRuntimeCredential(input: {
     const body: unknown = await response.json();
     const result = z.object({ key: z.string().startsWith("sk-") }).parse(body);
     await output.writeFile(`${result.key}\n`);
+    await output.sync();
     stored = true;
   } finally {
     await output.close();
+    await dispatcher?.close();
     if (!stored) await unlink(input.output);
   }
 }

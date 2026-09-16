@@ -1,5 +1,5 @@
 import { z } from "zod";
-const modelSchema = z.strictObject({
+export const modelSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/),
   name: z.string().min(1).max(200),
   enabled: z.boolean(),

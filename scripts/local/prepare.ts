@@ -1,4 +1,9 @@
 import { ensureOwnedVolume } from "./volumes.js";
+import { initialConnectionsCredential } from "./connections-bootstrap.js";
+import {
+  prepareModelGateway,
+  prepareModelCredential,
+} from "./model-gateway.js";
 import { prepareBrowserNode, browserNodeName } from "./browser-node.js";
 import { withInitialServices } from "./initial-services.js";
 import {
@@ -49,6 +54,10 @@ import { requireNoUpgrade } from "./upgrade-state.js";
 export async function prepareLocal(
   directoryInput: string,
   inputValue: unknown,
+  capabilities?: {
+    inputFingerprint: string;
+    connections?: { credentialFile?: string };
+  },
 ) {
   const directory = resolve(directoryInput);
   const input = parseLocalInput(inputValue);
@@ -64,6 +73,7 @@ export async function prepareLocal(
   for (const image of [
     input.runtimeImage,
     input.companionImage,
+    ...(input.modelGateway ? [input.modelGateway.image] : []),
     ...(input.relayImage ? [input.relayImage] : []),
     ...(input.execution ? [input.execution.image] : []),
     ...(input.browser
@@ -79,6 +89,11 @@ export async function prepareLocal(
   const state = await initializeState(directory, input);
   await withLocalLock(directory, async () => {
     await requireNoUpgrade(directory);
+    if (capabilities)
+      await ensurePrivateFile(
+        join(directory, "inputs.sha256"),
+        capabilities.inputFingerprint,
+      );
     await verifyLocalExecutables(state);
     await verifyLocalPorts(state);
     const privateDirectory = join(directory, "private");
@@ -87,13 +102,7 @@ export async function prepareLocal(
       directory,
       connections,
     );
-    const models = await prepareInitialModels(directory, input.models);
-    await prepareRuntimePolicy(
-      directory,
-      models,
-      input.execution,
-      connectionsEndpoint,
-    );
+    await prepareModelGateway(directory, state);
     const execution = await prepareExecution(directory, state);
     await ensureLocalNetworks(directory, state);
     const browser = await prepareBrowser(directory, state);
@@ -105,6 +114,8 @@ export async function prepareLocal(
     if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
     await ensureOwnedVolume(names.databaseVolume, state.ownerId);
     await ensureOwnedVolume(names.volume, state.ownerId);
+    if (input.modelGateway)
+      await ensureOwnedVolume(`${names.project}-models`, state.ownerId);
     if (execution) {
       await ensureOwnedVolume(names.workerVolume, state.ownerId);
       await initializeExecutionVolume(state, execution);
@@ -126,6 +137,14 @@ export async function prepareLocal(
         null,
         2,
       ),
+    );
+    await prepareModelCredential(directory, state);
+    const models = await prepareInitialModels(directory, input.models);
+    await prepareRuntimePolicy(
+      directory,
+      models,
+      input.execution,
+      connectionsEndpoint,
     );
     try {
       await compose(directory, [
@@ -181,6 +200,16 @@ export async function prepareLocal(
         },
       );
       const identity = await store.initialize();
+      const connectionCredential =
+        capabilities?.connections && connectionsEndpoint
+          ? await initialConnectionsCredential({
+              directory,
+              serverId: identity.serverId,
+              endpoint: connectionsEndpoint,
+              database: pool,
+              ...capabilities.connections,
+            })
+          : undefined;
       const insideDatabase = new URL(runtimeUrl);
       insideDatabase.hostname = "postgres";
       insideDatabase.port = "5432";
@@ -209,6 +238,9 @@ export async function prepareLocal(
       const native = JSON.stringify(
         withInitialServices(configured, {
           execution: Boolean(input.execution),
+          ...(connectionCredential
+            ? { connectionsBrokerUrl: connectionCredential.brokerUrl }
+            : {}),
           ...(browser
             ? {
                 browserToken: browser.token,
@@ -225,6 +257,7 @@ export async function prepareLocal(
         identity.serverId,
         models?.credential,
         execution,
+        connectionCredential,
       );
       await writePrivate(
         join(directory, "identity.json"),
@@ -281,6 +314,7 @@ async function initializeNativeVolume(
   serverId: string,
   modelCredential: InitialModels["credential"] | undefined,
   execution: InitialExecution | undefined,
+  connectionsCredential?: { token: string; ca?: string | undefined },
 ) {
   await run(
     "docker",
@@ -307,6 +341,16 @@ async function initializeNativeVolume(
         serverId,
         configuration,
         ...(modelCredential ? { modelCredential } : {}),
+        ...(connectionsCredential
+          ? {
+              connectionsCredential: {
+                token: connectionsCredential.token,
+                ...(connectionsCredential.ca
+                  ? { ca: connectionsCredential.ca }
+                  : {}),
+              },
+            }
+          : {}),
         ...(execution
           ? {
               executionCredential: {

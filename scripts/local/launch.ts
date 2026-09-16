@@ -35,7 +35,11 @@ import { requireNoUpgrade } from "./upgrade-state.js";
 export async function launchLocal(
   directoryInput: string,
   report: (message: string) => void,
-  control: { signal?: AbortSignal; onReady?: () => void } = {},
+  control: {
+    signal?: AbortSignal;
+    onReady?: () => void;
+    activate?: () => Promise<void>;
+  } = {},
 ) {
   const directory = resolve(directoryInput);
   const state = await readState(directory);
@@ -142,6 +146,18 @@ export async function launchLocal(
           { env, timeout: 5000 },
         );
       });
+      if (state.input.modelGateway) {
+        report("Starting model gateway…");
+        await compose(directory, [
+          "up",
+          "-d",
+          "--wait",
+          "--wait-timeout",
+          "120",
+          "models",
+        ]);
+        check();
+      }
       if (state.input.execution) {
         report("Starting execution worker…");
         executionAttempted = true;
@@ -274,6 +290,8 @@ Press Ctrl+C to stop. Your data will be retained.`);
           `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
         );
       }
+      await control.activate?.();
+      check();
       control.onReady?.();
       await Promise.race([
         signal.promise,
@@ -336,7 +354,11 @@ Press Ctrl+C to stop. Your data will be retained.`);
       if (first && (await first.stop()).kind === "failed")
         errors.push(Error("Controller cleanup failed."));
       try {
-        await compose(directory, ["stop", "postgres"]);
+        await compose(directory, [
+          "stop",
+          "postgres",
+          ...(state.input.modelGateway ? ["models", "models-database"] : []),
+        ]);
       } catch (error) {
         errors.push(error);
       }

@@ -53,6 +53,11 @@ export const installationSchema = z
         credentialFile: path,
         caFile: path.optional(),
       }),
+      z.strictObject({
+        mode: z.literal("litellm"),
+        configurationFile: path,
+        upstreamEnvironmentFile: path,
+      }),
     ]),
     connections: z.discriminatedUnion("mode", [
       disabled,
@@ -69,9 +74,29 @@ export const installationSchema = z
         catalogDirectory: path,
       }),
     ]),
-    packs: z.array(z.never()),
+    packOperator: z
+      .strictObject({
+        pythonExecutable: path,
+        experimentalClaws: z.literal(true),
+      })
+      .optional(),
+    packs: z
+      .array(
+        z.strictObject({
+          directory: path,
+          members: z.array(z.string().regex(/^[a-z][a-z0-9-]{0,63}$/)).min(1),
+          bindingsFile: path.optional(),
+        }),
+      )
+      .max(32),
   })
   .superRefine((value, context) => {
+    if (Boolean(value.packOperator) !== value.packs.length > 0)
+      context.addIssue({
+        code: "custom",
+        message:
+          "Selected packs require a Python OpenShell SDK and explicit experimental Claws acknowledgement; omit packOperator when none are selected.",
+      });
     if ((value.access.mode === "local") !== (value.exposure.mode === "local"))
       context.addIssue({
         code: "custom",

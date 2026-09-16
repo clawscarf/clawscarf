@@ -50,6 +50,15 @@ export type InitialConnections =
       endpoint: InitialConnectionsEndpoint;
     };
 
+export async function readInitialConnectionToken(path: string) {
+  return z
+    .string()
+    .min(1)
+    .max(512)
+    .regex(/^[\x21-\x7e]+$/u)
+    .parse((await readRegular(path, true, 4096)).toString("utf8").trim());
+}
+
 const ownerSchema = z.discriminatedUnion("mode", [
   z.strictObject({
     ownerId: z.uuid(),

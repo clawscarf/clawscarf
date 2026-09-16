@@ -2,15 +2,23 @@
 
 The unified CLI composes the existing [local operators](README.md). It requires
 OpenShell, the protected shared worker and authenticated entry. The current target
-is macOS arm64 with Docker Desktop. Published downloads, the interactive installer,
-local LiteLLM lifecycle and pack selection are unfinished.
+is macOS arm64 with Docker Desktop. Published downloads and the interactive installer are unfinished. Optional models, Connections and pack selections
+are wired into initial preparation and startup.
 
 A fresh local installation passed preparation, native browser administrator login,
 worker SSH execution as UID 1000, stop, repeated preparation and restart. Native
 appearance settings and worker files survived; the worker had no Gateway configuration.
-This qualifies the local disabled-capability path, not optional-service or published
-release installation. Interrupted preparation resumed after Docker network capacity
+This qualifies the local disabled-capability path, not published release installation. Interrupted preparation resumed after Docker network capacity
 was restored without replacing its recorded installation identity.
+
+The optional assembly also passed local preparation and startup with bundled LiteLLM,
+a fixture Connections catalog and both research-pack agents. Private-TLS inference
+passed against a controlled upstream; invalid keys, unauthorized models and runtime-key
+administration were denied. Repeated preparation and restart retained a native UI edit,
+pack receipts and revoked model/Connections credentials. This workstation had exhausted
+Docker's default network pool, so that run resumed using explicitly addressed, owned
+test networks. It does not qualify default network allocation on an exhausted host,
+external account OAuth, or paid provider inference for this assembly.
 
 ## Development release
 
@@ -92,10 +100,116 @@ the last 100 lines of an allowlisted private operator log; treat logs as private
 
 Company HTTPS/OIDC uses the existing explicit administrator subject/email bootstrap;
 new enrollment UX is undecided. Browser use retains the documented upstream limitation.
-Optional initial model configuration uses the existing HTTPS gateway path. Connections
-configuration can be validated, but plan/apply reject it until unified activation is
-implemented; use the existing component operator for now. Nonempty pack selections, local LiteLLM,
-external platform access and directory-backed storage are rejected by this initial schema.
+Optional modes are described below. External platform access and directory-backed
+storage remain unsupported.
+
+## Optional capabilities
+
+All paths resolve against the installation document. Disabled models and Connections
+require no credential files, extra service or provider requests. Disabled Connections
+creates no Connections database schema and exposes no connector tools.
+
+### Models
+
+- `{"mode":"disabled"}` leaves model setup to native OpenClaw.
+- `{"mode":"external","configurationFile":"models.json","credentialFile":"secrets/model-key"}`
+  uses an existing HTTPS gateway; optional `caFile` supplies private trust. The model
+  file uses the existing [model configuration](../models/README.md). Supply a scoped
+  inference credential, never the gateway administrator key.
+- `{"mode":"litellm","configurationFile":"routes.json","upstreamEnvironmentFile":"secrets/providers.env"}`
+  starts the pinned LiteLLM image and its own PostgreSQL service/volume. The operator
+  creates private TLS and a scoped inference key. Only that runtime key reaches OpenClaw.
+  Upstream keys and LiteLLM administration remain outside Gateway/worker state.
+
+The bundled route file contains `defaultModel` and `models`; it has no endpoint or
+mode field because the operator allocates the private endpoint. For example:
+
+```json
+{
+  "defaultModel": "team",
+  "models": [
+    {
+      "id": "team",
+      "name": "Team",
+      "enabled": true,
+      "contextWindow": 32768,
+      "maxTokens": 4096,
+      "reasoning": false,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/YOUR_CHOSEN_MODEL",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    }
+  ]
+}
+```
+
+Replace the illustrative route and capabilities with your actual provider model.
+The private environment file contains exactly the credential variables referenced
+by enabled routes, e.g. `OPENROUTER_API_KEY=...`. The generated endpoint binds only
+loopback and uses HTTPS; the model database has no published port. OpenShell admits
+the Gateway's model endpoint explicitly. This is not a blanket network restriction
+on LiteLLM's upstream calls. Its migrations are owned by LiteLLM, separately from Access.
+
+Issuance is recorded before calling LiteLLM. If the response is lost, preparation
+stops for inspection rather than issuing another key. Restarts and repeated preparation
+reuse the same key; they do not restore revoked authority. Retain both the private
+state directory and the models database volume.
+
+### Connections
+
+- `{"mode":"disabled"}` omits the broker and native tool configuration.
+- `{"mode":"external","brokerUrl":"https://broker.example.com","credentialFile":"secrets/connections-key"}`
+  initializes the plugin against an existing broker; optional `caFile` supplies trust.
+  Supply an installation-scoped broker token, not a Composio project key.
+- `{"mode":"local","projectId":"YOUR_PROJECT","apiKeyFile":"secrets/composio-key","catalogDirectory":"catalog"}`
+  enables the existing companion service and its schema/catalog. Preparation issues
+  the initial scoped runtime credential once and configures the plugin on a fresh
+  native volume. Composio credentials stay in the companion. Repeated preparation
+  never replaces an existing credential or reactivates a revoked one.
+
+Use the [catalog importer](../../services/connections/README.md) to prepare catalog
+files. Installation does not contact Composio or connect anybody's account. The
+provider project callback still must match the deployed Connections URL, and account
+OAuth is a subsequent human action. The plugin exposes the existing three
+search/describe/call tools; agent grants remain managed through Connections.
+
+### Packs
+
+Select exact source directories and members:
+
+```json
+{
+  "packOperator": {
+    "pythonExecutable": "/absolute/operator-venv/bin/python",
+    "experimentalClaws": true
+  },
+  "packs": [
+    {
+      "directory": "/absolute/packs/research-team",
+      "members": ["researcher", "reviewer"]
+    }
+  ]
+}
+```
+
+Omit `packOperator` when `packs` is empty. Install the pinned Python dependencies
+from [requirements.txt](../../scripts/packs/requirements.txt); `doctor` checks SDK
+availability. Pack source digests are part of the preview. Model-dependent members
+require enabled models. Connection-dependent members additionally require an explicit
+private `bindingsFile` using the [pack binding format](../../packs/README.md).
+No accounts or grants are invented.
+
+After the protected server starts, each selected member uses native Claws preview
+and apply with prerequisite and integrity checks. `status` reports `complete`,
+`blocked` or `unconfirmed` per member. These report installation operations, not
+continuous observation of native agents. A blocked optional pack leaves the server
+available. An uncertain mutation is retained and never automatically replayed.
+Successful receipts prevent normal restarts from recreating deleted agents or
+replacing native edits. The original source is unnecessary for a completed member's
+restart. Native pack update/removal remains an explicit [pack operation](../../packs/README.md).
 
 Changing retained configuration is not silently applied by `prepare` or `start`.
 The `upgrade` subcommand exposes the existing explicit Gateway-only upgrade; it does

@@ -22,7 +22,7 @@ The image includes:
   used for Gateway startup and operator commands.
 - The [fresh-volume initializer](../../runtime/initialize.ts), with its compiled entry
   point `/app/clawscarf/initialize-main.js`, used only by operator setup. It atomically
-  initializes optional scoped model and worker-client credentials with native state,
+  initializes optional scoped model/Connections and worker-client credentials with native state,
   makes a fresh home owner-only (0700), preserves existing owned configuration and
   rejects foreign state. Repeating initialization does not repair retained permissions.
 - The [worker-volume initializer](../../runtime/initialize-worker.ts), at

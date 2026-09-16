@@ -1,16 +1,21 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, join } from "node:path";
+import { loadGatewayConfiguration } from "../local/model-gateway.js";
 import { createServer } from "node:net";
 import { releaseSchema } from "../release/definition.js";
 import { parseLocalInput, type LocalInput } from "../local/configuration.js";
 import { loadInitialModels } from "../local/models.js";
-import { loadInitialConnections } from "../local/connections.js";
+import {
+  loadInitialConnections,
+  readInitialConnectionToken,
+} from "../local/connections.js";
 import { readTeamMaterials } from "../local/team.js";
 import { installationSchema } from "./configuration.js";
 import { fingerprint, readInputFile, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
+import { openPack } from "../packs/source.js";
 
 async function executable(path: string, checksum: string) {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -36,7 +41,7 @@ async function executable(path: string, checksum: string) {
   }
 }
 export async function allocatePorts() {
-  const servers = Array.from({ length: 7 }, () => createServer());
+  const servers = Array.from({ length: 8 }, () => createServer());
   try {
     const ports: number[] = [];
     for (const server of servers) {
@@ -101,6 +106,7 @@ export async function resolveInstallation(
     database,
     worker,
     browser,
+    models,
   ] = internalPorts;
   const inputs: Record<string, string> = {};
   async function inputFile(value: string, secret: boolean) {
@@ -167,7 +173,7 @@ export async function resolveInstallation(
           },
         }
       : {}),
-    ...(config.models.mode !== "disabled"
+    ...(config.models.mode === "external"
       ? {
           models: {
             configurationFile: await inputFile(
@@ -178,6 +184,36 @@ export async function resolveInstallation(
             ...(config.models.caFile
               ? { caFile: await inputFile(config.models.caFile, false) }
               : {}),
+          },
+        }
+      : {}),
+    ...(config.models.mode === "litellm"
+      ? {
+          modelGateway: {
+            configurationFile: await inputFile(
+              config.models.configurationFile,
+              false,
+            ),
+            upstreamEnvironmentFile: await inputFile(
+              config.models.upstreamEnvironmentFile,
+              true,
+            ),
+            image: release.images.models,
+            port: models,
+          },
+          models: {
+            configurationFile: join(
+              path(config.stateDirectory),
+              "private/models/native.json",
+            ),
+            runtimeKeyFile: join(
+              path(config.stateDirectory),
+              "private/models/runtime-key",
+            ),
+            caFile: join(
+              path(config.stateDirectory),
+              "private/management-ca.pem",
+            ),
           },
         }
       : {}),
@@ -203,7 +239,12 @@ export async function resolveInstallation(
         }
       : {}),
   });
-  await loadInitialModels(input.models);
+  if (input.modelGateway)
+    await loadGatewayConfiguration(
+      input.modelGateway.configurationFile,
+      input.modelGateway.upstreamEnvironmentFile,
+    );
+  else await loadInitialModels(input.models);
   if (input.team) await readTeamMaterials(input.team);
   const connections = await loadInitialConnections(input.connections);
   if (connections?.mode === "local")
@@ -213,12 +254,63 @@ export async function resolveInstallation(
     config.connections.mode === "external"
       ? await inputFile(config.connections.credentialFile, true)
       : undefined;
+  if (connectorCredentialFile)
+    await readInitialConnectionToken(connectorCredentialFile);
+  const members = new Set<string>();
+  const packs = [];
+  for (const selected of config.packs) {
+    const pack = await openPack(path(selected.directory));
+    for (const id of selected.members) {
+      const member = pack.manifest.members.find((m) => m.id === id);
+      if (!member || members.has(id))
+        throw new InstallationError(
+          "invalid_configuration",
+          "Pack member selections must exist and have unique agent IDs.",
+        );
+      members.add(id);
+      if (
+        member.requirements.model === "configured-default" &&
+        config.models.mode === "disabled"
+      )
+        throw new InstallationError(
+          "invalid_configuration",
+          "This pack requires a configured model.",
+        );
+      if (
+        member.requirements.connections.length &&
+        (config.connections.mode === "disabled" || !selected.bindingsFile)
+      )
+        throw new InstallationError(
+          "invalid_configuration",
+          "This pack requires Connections and explicit account bindings.",
+        );
+    }
+    const bindingsFile = selected.bindingsFile
+      ? await inputFile(selected.bindingsFile, true)
+      : undefined;
+    inputs[`pack:${pack.root}`] = pack.digest;
+    packs.push({
+      directory: pack.root,
+      digest: pack.digest,
+      members: selected.members,
+      ...(bindingsFile
+        ? { bindingsFile, bindingsDigest: inputs[bindingsFile] }
+        : {}),
+    });
+  }
+  const packSelection = {
+    packs,
+    ...(config.packOperator
+      ? { python: path(config.packOperator.pythonExecutable) }
+      : {}),
+  };
   return {
     config,
     release,
     input,
     stateDirectory: path(config.stateDirectory),
     connectorCredentialFile,
+    packSelection,
     fingerprint: fingerprint(
       JSON.stringify({ config, release, inputs, releasePath }),
     ),

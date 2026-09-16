@@ -7,10 +7,12 @@ import { launchLocal } from "../local/launch.js";
 import { readState } from "../local/state.js";
 import { withInstallationLock } from "./plan.js";
 import { InstallationError } from "./errors.js";
+import { activatePacks, packOutcomeSchema, type PackOutcome } from "./packs.js";
 
 const statusSchema = z.strictObject({
   supervisor: z.enum(["starting", "running", "stopping"]),
   ready: z.boolean(),
+  packs: z.array(packOutcomeSchema),
 });
 const socketPath = (directory: string) =>
   join(resolve(directory), "operator.sock");
@@ -34,11 +36,16 @@ export async function startInstallation(
   return withInstallationLock(directory, async () => {
     const stop = new AbortController();
     let supervisor: "starting" | "running" | "stopping" = "starting";
+    let packs: PackOutcome[] = [];
     const app = Fastify({ logger: false });
-    app.get("/status", () => ({ supervisor, ready: supervisor === "running" }));
+    app.get("/status", () => ({
+      supervisor,
+      ready: supervisor === "running",
+      packs,
+    }));
     app.post("/stop", async (_request, reply) => {
       supervisor = "stopping";
-      await reply.send({ supervisor, ready: false });
+      await reply.send({ supervisor, ready: false, packs });
       stop.abort();
     });
     await rm(socketPath(directory), { force: true });
@@ -47,6 +54,9 @@ export async function startInstallation(
     try {
       await launchLocal(directory, report, {
         signal: stop.signal,
+        activate: async () => {
+          packs = await activatePacks(directory, report);
+        },
         onReady: () => {
           supervisor = "running";
         },

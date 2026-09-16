@@ -21,18 +21,23 @@ export class OpenShellClaws extends NativeClaws {
       python: string;
       sandbox: string;
       gateway: string;
+      env?: NodeJS.ProcessEnv;
     },
   ) {
     super("/app/clawscarf/bin/openclaw");
   }
   private async shell(args: readonly string[]) {
-    const process = execute(
+    const child = execute(
       this.options.executable,
       [...args, "--gateway", this.options.gateway],
-      { maxBuffer: 4 * 1024 * 1024, timeout: 120000 },
+      {
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 120000,
+        env: this.options.env ?? process.env,
+      },
     );
-    process.child.stdin?.end();
-    const { stdout } = await process;
+    child.child.stdin?.end();
+    const { stdout } = await child;
     return stdout;
   }
   private boundTarget: Extract<PackTarget, { kind: "openshell" }> | undefined;
@@ -42,7 +47,11 @@ export class OpenShellClaws extends NativeClaws {
     const child = execute(
       this.options.python,
       [fileURLToPath(new URL("./transport.py", import.meta.url))],
-      { maxBuffer: 4 * 1024 * 1024, timeout: 120000 },
+      {
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 120000,
+        env: this.options.env ?? process.env,
+      },
     );
     child.child.stdin?.end(
       JSON.stringify({
@@ -78,7 +87,7 @@ export class OpenShellClaws extends NativeClaws {
     return target;
   }
   override async version() {
-    if (process.env.OPENCLAW_EXPERIMENTAL_CLAWS !== "1")
+    if ((this.options.env ?? process.env).OPENCLAW_EXPERIMENTAL_CLAWS !== "1")
       throw Error(
         "Set OPENCLAW_EXPERIMENTAL_CLAWS=1 to acknowledge the experimental native Claws contract.",
       );

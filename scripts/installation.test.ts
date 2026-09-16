@@ -11,7 +11,9 @@ import {
   applyInstallation,
   withInstallationLock,
 } from "./installation/plan.js";
-import { postgresImage } from "./local/compose.js";
+import { resolveInstallation } from "./installation/resolve.js";
+import { initializeState } from "./local/state.js";
+import { liteLlmImage, postgresImage } from "./local/images.js";
 
 const configuration = {
   schemaVersion: 1,
@@ -71,6 +73,7 @@ await test(
       platforms: ["darwin-arm64"],
       images: {
         postgres: postgresImage,
+        models: liteLlmImage,
         gateway: image,
         worker: image,
         companion: image,
@@ -84,7 +87,63 @@ await test(
     const plan = await planInstallation(path);
     assert.equal(plan.action, "prepare");
     assert.equal(plan.stateDirectory, join(directory, "state"));
-    assert.equal(new Set(plan.internalPorts).size, 7);
+    assert.equal(new Set(plan.internalPorts).size, 8);
+    const modelFile = {
+      defaultModel: "team",
+      models: [
+        {
+          id: "team",
+          name: "Team",
+          enabled: true,
+          contextWindow: 8192,
+          maxTokens: 1024,
+          reasoning: false,
+          tools: true,
+          input: ["text"],
+          route: { model: "openai/test", apiKeyEnv: "PROVIDER_KEY" },
+        },
+      ],
+    };
+    await writeFile(join(directory, "models.json"), JSON.stringify(modelFile));
+    await writeFile(
+      join(directory, "keys.env"),
+      "PROVIDER_KEY=private-test-key\n",
+      { mode: 0o600 },
+    );
+    await writeFile(join(directory, "connection-key"), "private-scoped-token", {
+      mode: 0o600,
+    });
+    await writeFile(
+      path,
+      JSON.stringify({
+        ...configuration,
+        models: {
+          mode: "litellm",
+          configurationFile: "models.json",
+          upstreamEnvironmentFile: "keys.env",
+        },
+        connections: {
+          mode: "external",
+          brokerUrl: "https://broker.example.test",
+          credentialFile: "connection-key",
+        },
+      }),
+    );
+    const enabled = await planInstallation(path);
+    assert.equal(enabled.capabilities.models, "litellm");
+    assert.equal(enabled.capabilities.connections, "external");
+    assert.ok(!JSON.stringify(enabled).includes("private-test-key"));
+    const enabledPreview = join(directory, "enabled.json");
+    await writeFile(enabledPreview, JSON.stringify(enabled));
+    await writeFile(join(directory, "keys.env"), "PROVIDER_KEY=changed\n");
+    await assert.rejects(applyInstallation(path, enabledPreview), {
+      code: "stale_plan",
+    });
+    await writeFile(path, JSON.stringify(configuration));
+    const disabled = await resolveInstallation(path, plan.internalPorts);
+    assert.equal(disabled.input.models, undefined);
+    assert.equal(disabled.input.connections, undefined);
+    assert.equal(disabled.input.modelGateway, undefined);
     const preview = join(directory, "preview.json");
     await writeFile(preview, JSON.stringify(plan));
     await writeFile(
@@ -93,6 +152,15 @@ await test(
     );
     await assert.rejects(applyInstallation(path, preview), {
       code: "stale_plan",
+    });
+    await writeFile(join(directory, "release.json"), JSON.stringify(release));
+    await initializeState(join(directory, "state"), disabled.input);
+    await writeFile(
+      join(directory, "state/inputs.sha256"),
+      "different-input-revision",
+    );
+    await assert.rejects(planInstallation(path), {
+      code: "change_unsupported",
     });
     await writeFile(join(directory, "tool"), "changed");
     await assert.rejects(planInstallation(path), { code: "release_mismatch" });

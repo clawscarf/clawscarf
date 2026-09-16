@@ -37,6 +37,16 @@ const inputSchema = z.strictObject({
       ca: z.string().optional(),
     })
     .optional(),
+  connectionsCredential: z
+    .strictObject({
+      token: z
+        .string()
+        .min(1)
+        .max(512)
+        .regex(/^[\x21-\x7e]+$/u),
+      ca: z.string().optional(),
+    })
+    .optional(),
 });
 /** Initialization only: never overwrite native edits in an already-owned volume. */
 export async function initializeHome(
@@ -120,6 +130,25 @@ export async function initializeHome(
       if (input.modelCredential.ca !== undefined) {
         const ca = join(directory, "ca.pem");
         await writeFile(ca, input.modelCredential.ca, {
+          flag: "wx",
+          mode: 0o600,
+        });
+        ownedPaths.push(ca);
+      }
+    }
+    if (input.connectionsCredential) {
+      const directory = join(staging, "clawscarf-connections");
+      await mkdir(directory, { mode: 0o700 });
+      const credential = join(directory, "runtime.json");
+      await writeFile(
+        credential,
+        JSON.stringify({ token: input.connectionsCredential.token }),
+        { flag: "wx", mode: 0o600 },
+      );
+      ownedPaths.push(directory, credential);
+      if (input.connectionsCredential.ca !== undefined) {
+        const ca = join(directory, "ca.pem");
+        await writeFile(ca, input.connectionsCredential.ca, {
           flag: "wx",
           mode: 0o600,
         });

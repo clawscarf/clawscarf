@@ -54,8 +54,8 @@ network policy for every companion.
 - The assembled team profile passed local Dex browser login, enrollment, handover,
   revocation, bookmarks, widgets and hooks. Public deployment and release-artifact
   acceptance remain unqualified.
-- Connections has broker/protocol and native plugin tests. The assembled activation
-  and real external-account journey still need acceptance. Disabled operation works
+- Connections has broker/protocol and native plugin tests. Initial unified activation passed with a fixture catalog.
+  The real external-account journey still needs acceptance. Disabled operation works
   without provider credentials or a Connections schema.
 - Optional [browser-node startup](deploy/execution/browser-node/README.md) uses local
   public-SDK enrollment, private TLS/DNS and retained native identity. Native public
@@ -75,7 +75,8 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 **Initial implementation:** one validated installation document and CLI for local
 preparation and lifecycle. A fresh macOS arm64 installation passed local browser login,
 administrator bootstrap, protected worker access and stop/restart with native settings
-and worker files retained. Optional integration completion, installer and publication remain in TODO.
+and worker files retained. Initial optional models/Connections and pack selections are implemented; retained-install
+capability reconfiguration, installer and publication remain in TODO.
 The [v1 design and concrete examples](docs/installation-interface.md) define the target
 configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
 boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;

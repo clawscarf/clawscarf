@@ -7,10 +7,9 @@ import { join } from "node:path";
 import type { LocalState } from "./state.js";
 import { resourceNames } from "./state.js";
 import { run } from "./process.js";
+import { modelGatewayServices } from "./model-gateway-compose.js";
 
-// Exercised official Postgres 17 Alpine manifest; no mutable tag is used by setup.
-export const postgresImage =
-  "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193";
+import { postgresImage } from "./images.js";
 export function composeConfiguration(
   state: LocalState,
   directory: string,
@@ -38,6 +37,7 @@ export function composeConfiguration(
   return {
     name: names.project,
     services: {
+      ...modelGatewayServices(directory, state),
       ...(input.browser && browserAddress && browserMachine
         ? browserNodeServices(state, directory, browserAddress, browserMachine)
         : {}),
@@ -185,6 +185,14 @@ export function composeConfiguration(
         : {}),
     },
     volumes: {
+      ...(input.modelGateway
+        ? {
+            "models-database": {
+              external: true,
+              name: `${names.project}-models`,
+            },
+          }
+        : {}),
       database: { external: true, name: names.databaseVolume },
       ...(input.browser
         ? {

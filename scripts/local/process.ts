@@ -20,6 +20,7 @@ type LocalSetupErrorCode =
   | "incomplete_certificate"
   | "invalid_certificate"
   | "invalid_model_setup"
+  | "model_credential_pending"
   | "invalid_connections_setup"
   | "connections_catalog_blocked"
   | "connections_configuration_pending"

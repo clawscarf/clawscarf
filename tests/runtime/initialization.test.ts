@@ -64,6 +64,35 @@ const initial = {
 const uid = process.getuid?.() ?? 1000;
 const gid = process.getgid?.() ?? 1000;
 
+await test("Connections bootstrap writes only its scoped credential and never replaces native edits on resume", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "clawscarf-connection-home-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  await initializeHome(
+    home,
+    {
+      ...initial,
+      connectionsCredential: { token: "scoped-token", ca: "public CA" },
+    },
+    uid,
+    gid,
+  );
+  const path = join(home, ".openclaw/clawscarf-connections/runtime.json");
+  assert.equal((await lstat(path)).mode & 0o777, 0o600);
+  assert.deepEqual(JSON.parse(await readFile(path, "utf8")), {
+    token: "scoped-token",
+  });
+  await writeFile(path, JSON.stringify({ token: "user-rotated-token" }));
+  await initializeHome(
+    home,
+    { ...initial, connectionsCredential: { token: "scoped-token" } },
+    uid,
+    gid,
+  );
+  assert.deepEqual(JSON.parse(await readFile(path, "utf8")), {
+    token: "user-rotated-token",
+  });
+});
+
 await test("fresh pre-created volume home becomes private without changing retained home permissions", async (t) => {
   const home = await mkdtemp(join(tmpdir(), "clawscarf-volume-permissions-"));
   t.after(() => rm(home, { recursive: true, force: true }));

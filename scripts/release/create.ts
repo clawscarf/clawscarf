@@ -3,8 +3,9 @@ import { createReadStream } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseLocalInput } from "../local/configuration.js";
-import { postgresImage } from "../local/compose.js";
+
 import { releaseSchema } from "./definition.js";
+import { liteLlmImage, postgresImage } from "../local/images.js";
 
 async function tool(file: string) {
   const hash = createHash("sha256");
@@ -38,6 +39,7 @@ export async function createDevelopmentRelease(options: {
       worker: input.execution.image,
       companion: input.companionImage,
       relay: input.relayImage,
+      models: liteLlmImage,
       ...(input.browser
         ? {
             browser: {

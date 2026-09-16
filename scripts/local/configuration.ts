@@ -157,6 +157,14 @@ export const localInput = z
       })
       .optional(),
     connections: connectionsInputSchema.optional(),
+    modelGateway: z
+      .strictObject({
+        configurationFile: absolutePath,
+        upstreamEnvironmentFile: absolutePath,
+        image,
+        port,
+      })
+      .optional(),
     cpu,
     memory,
     execution: z.strictObject({ image, port, cpu, memory }).optional(),
@@ -172,6 +180,20 @@ export const localInput = z
       .optional(),
   })
   .superRefine((value, ctx) => {
+    if (
+      value.modelGateway &&
+      (!value.models ||
+        [
+          ...Object.values(value.ports),
+          value.execution?.port,
+          value.browser?.port,
+        ].includes(value.modelGateway.port))
+    )
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "The model gateway requires native model configuration and a distinct port.",
+      });
     if (Boolean(value.relayImage) !== Boolean(value.execution || value.browser))
       ctx.addIssue({
         code: "custom",

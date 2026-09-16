@@ -139,16 +139,16 @@ uses an explicit supported transport binding; it must not infer trust from heade
 
 ## Proposed deployment settings and optional capabilities
 
-| Area        | Proposed v1 selections                                                                                               | Existing basis / missing work                                                                                                                                                             |
-| ----------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exposure    | Local loopback; HTTPS with application/widget origins and certificate/key file references; external platform ingress | Local and HTTPS team profiles exist. External ingress needs a qualified consumer binding. Automatic public DNS/ACME provisioning is not implied.                                          |
-| Access      | Local operator login; generic OIDC; external platform identity/entry                                                 | Local/OIDC work today. A company IdP is not an admission list. External mode must not start a second login authority or People database.                                                  |
-| Resources   | Gateway/worker CPU and memory, within qualified host limits                                                          | Both components are required by the product design. Sizing changes neither execution engine nor protection.                                                                               |
-| Browser     | Disabled; protected shared native browser node                                                                       | Existing node/Chromium components; enabled browsing retains its sandbox and restricted transport. Upstream target-selection issue remains owner-managed.                                  |
-| Models      | Disabled; existing gateway; local LiteLLM                                                                            | Config/render/apply and gateway components exist. Unified lifecycle for local LiteLLM, secret delivery and rotation still needs wiring.                                                   |
-| Connections | Disabled; existing broker; local service with Composio                                                               | Existing modules/plugin/catalog and activation path. Unified lifecycle and real external-account acceptance remain. Local mode uses the existing companion, not a new service extraction. |
-| Packs       | Explicit versioned selections plus member/prerequisite bindings                                                      | Native Claws group manifest and preview/apply exist. Group selection must compose them, not invent another agent installer.                                                               |
-| Storage     | Owned Docker volumes; host-supplied directory tree                                                                   | Docker volumes exist. Directory-backed state needs mount/UID/ownership support before hosted use. ZFS is not required by ClawScarf.                                                       |
+| Area        | Proposed v1 selections                                                                                               | Existing basis / missing work                                                                                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exposure    | Local loopback; HTTPS with application/widget origins and certificate/key file references; external platform ingress | Local and HTTPS team profiles exist. External ingress needs a qualified consumer binding. Automatic public DNS/ACME provisioning is not implied.                                                          |
+| Access      | Local operator login; generic OIDC; external platform identity/entry                                                 | Local/OIDC work today. A company IdP is not an admission list. External mode must not start a second login authority or People database.                                                                  |
+| Resources   | Gateway/worker CPU and memory, within qualified host limits                                                          | Both components are required by the product design. Sizing changes neither execution engine nor protection.                                                                                               |
+| Browser     | Disabled; protected shared native browser node                                                                       | Existing node/Chromium components; enabled browsing retains its sandbox and restricted transport. Upstream target-selection issue remains owner-managed.                                                  |
+| Models      | Disabled; existing gateway; local LiteLLM                                                                            | Config/render/apply and gateway components exist. Initial local LiteLLM lifecycle and secret delivery are wired; unified reconfiguration/rotation remain.                                                 |
+| Connections | Disabled; existing broker; local service with Composio                                                               | Existing modules/plugin/catalog and activation path. Initial unified activation is wired; real external-account acceptance remains. Local mode uses the existing companion, not a new service extraction. |
+| Packs       | Explicit versioned selections plus member/prerequisite bindings                                                      | Native Claws group manifest and preview/apply exist. Initial explicit group/member selections compose them; changes use the component pack operator.                                                      |
+| Storage     | Owned Docker volumes; host-supplied directory tree                                                                   | Docker volumes exist. Directory-backed state needs mount/UID/ownership support before hosted use. ZFS is not required by ClawScarf.                                                                       |
 
 These are not independent mix-and-match switches. The proposed v1 accepts only:
 
@@ -277,10 +277,10 @@ later edits apply to that document, not a changing recipe.
 Packs are application content: a pack can contain several native Claws/agents and
 require models, capabilities or a particular connected-account type. The included
 `research-team` has two members and needs a configured model, but no connector.
-A proposed explicit selection is
-`{ "id": "research-team", "version": "0.1.0", "members": ["researcher", "reviewer"] }`
-in `packs`; these members are native agent packages, not people. Resolve the exact
-pack from the release file and preview agent IDs/workspace locations and collisions.
+The implemented selection uses an explicit source directory and members,
+`{ "directory": "./packs/research-team", "members": ["researcher", "reviewer"] }`
+in `packs`; these members are native agent packages, not people. The preview fingerprints
+the source content. Release-indexed pack resolution remains future work.
 Installation previews prerequisites first. If an external account must be connected
 interactively, leave that pack visibly pending for explicit continuation; do not
 invent OAuth credentials, grant every agent access, or roll back the whole server.
