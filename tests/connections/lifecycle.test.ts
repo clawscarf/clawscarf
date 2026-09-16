@@ -58,6 +58,54 @@ await test(
 );
 
 await test(
+  "repeating the same setup request during allocation preserves its original account and continuation",
+  { skip: !databaseUrl },
+  async () => {
+    const f = await connectionsLifecycleFixture(databaseUrl!);
+    const started = Promise.withResolvers<void>();
+    const resume = Promise.withResolvers<void>();
+    let pending: ReturnType<typeof f.app.setups.start> | undefined;
+    try {
+      f.provider.beforeSetup = async () => {
+        started.resolve();
+        await resume.promise;
+      };
+      const connection = await f.create();
+      const start = () =>
+        f.app.setups.start(
+          f.actor,
+          f.scope,
+          connection.id,
+          connection.revision,
+          "start",
+          "initial",
+        );
+      pending = start();
+      await started.promise;
+      const replay = await start();
+      assert.equal(replay.setup.state, "creating");
+      assert.equal(replay.url, null);
+      assert.equal(f.provider.setupCalls, 1);
+      resume.resolve();
+      const completed = await pending;
+      assert.equal(completed.setup.id, replay.setup.id);
+      assert.equal(completed.setup.state, "pending");
+      assert.ok(completed.url);
+      const repeated = await start();
+      assert.deepEqual(repeated, completed);
+      await f.app.maintenance.sweep();
+      assert.equal(f.provider.setupCalls, 1);
+      assert.equal(f.provider.deleteCalls, 0);
+      assert.equal(f.provider.accounts.size, 1);
+    } finally {
+      resume.resolve();
+      await pending?.catch(() => undefined);
+      await f.close();
+    }
+  },
+);
+
+await test(
   "cancelled setup retains a late allocated account for cleanup and never exposes its continuation",
   { skip: !databaseUrl },
   async () => {

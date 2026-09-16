@@ -17,13 +17,15 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Reviewed defects — select before implementation
+## Selected cleanup — implementation and independent review
 
-- [ ] Fix concurrent replay of in-flight Connections allocation without cancelling its result.
 - [ ] Preserve definitive native mutation rejections; classify malformed HTTP requests correctly.
 - [ ] Add sanitized Access failure diagnostics correlated with request IDs.
 - [ ] Support private model-gateway CA trust throughout credential CLI commands; supervise
       enabled model services after startup.
+- [ ] Use strict model runtime envelopes and structured failure outcomes.
+- [ ] Verify pack execution requirements on the worker and bind both runtime identities.
+- [ ] Split Access routing, query and form logic into cohesive frontend modules.
 
 ## Next installation slices — select before implementation
 

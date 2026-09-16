@@ -96,11 +96,15 @@ idempotency, grants, credentials and session revocation. PostgreSQL tests requir
 **disposable database** in `CLAWSCARF_CONNECTIONS_TEST_DATABASE_URL`; they recreate
 only its Connections schema. The [lifecycle regressions](../../tests/connections/lifecycle.test.ts)
 also create and remove uniquely named databases on that server, so their configured
-login needs database-creation permission. They cover real HTTP request limits,
+login needs database-creation permission. They cover real HTTP request limits, concurrent setup-request replay,
 cancellation during account allocation, uncertain allocation without duplicate
 creation, setup cleanup and result expiry without losing invocation receipts.
 Provider and native-authority effects in these tests are controlled fixtures.
-This does not establish a live external-account journey.
+The [dispatcher regressions](../../tests/connections/setup-dispatch.test.ts) also
+exercise held allocations without PostgreSQL: repeated delivery observes the active
+attempt, while expiry, revoked access and lost replies preserve uncertainty and
+late-account cleanup. A claimed allocation is never repeated, including after
+restarting the dispatcher. This does not establish a live external-account journey.
 
 Adapted from RawClaw commit
 [f37a6e786fdd88857c21bd32140567874e281a8c](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/src/domains/connections):

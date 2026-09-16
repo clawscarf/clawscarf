@@ -47,15 +47,8 @@ export class ConnectionSetupDispatcher {
       await store.authority.lock(setup);
       const current = await currentSetup(store, setup, setup.connectionId);
       if (current?.id !== setup.id || current.state !== "creating") return null;
-      if (current.allocationDispatchedAt !== null) {
-        await store.setups.save({
-          ...current,
-          state: "outcome_unknown",
-          completedAt: now(),
-        });
-        return null;
-      }
-      // Another request may still own this preparation. Expiry/failure records uncertainty separately.
+      // Redelivery observes claimed effects. Cancellation, expiry and effect failures own uncertainty.
+      if (current.allocationDispatchedAt !== null) return null;
       if (
         current.preparationDispatchedAt !== null &&
         current.preparedAuth === null
