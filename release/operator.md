@@ -16,10 +16,9 @@ pnpm 10.33.0. In the extracted `package` directory:
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
 node scripts/clawscarf.js install --release /absolute/clawscarf-release.json --directory /absolute/new-team
-node scripts/local.js --help
 node scripts/models.js --help
 node scripts/packs.js --help
-node scripts/local.js connections --help
+node scripts/clawscarf.js connections --help
 node services/connections/credential-command.js --help
 ```
 
@@ -39,13 +38,6 @@ Without `--release`, the operator expects **clawscarf-release.json** in its
 release publication/discovery remains unfinished. The packaged example recipe is
 configuration guidance, not a validated document workflow. Retained-install capability changes
 remain separate component operations. Keep release/catalog/pack input files available.
-
-For the lower-level component operator, with a separately prepared input file and exact images/executables:
-
-```sh
-node scripts/local.js prepare --directory /absolute/private/installation --config /absolute/local-input.json
-node scripts/local.js start --directory /absolute/private/installation
-```
 
 Keep installation data outside this extracted package. Stopping the foreground
 process retains state; replacing an operator archive is not a runtime upgrade or

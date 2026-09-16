@@ -15,6 +15,7 @@ import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../local/upgrade.js";
 import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
+import { operateConnectionsRuntime } from "../local/connections-runtime.js";
 import { runInstaller } from "./installer/run.js";
 
 const output = (value: unknown) => {
@@ -192,5 +193,43 @@ export function installationCommand() {
           },
         ),
     );
+  const connections = program
+    .command("connections")
+    .description(
+      "Observe or explicitly configure the stopped native Connections integration",
+    );
+  connections
+    .command("observe")
+    .requiredOption(
+      "--state <directory>",
+      "Stopped private installation directory; start only its controller",
+    )
+    .action(async (options: { state: string }) => {
+      output(
+        await operateConnectionsRuntime(options.state, { kind: "observe" }),
+      );
+    });
+  connections
+    .command("configure")
+    .requiredOption(
+      "--state <directory>",
+      "Stopped private installation directory; start only its controller",
+    )
+    .requiredOption(
+      "--credential-file <path>",
+      "Private file containing the scoped broker token",
+    )
+    .requiredOption(
+      "--yes",
+      "Replace only the Connections endpoint and credential; preserve native disablement and other settings",
+    )
+    .action(async (options: { state: string; credentialFile: string }) => {
+      output(
+        await operateConnectionsRuntime(options.state, {
+          kind: "configure",
+          credentialFile: options.credentialFile,
+        }),
+      );
+    });
   return program;
 }

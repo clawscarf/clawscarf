@@ -101,7 +101,7 @@ await test(
     }
     for (const args of [
       ["scripts/clawscarf.js", "install", "--help"],
-      ["scripts/local.js", "connections", "configure", "--help"],
+      ["scripts/clawscarf.js", "connections", "configure", "--help"],
       ["services/connections/credential-command.js", "--help"],
     ]) {
       const { stdout } = await execute(process.execPath, args, {

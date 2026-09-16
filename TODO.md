@@ -13,11 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **4. Remove the parallel local CLI.** Move the unique Connections observe/configure
-      commands from [local.ts](scripts/local.ts) into the
-      [public CLI](scripts/installation/command.ts), then delete that 137-line alternate
-      entry point and its package/archive commands. Reuse existing operation functions;
-      update developer instructions and tests without compatibility aliases.
 - [ ] **5. Separate release inputs from installation inputs.** Change
       [release creation](scripts/release/create.ts) to accept images, tools, version/source
       and recipes from the release contract; eliminate dummy administrator, port and

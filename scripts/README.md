@@ -38,7 +38,7 @@ The companion fetch SDKs are compiled separately by [tsconfig.sdk.json](../tscon
 because its generator does not support exact optional property checking. The main
 project retains that check and consumes their generated declarations.
 
-The [local assembly](../deploy/local/README.md) uses `scripts/local.ts prepare`,
+The [local assembly](../deploy/local/README.md) uses the public CLI’s `apply`,
 `start` and `login` for private state, supervised operation and local entry. It
 has local acceptance evidence in that guide; clean-machine release qualification remains separate.
 The compiled operator includes the Access and Connections migrations, component pins and sandbox

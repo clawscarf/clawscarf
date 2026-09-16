@@ -3,8 +3,8 @@
 Use the [installation CLI](installation.md) for a team installation. This document describes lower-level developer commands and the generated local configuration consumed by that CLI. Component-only examples deliberately omit parts of the product and are not alternative installation recipes.
 
 This operator path assembles the existing components for local evaluation on macOS
-arm64 with Docker Desktop. `prepare` initializes private configuration, the database
-and native volume. `start` supervises the runtime and companions. Fresh startup, native administrator
+arm64 with Docker Desktop. `prepareLocal` initializes private configuration, the database
+and native volume. `launchLocal` supervises the runtime and companions. Fresh startup, native administrator
 browser login, a configured model/tool interaction and retained-state restart have
 passed. The [terminal installer](installation.md#terminal-installer) collects a unified
 installation document and calls these same operators for initial setup.
@@ -50,10 +50,8 @@ are not part of this local profile. An explicit [team profile](#team-profile)
 assembles company OIDC and public TLS using the same operator.
 No AI or connection provider key is required by preparation.
 
-```sh
-pnpm exec tsx scripts/local.ts prepare \
-  --directory .local/my-team --config /absolute/path/to/local-input.json
-```
+The CLI generates this internal input and calls [prepareLocal](../../scripts/local/prepare.ts).
+For a supported installation, use [configure, plan and apply](installation.md).
 
 Preparation reserves actual Docker bridge networks using Docker's allocator:
 one for companions and one for OpenShell. Each has installation/purpose labels and a
@@ -181,9 +179,9 @@ pnpm exec tsx scripts/controller.ts start --directory .local/my-team/controller
 In another terminal, apply the scoped credential and prepared broker endpoint:
 
 ```sh
-pnpm exec tsx scripts/local.ts connections configure --directory .local/my-team \
+pnpm clawscarf connections configure --state .local/my-team \
   --credential-file /private/connections-token --yes
-pnpm exec tsx scripts/local.ts connections observe --directory .local/my-team
+pnpm clawscarf connections observe --state .local/my-team
 ```
 
 Configuration requires stopped, verified compute and exclusive access to its owned
@@ -354,7 +352,7 @@ Start the prepared installation with Node directly so terminal signals reach the
 supervising process throughout cleanup:
 
 ```sh
-node --import tsx scripts/local.ts start --directory .local/my-team
+node --import tsx scripts/clawscarf.ts start --state .local/my-team
 ```
 
 It runs in the foreground, starts the private controller, creates or resumes its owned
@@ -362,7 +360,7 @@ runtime, establishes standard SSH application/widget forwards and starts the com
 It checks native health, then exercises local login and native administrator authorization
 through the generated REST client. It prints the login URL and a fresh five-minute,
 one-use code. The verification session is logged out after its check. In another terminal,
-`pnpm exec tsx scripts/local.ts login --directory .local/my-team` issues a replacement code.
+`pnpm clawscarf login --state .local/my-team` issues a replacement code.
 Initial native team preparation establishes the administrator profile and explicit role
 once. Its pending/completed records prevent an uncertain change from being replayed
 automatically. Later startup verifies access without reapplying those native settings.
@@ -449,7 +447,7 @@ pnpm exec tsx scripts/controller.ts start --directory .local/my-team/controller
 In another, run the explicit replacement:
 
 ```sh
-pnpm exec tsx scripts/local.ts upgrade --directory .local/my-team \
+pnpm clawscarf upgrade --state .local/my-team \
   --runtime-image sha256:REPLACE_WITH_EXACT_IMAGE_ID \
   --python /absolute/operator-python/bin/python --yes
 ```
@@ -573,7 +571,7 @@ Postgres, controller and native forwarding remain on loopback. Browser TLS and
 private management TLS use separate keys. Set firewall rules for the intended
 clients; this operator does not configure the host firewall or DNS.
 
-`prepare` initializes the configured OIDC administrator and matching native identity.
+`prepareLocal` initializes the configured OIDC administrator and matching native identity.
 `start` checks service availability through private management TLS, then prints the
 People URL for company sign-in. It does not issue a local login code or claim to have
 verified the administrator through OIDC. Company login, native preparation and

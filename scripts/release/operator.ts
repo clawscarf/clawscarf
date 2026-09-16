@@ -13,7 +13,6 @@ const payload = [
   "scripts/installation",
   "scripts/release/create.js",
   "scripts/release/definition.js",
-  "scripts/local.js",
   "scripts/controller.js",
   "scripts/models.js",
   "scripts/packs.js",
@@ -74,7 +73,6 @@ export async function packageOperator(root: string, destination: string) {
       stage,
       [
         "scripts/clawscarf.js",
-        "scripts/local.js",
         "scripts/controller.js",
         "scripts/models.js",
         "scripts/packs.js",
@@ -84,7 +82,6 @@ export async function packageOperator(root: string, destination: string) {
         name: "clawscarf-operator",
         scripts: {
           clawscarf: "node scripts/clawscarf.js",
-          local: "node scripts/local.js",
           controller: "node scripts/controller.js",
           models: "node scripts/models.js",
           packs: "node scripts/packs.js",
