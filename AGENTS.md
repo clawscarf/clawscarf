@@ -58,7 +58,9 @@
 - CLI operations own configuration/effects; installer menus only collect and present.
   Recipes are validated defaults, not scripts or another deployment engine. Ask for missing
   required inputs, then review; put details under Customize. Keep equivalent noninteractive
-  commands. Save accepts section edits, Esc discards them and new secrets, Ctrl+C exits.
+  commands. Esc always returns to the parent screen; no Back menu rows. At the root it
+  stays there. Save accepts section edits; Esc discards unsaved section edits and new
+  secrets while retaining accepted answers. Ctrl+C exits.
 - Reuse UI primitives. Keep actions beside data, layouts consistent and copy concise.
   Show loading in affected content, retain data on refresh, and distinguish unavailable
   from empty. Review changed accessible desktop/mobile pending and error states.

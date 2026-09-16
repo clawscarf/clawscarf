@@ -20,7 +20,6 @@ export async function collectAccess(
   const mode = await ui.select(
     "Access",
     [
-      { value: "back", label: "Back to installation" },
       {
         value: "local",
         label: "Local evaluation",
@@ -34,8 +33,6 @@ export async function collectAccess(
     ],
     current.access.mode,
   );
-  if (mode === "back")
-    return { access: current.access, exposure: current.exposure };
   let exposure: InstallationDraft["exposure"];
   let access: InstallationDraft["access"];
   if (mode === "local") {

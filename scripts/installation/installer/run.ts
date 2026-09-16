@@ -29,13 +29,39 @@ export async function installFromAnswers(
   operator = operations,
   task: typeof progress = async (_message, work) => work(),
 ) {
-  const { directory, config, inputs } = await collectInstallation(ui, options);
-  if (
-    !(await ui.confirm(
-      `Save configuration and private credential copies in ${directory}?`,
-    ))
-  )
-    return { state: "cancelled" };
+  let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
+  let action: string;
+  review: for (;;) {
+    draft = await collectInstallation(ui, options, draft);
+    for (;;) {
+      try {
+        if (
+          !(await ui.confirm(
+            `Save configuration and private credential copies in ${draft.directory}?`,
+          ))
+        )
+          return { state: "cancelled" };
+      } catch (error) {
+        if (!(error instanceof SectionCancelled)) throw error;
+        continue review;
+      }
+      try {
+        action = await ui.select("Continue", [
+          { value: "save", label: "Save preview and exit" },
+          { value: "prepare", label: "Prepare installation" },
+          {
+            value: "start",
+            label: "Prepare and start",
+            hint: "Runs in this terminal; Ctrl+C stops the server",
+          },
+        ]);
+        break review;
+      } catch (error) {
+        if (!(error instanceof SectionCancelled)) throw error;
+      }
+    }
+  }
+  const { directory, config, inputs } = draft;
   const configFile = await saveConfiguration(directory, config, inputs);
   const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
@@ -61,15 +87,6 @@ export async function installFromAnswers(
       `Release: ${plan.release}\nAction: prepare a new installation\nPreview: ${planFile}\nPreparation creates private state, Docker resources, initial native settings and selected credentials. Start launches the server and installs selected packs.`,
       "Preview",
     );
-    const action = await ui.select("Continue", [
-      { value: "save", label: "Save preview and exit" },
-      { value: "prepare", label: "Prepare installation" },
-      {
-        value: "start",
-        label: "Prepare and start",
-        hint: "Runs in this terminal; Ctrl+C stops the server",
-      },
-    ]);
     if (action === "save")
       return { state: "saved", configFile, planFile, stateDirectory };
     if (action !== "prepare" && action !== "start")

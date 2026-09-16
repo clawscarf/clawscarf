@@ -79,6 +79,7 @@ class Answers implements InstallerPrompts {
     return this.text(`secret:${message}`);
   }
   select(message: string, choices: Choice[], initial?: string) {
+    assert.ok(!choices.some((choice) => /^Back\b/.test(choice.label)));
     this.questions.push(message);
     const value =
       message === "Review installation"
@@ -774,6 +775,12 @@ await test(
     );
     const draft = await collectInstallation(ui, f);
     assert.equal(draft.config.name, "accepted-team");
+    assert.equal(
+      ui.questions.filter((question) =>
+        question.endsWith("— configure installation"),
+      ).length,
+      3,
+    );
     assert.deepEqual(draft.config.connections, { mode: "disabled" });
     assert.ok(
       ![...draft.inputs.files.values()].some((value) =>
@@ -850,5 +857,109 @@ await test(
       (await planInstallation(file)).capabilities.models,
       "external",
     );
+  },
+);
+
+await test(
+  "Esc goes to parent menus, stays at the root and retains accepted answers",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    class Navigate extends Answers {
+      roots = 0;
+      directories = 0;
+      menus = 0;
+      reviews = 0;
+      override async select(
+        message: string,
+        choices: Choice[],
+        initial?: string,
+      ) {
+        if (message === "Starting point" && ++this.roots === 1)
+          throw new SectionCancelled();
+        if (message.endsWith("— configure installation") && ++this.menus === 2)
+          throw new SectionCancelled();
+        if (message === "Review installation" && ++this.reviews === 1)
+          throw new SectionCancelled();
+        return super.select(message, choices, initial);
+      }
+      override async text(
+        message: string,
+        initial?: string,
+        validate?: Parameters<InstallerPrompts["text"]>[2],
+      ) {
+        if (
+          message === "New installation directory" &&
+          ++this.directories === 1
+        )
+          throw new SectionCancelled();
+        return super.text(message, initial, validate);
+      }
+    }
+    const ui = new Navigate(
+      {
+        ...f.answers,
+        "New installation directory": f.directory,
+        "Installation name": "keep-me",
+      },
+      ["identity"],
+    );
+    const draft = await collectInstallation(ui, {
+      release: f.release,
+      settings: f.settings,
+    });
+    assert.equal(draft.config.name, "keep-me");
+    assert.equal(ui.roots, 4);
+    assert.equal(ui.directories, 2);
+    assert.equal(ui.menus, 2);
+    assert.equal(ui.reviews, 2);
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "Esc at final choices returns to review without writing files or losing answers",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    class Navigate extends Answers {
+      saves = 0;
+      actions = 0;
+      override async confirm(message: string) {
+        if (message.startsWith("Save configuration")) {
+          await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+          if (++this.saves === 1) throw new SectionCancelled();
+        }
+        return super.confirm(message);
+      }
+      override async select(
+        message: string,
+        choices: Choice[],
+        initial?: string,
+      ) {
+        if (message === "Continue") {
+          await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+          if (++this.actions === 1) throw new SectionCancelled();
+        }
+        return super.select(message, choices, initial);
+      }
+    }
+    const ui = new Navigate(
+      { ...f.answers, "Installation name": "keep-final" },
+      ["identity"],
+    );
+    const result = await installFromAnswers(f, ui);
+    assert.equal(result.state, "saved");
+    assert.equal(ui.saves, 3);
+    assert.equal(ui.actions, 2);
+    assert.equal(
+      ui.questions.filter((question) => question === "Installation name")
+        .length,
+      1,
+    );
+    const saved = installationSchema.parse(
+      await readJson(join(f.directory, "installation.json")),
+    );
+    assert.equal(saved.name, "keep-final");
   },
 );

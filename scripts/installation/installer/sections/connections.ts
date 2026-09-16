@@ -16,14 +16,12 @@ export async function collectConnections(
   const mode = await ui.select(
     "Connections",
     [
-      { value: "back", label: "Back to installation" },
       { value: "disabled", label: "Do not enable Connections" },
       { value: "external", label: "Use an existing Connections broker" },
       { value: "local", label: "Run Connections with a Composio project" },
     ],
     current.mode,
   );
-  if (mode === "back") return current;
   if (mode === "disabled") return { mode };
   if (mode === "external")
     return {

@@ -290,7 +290,8 @@ outside v1; existing native Claws remain experimental at the pinned release.
 The [current terminal installer](../deploy/local/installation.md#terminal-installer)
 selects a release-owned recipe, asks for missing required credentials, and presents a
 review screen. Customize opens revisitable configuration sections; Custom starts there.
-Esc discards a section draft; accepting saves it. CLI --settings skips supplied inputs.
+Esc returns to the parent screen, discarding unsaved section edits while retaining
+accepted answers; it never exits the installer. Ctrl+C exits. CLI --settings skips supplied inputs.
 Its settings and private-file writer are shared with noninteractive `configure`.
 Connections defaults to disabled; enabling it requires its existing provider/broker
 configuration. Account OAuth guidance is future work. Recipe defaults are copied once;

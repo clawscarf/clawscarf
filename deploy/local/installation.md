@@ -69,10 +69,12 @@ Access, Models, Connections, Packs, Resources and (when packaged) Browser.
 **Custom** starts in that detailed menu and requires a model catalog.
 Connections defaults to off. Security foundations and LiteLLM are required.
 
-Within a section, **Save section changes** accepts the draft; **Esc** discards that
-section's edits and new secrets and returns to review. **Ctrl+C** exits the installer.
-Already accepted sections remain intact. Escape in the Customize menu returns to review.
-At the review screen, Back selects another recipe.
+**Esc** returns to the parent screen throughout setup; there are no Back menu rows.
+Within a section it discards unsaved edits and new secrets, returning to Customize.
+Customize returns to review; review returns to recipes. At the starting-point menu,
+Esc stays there. **Save section changes** accepts edits; accepted answers survive
+back navigation. **Ctrl+C** exits. Final save/action choices also support Esc;
+files are written only after those choices are accepted.
 
 The illustrative **Team documents** recipe supplies GPT-6 Astra through OpenRouter,
 with medium thinking. It does not supply a document assistant, ingestion or a
