@@ -13,10 +13,6 @@ After each slice, update affected docs and callers, run relevant checks, and rep
 net changes separately for authored implementation, tests and generated code.
 Moving code or deleting a one-caller wrapper is not a substantial code reduction.
 
-- [ ] **2. Shorten [AGENTS.md](AGENTS.md).** Keep scope, documentation accuracy,
-      product/security boundaries and practical implementation/verification rules.
-      Remove repetition and rules that prescribe machinery rather than required
-      behavior. Do not replace them with another process framework.
 - [ ] **3. Generate each API contract once.** Generate schema types, fetch SDK and
       Fastify handler types together for Access and Connections. Remove the separate
       server generator configurations and duplicate schema outputs: 310 Access lines
