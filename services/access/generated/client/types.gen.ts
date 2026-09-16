@@ -4,6 +4,9 @@ export type ClientOptions = {
     baseUrl: `${string}://services` | (string & {});
 };
 
+/**
+ * Client input failures return 400 (including malformed JSON), 413 for oversized bodies, or 415 for unsupported media types. Native request_rejected returns 409 for a confirmed rejection; outcome_unknown returns 503 when a mutation result cannot be established. Request IDs correlate service failures with sanitized diagnostics.
+ */
 export type Problem = {
     type: string;
     title: string;

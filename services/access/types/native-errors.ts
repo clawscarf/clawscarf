@@ -2,6 +2,7 @@ export type NativeFailureCode =
   | "access_denied"
   | "unavailable"
   | "invalid_response"
+  | "request_rejected"
   | "revision_conflict"
   | "setup_required"
   | "last_administrator"

@@ -55,6 +55,7 @@ export async function withGateway<T>(
   const scopes = options.scopes ?? ["operator.admin"];
   const ready = Promise.withResolvers<readonly string[]>();
   let mutationAttempted = false;
+  let completedMutations = 0;
   let closing = false;
   const publicUrl = new URL(options.origin);
   const url = new URL(options.endpoint ?? options.origin);
@@ -101,9 +102,25 @@ export async function withGateway<T>(
       value: await work({
         scopes: granted,
         read: (method, input) => client.request<unknown>(method, input),
-        mutate: (method, input) => {
+        mutate: async (method, input) => {
           mutationAttempted = true;
-          return client.request<unknown>(method, input);
+          try {
+            const result = await client.request<unknown>(method, input);
+            completedMutations++;
+            return result;
+          } catch (error) {
+            // Only known pre-execution rejections prove that this write was refused.
+            // UNAVAILABLE can also mean config persisted but activation failed.
+            if (completedMutations > 0)
+              throw new NativeFailure("outcome_unknown");
+            if (isAccessDenied(error)) throw new NativeFailure("access_denied");
+            if (
+              isGatewayProtocolResponseError(error) &&
+              error.gatewayCode === "INVALID_REQUEST"
+            )
+              throw new NativeFailure("request_rejected");
+            throw new NativeFailure("outcome_unknown");
+          }
         },
       }),
     };
@@ -111,13 +128,15 @@ export async function withGateway<T>(
     outcome = {
       ok: false,
       error: new NativeFailure(
-        mutationAttempted
+        completedMutations > 0
           ? "outcome_unknown"
           : error instanceof NativeFailure
             ? error.code
-            : isAccessDenied(error)
-              ? "access_denied"
-              : "unavailable",
+            : mutationAttempted
+              ? "outcome_unknown"
+              : isAccessDenied(error)
+                ? "access_denied"
+                : "unavailable",
       ),
     };
   } finally {

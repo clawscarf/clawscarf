@@ -26,6 +26,13 @@ Native observation unit tests cover readiness/conflicts and administrator denial
 real PostgreSQL/REST tests cover the response and session boundary. These checks do
 not replace company-login acceptance against a running native installation.
 
+[main.tsx](main.tsx) only mounts the application and query provider.
+[app.tsx](app.tsx) owns the session, account view and shared shell;
+[people-state.ts](people-state.ts) owns People queries and mutation state;
+[people.tsx](people.tsx) renders the inventory and preparation action; and
+[people-dialogs.tsx](people-dialogs.tsx) owns enrollment/removal forms. All requests
+continue through the generated client with cancellation and explicit mutation handling.
+
 Build with `pnpm access:web:build`. The service hosts the resulting assets; development
 Vite is available through `pnpm access:web:dev` on port 5173, proxying access APIs
 to port 18800. For this development arrangement, configure Access’s public `origin`

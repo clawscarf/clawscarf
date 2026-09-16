@@ -78,6 +78,11 @@ with a fresh sign-in link; they retain the failure HTTP status and never replay 
 request or display provider details. API clients retain typed Problem Details. Failed
 callbacks clear the login cookie. The shared HTTP server accepts request bodies up to
 256 KiB; Fastify rejects larger bodies with 413 Problem Details before dispatch.
+Malformed or empty JSON and schema failures return 400; unsupported content types
+return 415. Unexpected/native service failures emit a structured error event with
+the server-generated request ID, operation, status, classification and an allowlisted
+source location when available. No request headers, query values, vendor messages or
+raw error stacks are logged.
 Individual operations apply their own narrower field and argument limits.
 Session authentication checks current
 admission revisions; revocation cannot revive after a later admission. Stored logout
@@ -172,7 +177,12 @@ After a new identity’s read-only grant is persisted, enrollment briefly observ
 its effective native admission while native auth reloads. Every attempt rechecks
 the acting administrator and exact grant; persistent denial fails without admitting
 the person. Ordinary authorization failures are not retried and mutations are never
-replayed.
+replayed. Correlated native validation/authorization rejections before any successful
+write retain a definitive failure; transport loss, unknown native codes and native
+activation failures retain an uncertain outcome. A later failure after an acknowledged
+write also remains uncertain for the overall operation. `UNAVAILABLE` is not proof
+of rejection: native configuration may already have persisted before activation failed.
+The real SDK/TLS WebSocket regression covers these cases without running OpenClaw.
 
 `pnpm test:access` runs isolated tests. Supplying `CLAWSCARF_TEST_DATABASE_URL` enables
 the real Postgres/REST cases; use a disposable database, as those tests create and

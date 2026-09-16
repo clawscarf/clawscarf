@@ -4,7 +4,12 @@ import {
   signInFailurePage,
   signInPagePolicy,
 } from "./pages.js";
-import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
+import Fastify, {
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyServerOptions,
+  LogController,
+} from "fastify";
 import cookie from "@fastify/cookie";
 import staticFiles from "@fastify/static";
 import formbody from "@fastify/formbody";
@@ -17,24 +22,10 @@ import type { EnrollmentService } from "../service/enrollment.js";
 import type { NavigationLink } from "../types/native.js";
 import type { Session } from "../types/model.js";
 import type { FastifyRequest } from "fastify";
-import { NativeFailure } from "../types/native-errors.js";
+import { classifyFailure, failureDiagnostic } from "./failures.js";
 import { AccessError } from "../types/errors.js";
 import { safeReturn, type SessionService } from "../service/session.js";
 import type { RouteHandlers } from "../generated/server/fastify.gen.js";
-const errorStatus = {
-  unauthenticated: 401,
-  forbidden: 403,
-  invalid_request: 400,
-  invalid_authorization: 400,
-  email_unverified: 403,
-  csrf_failed: 403,
-  dependency_unavailable: 503,
-  rate_limited: 429,
-  revision_conflict: 409,
-  setup_required: 409,
-  last_administrator: 409,
-  outcome_unknown: 503,
-} as const;
 export async function createAccessHttp(
   service: Pick<
     SessionService,
@@ -53,10 +44,12 @@ export async function createAccessHttp(
   >,
   webRoot?: string,
   navigationLinks: readonly NavigationLink[] = [],
+  logger: FastifyServerOptions["logger"] = { level: "error" },
 ) {
   for (const link of navigationLinks) safeReturn(link.href);
   const app = Fastify({
-    logger: false,
+    logger,
+    logController: new LogController({ disableRequestLogging: true }),
     trustProxy: false,
     bodyLimit: 256 * 1024,
     requestIdHeader: false,
@@ -134,33 +127,17 @@ export async function createAccessHttp(
   app.setErrorHandler((error, req, reply) => {
     if (req.routeOptions.url === "/_clawscarf/callback")
       cookies(reply, "clawscarf_login", "", 0);
-    const nativeCode =
-      error instanceof NativeFailure
-        ? (
-            {
-              access_denied: "forbidden",
-              unavailable: "dependency_unavailable",
-              invalid_response: "dependency_unavailable",
-              revision_conflict: "revision_conflict",
-              setup_required: "setup_required",
-              last_administrator: "last_administrator",
-              outcome_unknown: "outcome_unknown",
-            } as const
-          )[error.code]
-        : null;
-    const bodyTooLarge =
-      error instanceof Fastify.errorCodes.FST_ERR_CTP_BODY_TOO_LARGE;
-    const code =
-      nativeCode ??
-      (error instanceof AccessError
-        ? error.code
-        : bodyTooLarge ||
-            (typeof error === "object" &&
-              error !== null &&
-              "validation" in error)
-          ? "invalid_request"
-          : "dependency_unavailable");
-    const status = bodyTooLarge ? 413 : errorStatus[code];
+    const { code, status, bodyTooLarge, category } = classifyFailure(error);
+    if (status >= 500) {
+      req.log.error({
+        event: "access_request_failed",
+        operation: req.routeOptions.schema?.operationId ?? "unregistered",
+        status,
+        code,
+        category,
+        ...failureDiagnostic(error),
+      });
+    }
     if (
       req.headers.accept?.includes("text/html") &&
       [
@@ -204,9 +181,11 @@ export async function createAccessHttp(
                   ? "Keep at least one available administrator."
                   : code === "revision_conflict"
                     ? "Access changed. Refresh before trying again."
-                    : code === "outcome_unknown"
-                      ? "The result could not be confirmed. Refresh before making another change."
-                      : "The service is unavailable.",
+                    : code === "request_rejected"
+                      ? "OpenClaw rejected the change. Refresh and review the settings."
+                      : code === "outcome_unknown"
+                        ? "The result could not be confirmed. Refresh before making another change."
+                        : "The service is unavailable.",
         requestId: req.id,
       });
   });
