@@ -76,6 +76,10 @@ Esc stays there. **Save section changes** accepts edits; accepted answers surviv
 back navigation. **Ctrl+C** exits. Final save/action choices also support Esc;
 files are written only after those choices are accepted.
 
+This describes the implemented menu. The [next installation design](../../docs/installation-interface.md#the-installation-experience)
+puts the settings menu before secrets and makes Esc exit at the first screen; those
+changes are not implemented yet.
+
 The illustrative **Team documents** recipe supplies GPT-6 Astra through OpenRouter,
 with medium thinking. It does not supply a document assistant, ingestion or a
 qualified document workflow. Its live provider journey remains unverified.

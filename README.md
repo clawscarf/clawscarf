@@ -76,8 +76,11 @@ The [installation CLI](deploy/local/installation.md) is the public configuration
 lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
 defaults for that document. The [component guide](deploy/local/README.md) covers internal
 developer operations; it is not a second supported installation format.
-[Interface notes](docs/installation-interface.md) preserve unresolved change/hosting
-requirements. [TODO.md](TODO.md) owns their selection; notes do not authorize more work.
+[Installation and management design](docs/installation-interface.md) describes the
+recipe/settings menu, credentials, administrator and account browser setup, later CLI
+management, release packaging and implementation order. It distinguishes agreed direction,
+open decisions and current gaps. [TODO.md](TODO.md) owns task selection; the design does
+not authorize more work.
 
 The unified product design fixes OpenShell Gateway protection, a separate protected
 shared worker and authenticated entry/admission/revocation. Recipes vary deployment

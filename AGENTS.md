@@ -56,11 +56,14 @@
   and CLI share clients. Use parameterized SQL, explicit transactions and separate
   node-pg-migrate execution/credentials; never migrate on API startup.
 - CLI operations own configuration/effects; installer menus only collect and present.
-  Recipes are validated defaults, not scripts or another deployment engine. Ask for missing
-  required inputs, then review; put details under Customize. Keep equivalent noninteractive
-  commands. Esc always returns to the parent screen; no Back menu rows. At the root it
-  stays there. Save accepts section edits; Esc discards unsaved section edits and new
-  secrets while retaining accepted answers. Ctrl+C exits.
+  Recipes are validated defaults, not scripts or another deployment engine. Present the
+  recipe-filled settings menu first, with Accept and continue at the top; request missing
+  secrets afterward in the context of the chosen settings. Keep equivalent noninteractive
+  operations and advanced details out of normal copy. Esc returns to the parent screen
+  and exits at the root; no Back rows. Save accepts section edits; Esc discards unaccepted
+  section edits and new secrets while retaining accepted answers. Ctrl+C exits. The
+  [installation design](docs/installation-interface.md) distinguishes this target from
+  current implementation gaps.
 - Reuse UI primitives. Keep actions beside data, layouts consistent and copy concise.
   Show loading in affected content, retain data on refresh, and distinguish unavailable
   from empty. Review changed accessible desktop/mobile pending and error states.
