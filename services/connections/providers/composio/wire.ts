@@ -1,3 +1,4 @@
+import { parseJson } from "../../shared/json.js";
 import type { ConnectorAuth, ConnectorJson } from "../../types/catalog.js";
 import {
   ConnectorProviderError,
@@ -172,26 +173,10 @@ export function jsonValue(
   value: unknown,
   completion: ConnectorProviderCompletion,
 ): ConnectorJson {
-  let nodes = 250_000;
-  const visit = (node: unknown, depth: number): ConnectorJson => {
-    if (--nodes < 0 || depth > 80) throw invalidResponse(completion);
-    if (
-      node === null ||
-      typeof node === "string" ||
-      typeof node === "boolean" ||
-      (typeof node === "number" && Number.isFinite(node))
-    )
-      return node;
-    if (Array.isArray(node))
-      return node.map((child: unknown) => visit(child, depth + 1));
-    if (isRecord(node))
-      return Object.fromEntries(
-        Object.entries(node).map(([key, child]) => [
-          key,
-          visit(child, depth + 1),
-        ]),
-      );
-    throw invalidResponse(completion);
-  };
-  return visit(value, 0);
+  return parseJson(value, {
+    maximumDepth: 80,
+    invalid: () => {
+      throw invalidResponse(completion);
+    },
+  });
 }

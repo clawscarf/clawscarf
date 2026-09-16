@@ -63,6 +63,7 @@ const payload = [
   "services/connections/repo/credential-store.js",
   "services/connections/service/catalog-publication.js",
   "services/connections/shared/errors.js",
+  "services/connections/shared/json.js",
   "services/connections/types/errors.js",
   "deploy/execution/browser-node/configuration.js",
   "deploy/execution/browser-node/operator.js",

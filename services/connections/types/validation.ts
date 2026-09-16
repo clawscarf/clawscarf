@@ -1,3 +1,4 @@
+import { parseJson } from "../shared/json.js";
 import { CommonError } from "../shared/errors.js";
 import type { ConnectorJson } from "./catalog.js";
 import type { ConnectionGrant, ConnectorCallContext } from "./model.js";
@@ -8,53 +9,12 @@ export function requireConnectorJson(
   value: unknown,
   maximumBytes = 128 * 1024,
 ): ConnectorJson {
-  let remaining = 250_000;
-  const visit = (input: unknown, depth: number): ConnectorJson => {
-    if (--remaining < 0 || depth > 64) invalid();
-    if (
-      input === null ||
-      typeof input === "boolean" ||
-      typeof input === "string"
-    )
-      return input;
-    if (typeof input === "number" && Number.isFinite(input)) return input;
-    if (Array.isArray(input))
-      return input.map((item: unknown) => visit(item, depth + 1));
-    if (
-      typeof input !== "object" ||
-      input === null ||
-      Object.getPrototypeOf(input) !== Object.prototype
-    )
-      invalid();
-    const result: { [key: string]: ConnectorJson } = {};
-    for (const [key, item] of Object.entries(input))
-      Object.defineProperty(result, key, {
-        value: visit(item, depth + 1),
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
-    return result;
-  };
-  const parsed = visit(value, 0);
-  if (Buffer.byteLength(JSON.stringify(parsed)) > maximumBytes) invalid();
-  return parsed;
-}
-export function canonicalConnectorJson(value: ConnectorJson): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value))
-    return "[" + value.map(canonicalConnectorJson).join(",") + "]";
-  return (
-    "{" +
-    Object.keys(value)
-      .sort()
-      .map(
-        (key) =>
-          JSON.stringify(key) + ":" + canonicalConnectorJson(value[key]!),
-      )
-      .join(",") +
-    "}"
-  );
+  return parseJson(value, {
+    maximumDepth: 64,
+    maximumBytes,
+    plainObjectsOnly: true,
+    invalid,
+  });
 }
 export function requireConnectionName(name: string) {
   if (name.length < 1 || name.length > 160 || name.trim() !== name) invalid();

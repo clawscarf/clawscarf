@@ -1,3 +1,4 @@
+import { canonicalJson } from "../../shared/json.js";
 import {
   readFile,
   readdir,
@@ -13,7 +14,6 @@ import type {
   ConnectorJson,
 } from "../../types/catalog.js";
 import {
-  canonicalJson,
   connectorActionSummary,
   catalogDigest,
   parseCatalogJson,

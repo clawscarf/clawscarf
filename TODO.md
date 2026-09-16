@@ -4,22 +4,6 @@ Select one slice at a time. This checklist does not authorize automatic continua
 Code reduction comes before new installation features. Current configuration and limits are in
 [README.md](README.md#installation-management-direction).
 
-## Code reduction — selected work
-
-Preserve protected Gateway/worker execution, authenticated team entry and revocation,
-LiteLLM, optional Connections and existing native edits. These are requirements;
-the current files, command surfaces and orchestration mechanisms are not.
-After each slice, update affected docs and callers, run relevant checks, and report
-net changes separately for authored implementation, tests and generated code.
-Moving code or deleting a one-caller wrapper is not a substantial code reduction.
-
-- [ ] **8. Remove Connections algorithm duplication and file fragmentation.** Share
-      the repeated JSON traversal/canonicalization currently in domain validation,
-      catalog artifacts and Composio wire handling; preserve each boundary's limits
-      and error translation. Move the sole-use `paged` helper into its connection store
-      and remove [repo/pagination.ts](services/connections/repo/pagination.ts).
-      Do not inline the revision parser twice or replace small helpers with a framework.
-
 ## Larger code reductions — decide the replacement or lost behavior first
 
 - [ ] Verify a supported shared fetch-runtime dependency before replacing the three

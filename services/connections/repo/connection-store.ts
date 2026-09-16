@@ -1,5 +1,4 @@
 import { oneRow, type Transaction } from "./database.js";
-import { paged } from "./pagination.js";
 import type { ConnectorServerScope } from "../types/authority.js";
 import type { ConnectionRecord, ConnectionCommand } from "../types/model.js";
 import type { ConnectionStore } from "../types/ports.js";
@@ -53,7 +52,13 @@ export class PostgresConnectionStore implements ConnectionStore {
       "SELECT c.* FROM connections c WHERE server_id=$1 AND ($2::uuid IS NULL OR id>$2) AND ($4 OR state<>'disconnected' OR EXISTS(SELECT 1 FROM connection_accounts a WHERE a.connection_id=c.id AND a.cleanup IN ('pending','running','needs_attention')) OR EXISTS(SELECT 1 FROM connection_setups s WHERE s.connection_id=c.id AND s.state='outcome_unknown')) ORDER BY id LIMIT $3",
       [scope.serverId, cursor, limit + 1, includeDisconnected],
     );
-    return paged(rows.rows.map(view), limit, (item) => item.id);
+    return {
+      items: rows.rows.slice(0, limit).map(view),
+      nextCursor:
+        rows.rows.length > limit
+          ? Buffer.from(rows.rows[limit - 1]!.id).toString("base64url")
+          : null,
+    };
   }
   async count(scope: ConnectorServerScope) {
     return oneRow(

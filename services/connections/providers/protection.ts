@@ -1,3 +1,4 @@
+import { canonicalJson } from "../shared/json.js";
 import {
   createCipheriv,
   createDecipheriv,
@@ -9,10 +10,7 @@ import {
 import { CommonError } from "../shared/errors.js";
 import type { ConnectorJson } from "../types/catalog.js";
 import type { ConnectionProtection } from "../types/ports.js";
-import {
-  requireConnectorJson,
-  canonicalConnectorJson,
-} from "../types/validation.js";
+import { requireConnectorJson } from "../types/validation.js";
 
 /** Authenticated storage and domain-separated keys adapt the native command protection owner. */
 export class EncryptedConnectionProtection implements ConnectionProtection {
@@ -89,7 +87,7 @@ export class EncryptedConnectionProtection implements ConnectionProtection {
     return createHmac("sha256", this.fingerprintKey)
       .update(binding)
       .update("\0")
-      .update(canonicalConnectorJson(value))
+      .update(canonicalJson(value))
       .digest("hex");
   }
 }
