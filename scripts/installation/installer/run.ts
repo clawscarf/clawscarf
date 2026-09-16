@@ -1,9 +1,10 @@
 import * as clack from "@clack/prompts";
 import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { resolve, join } from "node:path";
 import { collectInstallation, type InstallOptions } from "./collect.js";
 import {
   InstallerCancelled,
+  SectionCancelled,
   progress,
   requireTerminal,
   terminalPrompts,
@@ -13,25 +14,7 @@ import { saveConfiguration } from "../save.js";
 import { planInstallation, applyInstallation } from "../plan.js";
 import { doctorInstallation } from "../doctor.js";
 import { startInstallation } from "../lifecycle.js";
-import type { InstallationConfiguration } from "../configuration.js";
 import { InstallationError } from "../errors.js";
-
-function summary(config: InstallationConfiguration) {
-  const origin =
-    config.exposure.mode === "local"
-      ? `http://127.0.0.1:${String(config.exposure.applicationPort)}`
-      : config.exposure.applicationOrigin;
-  return [
-    `${config.name} — ${origin}`,
-    `Access: ${config.access.mode}; administrator: ${config.access.administratorName}`,
-    `Gateway: ${config.resources.gateway.cpu} CPU / ${config.resources.gateway.memory}`,
-    `Worker: ${config.resources.worker.cpu} CPU / ${config.resources.worker.memory}`,
-    "OpenShell protection and authenticated entry: required",
-    `Browser: ${config.browser.enabled ? "experimental" : "off"}`,
-    `Models: ${config.models.mode}; Connections: ${config.connections.mode}`,
-    `Pack agents: ${config.packs.flatMap((pack) => pack.members).join(", ") || "none"}`,
-  ].join("\n");
-}
 
 // The wizard calls the same operators as the noninteractive commands; it owns no provisioning logic.
 const operations = {
@@ -47,7 +30,6 @@ export async function installFromAnswers(
   task: typeof progress = async (_message, work) => work(),
 ) {
   const { directory, config, inputs } = await collectInstallation(ui, options);
-  ui.note(summary(config), "Installation");
   if (
     !(await ui.confirm(
       `Save configuration and private credential copies in ${directory}?`,
@@ -56,7 +38,7 @@ export async function installFromAnswers(
     return { state: "cancelled" };
   const configFile = await saveConfiguration(directory, config, inputs);
   const planFile = join(directory, "preview.json");
-  const stateDirectory = join(directory, "state");
+  const stateDirectory = resolve(directory, config.stateDirectory);
   ui.note(
     `Configuration: ${configFile}\nState: ${stateDirectory}\nKeep this directory private. Existing releases, catalogs and pack sources remain external inputs.`,
     "Files saved",
@@ -150,7 +132,11 @@ export async function runInstaller(options: InstallOptions) {
             : "Installation stopped; data retained.",
       );
   } catch (error) {
-    if (!(error instanceof InstallerCancelled)) throw error;
+    if (
+      !(error instanceof InstallerCancelled) &&
+      !(error instanceof SectionCancelled)
+    )
+      throw error;
     clack.cancel(
       "Cancelled. Any saved files remain; no operation will be replayed.",
     );

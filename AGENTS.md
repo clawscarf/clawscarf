@@ -39,7 +39,8 @@
   OpenShell Gateway protection, the separate protected shared worker and authenticated
   entry/admission/revocation are fixed product requirements, not feature flags or recipe
   choices. Resource sizing and external ownership do not make those protections optional.
-  Optional capabilities cannot weaken them; unsupported hosts/combinations must fail,
+  Managed inference requires LiteLLM, bundled or externally operated; recipes cannot
+  bypass it with direct-provider setup. Optional capabilities cannot weaken protections; unsupported hosts/combinations must fail,
   not fall back. Distinguish current developer-component flexibility from the intended
   product contract. Validate example combinations against actual service dependencies;
   a proposed UX or unqualified integration must not become an accepted requirement.
@@ -72,6 +73,9 @@
   effects. Keep capability-specific prompts in their modules, preserve answers across
   sections, and offer equivalent noninteractive operations. Recipes are validated data,
   not scripts or a second deployment engine. Example recipes are not qualified workflows.
+  Recipe setup asks only for missing required inputs, then reviews; detailed options
+  belong under Customize. Edit sections atomically: Save accepts, Esc discards the
+  section (including new secrets), and Ctrl+C exits. CLI settings skip answered prompts.
 - Maintain only the current contract: no legacy aliases, permissive old inputs or
   compatibility machinery unless the owner requests it. Preserve failure and data
   integrity guarantees; update callers, tests and docs together.

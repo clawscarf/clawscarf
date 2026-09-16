@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { localInput } from "../../../local/configuration.js";
 import { InstallationError } from "../../errors.js";
-import type { InstallationConfiguration } from "../../configuration.js";
+import type { InstallationDraft } from "../../configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
 import { field, inputFile } from "../inputs.js";
 
@@ -10,7 +10,7 @@ import { secretInput } from "../secrets.js";
 
 export async function collectAccess(
   ui: InstallerPrompts,
-  current: InstallationConfiguration,
+  current: InstallationDraft,
   inputs: SetupInputs,
 ) {
   const administratorName = current.access.administratorName;
@@ -36,8 +36,8 @@ export async function collectAccess(
   );
   if (mode === "back")
     return { access: current.access, exposure: current.exposure };
-  let exposure: InstallationConfiguration["exposure"];
-  let access: InstallationConfiguration["access"];
+  let exposure: InstallationDraft["exposure"];
+  let access: InstallationDraft["access"];
   if (mode === "local") {
     const port = z
       .string()

@@ -28,6 +28,11 @@ export async function startInstallation(
       "invalid_configuration",
       "A protected execution worker is required.",
     );
+  if (!state.input.modelGateway && !state.input.models)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Bundled or existing LiteLLM is required.",
+    );
   if (Buffer.byteLength(socketPath(directory)) > 100)
     throw new InstallationError(
       "invalid_configuration",

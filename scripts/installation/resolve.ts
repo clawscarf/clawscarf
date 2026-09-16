@@ -269,14 +269,6 @@ export async function resolveInstallation(
         );
       members.add(id);
       if (
-        member.requirements.model === "configured-default" &&
-        config.models.mode === "disabled"
-      )
-        throw new InstallationError(
-          "invalid_configuration",
-          "This pack requires a configured model.",
-        );
-      if (
         member.requirements.connections.length &&
         (config.connections.mode === "disabled" || !selected.bindingsFile)
       )

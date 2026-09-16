@@ -17,6 +17,14 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
+## Reviewed defects — select before implementation
+
+- [ ] Fix concurrent replay of in-flight Connections allocation without cancelling its result.
+- [ ] Preserve definitive native mutation rejections; classify malformed HTTP requests correctly.
+- [ ] Add sanitized Access failure diagnostics correlated with request IDs.
+- [ ] Support private model-gateway CA trust throughout credential CLI commands; supervise
+      enabled model services after startup.
+
 ## Next installation slices — select before implementation
 
 - [ ] **2. Finish retained-install capability changes.** Initial models, Connections
@@ -37,7 +45,7 @@ to run the entire list automatically. Current configuration and limits are in
       for OIDC: authenticate its holder, atomically bind the identity and verify native
       authority. Preserve explicit subject bootstrap for unattended configuration.
 - [ ] Develop and qualify the illustrative Team documents recipe separately. Intended
-      default: GPT-6 Astra / medium; decide its actual packs, provider configuration and
+      default route: OpenRouter GPT-6 Astra / medium; verify live inference and decide packs and
       whether Connections belongs in it. Do not turn the example into an automatic task.
 
 ## Separate decisions and integrations

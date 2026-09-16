@@ -3,7 +3,7 @@
 **OpenClaw for your team. On your terms.**
 
 ClawScarf packages vanilla [OpenClaw](https://github.com/openclaw/openclaw) with
-protected team login, isolated execution, optional models and Connections, and
+protected team login, isolated execution, LiteLLM models and optional Connections, and
 reusable agent packs. Run it on infrastructure you control.
 
 > **Developer preview.** Local login, model/tool use and retained-state restart
@@ -18,7 +18,7 @@ reusable agent packs. Run it on infrastructure you control.
 | [OpenShell](deploy/openshell/README.md)                  | Externally controlled protection around the Gateway and separate [execution worker](deploy/execution/worker/README.md).                 |
 | [Access](services/access/README.md)                      | Local administrator login or generic company OIDC, enrollment, protected entry and session revocation.                                  |
 | [Connections](services/connections/README.md) — optional | Account setup, agent grants and a small [search/describe/call plugin](plugins/connections/README.md). External broker or local service. |
-| [Models](deploy/models/README.md) — optional             | Existing model gateway or local LiteLLM; provider credentials stay outside OpenClaw.                                                    |
+| [Models](deploy/models/README.md)                        | Existing LiteLLM or bundled LiteLLM; provider credentials stay outside OpenClaw.                                                        |
 | [Packs](packs/README.md) — optional                      | Native agent/skill/workflow bundles with prerequisites and preview; includes a researcher/reviewer example.                             |
 
 Compose runs the [companion](apps/companion/README.md) and its PostgreSQL database;
@@ -75,9 +75,9 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 **Initial implementation:** one validated installation document and CLI for local
 preparation and lifecycle. A fresh macOS arm64 installation passed local browser login,
 administrator bootstrap, protected worker access and stop/restart with native settings
-and worker files retained. Initial optional models/Connections and pack selections are implemented; retained-install
+and worker files retained. Initial LiteLLM/optional Connections and pack selections are implemented; retained-install
 capability reconfiguration and publication remain in TODO. The terminal installer
-offers release-bundled recipes and revisitable settings, with the same configuration
+offers release-bundled recipes, required credential entry, a review screen and optional Customize settings, with the same configuration
 and preview/apply/start operators available noninteractively;
 it requires a prepared release and refuses existing installation directories.
 The [installation design and concrete examples](docs/installation-interface.md) define the target

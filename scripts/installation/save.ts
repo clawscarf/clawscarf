@@ -43,6 +43,11 @@ export async function saveConfiguration(
     );
     return `./${path}`;
   }
+  const modelConfiguration = inputs?.files.get(config.models.configurationFile);
+  if (modelConfiguration) {
+    files.set("models.json", modelConfiguration);
+    config.models.configurationFile = "./models.json";
+  }
   if (config.access.mode === "oidc")
     config.access.clientSecretFile = await secret(
       config.access.clientSecretFile,

@@ -28,13 +28,18 @@ const configuration = {
     worker: { cpu: "2", memory: "2Gi" },
   },
   browser: { enabled: false },
-  models: { mode: "disabled" },
+  models: {
+    mode: "litellm",
+    configurationFile: "models.json",
+    upstreamEnvironmentFile: "keys.env",
+  },
   connections: { mode: "disabled" },
   packs: [],
 };
 await test("product configuration never offers protection bypasses or invalid access combinations", () => {
   assert.ok(installationSchema.safeParse(configuration).success);
   for (const modification of [
+    { models: { mode: "disabled" } },
     { execution: { mode: "host" } },
     { resources: { gateway: { cpu: "2", memory: "2Gi" } } },
     { access: { mode: "external" } },
@@ -85,10 +90,6 @@ await test(
     await writeFile(join(directory, "release.json"), JSON.stringify(release));
     const path = join(directory, "config.json");
     await writeFile(path, JSON.stringify(configuration));
-    const plan = await planInstallation(path);
-    assert.equal(plan.action, "prepare");
-    assert.equal(plan.stateDirectory, join(directory, "state"));
-    assert.equal(new Set(plan.internalPorts).size, 8);
     const modelFile = {
       defaultModel: "team",
       models: [
@@ -111,6 +112,10 @@ await test(
       "PROVIDER_KEY=private-test-key\n",
       { mode: 0o600 },
     );
+    const plan = await planInstallation(path);
+    assert.equal(plan.action, "prepare");
+    assert.equal(plan.stateDirectory, join(directory, "state"));
+    assert.equal(new Set(plan.internalPorts).size, 8);
     await writeFile(join(directory, "connection-key"), "private-scoped-token", {
       mode: 0o600,
     });
@@ -141,10 +146,10 @@ await test(
       code: "stale_plan",
     });
     await writeFile(path, JSON.stringify(configuration));
-    const disabled = await resolveInstallation(path, plan.internalPorts);
-    assert.equal(disabled.input.models, undefined);
-    assert.equal(disabled.input.connections, undefined);
-    assert.equal(disabled.input.modelGateway, undefined);
+    const resolved = await resolveInstallation(path, plan.internalPorts);
+    assert.ok(resolved.input.models);
+    assert.equal(resolved.input.connections, undefined);
+    assert.ok(resolved.input.modelGateway);
     const preview = join(directory, "preview.json");
     await writeFile(preview, JSON.stringify(plan));
     await writeFile(
@@ -155,7 +160,7 @@ await test(
       code: "stale_plan",
     });
     await writeFile(join(directory, "release.json"), JSON.stringify(release));
-    await initializeState(join(directory, "state"), disabled.input);
+    await initializeState(join(directory, "state"), resolved.input);
     await writeFile(
       join(directory, "state/inputs.sha256"),
       "different-input-revision",

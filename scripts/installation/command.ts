@@ -38,6 +38,10 @@ export function installationCommand() {
     )
     .option("--recipe <id>", "Starting recipe, or custom")
     .option("--directory <path>", "New private installation directory")
+    .option(
+      "--settings <file>",
+      "JSON overrides; skip questions already answered here",
+    )
     .action(runInstaller);
   program
     .command("recipes")

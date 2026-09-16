@@ -16,9 +16,11 @@ export const modelSchema = z.strictObject({
     })
     .optional(),
 });
+const thinkingDefault = z.enum(["low", "medium", "high"]);
 export const gatewayRoutesSchema = z.strictObject({
   models: z.array(modelSchema).min(1).max(512),
   defaultModel: z.string().min(1),
+  thinkingDefault: thinkingDefault.optional(),
 });
 export const configurationSchema = z
   .discriminatedUnion("mode", [
@@ -28,6 +30,7 @@ export const configurationSchema = z
       baseUrl: z.url(),
       models: z.array(modelSchema).min(1).max(512),
       defaultModel: z.string().nullable(),
+      thinkingDefault: thinkingDefault.optional(),
     }),
   ])
   .superRefine((value, context) => {
@@ -125,6 +128,11 @@ export function nativeAssignments(config: ModelConfiguration) {
     assignments.push({
       path: "agents.defaults.model.primary",
       value: `clawscarf/${config.defaultModel}`,
+    });
+  if (config.thinkingDefault)
+    assignments.push({
+      path: "agents.defaults.thinkingDefault",
+      value: config.thinkingDefault,
     });
   return assignments;
 }

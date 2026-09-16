@@ -6,9 +6,10 @@ values, user identities or deployment paths belong here. The release generator e
 these definitions in its output. There is no independent recipe version or live
 inheritance: a saved installation records provenance and owns its complete settings.
 
-[Team documents](team-documents.json) is an illustrative starting point. Its suggested
-model is GPT-6 Astra with medium thinking. The menu shows that preference; actual model
-routes still come from the operator's model configuration. It supplies no document
+[Team documents](team-documents.json) is an illustrative starting point. Its model catalog
+selects GPT-6 Astra through OpenRouter with medium thinking; setup asks for the provider
+key. The catalog is copied into the installation and remains customizable. Live provider
+execution for this recipe is not yet qualified. It supplies no document
 pack, ingestion system or validated question-answering behavior. Those are deliberately
 outside the menu implementation. Connections and browser default to off.
 

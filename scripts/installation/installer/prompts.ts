@@ -1,7 +1,9 @@
+import type { Key } from "node:readline";
 import * as clack from "@clack/prompts";
 import { InstallationError } from "../errors.js";
 
 export class InstallerCancelled extends Error {}
+export class SectionCancelled extends Error {}
 export type Choice = { value: string; label: string; hint?: string };
 export interface InstallerPrompts {
   text(
@@ -18,14 +20,27 @@ export interface InstallerPrompts {
   note(message: string, title: string): void;
 }
 
-function answer<T>(value: T | symbol): T {
-  if (typeof value === "symbol") throw new InstallerCancelled();
-  return value;
+async function answer<T>(work: () => Promise<T | symbol>): Promise<T> {
+  const navigation = { back: false };
+  const keypress = (_text: string, key: Key) => {
+    if (key.name === "escape") navigation.back = true;
+  };
+  process.stdin.on("keypress", keypress);
+  try {
+    const value = await work();
+    if (typeof value === "symbol") {
+      if (navigation.back) throw new SectionCancelled();
+      throw new InstallerCancelled();
+    }
+    return value;
+  } finally {
+    process.stdin.off("keypress", keypress);
+  }
 }
 export const terminalPrompts: InstallerPrompts = {
   async text(message, initial, validate) {
-    return answer<string>(
-      await clack.text({
+    return answer<string>(() =>
+      clack.text({
         message,
         ...(initial === undefined ? {} : { initialValue: initial }),
         validate: (value) =>
@@ -38,16 +53,16 @@ export const terminalPrompts: InstallerPrompts = {
     );
   },
   async password(message) {
-    return answer<string>(
-      await clack.password({
+    return answer<string>(() =>
+      clack.password({
         message,
         validate: (value) => (value?.trim() ? undefined : "Enter a value."),
       }),
     );
   },
   async select(message, options, initial) {
-    return answer<string>(
-      await clack.select({
+    return answer<string>(() =>
+      clack.select({
         message,
         options,
         ...(initial === undefined ? {} : { initialValue: initial }),
@@ -55,13 +70,13 @@ export const terminalPrompts: InstallerPrompts = {
     );
   },
   async multiselect(message, options) {
-    return answer<string[]>(
-      await clack.multiselect({ message, options, required: true }),
+    return answer<string[]>(() =>
+      clack.multiselect({ message, options, required: true }),
     );
   },
   async confirm(message) {
-    return answer<boolean>(
-      await clack.confirm({ message, initialValue: false }),
+    return answer<boolean>(() =>
+      clack.confirm({ message, initialValue: false }),
     );
   },
   note: clack.note,

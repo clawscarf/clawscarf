@@ -1,6 +1,5 @@
 import { homedir } from "node:os";
-import type { InstallationConfiguration } from "../configuration.js";
-import type { Recipe } from "../recipes/definition.js";
+import type { InstallationDraft } from "../configuration.js";
 import type { Choice } from "./prompts.js";
 
 function row(
@@ -16,11 +15,10 @@ function row(
   };
 }
 export function installationMenu(
-  config: InstallationConfiguration,
+  config: InstallationDraft,
   directory: string,
   browserAvailable: boolean,
   packIssues: string[],
-  recipe?: Recipe,
 ): Choice[] {
   const location = directory.startsWith(homedir() + "/")
     ? "~" + directory.slice(homedir().length)
@@ -47,10 +45,7 @@ export function installationMenu(
     row(
       "models",
       "Models",
-      config.models.mode === "disabled" ? "Not configured" : config.models.mode,
-      recipe?.suggestedModel
-        ? `Suggested: ${recipe.suggestedModel.name}, ${recipe.suggestedModel.thinking}`
-        : undefined,
+      !config.models ? "Not configured" : config.models.mode,
     ),
     row(
       "connections",

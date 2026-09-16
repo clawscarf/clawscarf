@@ -6,6 +6,17 @@ const resources = z.strictObject({
   cpu: localInput.shape.cpu,
   memory: localInput.shape.memory,
 });
+export const externalLiteLlmSchema = z.strictObject({
+  mode: z.literal("external"),
+  configurationFile: path,
+  credentialFile: path,
+  caFile: path.optional(),
+});
+export const bundledLiteLlmSchema = z.strictObject({
+  mode: z.literal("litellm"),
+  configurationFile: path,
+  upstreamEnvironmentFile: path,
+});
 /** Product contract: protection and the shared worker are deliberately not selectable. */
 export const installationSchema = z
   .strictObject({
@@ -49,18 +60,8 @@ export const installationSchema = z
     resources: z.strictObject({ gateway: resources, worker: resources }),
     browser: z.strictObject({ enabled: z.boolean() }),
     models: z.discriminatedUnion("mode", [
-      disabled,
-      z.strictObject({
-        mode: z.literal("external"),
-        configurationFile: path,
-        credentialFile: path,
-        caFile: path.optional(),
-      }),
-      z.strictObject({
-        mode: z.literal("litellm"),
-        configurationFile: path,
-        upstreamEnvironmentFile: path,
-      }),
+      externalLiteLlmSchema,
+      bundledLiteLlmSchema,
     ]),
     connections: z.discriminatedUnion("mode", [
       disabled,
@@ -108,3 +109,8 @@ export const installationSchema = z
       });
   });
 export type InstallationConfiguration = z.infer<typeof installationSchema>;
+
+/** Unsaved setup may lack model credentials; persisted installations may not. */
+export type InstallationDraft = Omit<InstallationConfiguration, "models"> & {
+  models?: InstallationConfiguration["models"];
+};

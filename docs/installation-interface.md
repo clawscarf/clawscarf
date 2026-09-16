@@ -20,7 +20,7 @@ outside Gateway/worker state. Native plugins still execute in the Gateway; this 
 not a claim that every tool runs on the worker or that team members are OS-isolated.
 
 Actual choices are deployment settings (resources, persistent storage, URLs/TLS and
-who supplies authenticated access) and optional capabilities (browser, managed models,
+who supplies authenticated access) and required LiteLLM placement and optional capabilities (browser,
 Connections and packs). External access delegates the required entry/admission to a
 verified platform integration; it never disables authentication. Local evaluation
 retains its one-use operator login and loopback-only entry.
@@ -43,9 +43,9 @@ without falling back to host execution, privileged containers or an unsandboxed 
 This local example is accepted by the initial CLI; the broader modes below remain
 proposed where the CLI guide identifies missing work.
 This example uses the fixed OpenShell foundation with local operator login and an
-existing model gateway. Browser, Connections and packs are initially disabled/empty.
-A model-free setup changes `models` to `{ "mode": "disabled" }`; it does not establish
-offline operation or an air-gapped release.
+existing LiteLLM gateway. Browser, Connections and packs are initially disabled/empty.
+Managed inference always uses LiteLLM. Bundled and existing LiteLLM are deployment
+choices; direct-provider setup is not an installation mode.
 
 ```json
 {
@@ -289,12 +289,15 @@ Only actual selected dependencies are requirements. A general pack marketplace i
 outside v1; existing native Claws remain experimental at the pinned release.
 
 The [current terminal installer](../deploy/local/installation.md#terminal-installer)
-selects a release-owned recipe or Custom and presents revisitable configuration sections.
+selects a release-owned recipe, asks for missing required credentials, and presents a
+review screen. Customize opens revisitable configuration sections; Custom starts there.
+Esc discards a section draft; accepting saves it. CLI --settings skips supplied inputs.
 Its settings and private-file writer are shared with noninteractive `configure`.
 Connections defaults to disabled; enabling it requires its existing provider/broker
 configuration. Account OAuth guidance is future work. Recipe defaults are copied once;
 no dynamic inheritance or generic script hooks are supported. The illustrative recipe
-records GPT-6 Astra / medium as a suggestion, not an applied or verified model route.
+supplies a GPT-6 Astra / medium route through OpenRouter; live inference for the recipe
+is not yet qualified. No document workflow is included.
 A complete document supports both automated deployment and terminal preview/apply/start.
 Publishing, automatic release discovery, retained-install reconfiguration and the
 selected OIDC owner claim remain unfinished. Explicit `--release` and `--recipes`

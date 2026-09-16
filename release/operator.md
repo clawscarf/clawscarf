@@ -29,7 +29,7 @@ No TypeScript compiler, contributor source or build step is needed to run the co
 The current local assembly supports macOS arm64 with Docker Desktop only.
 
 The installer uses the unified installation document and preview/apply/start operations.
-It offers local or OIDC access and optional models, Connections and packs, imports
+It offers local or OIDC access and required LiteLLM and optional Connections and packs, imports
 private credential files or masked secret input, and refuses existing installation directories. Choose save-only,
 prepare, or prepare/start in the foreground. It requires an interactive terminal; automation
 uses `recipes`, `configure`, `validate`, `plan`, `apply` and `start` instead.

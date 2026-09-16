@@ -1,7 +1,7 @@
 # Model gateways
 
 OpenClaw uses its native OpenAI-compatible provider support. Choose an existing
-private gateway with a scoped runtime key, or this optional LiteLLM companion.
+existing LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
 No RawClaw service, account, inference proxy or billing hook is required.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
@@ -209,3 +209,8 @@ longer inference deadline. Configure the external gateway using its supported
 provider options; the tested local Qwen route used LiteLLM's standard
 `reasoning_effort: none` to disable reasoning. The probe checks completion and
 native tool execution, not model answer accuracy.
+
+The unified installer requires bundled or existing LiteLLM. Its recipe/review flow is
+documented in the [installation guide](../local/installation.md#terminal-installer).
+Component operators may still use disabled-model fixtures for isolated tests; those
+are not supported product installation modes.

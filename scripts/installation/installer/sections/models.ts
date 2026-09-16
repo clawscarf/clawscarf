@@ -8,63 +8,65 @@ import {
 } from "../../../models/configuration.js";
 import { inputFile } from "../inputs.js";
 import { InstallationError } from "../../errors.js";
-import { optionalCa } from "./certificates.js";
+import { collectExternalModels } from "./external-models.js";
 
 import type { SetupInputs } from "../../save.js";
-import { secretInput } from "../secrets.js";
 
 export async function collectModels(
   ui: InstallerPrompts,
   release: Release,
-  current: InstallationConfiguration["models"],
+  current: InstallationConfiguration["models"] | undefined,
   inputs: SetupInputs,
+  presetFile?: string,
+  required = false,
 ): Promise<InstallationConfiguration["models"]> {
-  const mode = await ui.select(
-    "Models",
-    [
-      { value: "back", label: "Back to installation" },
-      { value: "disabled", label: "Configure later in OpenClaw" },
-      { value: "external", label: "Use an existing model gateway" },
-      ...(release.images.models
-        ? [{ value: "litellm", label: "Run LiteLLM with this installation" }]
-        : []),
-    ],
-    current.mode,
-  );
-  if (mode === "back") return current;
-  if (mode === "disabled") return { mode };
-  ui.note(
-    "Use the model configuration format in the ClawScarf installation guide. Provider keys are kept outside the configuration document.",
-    "Model configuration",
-  );
-  const configurationFile = await inputFile(
-    ui,
-    "Model configuration file",
-    false,
-    current.mode === "disabled" ? undefined : current.configurationFile,
-  );
+  const mode = required
+    ? (current?.mode ?? "litellm")
+    : await ui.select(
+        "Models",
+        [
+          { value: "external", label: "Use existing LiteLLM (advanced)" },
+          ...(release.images.models
+            ? [{ value: "litellm", label: "Bundled LiteLLM" }]
+            : []),
+        ],
+        current?.mode ?? "litellm",
+      );
+  const availableFile =
+    current?.mode === mode ? current.configurationFile : presetFile;
+  const keepCatalog =
+    availableFile &&
+    (required ||
+      (await ui.select(
+        "Model catalog",
+        [
+          { value: "keep", label: "Keep model catalog" },
+          { value: "file", label: "Import model catalog" },
+        ],
+        "keep",
+      )) === "keep");
+  let configurationFile =
+    keepCatalog && availableFile
+      ? availableFile
+      : await inputFile(
+          ui,
+          mode === "external"
+            ? "Existing LiteLLM model configuration file"
+            : "Model configuration file",
+          false,
+        );
   if (mode === "external")
-    return {
-      mode,
-      configurationFile,
-      credentialFile: await secretInput(
-        ui,
-        inputs,
-        "Scoped model gateway key",
-        "model-key",
-        current.mode === "external" ? current.credentialFile : undefined,
-      ),
-      ...(await optionalCa(
-        ui,
-        current.mode === "external" ? current.caFile : undefined,
-      )),
-    };
+    return collectExternalModels(ui, inputs, configurationFile, current);
   if (mode !== "litellm" || !release.images.models)
     throw new InstallationError(
       "invalid_configuration",
       "This release does not include the selected model service.",
     );
-  const routes = gatewayRoutesSchema.parse(await readJson(configurationFile));
+  const staged = inputs.files.get(configurationFile);
+  const source: unknown = staged
+    ? JSON.parse(staged.toString("utf8"))
+    : await readJson(configurationFile);
+  const routes = gatewayRoutesSchema.parse(source);
   const checked = configurationSchema.parse({
     ...routes,
     mode: "litellm",
@@ -75,6 +77,19 @@ export async function collectModels(
       "invalid_configuration",
       "Select LiteLLM routes.",
     );
+  if (!required) {
+    routes.defaultModel = await ui.select(
+      "Default model",
+      routes.models
+        .filter((model) => model.enabled)
+        .map((model) => ({ value: model.id, label: model.name })),
+      routes.defaultModel,
+    );
+    configurationFile = inputs.set(
+      "selected-models.json",
+      JSON.stringify(routes, null, 2),
+    );
+  }
   const variables = [
     ...new Set(
       checked.models
@@ -82,19 +97,21 @@ export async function collectModels(
         .map((model) => model.route?.apiKeyEnv),
     ),
   ];
-  const credentialMode = await ui.select(
-    "Provider credentials",
-    [
-      ...(current.mode === "litellm"
-        ? [{ value: "keep", label: "Keep current credentials" }]
-        : []),
-      { value: "paste", label: "Enter provider keys (hidden)" },
-      { value: "file", label: "Import private environment file" },
-    ],
-    current.mode === "litellm" ? "keep" : "paste",
-  );
+  const credentialMode = required
+    ? "paste"
+    : await ui.select(
+        "Provider credentials",
+        [
+          ...(current?.mode === "litellm"
+            ? [{ value: "keep", label: "Keep current credentials" }]
+            : []),
+          { value: "paste", label: "Enter provider keys (hidden)" },
+          { value: "file", label: "Import private environment file" },
+        ],
+        current?.mode === "litellm" ? "keep" : "paste",
+      );
   let upstreamEnvironmentFile: string;
-  if (credentialMode === "keep" && current.mode === "litellm")
+  if (credentialMode === "keep" && current?.mode === "litellm")
     upstreamEnvironmentFile = current.upstreamEnvironmentFile;
   else if (credentialMode === "file")
     upstreamEnvironmentFile = await inputFile(

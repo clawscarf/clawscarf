@@ -19,7 +19,17 @@ try {
           : "operation_failed",
       detail: known
         ? error.message
-        : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried.",
+        : error instanceof ZodError
+          ? "Invalid or missing fields: " +
+            [
+              ...new Set(
+                error.issues.map(
+                  (issue) => issue.path.join(".") || "configuration",
+                ),
+              ),
+            ].join(", ") +
+            "."
+          : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried.",
     }) + "\n",
   );
   process.exitCode = 1;

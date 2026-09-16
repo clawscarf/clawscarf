@@ -41,6 +41,7 @@ export function parseInput(value: unknown): Input {
         "secrets.providers.clawscarf-models",
         "models.providers.clawscarf",
         "agents.defaults.model.primary",
+        "agents.defaults.thinkingDefault",
       ].includes(entry.path)
     )
       throw Error("Invalid model assignment.");

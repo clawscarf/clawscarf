@@ -1,14 +1,19 @@
 import { packRequirements } from "./requirements.js";
 import { InstallationError } from "./errors.js";
 import { dirname, resolve } from "node:path";
-import { setupContext, configureRecipe, type SetupOptions } from "./setup.js";
+import {
+  setupContext,
+  setupDraft,
+  assertReleaseCapabilities,
+  type SetupOptions,
+} from "./setup.js";
 import { readJson } from "./files.js";
-import { saveConfiguration } from "./save.js";
-import type { InstallationConfiguration } from "./configuration.js";
+import { saveConfiguration, SetupInputs } from "./save.js";
+import { installationSchema, type InstallationDraft } from "./configuration.js";
 
 /** Resolve input references against the settings document; state stays relative to the output. */
-export function resolveConfigurationInputs(
-  value: InstallationConfiguration,
+export function resolveConfigurationInputs<T extends InstallationDraft>(
+  value: T,
   base: string,
 ) {
   const config = structuredClone(value);
@@ -20,7 +25,7 @@ export function resolveConfigurationInputs(
     config.exposure.certificateFile = path(config.exposure.certificateFile);
     config.exposure.keyFile = path(config.exposure.keyFile);
   }
-  if (config.models.mode !== "disabled") {
+  if (config.models) {
     config.models.configurationFile = path(config.models.configurationFile);
     if (config.models.mode === "external") {
       config.models.credentialFile = path(config.models.credentialFile);
@@ -61,16 +66,25 @@ export async function configureInstallation(
 ) {
   const context = await setupContext(options);
   const settings = options.settings ? await readJson(options.settings) : {};
-  const config = resolveConfigurationInputs(
-    configureRecipe(context, options.recipe, settings),
+  const inputs = new SetupInputs(resolve(options.directory));
+  const draft = resolveConfigurationInputs(
+    setupDraft(context, options.recipe, settings, inputs),
     options.settings ? dirname(resolve(options.settings)) : process.cwd(),
   );
+  if (!draft.models)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Models require LiteLLM configuration and provider credentials. Supply models in --settings.",
+    );
+  const config = installationSchema.parse(draft);
+  assertReleaseCapabilities(context, config);
   const issues = await packRequirements(config);
   if (issues.length)
     throw new InstallationError("invalid_configuration", issues.join(" "));
   const configFile = await saveConfiguration(
     resolve(options.directory),
     config,
+    inputs,
   );
   return {
     state: "configured",

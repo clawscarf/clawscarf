@@ -6,7 +6,7 @@ import { openPack } from "../../../packs/source.js";
 
 export async function collectPacks(
   ui: InstallerPrompts,
-  models: InstallationConfiguration["models"],
+  models: InstallationConfiguration["models"] | undefined,
   connections: InstallationConfiguration["connections"],
   current: Pick<InstallationConfiguration, "packs" | "packOperator">,
 ) {
@@ -57,7 +57,7 @@ export async function collectPacks(
     const eligible = pack.manifest.members.filter(
       (member) =>
         !selected.has(member.id) &&
-        (member.requirements.model === "none" || models.mode !== "disabled") &&
+        (member.requirements.model === "none" || Boolean(models)) &&
         (!member.requirements.connections.length ||
           connections.mode !== "disabled"),
     );

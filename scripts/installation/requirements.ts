@@ -1,8 +1,8 @@
-import type { InstallationConfiguration } from "./configuration.js";
+import type { InstallationDraft } from "./configuration.js";
 import { openPack } from "../packs/source.js";
 
 /** Draft feedback only; preview/apply still revalidate real inputs and native state. */
-export async function packRequirements(config: InstallationConfiguration) {
+export async function packRequirements(config: InstallationDraft) {
   const issues: string[] = [];
   const members = new Set<string>();
   for (const selected of config.packs) {
@@ -14,10 +14,7 @@ export async function packRequirements(config: InstallationConfiguration) {
         continue;
       }
       members.add(id);
-      if (
-        member.requirements.model !== "none" &&
-        config.models.mode === "disabled"
-      )
+      if (member.requirements.model !== "none" && !config.models)
         issues.push(`${id} requires Models to be configured.`);
       if (
         member.requirements.connections.length &&

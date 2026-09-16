@@ -5,10 +5,37 @@
   "maturity": "example",
   "defaults": {
     "resources": {
-      "gateway": { "cpu": "2", "memory": "2Gi" },
-      "worker": { "cpu": "2", "memory": "2Gi" }
+      "gateway": {
+        "cpu": "2",
+        "memory": "2Gi"
+      },
+      "worker": {
+        "cpu": "2",
+        "memory": "2Gi"
+      }
     },
-    "browser": { "enabled": false }
+    "browser": {
+      "enabled": false
+    }
   },
-  "suggestedModel": { "name": "GPT-6 Astra", "thinking": "medium" }
+  "models": {
+    "defaultModel": "gpt-6-astra",
+    "models": [
+      {
+        "id": "gpt-6-astra",
+        "name": "GPT-6 Astra",
+        "enabled": true,
+        "contextWindow": 1050000,
+        "maxTokens": 128000,
+        "reasoning": true,
+        "tools": true,
+        "input": ["text", "image"],
+        "route": {
+          "model": "openrouter/openai/gpt-6-astra",
+          "apiKeyEnv": "OPENROUTER_API_KEY"
+        }
+      }
+    ],
+    "thinkingDefault": "medium"
+  }
 }

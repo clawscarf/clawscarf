@@ -3,13 +3,13 @@
 The unified CLI composes the existing [local operators](README.md). It requires
 OpenShell, the protected shared worker and authenticated entry. The current target
 is macOS arm64 with Docker Desktop. Published downloads remain unfinished. The
-terminal installer covers initial setup. Optional models, Connections and pack selections
+terminal installer covers initial setup. Required LiteLLM, optional Connections and pack selections
 are wired into initial preparation and startup.
 
 A fresh local installation passed preparation, native browser administrator login,
 worker SSH execution as UID 1000, stop, repeated preparation and restart. Native
 appearance settings and worker files survived; the worker had no Gateway configuration.
-This qualifies the local disabled-capability path, not published release installation. Interrupted preparation resumed after Docker network capacity
+These are component checks; they do not qualify the current recipe installer or a published release. Interrupted preparation resumed after Docker network capacity
 was restored without replacing its recorded installation identity.
 
 The optional assembly also passed local preparation and startup with bundled LiteLLM,
@@ -57,20 +57,27 @@ The directory must be new and its parent must exist. The installer requires an i
 terminal and the release's exact local images/OpenShell executables; it does not build
 or download missing components.
 
-Choose a recipe or **Custom**, then revisit Name and administrator, Access, Models,
-Connections, Packs, Resources and (when packaged) Browser in the configuration menu.
-Answers survive section changes. Pack dependencies are shown before review; changing
-Models or Connections cannot bypass those dependencies. Security foundations remain fixed.
-Connections defaults to off. The bundled **Team documents** recipe is explicitly an
-example: it suggests GPT-6 Astra with medium thinking, but does not configure that model,
-install a document assistant or promise a document workflow. Recipe completion is separate work.
+Choose a recipe: it supplies the initial model catalog and other defaults. Enter only
+missing provider keys, then review the summary. **Customize** opens Name and administrator,
+Access, Models, Connections, Packs, Resources and (when packaged) Browser.
+**Custom** starts in that detailed menu and requires a model catalog.
+Connections defaults to off. Security foundations and LiteLLM are required.
+
+Within a section, **Save section changes** accepts the draft; **Esc** discards that
+section's edits and new secrets and returns to review. **Ctrl+C** exits the installer.
+Already accepted sections remain intact. Escape in the Customize menu returns to review.
+At the review screen, Back selects another recipe.
+
+The illustrative **Team documents** recipe supplies GPT-6 Astra through OpenRouter,
+with medium thinking. It does not supply a document assistant, ingestion or a
+qualified document workflow. Its live provider journey remains unverified.
 
 OIDC currently requires DNS/TLS, a registered client and the known administrator's
 subject/email. The private one-use authenticated owner-claim flow is selected future
 work, not implemented by this menu. Local mode retains its one-use login code.
 The Access section shows the actual login and post-logout callback URLs.
 
-Model catalogues, connector catalogues and pack sources retain their existing file
+Advanced model catalog imports, connector catalogues and pack sources retain their existing file
 formats; this menu does not create external accounts or conduct account OAuth.
 Secret prompts offer masked entry or private-file import. LiteLLM can collect each
 provider key required by the selected route file, or import its private environment file.
@@ -78,7 +85,8 @@ TLS private keys and pack binding documents use file import. Entered secrets sta
 in memory until confirmation; only secrets referenced by the final configuration are
 saved. Files go into a private `secrets/` directory (0700), with credentials and
 configuration/preview at 0600. Ordinary configuration and notes contain no secret values.
-Other input paths remain absolute references; keep those files available.
+Recipe/generated model catalogs are copied to models.json. Other input paths remain absolute
+references; keep those files available.
 
 After confirming file creation, it validates inputs and saves the normal CLI preview.
 Choose **Save preview and exit**, **Prepare installation**, or **Prepare and start**.
@@ -112,9 +120,18 @@ Settings replace complete sections rather than recursively merging obsolete fiel
 ```json
 {
   "name": "documents",
-  "access": { "mode": "local", "administratorName": "Sam" }
+  "access": { "mode": "local", "administratorName": "Sam" },
+  "models": { "mode": "litellm", "upstreamEnvironmentFile": "./providers.env" }
 }
 ```
+
+The same `--settings` file can be supplied to `install`; complete supplied sections
+skip their questions. The example uses the recipe's model catalog and a private
+providers.env containing OPENROUTER_API_KEY. Without a recipe catalog, Models must
+also supply configurationFile. Noninteractive configuration rejects missing credentials
+or disabled Models before writing files; it never prompts. Credentials belong in private
+files, not literal command-line arguments. Precedence is recipe defaults, settings overrides,
+then accepted interactive edits.
 
 Use `--recipe custom` for the same baseline without a recipe. Input-file references in
 settings resolve against that file; generated state remains relative to the new
@@ -147,7 +164,11 @@ files must be regular, private files owned by the operator. A minimal example:
     "worker": { "cpu": "2", "memory": "2Gi" }
   },
   "browser": { "enabled": false },
-  "models": { "mode": "disabled" },
+  "models": {
+    "mode": "litellm",
+    "configurationFile": "./routes.json",
+    "upstreamEnvironmentFile": "./secrets/providers.env"
+  },
   "connections": { "mode": "disabled" },
   "packs": []
 }
@@ -192,15 +213,16 @@ storage remain unsupported.
 
 ## Optional capabilities
 
-All paths resolve against the installation document. Disabled models and Connections
-require no credential files, extra service or provider requests. Disabled Connections
+All paths resolve against the installation document. LiteLLM is required, either bundled
+or externally operated. Disabled Connections
 creates no Connections database schema and exposes no connector tools.
 
 ### Models
 
-- `{"mode":"disabled"}` leaves model setup to native OpenClaw.
 - `{"mode":"external","configurationFile":"models.json","credentialFile":"secrets/model-key"}`
-  uses an existing HTTPS gateway; optional `caFile` supplies private trust. The model
+  uses an existing HTTPS LiteLLM gateway; optional `caFile` supplies private trust.
+  Under Customize, the installer asks for the LiteLLM API URL and its scoped key;
+  it can reuse the recipe model catalog or import the gateway's actual model IDs. The model
   file uses the existing [model configuration](../models/README.md). Supply a scoped
   inference credential, never the gateway administrator key.
 - `{"mode":"litellm","configurationFile":"routes.json","upstreamEnvironmentFile":"secrets/providers.env"}`
@@ -208,7 +230,7 @@ creates no Connections database schema and exposes no connector tools.
   creates private TLS and a scoped inference key. Only that runtime key reaches OpenClaw.
   Upstream keys and LiteLLM administration remain outside Gateway/worker state.
 
-The bundled route file contains `defaultModel` and `models`; it has no endpoint or
+The bundled route file contains `defaultModel`, `models` and optional `thinkingDefault`; it has no endpoint or
 mode field because the operator allocates the private endpoint. For example:
 
 ```json
