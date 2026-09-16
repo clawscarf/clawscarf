@@ -61,7 +61,10 @@ is required by a consumer of those packages.
 The manifest records model readiness, connection slots, binaries, execution location
 and network requirements. `configured-default` checks native model configuration
 and credential readiness, not a successful inference. It never sets a provider or
-copies keys. Required binaries are checked in the target runtime.
+copies keys. Required binaries and network policy are checked on the protected shared execution
+worker. Native Claws commands, model readiness and owned files remain on the Gateway.
+Local runtime pack commands cannot qualify execution requirements; use the operator
+with both sandbox targets for those packs.
 
 For connection-dependent packs, operate from the controller machine. Install the
 released official OpenShell Python SDK using the [hashed dependency lock](../scripts/packs/requirements.txt):
@@ -70,19 +73,19 @@ released official OpenShell Python SDK using the [hashed dependency lock](../scr
 uv venv --python 3.12 .local/pack-operator
 uv pip sync --python .local/pack-operator/bin/python scripts/packs/requirements.txt
 export OPENCLAW_EXPERIMENTAL_CLAWS=1
-pnpm packs --sandbox clawscarf --gateway clawscarf \
+pnpm packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
   --python .local/pack-operator/bin/python \
   add /path/to/pack --member assistant --workspace /home/node/workspaces/assistant \
   --bindings /private/bindings.json --plan /private/assistant-plan.json
-pnpm packs --sandbox clawscarf --gateway clawscarf \
+pnpm packs --sandbox clawscarf --worker-sandbox clawscarf-worker --gateway clawscarf \
   --python .local/pack-operator/bin/python \
   apply /private/assistant-plan.json --bindings /private/bindings.json --yes
 ```
 
 Use `--openshell` for a non-default CLI path. The [operator bridge](../scripts/packs/transport.py)
 uses official OpenShell **0.0.116** `SandboxClient` with the controller's existing
-TLS/OIDC configuration. It dispatches by the sandbox UUID recorded in the preview;
-reusing a deleted sandbox's name cannot redirect a mutation. No controller or browser
+TLS/OIDC configuration. It records both Gateway and worker UUIDs in the preview and
+dispatches to the appropriate target. Reusing a deleted sandbox's name cannot redirect a mutation. No controller or browser
 credentials are copied to the runtime. The built operator artifact preserves this
 helper beside its compiled CLI; Python and its SDK environment stay on the operator
 machine. The runtime command deliberately omits remote and browser-binding options.
@@ -131,7 +134,7 @@ records and reviewed plans; deleting them invalidates those plans.
 
 Network requirements are explicit objects with `binary` (canonical absolute target
 path), `host` (exact DNS name), `port` and `protocol: "tcp"`. The operator checks the
-sandbox's effective policy against its acknowledged loaded revision, records exact
+worker sandbox's effective policy against its acknowledged loaded revision, records exact
 hash/version/config revision and rechecks for changes. Only unconditional exact
 executable/TCP grants are supported. Global/provider-composed mismatches, wildcard,
 audit and conditional/L7 policies fail closed. Omitted native protocol means proxy
@@ -155,6 +158,9 @@ cover UUID dispatch and uncertain failure without replay. The optional
 [OpenShell binding test](../tests/packs/openshell.test.ts) uses controlled account HTTP
 with real SDK/native package ownership; this is not external OAuth/tool qualification.
 [Policy checks](../tests/packs/policy.test.ts) cover loaded acknowledgment and drift.
+[Execution-target checks](../tests/packs/execution-target.test.ts) use controlled operator
+processes to verify Gateway/worker dispatch, missing worker binaries, denied policy
+and worker replacement. They do not replace live OpenShell worker qualification.
 A disposable runtime with the image's nftables 1.1.3/libnftnl 1.2.9 dependencies
 loaded an explicit TCP policy: verification accepted its exact process/host/port
 and rejected a different port. This qualifies policy observation and matching;

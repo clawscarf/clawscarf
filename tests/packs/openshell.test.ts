@@ -13,12 +13,18 @@ import { planPack, applyPack } from "../../scripts/packs/lifecycle.js";
 import { packSchema } from "../../scripts/packs/model.js";
 await test(
   "operator bindings install as native owned files on the exact OpenShell runtime",
-  { skip: !process.env.CLAWSCARF_TEST_PACK_SANDBOX, timeout: 240000 },
+  {
+    skip:
+      !process.env.CLAWSCARF_TEST_PACK_SANDBOX ||
+      !process.env.CLAWSCARF_TEST_PACK_WORKER,
+    timeout: 240000,
+  },
   async () => {
     const sandbox = process.env.CLAWSCARF_TEST_PACK_SANDBOX;
     assert.ok(sandbox);
     const options = {
       sandbox,
+      workerSandbox: process.env.CLAWSCARF_TEST_PACK_WORKER ?? "",
       gateway: process.env.CLAWSCARF_TEST_PACK_GATEWAY ?? "clawscarf",
       executable: process.env.CLAWSCARF_TEST_OPENSHELL ?? "openshell",
       python: process.env.CLAWSCARF_TEST_PACK_PYTHON ?? "python3",

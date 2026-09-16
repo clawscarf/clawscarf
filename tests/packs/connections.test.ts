@@ -27,6 +27,10 @@ class NativeFixture extends NativeClaws {
       sandbox: "test",
       gateway: "test",
       sandboxId: "00000000-0000-4000-8000-000000000003",
+      worker: {
+        sandbox: "worker",
+        sandboxId: "00000000-0000-4000-8000-000000000004",
+      },
     });
   }
   override source(_root: string, _digest: string, existing?: string) {

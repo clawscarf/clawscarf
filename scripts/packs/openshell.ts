@@ -20,6 +20,7 @@ export class OpenShellClaws extends NativeClaws {
       executable: string;
       python: string;
       sandbox: string;
+      workerSandbox: string;
       gateway: string;
       env?: NodeJS.ProcessEnv;
     },
@@ -41,7 +42,11 @@ export class OpenShellClaws extends NativeClaws {
     return stdout;
   }
   private boundTarget: Extract<PackTarget, { kind: "openshell" }> | undefined;
-  private async exec(command: readonly string[], stdin?: Buffer) {
+  private async exec(
+    command: readonly string[],
+    stdin?: Buffer,
+    location: "gateway" | "worker" = "gateway",
+  ) {
     if (!this.boundTarget) await this.target();
     if (!this.boundTarget) throw Error("An observed target is required.");
     const child = execute(
@@ -56,7 +61,10 @@ export class OpenShellClaws extends NativeClaws {
     child.child.stdin?.end(
       JSON.stringify({
         gateway: this.options.gateway,
-        sandboxId: this.boundTarget.sandboxId,
+        sandboxId:
+          location === "worker"
+            ? this.boundTarget.worker.sandboxId
+            : this.boundTarget.sandboxId,
         command,
         stdin: stdin?.toString("base64") ?? "",
       }),
@@ -64,24 +72,35 @@ export class OpenShellClaws extends NativeClaws {
     return (await child).stdout;
   }
   override async target(): Promise<PackTarget> {
-    const snapshot = snapshotSchema.parse(
-      JSON.parse(
-        await this.shell([
-          "sandbox",
-          "get",
-          this.options.sandbox,
-          "--output",
-          "json",
-        ]),
-      ),
-    );
+    if (this.options.sandbox === this.options.workerSandbox)
+      throw Error("Gateway and execution worker must be separate sandboxes.");
+    const snapshot = async (name: string) => {
+      const observed = snapshotSchema.parse(
+        JSON.parse(
+          await this.shell(["sandbox", "get", name, "--output", "json"]),
+        ),
+      );
+      if (observed.name !== name) throw Error("Unexpected sandbox identity.");
+      return observed;
+    };
+    const gateway = await snapshot(this.options.sandbox);
+    const worker = await snapshot(this.options.workerSandbox);
+    if (gateway.id === worker.id)
+      throw Error(
+        "Gateway and execution worker must have distinct identities.",
+      );
     const target = {
       kind: "openshell" as const,
       gateway: this.options.gateway,
-      sandbox: snapshot.name,
-      sandboxId: snapshot.id,
+      sandbox: gateway.name,
+      sandboxId: gateway.id,
+      worker: { sandbox: worker.name, sandboxId: worker.id },
     };
-    if (this.boundTarget && this.boundTarget.sandboxId !== target.sandboxId)
+    if (
+      this.boundTarget &&
+      (this.boundTarget.sandboxId !== target.sandboxId ||
+        this.boundTarget.worker.sandboxId !== target.worker.sandboxId)
+    )
       throw Error("Sandbox identity changed; create a new pack preview.");
     this.boundTarget = target;
     return target;
@@ -149,25 +168,33 @@ export class OpenShellClaws extends NativeClaws {
     if (target.kind !== "openshell")
       throw Error("An OpenShell target is required.");
     for (const requirement of requirements) {
-      await this.exec([
-        "/usr/local/bin/node",
-        "-e",
-        "const fs=require('node:fs');fs.accessSync(process.argv[1],fs.constants.X_OK);if(fs.realpathSync(process.argv[1])!==process.argv[1])process.exit(1)",
-        requirement.binary,
-      ]);
+      await this.exec(
+        [
+          "/usr/local/bin/node",
+          "-e",
+          "const fs=require('node:fs');fs.accessSync(process.argv[1],fs.constants.X_OK);if(fs.realpathSync(process.argv[1])!==process.argv[1])process.exit(1)",
+          requirement.binary,
+        ],
+        undefined,
+        "worker",
+      );
     }
     return verifyNetworkPolicy(requirements, {
-      sandbox: target.sandbox,
-      sandboxId: target.sandboxId,
+      sandbox: target.worker.sandbox,
+      sandboxId: target.worker.sandboxId,
       run: (args) => this.shell(args),
     });
   }
   override async binary(name: string) {
-    await this.exec([
-      "/usr/local/bin/node",
-      "-e",
-      "const fs=require('node:fs'),path=require('node:path');if(!process.env.PATH.split(path.delimiter).some(p=>{try{fs.accessSync(path.join(p,process.argv[1]),fs.constants.X_OK);return true}catch{return false}}))process.exit(1)",
-      name,
-    ]);
+    await this.exec(
+      [
+        "/usr/local/bin/node",
+        "-e",
+        "const fs=require('node:fs'),path=require('node:path');if(!process.env.PATH.split(path.delimiter).some(p=>{try{fs.accessSync(path.join(p,process.argv[1]),fs.constants.X_OK);return true}catch{return false}}))process.exit(1)",
+        name,
+      ],
+      undefined,
+      "worker",
+    );
   }
 }

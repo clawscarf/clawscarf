@@ -17,10 +17,6 @@ to run the entire list automatically. Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Selected cleanup — implementation and independent review
-
-- [ ] Verify pack execution requirements on the worker and bind both runtime identities.
-
 ## Next installation slices — select before implementation
 
 - [ ] **2. Finish retained-install capability changes.** Initial models, Connections

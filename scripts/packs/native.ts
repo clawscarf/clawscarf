@@ -1,8 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
-import { access, constants } from "node:fs/promises";
-import { delimiter, join } from "node:path";
 import type { NetworkRequirement, PolicyProof } from "./policy.js";
 import type { PackTarget } from "./model.js";
 const execute = promisify(execFile);
@@ -17,16 +15,12 @@ export class NativeClaws {
   source(root: string, _digest: string, _existing?: string): Promise<string> {
     return Promise.resolve(root);
   }
-  async binary(name: string) {
-    for (const directory of (process.env.PATH ?? "").split(delimiter)) {
-      try {
-        await access(join(directory, name), constants.X_OK);
-        return;
-      } catch {
-        continue;
-      }
-    }
-    throw Error(`Required binary is unavailable: ${name}`);
+  binary(name: string): Promise<void> {
+    return Promise.reject(
+      new Error(
+        `Required binary ${name} needs operator-side verification on the execution worker.`,
+      ),
+    );
   }
   async run(args: readonly string[]): Promise<unknown> {
     if (process.env.OPENCLAW_EXPERIMENTAL_CLAWS !== "1")
