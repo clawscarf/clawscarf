@@ -1,9 +1,11 @@
-/* Kora semantic theme and shared base styles. See ../README.md for provenance. */
+/* Shared semantic theme. Provenance: ../THIRD_PARTY_NOTICES.md. */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
-@source "../**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+@source "../services/access/web/**/*.{ts,tsx}";
+@source "../services/connections/web/**/*.{ts,tsx}";
 @custom-variant dark (&:is(.dark *));
 :root {
   --radius: 0.625rem;

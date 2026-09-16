@@ -24,6 +24,9 @@ export const startLogin = <ThrowOnError extends boolean = false>(options?: Optio
 
 export const completeLogin = <ThrowOnError extends boolean = false>(options: Options<CompleteLoginData, ThrowOnError>): RequestResult<CompleteLoginResponses, CompleteLoginErrors, ThrowOnError> => (options.client ?? client).get<CompleteLoginResponses, CompleteLoginErrors, ThrowOnError>({ url: '/_clawscarf/callback', ...options });
 
+/**
+ * One-use local sign-in token exchange. Requires an exact matching Origin header; an existing browser session or CSRF token is not required.
+ */
 export const localLogin = <ThrowOnError extends boolean = false>(options: Options<LocalLoginData, ThrowOnError>): RequestResult<LocalLoginResponses, LocalLoginErrors, ThrowOnError> => (options.client ?? client).post<LocalLoginResponses, LocalLoginErrors, ThrowOnError>({
     url: '/_clawscarf/local',
     ...options,
@@ -33,13 +36,42 @@ export const localLogin = <ThrowOnError extends boolean = false>(options: Option
     }
 });
 
-export const session = <ThrowOnError extends boolean = false>(options?: Options<SessionData, ThrowOnError>): RequestResult<SessionResponses, SessionErrors, ThrowOnError> => (options?.client ?? client).get<SessionResponses, SessionErrors, ThrowOnError>({ url: '/_clawscarf/session', ...options });
+export const session = <ThrowOnError extends boolean = false>(options?: Options<SessionData, ThrowOnError>): RequestResult<SessionResponses, SessionErrors, ThrowOnError> => (options?.client ?? client).get<SessionResponses, SessionErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }],
+    url: '/_clawscarf/session',
+    ...options
+});
 
-export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> => (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({ url: '/_clawscarf/logout', ...options });
+export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> => (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/logout',
+    ...options
+});
 
-export const listPeople = <ThrowOnError extends boolean = false>(options?: Options<ListPeopleData, ThrowOnError>): RequestResult<ListPeopleResponses, ListPeopleErrors, ThrowOnError> => (options?.client ?? client).get<ListPeopleResponses, ListPeopleErrors, ThrowOnError>({ url: '/_clawscarf/people', ...options });
+export const listPeople = <ThrowOnError extends boolean = false>(options?: Options<ListPeopleData, ThrowOnError>): RequestResult<ListPeopleResponses, ListPeopleErrors, ThrowOnError> => (options?.client ?? client).get<ListPeopleResponses, ListPeopleErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }],
+    url: '/_clawscarf/people',
+    ...options
+});
 
 export const enrollPerson = <ThrowOnError extends boolean = false>(options: Options<EnrollPersonData, ThrowOnError>): RequestResult<EnrollPersonResponses, EnrollPersonErrors, ThrowOnError> => (options.client ?? client).post<EnrollPersonResponses, EnrollPersonErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
     url: '/_clawscarf/people',
     ...options,
     headers: {
@@ -48,6 +80,22 @@ export const enrollPerson = <ThrowOnError extends boolean = false>(options: Opti
     }
 });
 
-export const removePerson = <ThrowOnError extends boolean = false>(options: Options<RemovePersonData, ThrowOnError>): RequestResult<RemovePersonResponses, RemovePersonErrors, ThrowOnError> => (options.client ?? client).delete<RemovePersonResponses, RemovePersonErrors, ThrowOnError>({ url: '/_clawscarf/people/{userId}', ...options });
+export const removePerson = <ThrowOnError extends boolean = false>(options: Options<RemovePersonData, ThrowOnError>): RequestResult<RemovePersonResponses, RemovePersonErrors, ThrowOnError> => (options.client ?? client).delete<RemovePersonResponses, RemovePersonErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/people/{userId}',
+    ...options
+});
 
-export const prepareTeam = <ThrowOnError extends boolean = false>(options?: Options<PrepareTeamData, ThrowOnError>): RequestResult<PrepareTeamResponses, PrepareTeamErrors, ThrowOnError> => (options?.client ?? client).post<PrepareTeamResponses, PrepareTeamErrors, ThrowOnError>({ url: '/_clawscarf/team', ...options });
+export const prepareTeam = <ThrowOnError extends boolean = false>(options?: Options<PrepareTeamData, ThrowOnError>): RequestResult<PrepareTeamResponses, PrepareTeamErrors, ThrowOnError> => (options?.client ?? client).post<PrepareTeamResponses, PrepareTeamErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/team',
+    ...options
+});

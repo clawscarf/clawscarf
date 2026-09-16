@@ -1,12 +1,17 @@
 {
   "extends": "./tsconfig.json",
-  "references": [{ "path": "./tsconfig.sdk.json" }],
+  "references": [
+    {
+      "path": "./tsconfig.sdk.json"
+    }
+  ],
   "exclude": [
     "scripts/**/*.test.ts",
     "tests/**/*.ts",
     "services/access/generated/client",
     "services/connections/generated/client",
     "services/connections/web",
-    "services/access/web"
+    "services/access/web",
+    "ui"
   ]
 }

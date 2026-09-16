@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import pg from "pg";
 import { z } from "zod";
 import { PostgresAccessStore } from "../../services/access/repo/postgres.js";
@@ -196,12 +198,10 @@ await test(
           ]);
           assert.equal(reads.length, 2);
         });
-        const localRedirect = await service.startLogin(
-          "/_clawscarf/connections/return/abc",
-        );
+        const localRedirect = await service.startLogin("/sessions?agent=main");
         assert.equal(
           localRedirect.url,
-          "/_clawscarf/local-sign-in?returnTo=%2F_clawscarf%2Fconnections%2Freturn%2Fabc",
+          "/_clawscarf/local-sign-in?returnTo=%2Fsessions%3Fagent%3Dmain",
         );
         const bad = await app.inject({
           method: "POST",
@@ -640,6 +640,50 @@ await test(
       await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
       await pool.end();
       await oidc.close();
+    }
+  },
+);
+
+await test(
+  "storage preparation needs neither OIDC secrets, TLS files nor native/browser services",
+  { skip: !url },
+  async () => {
+    assert.ok(url);
+    const { openAccessStorage } =
+      await import("../../services/access/runtime/storage.js");
+    const directory = await mkdtemp(join(tmpdir(), "clawscarf-storage-"));
+    const pool = new pg.Pool({ connectionString: url });
+    let storage: Awaited<ReturnType<typeof openAccessStorage>> | undefined;
+    try {
+      const migration = await readFile(
+        new URL(
+          "../../services/access/migrations/001_access.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      const encryptionKeyFile = join(directory, "encryption-key");
+      await writeFile(encryptionKeyFile, randomBytes(32), { mode: 0o600 });
+      storage = await openAccessStorage({
+        databaseUrl: url,
+        encryptionKeyFile,
+        identity: {
+          mode: "oidc",
+          issuer: "https://unreachable-idp.invalid",
+          clientId: "not-yet-configured",
+          clientSecretFile: join(directory, "does-not-exist"),
+          administratorSubject: "owner",
+          administratorEmail: "owner@example.test",
+        },
+      });
+      assert.equal(storage.identity.administrator.email, "owner@example.test");
+      assert.deepEqual(await storage.repository.initialize(), storage.identity);
+    } finally {
+      await storage?.close();
+      await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
+      await pool.end();
+      await rm(directory, { recursive: true, force: true });
     }
   },
 );

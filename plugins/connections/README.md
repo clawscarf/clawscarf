@@ -5,7 +5,7 @@ It exposes only `connections_search`, `connections_describe` and `connections_ca
 The bundled [skill](skills/connections/SKILL.md) explains exact account selection,
 advisory provider schemas, saved results and uncertain outcomes.
 
-The plugin needs no RawClaw checkout, account or database. An external broker owns
+The plugin requires no hosting control plane or local database. An external broker owns
 account setup, credentials and grants. The runtime REST contract is in
 [openapi/broker.yaml](openapi/broker.yaml); a generic HTTPS URL alone does not make
 an arbitrary service compatible. No Composio project key belongs in this plugin.
@@ -71,8 +71,12 @@ npm run artifact
 ```
 
 OpenClaw **2026.9.4** is the exact development and peer SDK candidate. The generated
-client uses Hey API; after changing the contract, run `npm run api:generate` and
-commit `generated/`. Generated transport code alone disables
+client uses Hey API. [The service contract](../../services/connections/openapi.json)
+is the source: `npm run api:generate` derives [the portable contract](openapi/broker.yaml) from its runtime
+security declarations and referenced components, then generates `generated/`.
+Run generation from this source checkout and commit both artifacts. Building and
+packaging the plugin uses the checked-in generated client, without a broker source
+or runtime dependency. Generated transport code alone disables
 `exactOptionalPropertyTypes` during compilation; plugin code/tests remain strict.
 The artifact command writes the package and SHA-256 manifest to ignored
 `.local/artifact/`. Runtime dependencies are bundled; OpenClaw is supplied by the
@@ -92,13 +96,14 @@ execution; those require distribution-level acceptance.
 
 Source, skill, configuration helper and tests are extracted from RawClaw
 [`f37a6e786fdd88857c21bd32140567874e281a8c`](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/plugins/connections).
-The broker contract contains only its five runtime operations and reachable schemas
-from that revision's [control-plane contract](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/openapi/control-plane.yaml). REST paths, account generations,
+The original broker contract was extracted from that revision's
+[control-plane contract](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/openapi/control-plane.yaml).
+The current artifact is derived from ClawScarf's service contract. REST paths, account generations,
 receipt semantics and native context are retained. Package/plugin identifiers and
 the default credential environment variable use ClawScarf names.
 
 The RawClaw full-manager SDK build/link scripts are replaced by this package's
-local contract generation. Its Linux/systemd host-publisher tests are intentionally
+portable contract generation. Its Linux/systemd host-publisher tests are intentionally
 not copied: they test root-owned VM paths and infrastructure outside this package.
 Its portable native-package and tool/transport regressions are retained. The SDK
 candidate is updated from the donor release and must be qualified on each target.

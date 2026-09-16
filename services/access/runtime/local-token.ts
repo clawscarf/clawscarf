@@ -1,5 +1,5 @@
 import { readConfiguration } from "./config.js";
-import { composeAccess } from "./composition.js";
+import { openAccessStorage } from "./storage.js";
 import { hash, token } from "../service/session.js";
 import { Command } from "commander";
 const options = new Command("clawscarf-local-token")
@@ -11,10 +11,10 @@ if (!path) throw Error("Set CLAWSCARF_ACCESS_CONFIG.");
 const config = await readConfiguration(path);
 if (config.identity.mode !== "local")
   throw Error("Local sign-in is unavailable in team mode.");
-const app = await composeAccess(config);
+const storage = await openAccessStorage(config);
 try {
   const value = token();
-  await app.repository.createLocalToken(hash(value));
+  await storage.repository.createLocalToken(hash(value));
   const url = `${config.origin}/_clawscarf/local-sign-in`;
   process.stdout.write(
     options.json
@@ -22,5 +22,5 @@ try {
       : `Open ${url}\nOne-use code (expires in five minutes): ${value}\n`,
   );
 } finally {
-  await app.close();
+  await storage.close();
 }

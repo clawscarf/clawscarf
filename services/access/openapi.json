@@ -37,7 +37,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/_clawscarf/login": {
@@ -72,7 +73,8 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "security": []
       }
     },
     "/_clawscarf/callback": {
@@ -139,7 +141,8 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "security": []
       }
     },
     "/_clawscarf/local": {
@@ -227,7 +230,9 @@
             },
             "required": false
           }
-        ]
+        ],
+        "security": [],
+        "description": "One-use local sign-in token exchange. Requires an exact matching Origin header; an existing browser session or CSRF token is not required."
       }
     },
     "/_clawscarf/session": {
@@ -281,7 +286,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "browserSession": []
+          }
+        ]
       }
     },
     "/_clawscarf/logout": {
@@ -317,7 +327,13 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "browserSession": [],
+            "csrfToken": []
+          }
+        ]
       }
     },
     "/_clawscarf/people": {
@@ -363,7 +379,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "browserSession": []
+          }
+        ]
       },
       "post": {
         "operationId": "enrollPerson",
@@ -416,7 +437,13 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "browserSession": [],
+            "csrfToken": []
+          }
+        ]
       }
     },
     "/_clawscarf/people/{userId}": {
@@ -447,6 +474,12 @@
               "format": "uuid"
             }
           }
+        ],
+        "security": [
+          {
+            "browserSession": [],
+            "csrfToken": []
+          }
         ]
       }
     },
@@ -467,7 +500,13 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "browserSession": [],
+            "csrfToken": []
+          }
+        ]
       }
     }
   },
@@ -534,6 +573,20 @@
             "maxLength": 1024
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "browserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "clawscarf_session",
+        "description": "Opaque HTTP-only browser session. Access validates current admission and session revocation; native administrator actions additionally verify current OpenClaw authority."
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-csrf-token",
+        "description": "Session-bound CSRF token from GET /_clawscarf/session. Browser mutations also require an exact matching Origin header."
       }
     }
   }

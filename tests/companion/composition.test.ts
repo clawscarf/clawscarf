@@ -204,6 +204,11 @@ await test(
       await writeFile(apiKeyFile, "fixture-only");
       await migrate("access");
       app = await composeCompanion(config, { native, connections: provider });
+      for (const path of [
+        "/_clawscarf/connections/",
+        "/_clawscarf/connections/return/abc",
+      ])
+        assert.throws(() => app?.service.validateReturn(path));
       const serverId = app.identity.serverId;
       const disabled = await listen(app);
       assert.equal(
@@ -267,6 +272,18 @@ await test(
         },
       };
       app = await composeCompanion(enabled, { native, connections: provider });
+      for (const path of [
+        "/_clawscarf/connections/",
+        "/_clawscarf/connections/return/abc?result=ready",
+      ])
+        assert.equal(app.service.validateReturn(path), path);
+      for (const path of [
+        "/_clawscarf/connections/verify",
+        "/_clawscarf/connections/v1/connections",
+        "/_clawscarf/connections/return/abc/extra",
+        "/_clawscarf/connections/../logout",
+      ])
+        assert.throws(() => app?.service.validateReturn(path));
       const client = await listen(app);
       response = await client.request("/_clawscarf/session");
       assert.deepEqual(

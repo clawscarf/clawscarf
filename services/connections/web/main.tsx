@@ -18,8 +18,8 @@ import {
 import { ConnectionsPage } from "./domains/connections/connections-page.js";
 import { ConnectionReturnPage } from "./domains/connections/connection-return.js";
 import { Loading, Feedback } from "./shared/ui/feedback.js";
-import { Button } from "./shared/shadcn/components/ui/button.js";
-import "./styles/theme.css";
+import { Button } from "../../../ui/shadcn/components/ui/button.js";
+import "../../../ui/theme.css";
 
 function SessionBoundary({ children }: { children: ReactNode }) {
   const current = useQuery({

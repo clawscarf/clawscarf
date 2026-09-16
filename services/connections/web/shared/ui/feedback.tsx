@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Check, Info, LoaderCircle, TriangleAlert } from "lucide-react";
-import { Alert, AlertDescription } from "../shadcn/components/ui/alert.js";
-import { Skeleton } from "../shadcn/components/ui/skeleton.js";
+import {
+  Alert,
+  AlertDescription,
+} from "../../../../../ui/shadcn/components/ui/alert.js";
+import { Skeleton } from "../../../../../ui/shadcn/components/ui/skeleton.js";
 
 export function Feedback({
   message,

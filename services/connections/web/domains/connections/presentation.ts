@@ -23,7 +23,6 @@ export interface ConnectionFormValue {
 
 export interface ConnectionRowActions {
   edit?: () => void;
-  editLabel?: string;
   refresh?: () => void;
   reconnect?: () => void;
   disconnect?: () => void;
@@ -40,7 +39,6 @@ export interface ConnectionRowView {
   connectorId: string;
   connector: ConnectorChoice | null;
   serviceUnavailable: boolean;
-  accountLabel: string | null;
   grantLabel: string;
   status: {
     label: string;

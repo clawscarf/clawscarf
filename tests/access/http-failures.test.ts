@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Writable } from "node:stream";
+import { safeReturn } from "../../services/access/service/session.js";
 import { createAccessHttp } from "../../services/access/runtime/http.js";
 import { failureDiagnostic } from "../../services/access/runtime/failures.js";
 import { NativeFailure } from "../../services/access/types/native-errors.js";
 
 const origin = "https://clawscarf.example";
 const service = {
+  validateReturn: safeReturn,
   startLogin: () =>
     Promise.reject(
       new TypeError(

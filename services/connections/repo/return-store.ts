@@ -22,30 +22,6 @@ function view(row: Row): ConnectionReturnRecord {
   };
 }
 
-export async function checkConnectionReturnSchema(
-  database: Pick<Transaction, "query">,
-) {
-  await database.query(
-    "SELECT id,cookie_hash,session_hash,sealed_session,created_at,expires_at FROM connection_returns LIMIT 0",
-  );
-  const schema = oneRow(
-    await database.query<{ constraints: boolean; index: boolean }>(
-      `SELECT
-       (SELECT count(*)=6 FROM pg_constraint
-         WHERE conrelid='connection_returns'::regclass AND convalidated
-           AND conname IN ('connection_returns_pkey','connection_returns_cookie_hash_check',
-             'connection_returns_session_hash_check','connection_returns_sealed_session_check',
-             'connection_returns_lifetime','connection_returns_cookie_hash_session_hash_key')) AS constraints,
-       EXISTS(SELECT 1 FROM pg_index
-         WHERE indrelid='connection_returns'::regclass
-           AND indexrelid=to_regclass('connection_returns_expiry')
-           AND indisvalid AND indisready) AS index`,
-    ),
-  );
-  if (!schema.constraints || !schema.index)
-    throw Error("Connection returns require the current database migrations.");
-}
-
 export class PostgresConnectionReturnStore implements ConnectionReturnStore {
   constructor(private readonly client: Transaction) {}
 

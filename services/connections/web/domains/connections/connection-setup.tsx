@@ -7,7 +7,7 @@ import {
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import { Feedback } from "../../shared/ui/feedback.js";
 import { ConnectorLogo } from "./connector-logo.js";
 import type { ConnectorChoice } from "./presentation.js";

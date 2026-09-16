@@ -8,8 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-} from "../shadcn/components/ui/alert-dialog.js";
-import { Button } from "../shadcn/components/ui/button.js";
+} from "../../../../../ui/shadcn/components/ui/alert-dialog.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import { Feedback } from "./feedback.js";
 
 export function ConfirmAction({

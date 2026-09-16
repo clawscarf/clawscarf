@@ -1,3 +1,4 @@
+import { brokerEndpoint } from "./endpoint.ts";
 import { Type, type Static } from "typebox";
 import { Check } from "typebox/value";
 import { readConfigFileSnapshot } from "openclaw/plugin-sdk/health";
@@ -36,23 +37,6 @@ const requestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ConfigurationRequest = Static<typeof requestSchema>;
-
-function brokerEndpoint(value: string): string {
-  const url = new URL(value);
-  if (
-    (url.protocol !== "https:" &&
-      !(
-        url.protocol === "http:" &&
-        ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
-      )) ||
-    url.search ||
-    url.hash ||
-    url.username ||
-    url.password
-  )
-    throw new Error("Invalid broker URL.");
-  return url.href.replace(/\/$/u, "");
-}
 
 function managedProvider(value: unknown): boolean {
   const schema = Type.Object(

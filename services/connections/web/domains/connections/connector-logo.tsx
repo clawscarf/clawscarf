@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plug } from "lucide-react";
-import { cn } from "../../shared/shadcn/lib/utils.js";
+import { cn } from "../../../../../ui/shadcn/lib/utils.js";
 
 export function ConnectorLogo({
   iconUrl,

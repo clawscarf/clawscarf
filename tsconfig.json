@@ -4,6 +4,7 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -25,7 +26,9 @@
     "services/**/*.tsx",
     "runtime/**/*.ts",
     "apps/**/*.ts",
-    "deploy/execution/**/*.ts"
+    "deploy/execution/**/*.ts",
+    "ui/**/*.ts",
+    "ui/**/*.tsx"
   ],
   "exclude": [
     "services/access/generated/client",

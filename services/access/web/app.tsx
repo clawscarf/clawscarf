@@ -4,7 +4,7 @@ import * as api from "../generated/client/sdk.gen.js";
 import { request, problem } from "./request.js";
 import { Loading } from "./loading.js";
 import { People } from "./people.js";
-import { Button } from "./shared/shadcn/components/ui/button.js";
+import { Button } from "../../../ui/shadcn/components/ui/button.js";
 export function App() {
   const current = useQuery({
     queryKey: ["session"],

@@ -24,11 +24,13 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { X509Certificate } from "node:crypto";
 import { LocalSetupError } from "../../scripts/local/process.js";
+import { nativeAssignments } from "../../scripts/models/configuration.js";
 
 const config = {
   mode: "external",
   baseUrl: "https://host.docker.internal:14400/v1",
   defaultModel: "team-model",
+  thinkingDefault: "medium",
   models: [
     {
       id: "team-model",
@@ -86,9 +88,19 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
     "/home/node/.openclaw/clawscarf-models/initial.json",
   );
   assert.equal(
-    configured.agents.defaults.model.primary,
+    configured.agents.defaults.model?.primary,
     "clawscarf/team-model",
   );
+  assert.equal(configured.agents.defaults.thinkingDefault, "medium");
+  for (const assignment of nativeAssignments(models.configuration)) {
+    if (assignment.path === "agents.defaults.model.primary")
+      assert.equal(assignment.value, configured.agents.defaults.model?.primary);
+    if (assignment.path === "agents.defaults.thinkingDefault")
+      assert.equal(
+        assignment.value,
+        configured.agents.defaults.thinkingDefault,
+      );
+  }
   assert.equal(
     JSON.stringify(configured).includes(models.credential.token),
     false,

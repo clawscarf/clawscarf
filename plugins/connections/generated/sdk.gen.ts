@@ -2,7 +2,7 @@
 
 import { client } from './client.gen.js';
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client/index.js';
-import type { CallConnectorRuntimeData, CallConnectorRuntimeErrors, CallConnectorRuntimeResponses, DescribeConnectorRuntimeData, DescribeConnectorRuntimeErrors, DescribeConnectorRuntimeResponses, GetConnectorRuntimeResultPageData, GetConnectorRuntimeResultPageErrors, GetConnectorRuntimeResultPageResponses, LookupConnectorRuntimeInvocationData, LookupConnectorRuntimeInvocationErrors, LookupConnectorRuntimeInvocationResponses, SearchConnectorRuntimeData, SearchConnectorRuntimeErrors, SearchConnectorRuntimeResponses } from './types.gen.js';
+import type { CallConnectorRuntimeData, CallConnectorRuntimeErrors, CallConnectorRuntimeResponses, DescribeConnectorRuntimeData, DescribeConnectorRuntimeErrors, DescribeConnectorRuntimeResponses, GetConnectorRuntimeInvocationData, GetConnectorRuntimeInvocationErrors, GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeResultPageData, GetConnectorRuntimeResultPageErrors, GetConnectorRuntimeResultPageResponses, LookupConnectorRuntimeInvocationData, LookupConnectorRuntimeInvocationErrors, LookupConnectorRuntimeInvocationResponses, SearchConnectorRuntimeData, SearchConnectorRuntimeErrors, SearchConnectorRuntimeResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * Connector search
  *
- * Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No organization/installation identity is accepted in the payload.
+ * Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No server identity is accepted in the payload.
  */
 export const searchConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<SearchConnectorRuntimeData, ThrowOnError>): RequestResult<SearchConnectorRuntimeResponses, SearchConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<SearchConnectorRuntimeResponses, SearchConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -36,7 +36,7 @@ export const searchConnectorRuntime = <ThrowOnError extends boolean = false>(opt
 /**
  * Connector describe
  *
- * Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No organization/installation identity is accepted in the payload.
+ * Installation credential and trusted native agent context select currently permitted exact connections. Human cookies and CLI credentials are not accepted. No server identity is accepted in the payload.
  */
 export const describeConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<DescribeConnectorRuntimeData, ThrowOnError>): RequestResult<DescribeConnectorRuntimeResponses, DescribeConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<DescribeConnectorRuntimeResponses, DescribeConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -51,7 +51,7 @@ export const describeConnectorRuntime = <ThrowOnError extends boolean = false>(o
 /**
  * Connector call
  *
- * Durable invocation identity is scoped to installation credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation must still be current. New dispatch also requires the published catalog and current action version; authorized receipt replay does not require retired catalog metadata.
+ * Durable invocation identity is scoped to server credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation must still be current. New dispatch also requires the published catalog and current action version; authorized receipt replay does not require retired catalog metadata.
  */
 export const callConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<CallConnectorRuntimeData, ThrowOnError>): RequestResult<CallConnectorRuntimeResponses, CallConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<CallConnectorRuntimeResponses, CallConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -64,9 +64,20 @@ export const callConnectorRuntime = <ThrowOnError extends boolean = false>(optio
 });
 
 /**
+ * Recover an invocation result
+ *
+ * Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.
+ */
+export const getConnectorRuntimeInvocation = <ThrowOnError extends boolean = false>(options: Options<GetConnectorRuntimeInvocationData, ThrowOnError>): RequestResult<GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeInvocationErrors, ThrowOnError> => (options.client ?? client).get<GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeInvocationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/connector-runtime/invocations/{invocationId}',
+    ...options
+});
+
+/**
  * Read a bounded page of retained result JSON
  *
- * Read an existing result under the current installation credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.
+ * Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.
  */
 export const getConnectorRuntimeResultPage = <ThrowOnError extends boolean = false>(options: Options<GetConnectorRuntimeResultPageData, ThrowOnError>): RequestResult<GetConnectorRuntimeResultPageResponses, GetConnectorRuntimeResultPageErrors, ThrowOnError> => (options.client ?? client).get<GetConnectorRuntimeResultPageResponses, GetConnectorRuntimeResultPageErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -77,7 +88,7 @@ export const getConnectorRuntimeResultPage = <ThrowOnError extends boolean = fal
 /**
  * Find a receipt from its original native call identity
  *
- * Read an existing result under the current installation credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.
+ * Read an existing result under the current server credential and matching agent grant. Never dispatch the operation again. Revoked connection generations do not regain access after native state restoration.
  */
 export const lookupConnectorRuntimeInvocation = <ThrowOnError extends boolean = false>(options: Options<LookupConnectorRuntimeInvocationData, ThrowOnError>): RequestResult<LookupConnectorRuntimeInvocationResponses, LookupConnectorRuntimeInvocationErrors, ThrowOnError> => (options.client ?? client).post<LookupConnectorRuntimeInvocationResponses, LookupConnectorRuntimeInvocationErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],

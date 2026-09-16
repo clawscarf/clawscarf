@@ -23,8 +23,9 @@ node scripts/local.js connections --help
 node services/connections/credential-command.js --help
 ```
 
-Dependencies are installed from the included frozen lockfile. Their development
-declarations are retained solely to match that lockfile; `--prod` excludes them.
+Dependencies are installed from the included frozen lockfile. Its root importer
+contains only the production dependencies referenced by the staged operator;
+publisher and browser dependencies are omitted. Locked transitive versions are retained.
 No TypeScript compiler, contributor source or build step is needed to run the commands.
 The current local assembly supports macOS arm64 with Docker Desktop only.
 
@@ -49,7 +50,7 @@ node scripts/local.js start --directory /absolute/private/installation
 Keep installation data outside this extracted package. Stopping the foreground
 process retains state; replacing an operator archive is not a runtime upgrade or
 backup. The pack operator additionally needs the pinned Python environment from
-`scripts/packs/requirements.txt`. Optional models use an external gateway or the unified configuration’s pinned local
+`scripts/packs/requirements.txt`. Models require an external LiteLLM gateway or the unified configuration’s pinned local
 LiteLLM service. This archive contains no model/provider credentials. Unified preparation
 can issue initial scoped model and Connections credentials for fresh installations;
 normal start never rotates or reactivates them. The component Connections operator

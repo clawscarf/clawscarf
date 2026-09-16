@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { Label } from "../shadcn/components/ui/label.js";
+import { Label } from "../../../../../ui/shadcn/components/ui/label.js";
 
 export function FormField({
   label,

@@ -31,6 +31,7 @@ export default tseslint.config(
   {
     files: [
       "apps/**/*.ts",
+      "ui/**/*.{ts,tsx}",
       "runtime/**/*.ts",
       "deploy/execution/**/*.ts",
       "plugins/access/src/**/*.ts",
@@ -66,7 +67,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["services/**/web/**/*.{ts,tsx}"],
+    files: ["services/**/web/**/*.{ts,tsx}", "ui/**/*.{ts,tsx}"],
     plugins: { "react-hooks": hooks },
     rules: hooks.configs.recommended.rules,
   },

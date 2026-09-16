@@ -4,7 +4,10 @@ import type { AccessStore, LoginProvider, Session } from "../types/model.js";
 export const token = () => randomBytes(32).toString("base64url");
 export { hash } from "../types/credential.js";
 import { hash } from "../types/credential.js";
-export function safeReturn(value: string): string {
+export function safeReturn(
+  value: string,
+  applicationPath: (path: string) => boolean = () => false,
+): string {
   const origin = "https://return.invalid";
   const url = new URL(value, origin);
   if (
@@ -21,9 +24,7 @@ export function safeReturn(value: string): string {
     (url.pathname.startsWith("/_clawscarf") &&
       url.pathname !== "/_clawscarf/team/" &&
       url.pathname !== "/_clawscarf/account/" &&
-      !/^\/_clawscarf\/connections\/(?:return\/[a-zA-Z0-9-]+)?$/.test(
-        url.pathname,
-      )) ||
+      !applicationPath(url.pathname)) ||
     url.pathname + url.search !== value
   )
     throw new AccessError("invalid_request", "Unsupported return destination.");
@@ -35,9 +36,14 @@ export class SessionService {
     private readonly store: AccessStore,
     private readonly provider: LoginProvider | null,
     private readonly origin: string,
+    private readonly applicationReturnPath: (path: string) => boolean = () =>
+      false,
   ) {}
+  validateReturn(value: string): string {
+    return safeReturn(value, this.applicationReturnPath);
+  }
   async startLogin(returnTo = "/") {
-    const next = safeReturn(returnTo);
+    const next = this.validateReturn(returnTo);
     if (!this.provider)
       return {
         url: `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(next)}`,
@@ -83,10 +89,10 @@ export class SessionService {
     const user = await this.store.admitIdentity(identity);
     const session = token();
     await this.store.createSession(user.id, hash(session), token(), logoutUrl);
-    return { session, returnTo: safeReturn(transaction.returnTo) };
+    return { session, returnTo: this.validateReturn(transaction.returnTo) };
   }
   async localLogin(value: string, returnTo = "/") {
-    const next = safeReturn(returnTo);
+    const next = this.validateReturn(returnTo);
     if (this.provider)
       throw new AccessError(
         "forbidden",

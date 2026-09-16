@@ -1,4 +1,5 @@
 import { monitorComposeServices } from "./service-monitors.js";
+import type { LocalLogFile } from "./logs.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
 import { verifyBrowserNode } from "./browser-node.js";
 import { verifyRelayConfiguration } from "./relay.js";
@@ -83,7 +84,11 @@ export async function launchLocal(
       cancellation.abort();
       signal.resolve(undefined);
     };
-    async function spawn(executable: string, args: string[], log: string) {
+    async function spawn(
+      executable: string,
+      args: string[],
+      log: LocalLogFile,
+    ) {
       const child = await startProcess(executable, args, {
         env,
         logFile: join(logs, log),
@@ -197,15 +202,16 @@ export async function launchLocal(
           const browserPort = state.input.browser.port;
           await waitFor(() => verifyBrowserListener(directory, browserPort));
         }
-        for (const service of [
-          "execution-relay",
-          ...(state.input.browser ? ["browser", "browser-egress"] : []),
-        ])
-          await spawn(
-            "docker",
-            ["compose", "-f", join(directory, "compose.json"), "wait", service],
-            `${service}-wait.log`,
-          );
+        await monitorComposeServices(
+          directory,
+          [
+            "execution-relay",
+            ...(state.input.browser
+              ? (["browser", "browser-egress"] as const)
+              : []),
+          ],
+          spawn,
+        );
       }
       report("Starting OpenClaw…");
       runtimeAttempted = true;

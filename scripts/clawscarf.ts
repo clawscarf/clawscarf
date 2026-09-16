@@ -12,6 +12,9 @@ try {
     error instanceof LocalDatabaseError;
   process.stderr.write(
     JSON.stringify({
+      ...(error instanceof LocalSetupError && error.commandFailure
+        ? { command: error.commandFailure }
+        : {}),
       code: known
         ? error.code
         : error instanceof ZodError

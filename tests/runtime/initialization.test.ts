@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -239,4 +240,23 @@ await test("a failed initial ownership change publishes neither configuration no
     ),
   );
   assert.deepEqual(await readdir(home), []);
+});
+
+await test("retained native configuration has no new content-size restriction", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "clawscarf-large-config-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const uid = process.getuid?.(),
+    gid = process.getgid?.();
+  assert.ok(uid !== undefined && gid !== undefined);
+  const input = {
+    ownerId: randomUUID(),
+    serverId: randomUUID(),
+    configuration: JSON.stringify({ large: "x".repeat(1024 * 1024) }),
+  };
+  await initializeHome(home, input, uid, gid);
+  await initializeHome(home, input, uid, gid);
+  assert.equal(
+    await readFile(join(home, ".openclaw/openclaw.json"), "utf8"),
+    input.configuration,
+  );
 });

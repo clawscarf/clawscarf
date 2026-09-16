@@ -14,7 +14,44 @@ module.exports = {
       name: "components-do-not-import-process-apps",
       severity: "error",
       from: { path: "^(services|runtime|plugins)/" },
-      to: { path: "^apps/" },
+      to: { path: "^apps/", pathNot: "^apps/process-lifecycle\\.ts$" },
+    },
+    {
+      name: "shared-ui-is-domain-independent",
+      severity: "error",
+      from: { path: "^ui/" },
+      to: { path: "^(apps|services|scripts|runtime|plugins)/" },
+    },
+    {
+      name: "only-web-imports-shared-ui",
+      severity: "error",
+      from: {
+        path: "^(apps|services|scripts|runtime|plugins)/",
+        pathNot: "^services/[^/]+/web/",
+      },
+      to: { path: "^ui/" },
+    },
+    {
+      name: "operator-internals-do-not-import-cli-entries",
+      severity: "error",
+      from: { path: "^scripts/(installation|local|models|packs|release)/" },
+      to: { path: "^scripts/(clawscarf|local|models|packs|controller)\\.ts$" },
+    },
+    {
+      name: "component-operators-do-not-import-installation-ui",
+      severity: "error",
+      from: { path: "^scripts/(local|models|packs)/" },
+      to: { path: "^scripts/installation/" },
+    },
+    {
+      name: "operator-services-use-named-boundaries",
+      severity: "error",
+      from: { path: "^scripts/", pathNot: "\\.test\\.ts$" },
+      to: {
+        path: "^services/",
+        pathNot:
+          "^services/(access/(runtime/config\\.ts|repo/postgres\\.ts|generated/client/)|connections/(generated/client/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
+      },
     },
     ...["access", "connections"].flatMap((domain) => {
       const base = `^services/${domain}/`;

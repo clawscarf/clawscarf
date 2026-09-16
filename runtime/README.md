@@ -1,5 +1,7 @@
 # Native configuration
 
+[private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Gateway, worker and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
+
 [configuration.ts](configuration.ts) defines the fresh-install preset. Generate a
 new file with `node --import tsx scripts/runtime-config.ts --input setup.json
 --output openclaw.json`. The input contains `publicOrigin`, `widgetOrigin` and the
@@ -24,14 +26,14 @@ the [local execution option](../deploy/local/README.md#separate-execution-worker
 configures a separately owned SSH worker. Component confinement and assembled native
 member/administrator command and file-read probes passed on the local candidate;
 both used the worker and could not reach the four forbidden test destinations.
-This establishes neither per-person filesystem isolation nor working browser automation.
+This does not establish per-person filesystem isolation; browser behavior is documented separately below.
 
 Codex uses the pinned upstream image's bundled plugin and dependency closure.
 Lobster is registered from the separately included official release directory.
 Lobster remains subject to its native unsandboxed-context requirement. Chromium is
 configured headless with its sandbox required. The
 [separate browser image](../deploy/execution/browser/README.md) has component
-sandbox/authentication/persistence acceptance; its native/network integration is unfinished.
+sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; ordinary model-selected routing has the owner-managed upstream issue in TODO.
 Connections is bundled and registered without broker credentials; it contributes
 no executable tools until configured. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
@@ -48,7 +50,7 @@ When model setup installs a private gateway's public CA, the launcher adds it to
 Node's process-wide trust through `NODE_EXTRA_CA_CERTS`. [trust.ts](trust.ts) combines
 optional model and Connections CAs with any inherited controller/operator CA
 bundle; none replaces another. It publishes immutable content-addressed public bundles before Node starts,
-and rejects unreadable inputs or mismatched existing contents. CA changes require a
+and rejects unreadable inputs or mismatched existing contents. Runtime-owned CA files use the same bounded, descriptor-based private-file checks as credentials. CA changes require a
 Gateway restart; no certificate verification is disabled. Model tokens remain separate
 private native file secrets.
 

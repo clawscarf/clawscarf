@@ -1,14 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Button } from "../shadcn/components/ui/button.js";
-import { Input } from "../shadcn/components/ui/input.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
+import { Input } from "../../../../../ui/shadcn/components/ui/input.js";
 import {
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableCell,
-} from "../shadcn/components/ui/table.js";
+} from "../../../../../ui/shadcn/components/ui/table.js";
 
 /** A bounded view over an observed collection; resource fetching stays with the feature. */
 export function CollectionTable<T>({

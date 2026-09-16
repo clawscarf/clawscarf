@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { Button } from "../shadcn/components/ui/button.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 
 /** Stable label and dimensions across resource toolbars, including pending reads. */
 export function RefreshButton({

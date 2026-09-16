@@ -51,6 +51,8 @@ unchanged and ingress records the actual network peer.
   Give the runtime database role table DML and schema usage, not DDL authority.
 - Run [identity command](runtime/identity.ts) to initialize/read the
   durable server ID and initial administrator identity before generating native config.
+  Identity and local-token commands open only Access storage; they require neither
+  browser assets, native runtime availability nor OIDC/TLS secret files.
 - Build the browser assets with `pnpm access:web:build`, then run `pnpm access:start`.
 - Open `/_clawscarf/team/` for the People page. It requires current native administrator
   authority. The [CLI](runtime/cli.ts) uses the same generated REST client; run it
@@ -64,16 +66,23 @@ unchanged and ingress records the actual network peer.
 
 [The companion application](../../apps/companion/README.md) is the process entry for
 Access plus optional Connections. Its image includes both browser surfaces.
-The Access-only command above remains useful for isolated component work.
+The Access-only command above remains useful for isolated component work. Both entries
+use the same [process lifecycle](../../apps/process-lifecycle.ts), including cleanup
+after a partially failed startup and one shutdown for simultaneous signals.
 [The Compose fragment](../../deploy/compose/companion.yaml) publishes access on loopback
 and requires an explicit image/configuration mount. It does not install or own the
 OpenShell runtime or Postgres. The container-loopback topology has passed HTTP and native Gateway management
 checks; this fragment is not a finished local installer.
 
+The management client uses OpenClaw’s canonical `gateway-client` / `backend`
+identity and advertises the ClawScarf package version. The SDK dependency version
+is pinned separately; it is not the caller’s application version.
+
 ## Security and state
 
 Login uses PKCE, state, nonce, verified identity claims and one-use transactions.
-Only admitted subjects receive sessions. Browser sign-in failures show a concise page
+Only admitted subjects receive sessions. Return destinations are canonical same-origin
+paths; reserved application pages require an explicit composition grant. Browser sign-in failures show a concise page
 with a fresh sign-in link; they retain the failure HTTP status and never replay the
 request or display provider details. API clients retain typed Problem Details. Failed
 callbacks clear the login cookie. The shared HTTP server accepts request bodies up to
@@ -87,7 +96,8 @@ Individual operations apply their own narrower field and argument limits.
 Session authentication checks current
 admission revisions; revocation cannot revive after a later admission. Stored logout
 hints are encrypted and bound to their session. Browser mutations require exact
-Origin and CSRF validation. Local enrollment is disabled in OIDC mode.
+Origin and CSRF validation; the OpenAPI contract declares both session-cookie and
+CSRF requirements. Local sign-in is disabled in OIDC mode.
 
 The runtime connection uses [standard OpenShell SSH forwarding](../../deploy/openshell/README.md#application-transport), which preserves native HTTP headers and multiplexes concurrent requests.
 
@@ -183,6 +193,11 @@ activation failures retain an uncertain outcome. A later failure after an acknow
 write also remains uncertain for the overall operation. `UNAVAILABLE` is not proof
 of rejection: native configuration may already have persisted before activation failed.
 The real SDK/TLS WebSocket regression covers these cases without running OpenClaw.
+HTTP 401/403 from the SDK handshake is classified as denied before work starts;
+HTTP 503 remains unavailable. This transport classification is confined to connection
+setup and never turns uncertain writes into definitive rejections. Each administrator
+connection proves native authority once; domain observation additionally verifies the
+acting profile without repeating the same administrative RPC.
 
 `pnpm test:access` runs isolated tests. Supplying `CLAWSCARF_TEST_DATABASE_URL` enables
 the real Postgres/REST cases; use a disposable database, as those tests create and

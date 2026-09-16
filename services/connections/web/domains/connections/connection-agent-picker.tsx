@@ -1,15 +1,15 @@
 import { useId, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
-import { Checkbox } from "../../shared/shadcn/components/ui/checkbox.js";
-import { Input } from "../../shared/shadcn/components/ui/input.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
+import { Checkbox } from "../../../../../ui/shadcn/components/ui/checkbox.js";
+import { Input } from "../../../../../ui/shadcn/components/ui/input.js";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../shared/shadcn/components/ui/select.js";
+} from "../../../../../ui/shadcn/components/ui/select.js";
 import { FormField } from "../../shared/ui/form-field.js";
 import { Feedback, Loading, ReadProgress } from "../../shared/ui/feedback.js";
 import type {

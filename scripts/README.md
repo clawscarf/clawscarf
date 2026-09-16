@@ -69,13 +69,21 @@ browser-node helpers/private-ingress configuration, Python transport and notices
 excludes companion servers, contributor tooling and installation state. It does not
 download images, include provider credentials, publish a release or build missing
 components. Its README links to the included [archive instructions](../release/operator.md).
+The shared [runtime package writer](release/runtime-package.ts) builds operator and
+companion manifests/lockfile importers from their executable dependency closures.
+The publisher scans staged JavaScript imports, rejects missing relative modules,
+and derives the operator's production dependencies by following imports from its
+command entrypoints. Remote-executed helpers remain explicit payloads; their SDKs
+belong to the target images. The archive
+manifest and lockfile importer contain that same subset; publishing tools are not shipped.
 
 The opt-in archive acceptance extracts into a temporary directory outside the
-checkout, installs only frozen production dependencies and starts all four compiled
+checkout, installs only frozen production dependencies and starts the compiled
 command entry points, verifies retained execution policies/notices, then renders model configuration without a provider call:
 
 ```sh
 CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.test.ts
+CLAWSCARF_TEST_COMPANION_PACKAGE=1 pnpm exec tsx --test scripts/package-companion.test.ts
 ```
 
 The archive also passed retained-installation preparation and supervised startup
@@ -92,7 +100,7 @@ Adapted from RawClaw revision
 [documentation checker](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/scripts/check-docs.ts),
 [regression tests](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/tests/documentation.test.ts), root TypeScript,
 ESLint and package configuration. The checker uses ClawScarf's task checklist and also
-checks new files before they are staged. Strict typed lint covers the tooling;
+checks new files before they are staged. Strict typed lint and dependency-direction rules cover the tooling;
 The extracted access and Connections services, UI and generated contracts are checked;
 unrelated donor hosting and billing commands are not copied.
 The API generator configurations and drift checker also reuse RawClaw's root
@@ -106,7 +114,7 @@ The executable rules cover both companions. `types/` and `shared/` cannot import
 implementations; `service/` uses those ports and its own service modules, never
 repositories, providers, transports or generated API models. `repo/` owns SQL and
 uses domain ports, while `providers/` owns external adapters and cannot import
-repositories or services. Browser modules use their own UI modules and generated
+repositories or services. Browser modules use the shared [UI primitives](../ui/shadcn/components/ui/button.tsx) and their own generated
 REST clients. Entry/composition modules wire these layers. Portable `runtime/`
 payloads cannot import companions, plugins or host tooling.
 
@@ -127,3 +135,5 @@ flags. The access UI plugin has its own install/build/check commands, and upstre
 `plugins build --check` verifies its generated artifact. Generated directories are
 excluded from formatting; source OpenAPI contracts remain formatted and generated
 clients are checked for drift.
+
+Shared frontend primitives and theme live in `ui/`; they cannot import service or operator code. Both browser builds consume those same sources. Operator internals cannot import CLI entrypoints or installation menus, and service access is restricted to named composition/configuration/storage boundaries. Import regressions cover permitted and forbidden directions.

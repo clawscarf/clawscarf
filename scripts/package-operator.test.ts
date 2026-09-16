@@ -35,6 +35,7 @@ await test(
     assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));
+    assert.ok(listing.includes("package/runtime/model-contract.js"));
     assert.ok(listing.includes("package/pnpm-lock.yaml"));
     assert.ok(
       listing.includes(
@@ -54,6 +55,15 @@ await test(
     assert.ok(!listing.includes("services/connections/runtime/"));
     await execute("tar", ["-xzf", archive, "-C", directory]);
     const cwd = join(directory, "package");
+    const manifest: unknown = JSON.parse(
+      await readFile(join(cwd, "package.json"), "utf8"),
+    );
+    assert.ok(
+      manifest && typeof manifest === "object" && "dependencies" in manifest,
+    );
+    assert.ok(!("devDependencies" in manifest));
+    assert.ok(!JSON.stringify(manifest).includes('"react"'));
+    assert.ok(!JSON.stringify(manifest).includes('"typescript"'));
     for (const path of [
       "deploy/execution/worker/policy.yaml",
       "deploy/execution/browser/seccomp.json",

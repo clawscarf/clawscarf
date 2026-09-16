@@ -17,8 +17,6 @@ await test("return paths preserve native navigation without open redirects or au
     "/sessions?agent=main",
     "/_clawscarf/team/",
     "/_clawscarf/account/",
-    "/_clawscarf/connections/",
-    "/_clawscarf/connections/return/abc-123",
   ])
     assert.equal(safeReturn(value), value);
   for (const value of [
@@ -26,6 +24,8 @@ await test("return paths preserve native navigation without open redirects or au
     "https://evil.example",
     "/\\evil",
     "/_clawscarf/callback",
+    "/_clawscarf/connections/",
+    "/_clawscarf/connections/return/abc",
     "/_clawscarf/connections/verify",
     "/_clawscarf/connections/v1/connections",
     "/x#fragment",
@@ -179,4 +179,21 @@ await test("HTTP ingress preserves streaming, replaces forged identity and revok
       upstream.close((error) => (error ? reject(error) : resolve())),
     );
   }
+});
+
+await test("reserved application return paths require an explicit composition grant", () => {
+  const allowed = (path: string) => path === "/_clawscarf/example/";
+  assert.throws(() => safeReturn("/_clawscarf/example/"));
+  assert.equal(
+    safeReturn("/_clawscarf/example/?item=1", allowed),
+    "/_clawscarf/example/?item=1",
+  );
+  for (const path of [
+    "//evil.invalid/",
+    "https://evil.invalid/",
+    "/_clawscarf/example/../logout",
+    "/_clawscarf/logout",
+    "/_clawscarf/example/#fragment",
+  ])
+    assert.throws(() => safeReturn(path, allowed));
 });

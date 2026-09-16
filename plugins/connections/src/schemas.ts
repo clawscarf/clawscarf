@@ -1,3 +1,4 @@
+import { brokerEndpoint } from "./endpoint.ts";
 import { Type, type Static } from "typebox";
 
 const identity = Type.String({ minLength: 1, maxLength: 256 });
@@ -91,20 +92,6 @@ export function hasConnectionConfiguration(config: ConnectorConfig): boolean {
     throw new Error(
       "Connections requires a broker URL and resolved credential.",
     );
-  const url = new URL(config.brokerUrl);
-  if (
-    (url.protocol !== "https:" &&
-      !(
-        url.protocol === "http:" &&
-        ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
-      )) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  )
-    throw new Error(
-      "Connections requires an HTTPS broker or a loopback development URL.",
-    );
+  brokerEndpoint(config.brokerUrl);
   return true;
 }

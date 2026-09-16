@@ -114,6 +114,7 @@ export function nativeModelProvider(config: EnabledModelConfiguration) {
 }
 export function nativeAssignments(config: ModelConfiguration) {
   if (config.mode === "disabled") return [];
+  const defaults = nativeModelDefaults(config);
   const assignments: { path: string; value: unknown }[] = [
     {
       path: "secrets.providers.clawscarf-models",
@@ -124,17 +125,29 @@ export function nativeAssignments(config: ModelConfiguration) {
       value: nativeModelProvider(config),
     },
   ];
-  if (config.defaultModel !== null)
+  if (defaults.model.primary !== undefined)
     assignments.push({
       path: "agents.defaults.model.primary",
-      value: `clawscarf/${config.defaultModel}`,
+      value: defaults.model.primary,
     });
-  if (config.thinkingDefault)
+  if (defaults.thinkingDefault)
     assignments.push({
       path: "agents.defaults.thinkingDefault",
-      value: config.thinkingDefault,
+      value: defaults.thinkingDefault,
     });
   return assignments;
+}
+export function nativeModelDefaults(config: EnabledModelConfiguration) {
+  return {
+    model: {
+      ...(config.defaultModel === null
+        ? {}
+        : { primary: `clawscarf/${config.defaultModel}` }),
+    },
+    ...(config.thinkingDefault
+      ? { thinkingDefault: config.thinkingDefault }
+      : {}),
+  };
 }
 export function liteLlmConfiguration(config: ModelConfiguration) {
   if (config.mode !== "litellm")

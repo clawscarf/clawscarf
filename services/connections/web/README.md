@@ -34,7 +34,7 @@ presentation and shared primitives are adapted from
 The visual primitives and semantic theme are extracted from its Kora-derived
 [shared UI](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/src/apps/web/shared)
 and [theme](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/src/apps/web/styles/theme.css).
-The original [shadcn notice](shared/shadcn/LICENSE.md) is retained. Organization,
+The original [shadcn notice](../../../ui/shadcn/LICENSE.md) is retained. Organization,
 installation navigation, hosting operations and plugin deployment controls are not
 part of this single-server UI.
 

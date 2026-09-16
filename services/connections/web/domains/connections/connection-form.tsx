@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { ArrowLeft, LoaderCircle } from "lucide-react";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
-import { Input } from "../../shared/shadcn/components/ui/input.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
+import { Input } from "../../../../../ui/shadcn/components/ui/input.js";
 import { Feedback } from "../../shared/ui/feedback.js";
 import { FormField } from "../../shared/ui/form-field.js";
 import {
@@ -28,7 +28,7 @@ export function ConnectionForm({
   connectorId: string;
   initialValue: ConnectionFormValue;
   inventory: ConnectionAgentInventory;
-  mode: "create" | "edit" | "grant";
+  mode: "create" | "edit";
   disabled: boolean;
   pending: boolean;
   error?: string | undefined;
@@ -69,31 +69,27 @@ export function ConnectionForm({
       <div className="flex min-w-0 items-center gap-3">
         {connector && <ConnectorLogo iconUrl={connector.iconUrl} />}
         <span className="min-w-0 break-words text-sm font-medium">
-          {mode === "grant"
-            ? initialValue.name
-            : (connector?.name ?? connectorId)}
+          {connector?.name ?? connectorId}
         </span>
       </div>
-      {mode !== "grant" && (
-        <FormField label="Name">
-          {(props) => (
-            <Input
-              {...props}
-              name="name"
-              autoComplete="off"
-              required
-              maxLength={160}
-              disabled={disabled || pending}
-              aria-invalid={nameMissing || undefined}
-              aria-describedby={nameMissing ? `${errorId}-name` : undefined}
-              value={value.name}
-              onChange={(event) =>
-                setValue({ ...value, name: event.target.value })
-              }
-            />
-          )}
-        </FormField>
-      )}
+      <FormField label="Name">
+        {(props) => (
+          <Input
+            {...props}
+            name="name"
+            autoComplete="off"
+            required
+            maxLength={160}
+            disabled={disabled || pending}
+            aria-invalid={nameMissing || undefined}
+            aria-describedby={nameMissing ? `${errorId}-name` : undefined}
+            value={value.name}
+            onChange={(event) =>
+              setValue({ ...value, name: event.target.value })
+            }
+          />
+        )}
+      </FormField>
       {nameMissing && (
         <p
           id={`${errorId}-name`}

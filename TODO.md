@@ -42,6 +42,9 @@ to run the entire list automatically. Current configuration and limits are in
 
 ## Separate decisions and integrations
 
+- [ ] Investigate the intermittent POSIX [process-group cleanup test](tests/local/supervisor.test.ts)
+      failure under the parallel suite; isolated tests pass.
+      Preserve structured signal failure diagnostics before changing cleanup timing.
 - [ ] Decide ongoing People enrollment UX (admission requests or invite links); qualify
       two-person login and revocation. Connections account OAuth guidance through the
       installer is separate future work; Connections currently defaults to disabled.

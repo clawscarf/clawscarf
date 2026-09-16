@@ -38,14 +38,14 @@ export type Problem = {
      */
     detail: string;
     /**
-     * HTTP response correlation matching X-Request-Id in both compositions; absent when a client cannot obtain a server response.
+     * Request correlation ID for operator diagnostics.
      */
     requestId?: string;
     retry?: RetryGuidance;
 };
 
 /**
- * HTTP retry advice; hosted operation use is planned. Mutation safety still requires idempotency or reconciliation.
+ * Retry advice does not authorize replaying a mutation. Preserve idempotency keys and reconcile uncertain outcomes.
  */
 export type RetryGuidance = {
     /**
@@ -313,7 +313,7 @@ export type ConnectionReturnDestination = {
 export type ConnectorId = string;
 
 /**
- * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+ * Required for browser-session mutations; obtained from the Access session API.
  */
 export type CsrfToken = string;
 
@@ -347,11 +347,11 @@ export type ListConnectorsData = {
 
 export type ListConnectorsErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -371,7 +371,7 @@ export type ListConnectorsErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -414,11 +414,11 @@ export type GetConnectorData = {
 
 export type GetConnectorErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -438,7 +438,7 @@ export type GetConnectorErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -483,11 +483,11 @@ export type ListConnectionsData = {
 
 export type ListConnectionsErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -507,7 +507,7 @@ export type ListConnectionsErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -543,7 +543,7 @@ export type CreateConnectionData = {
     body: CreateConnection;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -558,11 +558,11 @@ export type CreateConnectionData = {
 
 export type CreateConnectionErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -582,7 +582,7 @@ export type CreateConnectionErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -618,7 +618,7 @@ export type DisconnectConnectionData = {
     body?: never;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -639,11 +639,11 @@ export type DisconnectConnectionData = {
 
 export type DisconnectConnectionErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -663,7 +663,7 @@ export type DisconnectConnectionErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -706,11 +706,11 @@ export type GetConnectionData = {
 
 export type GetConnectionErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -730,7 +730,7 @@ export type GetConnectionErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -766,7 +766,7 @@ export type UpdateConnectionData = {
     body: UpdateConnection;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -787,11 +787,11 @@ export type UpdateConnectionData = {
 
 export type UpdateConnectionErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -811,7 +811,7 @@ export type UpdateConnectionErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -847,7 +847,7 @@ export type StartConnectionSetupData = {
     body: StartConnectionSetup;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -868,11 +868,11 @@ export type StartConnectionSetupData = {
 
 export type StartConnectionSetupErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -892,7 +892,7 @@ export type StartConnectionSetupErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -928,7 +928,7 @@ export type CancelConnectionSetupData = {
     body?: never;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -950,11 +950,11 @@ export type CancelConnectionSetupData = {
 
 export type CancelConnectionSetupErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -974,7 +974,7 @@ export type CancelConnectionSetupErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1018,11 +1018,11 @@ export type GetConnectionSetupData = {
 
 export type GetConnectionSetupErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1042,7 +1042,7 @@ export type GetConnectionSetupErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1078,7 +1078,7 @@ export type RefreshConnectionData = {
     body?: never;
     headers: {
         /**
-         * Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.
+         * Required for browser-session mutations; obtained from the Access session API.
          */
         'x-csrf-token'?: string;
         /**
@@ -1099,11 +1099,11 @@ export type RefreshConnectionData = {
 
 export type RefreshConnectionErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1123,7 +1123,7 @@ export type RefreshConnectionErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1164,11 +1164,11 @@ export type SearchConnectorRuntimeData = {
 
 export type SearchConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1188,7 +1188,7 @@ export type SearchConnectorRuntimeErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1229,11 +1229,11 @@ export type DescribeConnectorRuntimeData = {
 
 export type DescribeConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1253,7 +1253,7 @@ export type DescribeConnectorRuntimeErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1294,11 +1294,11 @@ export type CallConnectorRuntimeData = {
 
 export type CallConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1318,7 +1318,7 @@ export type CallConnectorRuntimeErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1363,11 +1363,11 @@ export type GetConnectorRuntimeInvocationData = {
 
 export type GetConnectorRuntimeInvocationErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1387,7 +1387,7 @@ export type GetConnectorRuntimeInvocationErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1433,11 +1433,11 @@ export type GetConnectorRuntimeResultPageData = {
 
 export type GetConnectorRuntimeResultPageErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1457,7 +1457,7 @@ export type GetConnectorRuntimeResultPageErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1498,11 +1498,11 @@ export type LookupConnectorRuntimeInvocationData = {
 
 export type LookupConnectorRuntimeInvocationErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1522,7 +1522,7 @@ export type LookupConnectorRuntimeInvocationErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1568,11 +1568,11 @@ export type StageConnectionReturnData = {
 
 export type StageConnectionReturnErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1592,7 +1592,7 @@ export type StageConnectionReturnErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1626,11 +1626,11 @@ export type CompleteConnectionReturnData = {
 
 export type CompleteConnectionReturnErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1650,7 +1650,7 @@ export type CompleteConnectionReturnErrors = {
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -1691,7 +1691,7 @@ export type GetConnectionCapabilitiesData = {
 
 export type GetConnectionCapabilitiesErrors = {
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
 };
@@ -1718,7 +1718,7 @@ export type ListConnectionAgentsData = {
 
 export type ListConnectionAgentsErrors = {
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1756,11 +1756,11 @@ export type RevokeConnectionCredentialData = {
 
 export type RevokeConnectionCredentialErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -1793,11 +1793,11 @@ export type RotateConnectionCredentialData = {
 
 export type RotateConnectionCredentialErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**

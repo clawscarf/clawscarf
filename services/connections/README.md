@@ -3,7 +3,12 @@
 Optional same-origin account management and tool broker for one ClawScarf server.
 The [OpenClaw plugin](../../plugins/connections/README.md) exposes search, describe
 and call tools; accounts, provider credentials, grants and receipts stay here.
-[OpenAPI](openapi.json) owns the browser, CLI and plugin contract.
+[OpenAPI](openapi.json) owns the browser, CLI and plugin contract. The plugin's
+portable broker contract is generated from its bearer-authenticated runtime routes
+and their referenced components; it is not a second authored contract. Regenerate
+service clients with `pnpm connections:generate` and the portable contract/client
+with `npm --prefix plugins/connections run api:generate`. `pnpm codegen:check`
+checks both clients and the portable contract for drift.
 
 The [unified installation CLI](../../deploy/local/installation.md#connections)
 can bootstrap local Connections on a fresh installation, including its initial scoped
@@ -66,7 +71,9 @@ pnpm exec tsx services/connections/catalog-command.ts publish \
 Import uses `CLAWSCARF_COMPOSIO_API_KEY` (or `--api-key-file`), migrations use the
 separate `CLAWSCARF_MIGRATION_DATABASE_URL`, and catalog publication uses
 `CLAWSCARF_DATABASE_URL`. SQL lives in its own `clawscarf_connections` schema;
-migrations never run on API startup. Publication checks exact artifact versions and
+migrations never run on API startup. [Schema readiness](repo/schema.ts) centrally
+checks required columns, validated integrity constraints, ready indexes and the
+catalog singleton before service startup or catalog publication. Publication checks exact artifact versions and
 blocks retirement while account/setup/invocation references require a connector.
 Use the current published version instead of `none` for subsequent publication.
 

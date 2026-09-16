@@ -1,7 +1,7 @@
 import { StandaloneConnectionAuthority } from "./repo/authority.js";
 import { transaction } from "./repo/database.js";
 import { PostgresConnectionResultRetention } from "./repo/result-retention.js";
-import { ConnectionResultRetentionService } from "./service/result-retention-service.js";
+import { RESULT_RETENTION_MS } from "./types/result-retention.js";
 import type { Database } from "./repo/database.js";
 import { PostgresConnectionRepository } from "./repo/repository.js";
 import { EncryptedConnectionProtection } from "./providers/protection.js";
@@ -57,15 +57,6 @@ export async function createConnectionsService(input: {
   const protection = new EncryptedConnectionProtection(input.key, serverId);
   const provider =
     input.provider ?? createComposioProvider({ apiKey: config.apiKey });
-  const retention = new ConnectionResultRetentionService({
-    expire: (request) =>
-      transaction(input.pool, (client) =>
-        new PostgresConnectionResultRetention(client).expire(request),
-      ),
-  });
-  await transaction(input.pool, (client) =>
-    new PostgresConnectionResultRetention(client).checkSchema(),
-  );
   const cleanup = new ConnectionMaintenanceService(
     repository,
     provider,
@@ -96,7 +87,13 @@ export async function createConnectionsService(input: {
     maintenance: {
       sweep: async (signal?: AbortSignal) => {
         await cleanup.sweep(signal);
-        if (!signal?.aborted) await retention.sweep();
+        if (!signal?.aborted)
+          await transaction(input.pool, (client) =>
+            new PostgresConnectionResultRetention(client).expire({
+              completedBefore: new Date(Date.now() - RESULT_RETENTION_MS),
+              limit: 100,
+            }),
+          );
       },
     },
     broker: new ConnectorBrokerService(

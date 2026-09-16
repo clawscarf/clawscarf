@@ -1,15 +1,9 @@
+import { lstat, mkdir, readdir } from "node:fs/promises";
 import {
-  chmod,
-  chown,
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+  isMissingFile,
+  readPrivateFile,
+  publishPrivateDirectory,
+} from "./private-files.js";
 import { join } from "node:path";
 import { z } from "zod";
 
@@ -20,16 +14,6 @@ const inputSchema = z.strictObject({
 
 export class BrowserInitializationError extends Error {
   readonly code = "browser_state_conflict";
-}
-
-function missing(error: unknown, path: string): boolean {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    error.code === "ENOENT" &&
-    "path" in error &&
-    error.path === path
-  );
 }
 
 /** Initialize a fresh, exclusively mounted profile volume; resume only with identical private identity. */
@@ -69,7 +53,7 @@ export async function initializeBrowserState(
         "Browser identity directory has unsafe ownership or permissions.",
       );
   } catch (error) {
-    if (!missing(error, target)) throw error;
+    if (!isMissingFile(error, target)) throw error;
     exists = false;
   }
   if (exists) {
@@ -79,15 +63,16 @@ export async function initializeBrowserState(
       );
     for (const [name, content] of Object.entries(files)) {
       const path = join(target, name);
-      const metadata = await lstat(path);
-      if (
-        !metadata.isFile() ||
-        metadata.nlink !== 1 ||
-        (metadata.mode & 0o777) !== 0o600 ||
-        metadata.uid !== uid ||
-        metadata.gid !== gid ||
-        (await readFile(path, "utf8")) !== content
-      )
+      const retained = await readPrivateFile(path, 16384, {
+        uid,
+        gid,
+        mode: 0o600,
+      }).catch(() => {
+        throw new BrowserInitializationError(
+          "Browser identity file is unsafe.",
+        );
+      });
+      if (retained.toString("utf8") !== content)
         throw new BrowserInitializationError(
           "Browser identity or token differs; initialization will not replace it.",
         );
@@ -98,18 +83,5 @@ export async function initializeBrowserState(
     throw new BrowserInitializationError(
       "Browser volume already contains unowned data.",
     );
-  const staging = await mkdtemp(join(state, ".clawscarf-bootstrap-"));
-  try {
-    for (const [name, content] of Object.entries(files)) {
-      const path = join(staging, name);
-      await writeFile(path, content, { flag: "wx", mode: 0o600 });
-      await chown(path, uid, gid);
-    }
-    await chown(staging, uid, gid);
-    await chmod(state, 0o700);
-    await chown(state, uid, gid);
-    await rename(staging, target);
-  } finally {
-    await rm(staging, { recursive: true, force: true });
-  }
+  await publishPrivateDirectory(state, target, files, uid, gid);
 }

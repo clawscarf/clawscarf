@@ -10,6 +10,7 @@ import {
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
 import { localLoginCode } from "../local/login.js";
+import { localLogNames } from "../local/logs.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../local/upgrade.js";
 import { configureInstallation } from "./configure.js";
@@ -154,7 +155,7 @@ export function installationCommand() {
   program
     .command("logs")
     .requiredOption("--state <directory>")
-    .requiredOption("--service <name>")
+    .requiredOption("--service <name>", localLogNames.join(", "))
     .action(async ({ state, service }: { state: string; service: string }) => {
       process.stdout.write(await installationLogs(state, service));
     });

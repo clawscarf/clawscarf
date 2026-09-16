@@ -1,3 +1,4 @@
+import { safeReturn } from "../../services/access/service/session.js";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { ConnectionsService } from "../../services/connections/composition.js";
@@ -52,6 +53,7 @@ export async function createConnectionsHttpFixture(
   const app = await createAccessHttp(
     {
       ...access,
+      validateReturn: safeReturn,
       startLogin: unused,
       completeLogin: unused,
       localLogin: unused,

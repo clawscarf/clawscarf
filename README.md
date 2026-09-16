@@ -36,7 +36,7 @@ code; MCP and skill visibility are not universal authorization boundaries.
 ## Run the preview
 
 Follow [contributor setup and builds](scripts/README.md), then the
-[local operator guide](deploy/local/README.md). The current path requires source
+[installation CLI guide](deploy/local/installation.md). The current path requires source
 builds, the pinned controller tools, **macOS arm64 and Docker Desktop**. Check the
 [measured footprint](deploy/openshell/README.md#development-footprint) before starting.
 
@@ -72,18 +72,12 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 
 ## Installation management direction
 
-**Initial implementation:** one validated installation document and CLI for local
-preparation and lifecycle. A fresh macOS arm64 installation passed local browser login,
-administrator bootstrap, protected worker access and stop/restart with native settings
-and worker files retained. Initial LiteLLM/optional Connections and pack selections are implemented; retained-install
-capability reconfiguration and publication remain in TODO. The terminal installer
-offers release-bundled recipes, required credential entry, a review screen and optional Customize settings, with the same configuration
-and preview/apply/start operators available noninteractively;
-it requires a prepared release and refuses existing installation directories.
-The [installation design and concrete examples](docs/installation-interface.md) define the target
-configuration, change semantics, recipes, bootstrap/People choices and the generic external-hosting
-boundary. The [unified CLI](deploy/local/installation.md) implements the first configuration/release path;
-the [component operator guide](deploy/local/README.md) retains lower-level commands.
+The [installation CLI](deploy/local/installation.md) is the public configuration and
+lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
+defaults for that document. The [component guide](deploy/local/README.md) covers internal
+developer operations; it is not a second supported installation format.
+[Interface notes](docs/installation-interface.md) preserve unresolved change/hosting
+requirements. [TODO.md](TODO.md) owns their selection; notes do not authorize more work.
 
 The unified product design fixes OpenShell Gateway protection, a separate protected
 shared worker and authenticated entry/admission/revocation. Recipes vary deployment

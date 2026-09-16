@@ -4,7 +4,7 @@ import { problem } from "./request.js";
 import { Loading } from "./loading.js";
 import { usePeopleState } from "./people-state.js";
 import { PeopleDialogs } from "./people-dialogs.js";
-import { Button } from "./shared/shadcn/components/ui/button.js";
+import { Button } from "../../../ui/shadcn/components/ui/button.js";
 import {
   Table,
   TableHeader,
@@ -12,7 +12,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "./shared/shadcn/components/ui/table.js";
+} from "../../../ui/shadcn/components/ui/table.js";
 export function People({
   csrfToken,
   enrollmentEnabled,

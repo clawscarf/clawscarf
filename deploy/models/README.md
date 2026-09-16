@@ -8,6 +8,8 @@ Configuration is operator tooling; people use OpenClaw's model settings afterwar
 For a new local installation, [initial model setup](../local/README.md#initial-model-setup)
 combines this configuration, a scoped runtime key and its network permission before
 first startup. Existing installations use the explicit configuration commands below.
+Fresh setup and explicit configuration share the model/default mapping, including
+an optional `thinkingDefault`. Omitted thinking settings preserve native defaults.
 
 For bundled models in a new complete installation, use the
 [unified LiteLLM selection](../local/installation.md#models). It owns the private

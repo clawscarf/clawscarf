@@ -1,16 +1,11 @@
+import { lstat, mkdir, readdir, rmdir } from "node:fs/promises";
 import {
-  chown,
-  chmod,
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  rmdir,
-  writeFile,
-} from "node:fs/promises";
+  assertPrivateFile,
+  isMissingFile,
+  privateDirectory,
+  readPrivateFile,
+  publishPrivateDirectory,
+} from "./private-files.js";
 import { join } from "node:path";
 import { z } from "zod";
 
@@ -67,98 +62,53 @@ export async function initializeHome(
       z.strictObject({
         ownerId: z.literal(input.ownerId),
         serverId: z.literal(input.serverId),
-      }).parse(JSON.parse(await readFile(join(target, marker), "utf8")));
-      if (!(await lstat(join(target, "openclaw.json"))).isFile())
-        throw Error("Owned state has missing native configuration.");
+      }).parse(
+        JSON.parse(
+          (
+            await readPrivateFile(join(target, marker), 16384, { uid, gid })
+          ).toString("utf8"),
+        ),
+      );
+      await privateDirectory(target, { uid, gid });
+      assertPrivateFile(await lstat(join(target, "openclaw.json")), {
+        uid,
+        gid,
+      });
       return;
     }
     await rmdir(target);
   } catch (error) {
-    if (!(
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "ENOENT" &&
-      "path" in error &&
-      error.path === target
-    ))
-      throw error;
+    if (!isMissingFile(error, target)) throw error;
   }
   await mkdir(home, { recursive: true, mode: 0o700 });
-  const staging = await mkdtemp(join(home, ".clawscarf-bootstrap-"));
-  try {
-    await writeFile(join(staging, "openclaw.json"), input.configuration, {
-      flag: "wx",
-      mode: 0o600,
-    });
-    await writeFile(
-      join(staging, marker),
-      JSON.stringify({ ownerId: input.ownerId, serverId: input.serverId }),
-      { flag: "wx", mode: 0o600 },
-    );
-    const ownedPaths = [
-      home,
-      staging,
-      join(staging, "openclaw.json"),
-      join(staging, marker),
-    ];
-    if (input.executionCredential) {
-      const directory = join(staging, "clawscarf-execution");
-      await mkdir(directory, { mode: 0o700 });
-      ownedPaths.push(directory);
-      for (const [name, value] of Object.entries({
-        client_ed25519: input.executionCredential.clientKey,
-        known_hosts: input.executionCredential.knownHosts,
-      })) {
-        const path = join(directory, name);
-        await writeFile(path, value, { flag: "wx", mode: 0o600 });
-        ownedPaths.push(path);
-      }
-    }
-    if (input.modelCredential) {
-      const directory = join(staging, "clawscarf-models");
-      await mkdir(directory, { mode: 0o700 });
-      const credential = join(directory, "initial.json");
-      await writeFile(
-        credential,
-        JSON.stringify({ token: input.modelCredential.token }),
-        {
-          flag: "wx",
-          mode: 0o600,
-        },
-      );
-      ownedPaths.push(directory, credential);
-      if (input.modelCredential.ca !== undefined) {
-        const ca = join(directory, "ca.pem");
-        await writeFile(ca, input.modelCredential.ca, {
-          flag: "wx",
-          mode: 0o600,
-        });
-        ownedPaths.push(ca);
-      }
-    }
-    if (input.connectionsCredential) {
-      const directory = join(staging, "clawscarf-connections");
-      await mkdir(directory, { mode: 0o700 });
-      const credential = join(directory, "runtime.json");
-      await writeFile(
-        credential,
-        JSON.stringify({ token: input.connectionsCredential.token }),
-        { flag: "wx", mode: 0o600 },
-      );
-      ownedPaths.push(directory, credential);
-      if (input.connectionsCredential.ca !== undefined) {
-        const ca = join(directory, "ca.pem");
-        await writeFile(ca, input.connectionsCredential.ca, {
-          flag: "wx",
-          mode: 0o600,
-        });
-        ownedPaths.push(ca);
-      }
-    }
-    for (const path of ownedPaths) await chown(path, uid, gid);
-    await chmod(home, 0o700);
-    await rename(staging, target);
-  } finally {
-    await rm(staging, { recursive: true, force: true });
+  if (!(await lstat(home)).isDirectory())
+    throw new Error("Native home must be a directory.");
+  const files: Record<string, string> = {
+    "openclaw.json": input.configuration,
+    [marker]: JSON.stringify({
+      ownerId: input.ownerId,
+      serverId: input.serverId,
+    }),
+  };
+  if (input.executionCredential) {
+    files["clawscarf-execution/client_ed25519"] =
+      input.executionCredential.clientKey;
+    files["clawscarf-execution/known_hosts"] =
+      input.executionCredential.knownHosts;
   }
+  if (input.modelCredential) {
+    files["clawscarf-models/initial.json"] = JSON.stringify({
+      token: input.modelCredential.token,
+    });
+    if (input.modelCredential.ca !== undefined)
+      files["clawscarf-models/ca.pem"] = input.modelCredential.ca;
+  }
+  if (input.connectionsCredential) {
+    files["clawscarf-connections/runtime.json"] = JSON.stringify({
+      token: input.connectionsCredential.token,
+    });
+    if (input.connectionsCredential.ca !== undefined)
+      files["clawscarf-connections/ca.pem"] = input.connectionsCredential.ca;
+  }
+  await publishPrivateDirectory(home, target, files, uid, gid);
 }

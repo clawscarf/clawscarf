@@ -44,33 +44,6 @@ function view(row: Row): CallbackRecord {
 const columns = `callback.hash,callback.user_id,callback.state,callback.connection_id,
   receipt.project_id,receipt.subject_id,receipt.provider_account_id,receipt.toolkit`;
 
-export async function checkConnectionCallbackSchema(
-  database: Pick<Transaction, "query">,
-) {
-  await database.query(
-    `SELECT ${columns},receipt.callback_hash FROM connection_callbacks callback
-     CROSS JOIN connection_callback_receipts receipt LIMIT 0`,
-  );
-  const schema = oneRow(
-    await database.query<{ constraints: boolean; index: boolean }>(
-      `SELECT
-       (SELECT count(*)=6 FROM pg_constraint
-         WHERE conrelid='connection_callback_receipts'::regclass AND convalidated
-           AND conname IN ('connection_callback_receipts_pkey','connection_callback_receipts_callback_hash_fkey',
-             'connection_callback_receipts_project_id_check','connection_callback_receipts_subject_id_check',
-             'connection_callback_receipts_provider_account_id_check','connection_callback_receipts_toolkit_check')) AS constraints,
-       EXISTS(SELECT 1 FROM pg_index
-         WHERE indrelid='connection_callback_receipts'::regclass
-           AND indexrelid=to_regclass('connection_callback_receipts_account')
-           AND indisvalid AND indisready) AS index`,
-    ),
-  );
-  if (!schema.constraints || !schema.index)
-    throw Error(
-      "Connection callbacks require the current database migrations.",
-    );
-}
-
 /** Claims are one-use; confirmed receipts are immutable evidence, not admission grants. */
 export class PostgresConnectionCallbackStore implements ConnectionCallbackStore {
   constructor(private readonly client: Transaction) {}

@@ -1,3 +1,4 @@
+import { brokerEndpoint } from "./endpoint.ts";
 import { createClient, createConfig } from "./generated/client/index.js";
 import {
   callConnectorRuntime,
@@ -85,27 +86,15 @@ function responseFailure(
 export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
   if (!config.brokerUrl || typeof config.credential !== "string")
     return unavailableBroker();
-  let url: URL;
+  let baseUrl: string;
   try {
-    url = new URL(config.brokerUrl);
+    baseUrl = brokerEndpoint(config.brokerUrl);
   } catch {
     return unavailableBroker();
   }
-  if (
-    (url.protocol !== "https:" &&
-      !(
-        url.protocol === "http:" &&
-        ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
-      )) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  )
-    return unavailableBroker();
   const client = createClient(
     createConfig({
-      baseUrl: url.href.replace(/\/$/u, ""),
+      baseUrl,
       auth: config.credential,
       redirect: "error",
     }),

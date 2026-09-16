@@ -1,3 +1,4 @@
+import { checkConnectionsSchema } from "./schema.js";
 import { transaction, type Database, type Transaction } from "./database.js";
 import type {
   ConnectionRepository,
@@ -8,18 +9,9 @@ import { PostgresConnectionSetupStore } from "./setup-store.js";
 import { PostgresConnectionAccountStore } from "./account-store.js";
 import { PostgresConnectionCredentialStore } from "./credential-store.js";
 import { PostgresConnectionInvocationStore } from "./invocation-store.js";
-import {
-  PostgresConnectionCallbackStore,
-  checkConnectionCallbackSchema,
-} from "./callback-store.js";
-import {
-  PostgresConnectionReturnStore,
-  checkConnectionReturnSchema,
-} from "./return-store.js";
-import {
-  PostgresCatalogPublicationStore,
-  checkCatalogPublicationSchema,
-} from "./catalog-publication.js";
+import { PostgresConnectionCallbackStore } from "./callback-store.js";
+import { PostgresConnectionReturnStore } from "./return-store.js";
+import { PostgresCatalogPublicationStore } from "./catalog-publication.js";
 export class PostgresConnectionRepository implements ConnectionRepository {
   constructor(
     private readonly pool: Database,
@@ -44,14 +36,7 @@ export class PostgresConnectionRepository implements ConnectionRepository {
       }),
     );
   }
-  async checkSchema() {
-    await transaction(this.pool, async (client) => {
-      await client.query(
-        "SELECT c.id,s.actor,s.sealed_url,a.provider_account_id,i.sealed_result FROM connections c LEFT JOIN connection_setups s ON s.connection_id=c.id LEFT JOIN connection_accounts a ON a.id=c.active_account_id LEFT JOIN connection_invocations i ON i.connection_id=c.id LIMIT 0",
-      );
-      await checkConnectionCallbackSchema(client);
-      await checkConnectionReturnSchema(client);
-      await checkCatalogPublicationSchema(client);
-    });
+  checkSchema() {
+    return transaction(this.pool, checkConnectionsSchema);
   }
 }

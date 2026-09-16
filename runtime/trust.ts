@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { link, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import {
+  isMissingFile,
+  privateDirectory,
+  readPrivateFile,
+} from "./private-files.js";
 import { loadConnectionsCredential } from "./connections-credential.js";
 
 /** Retain controller/operator trust alongside optional model and Connections CAs. */
@@ -12,9 +17,13 @@ export async function runtimeTrust(
   const modelPath = join(stateDirectory, "clawscarf-models", "ca.pem");
   const additions = new Map<string, Buffer>();
   try {
-    additions.set(modelPath, await readFile(modelPath));
+    await privateDirectory(dirname(modelPath));
+    additions.set(modelPath, await readPrivateFile(modelPath));
   } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+    if (
+      !isMissingFile(error, modelPath) &&
+      !isMissingFile(error, dirname(modelPath))
+    )
       throw error;
   }
   if (connections?.ca && connections.caPath)
@@ -33,28 +42,24 @@ export async function runtimeTrust(
   const digest = createHash("sha256").update(combined).digest("hex");
   const bundles = join(dirname(first), "trust");
   await mkdir(bundles, { recursive: true, mode: 0o700 });
+  await privateDirectory(bundles);
   const target = join(bundles, `${digest}.pem`);
-  const staged = join(bundles, `${randomUUID()}.tmp`);
-  await writeFile(staged, combined, { flag: "wx", mode: 0o600 });
   try {
-    await link(staged, target);
-  } catch (error) {
-    if (
-      !(error instanceof Error) ||
-      !("code" in error) ||
-      error.code !== "EEXIST"
-    )
-      throw error;
-    if (
-      !(await lstat(target)).isFile() ||
-      !(await readFile(target)).equals(combined)
-    )
+    if (!(await readPrivateFile(target, combined.length)).equals(combined))
       throw new Error(
         "The runtime CA bundle does not match its content digest.",
-        { cause: error },
       );
+    return target;
+  } catch (error) {
+    if (!isMissingFile(error, target)) throw error;
+  }
+  const staged = join(bundles, `${randomUUID()}.tmp`);
+  try {
+    await writeFile(staged, combined, { flag: "wx", mode: 0o600 });
+    // Concurrent publishers of this digest write identical bytes; rename exposes a single-link file.
+    await rename(staged, target);
   } finally {
-    await rm(staged);
+    await rm(staged, { force: true });
   }
   return target;
 }

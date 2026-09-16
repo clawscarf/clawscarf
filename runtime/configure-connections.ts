@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
-import { constants } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, open, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -14,7 +13,11 @@ import {
   type ConnectionsConfigurationResult,
 } from "./connections-configuration.js";
 
-const maximumBytes = 1024 * 1024;
+import {
+  isMissingFile,
+  privateDirectory,
+  readPrivateFile,
+} from "./private-files.js";
 export class ConnectionsConfigurationError extends Error {
   constructor(
     readonly code:
@@ -60,52 +63,11 @@ const nativeCommand: NativeCommand = async (request, stateDirectory) => {
   const result = await child;
   return JSON.parse(result.stdout) as unknown;
 };
-function absent(error: unknown, path: string) {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    error.code === "ENOENT" &&
-    "path" in error &&
-    error.path === path
-  );
-}
-async function privateDirectory(path: string) {
-  const metadata = await lstat(path);
-  if (
-    !metadata.isDirectory() ||
-    metadata.uid !== process.getuid?.() ||
-    (metadata.mode & 0o077) !== 0
-  )
-    throw new Error("Unsafe private directory.");
-}
-async function privateFile(path: string): Promise<Buffer> {
-  const file = await open(
-    path,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-  );
-  try {
-    const metadata = await file.stat();
-    if (
-      !metadata.isFile() ||
-      metadata.uid !== process.getuid?.() ||
-      metadata.nlink !== 1 ||
-      (metadata.mode & 0o077) !== 0 ||
-      metadata.size > maximumBytes
-    )
-      throw new Error("Unsafe private file.");
-    const value = await file.readFile();
-    if (value.length > maximumBytes)
-      throw new Error("Private file exceeds its limit.");
-    return value;
-  } finally {
-    await file.close();
-  }
-}
 async function optionalFile(path: string) {
   try {
-    return await privateFile(path);
+    return await readPrivateFile(path);
   } catch (error) {
-    if (!absent(error, path)) throw error;
+    if (!isMissingFile(error, path)) throw error;
   }
 }
 async function replaceFile(path: string, value: string) {
@@ -149,18 +111,20 @@ export async function configureRuntimeConnections(
     }).parse(
       JSON.parse(
         (
-          await privateFile(join(stateDirectory, "clawscarf-installation.json"))
+          await readPrivateFile(
+            join(stateDirectory, "clawscarf-installation.json"),
+          )
         ).toString("utf8"),
       ),
     );
     // Native SDK owns configuration semantics; this check protects the file boundary before invoking it.
-    await privateFile(join(stateDirectory, "openclaw.json"));
+    await readPrivateFile(join(stateDirectory, "openclaw.json"));
     const directory = join(stateDirectory, "clawscarf-connections");
     let directoryExists = true;
     try {
       await privateDirectory(directory);
     } catch (error) {
-      if (!absent(error, directory)) throw error;
+      if (!isMissingFile(error, directory)) throw error;
       directoryExists = false;
     }
     const credentialPath = join(directory, "runtime.json");
@@ -187,7 +151,7 @@ export async function configureRuntimeConnections(
         if (oldCa?.toString("utf8") !== credential.ca)
           await replaceFile(caPath, credential.ca);
       } else if (oldCa !== undefined) {
-        await privateFile(caPath);
+        await readPrivateFile(caPath);
         await rm(caPath);
       }
     }

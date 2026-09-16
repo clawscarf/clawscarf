@@ -8,9 +8,8 @@ import { OpenClawAuthority } from "../providers/native.js";
 import { EnrollmentService } from "../service/enrollment.js";
 import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
-import pg from "pg";
 import { DeploymentOidcProvider } from "../providers/oidc.js";
-import { PostgresAccessStore } from "../repo/postgres.js";
+import { openAccessStorage } from "./storage.js";
 import { SessionService } from "../service/session.js";
 import { createAccessHttp } from "./http.js";
 import { createIngress } from "../providers/ingress.js";
@@ -26,31 +25,16 @@ export async function composeAccess(
   ) => Promise<void>,
   options: {
     native?: NativeAuthority;
+    applicationReturnPath?: (path: string) => boolean;
     navigationLinks?: readonly NavigationLink[];
     companionApi?: CompanionApiRoute;
   } = {},
 ) {
-  const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
+  const storage = await openAccessStorage(config);
+  const { repository, identity } = storage;
   let http: FastifyInstance | undefined;
   try {
-    const key = await readFile(config.encryptionKeyFile);
     const mode = config.identity;
-    const administrator =
-      mode.mode === "local"
-        ? {
-            issuer: "urn:clawscarf:local",
-            subject: "administrator",
-            email: "administrator@localhost",
-            name: mode.name,
-          }
-        : {
-            issuer: mode.issuer,
-            subject: mode.administratorSubject,
-            email: mode.administratorEmail,
-            name: mode.administratorEmail,
-          };
-    const repository = new PostgresAccessStore(pool, key, administrator);
-    const identity = await repository.initialize();
     const provider =
       mode.mode === "oidc"
         ? new DeploymentOidcProvider({
@@ -62,7 +46,12 @@ export async function composeAccess(
             redirectUri: `${config.origin}/_clawscarf/callback`,
           })
         : null;
-    const service = new SessionService(repository, provider, config.origin);
+    const service = new SessionService(
+      repository,
+      provider,
+      config.origin,
+      options.applicationReturnPath,
+    );
     const access: AccessRuntimeApi = {
       authenticate: (value) => service.authenticate(value),
       resolveSessionHash: (value) => repository.authenticateSession(value),
@@ -158,14 +147,14 @@ export async function composeAccess(
           try {
             await activeHttp.close();
           } finally {
-            await pool.end();
+            await storage.close();
           }
         }
       },
     };
   } catch (error) {
     if (http) await Promise.allSettled([http.close()]);
-    await pool.end();
+    await storage.close();
     throw error;
   }
 }

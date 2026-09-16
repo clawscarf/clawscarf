@@ -20,10 +20,9 @@ export function setupPending(connection: Connection) {
 }
 const workPending = (connection: Connection) =>
   setupPending(connection) || connection.cleanup === "pending";
-export function useConnectorCatalog(enabled: boolean) {
+export function useConnectorCatalog() {
   return useQuery({
     queryKey: ["connector-catalog"],
-    enabled,
     retry: false,
     staleTime: 60_000,
     queryFn: async ({ signal }) => {
@@ -103,7 +102,6 @@ export function useRefreshConnectionMetadata() {
     [cache],
   );
 }
-export const useRefreshConnections = useRefreshConnectionMetadata;
 /** Redirect only the setup explicitly started or resumed by this browser. */
 export function useConnectionHandoff(
   connectionId: string,

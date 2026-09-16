@@ -20,7 +20,7 @@ const execute = promisify(execFile);
 await test("runtime trusts controller, model and Connections CAs together, but rejects an unrelated CA", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-trust-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await mkdir(join(directory, "clawscarf-models"));
+  await mkdir(join(directory, "clawscarf-models"), { mode: 0o700 });
   const origins: string[] = [];
   for (const name of ["controller", "model", "connections", "unrelated"]) {
     const key = join(directory, `${name}.key`);
@@ -60,7 +60,9 @@ await test("runtime trusts controller, model and Connections CAs together, but r
     origins.push(`https://127.0.0.1:${String(address.port)}`);
   }
   const model = join(directory, "clawscarf-models", "ca.pem");
-  await writeFile(model, await readFile(join(directory, "model.pem")));
+  await writeFile(model, await readFile(join(directory, "model.pem")), {
+    mode: 0o600,
+  });
   assert.equal(await runtimeTrust(directory, undefined), model);
   const connections = join(directory, "clawscarf-connections");
   await mkdir(connections, { mode: 0o700 });

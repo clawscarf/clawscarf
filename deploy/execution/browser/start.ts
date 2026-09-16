@@ -1,9 +1,10 @@
+import { readPrivateFile } from "../../../runtime/private-files.js";
 import { spawn, type ChildProcess } from "node:child_process";
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import { Socket } from "node:net";
 import { createProxyServer } from "httpxy";
-import { mkdir, readFile, stat } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 
 import {
@@ -14,14 +15,8 @@ import {
 } from "./discovery.js";
 const tokenFile = process.env.CLAWSCARF_BROWSER_TOKEN_FILE;
 if (!tokenFile) throw new Error("CLAWSCARF_BROWSER_TOKEN_FILE is required");
-const tokenStat = await stat(tokenFile);
-const token = (await readFile(tokenFile, "utf8")).trim();
-if (
-  !tokenStat.isFile() ||
-  (tokenStat.mode & 0o077) !== 0 ||
-  token.length < 32 ||
-  /\s/.test(token)
-) {
+const token = (await readPrivateFile(tokenFile, 4096)).toString("utf8").trim();
+if (token.length < 32 || /\s/.test(token)) {
   throw new Error(
     "Browser credential requires a private file and at least 32 non-whitespace characters",
   );

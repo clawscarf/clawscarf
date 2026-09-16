@@ -244,3 +244,99 @@ await test("domain layers and the public access seam enforce allowed and forbidd
     await rm(root, { recursive: true, force: true });
   }
 });
+
+await test("operator and shared UI boundaries cover allowed imports and reject reverse dependencies", async () => {
+  const root = await mkdtemp(join(tmpdir(), "clawscarf-operator-boundaries-"));
+  const write = async (path: string, content: string) => {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), content);
+  };
+  try {
+    await write(
+      ".dependency-cruiser.cjs",
+      await readFile(".dependency-cruiser.cjs", "utf8"),
+    );
+    await write(
+      "tsconfig.json",
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext" },
+      }),
+    );
+    const files = [
+      "scripts/installation/command",
+      "scripts/local/prepare",
+      "scripts/clawscarf",
+      "ui/button",
+      "services/access/web/page",
+      "services/access/repo/postgres",
+      "services/access/repo/private",
+    ];
+    for (const file of files)
+      await write(`${file}.ts`, "export const value = 1;");
+    const args = [
+      command,
+      "scripts",
+      "services",
+      "ui",
+      "--config",
+      ".dependency-cruiser.cjs",
+    ];
+    for (const [source, allowed, forbidden, rule] of [
+      [
+        "scripts/local/prepare",
+        "../../services/access/repo/postgres.js",
+        "../../services/access/repo/private.js",
+        "operator-services-use-named-boundaries",
+      ],
+      [
+        "scripts/local/prepare",
+        "../../services/access/repo/postgres.js",
+        "../installation/command.js",
+        "component-operators-do-not-import-installation-ui",
+      ],
+      [
+        "scripts/installation/command",
+        "../local/prepare.js",
+        "../clawscarf.js",
+        "operator-internals-do-not-import-cli-entries",
+      ],
+      [
+        "ui/button",
+        "./input.js",
+        "../services/access/web/page.js",
+        "shared-ui-is-domain-independent",
+      ],
+      [
+        "services/access/repo/postgres",
+        "./private.js",
+        "../../../ui/button.js",
+        "only-web-imports-shared-ui",
+      ],
+    ] as const) {
+      await write("ui/input.ts", "export const value = 1;");
+      await write(`${source}.ts`, `export {value} from "${allowed}";`);
+      await run(process.execPath, args, { cwd: root });
+      await write(`${source}.ts`, `export {value} from "${forbidden}";`);
+      await assert.rejects(
+        run(process.execPath, args, { cwd: root }),
+        (error: unknown) => {
+          assert.ok(
+            error instanceof Error &&
+              "stdout" in error &&
+              typeof error.stdout === "string",
+          );
+          assert.ok(error.stdout.includes(rule), error.stdout);
+          return true;
+        },
+      );
+      await write(`${source}.ts`, "export const value = 1;");
+    }
+    await write(
+      "services/access/web/page.ts",
+      'export {value} from "../../../ui/button.js";',
+    );
+    await run(process.execPath, args, { cwd: root });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

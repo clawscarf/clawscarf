@@ -1731,7 +1731,7 @@
           },
           "requestId": {
             "type": "string",
-            "description": "HTTP response correlation matching X-Request-Id in both compositions; absent when a client cannot obtain a server response."
+            "description": "Request correlation ID for operator diagnostics."
           },
           "retry": {
             "$ref": "#/components/schemas/RetryGuidance"
@@ -1739,7 +1739,7 @@
         }
       },
       "RetryGuidance": {
-        "description": "HTTP retry advice; hosted operation use is planned. Mutation safety still requires idempotency or reconciliation.",
+        "description": "Retry advice does not authorize replaying a mutation. Preserve idempotency keys and reconcile uncertain outcomes.",
         "type": "object",
         "additionalProperties": false,
         "required": ["strategy"],
@@ -2650,7 +2650,7 @@
     },
     "responses": {
       "InvalidRequest": {
-        "description": "Invalid JSON, field, signature payload or request shape; code invalid_request.",
+        "description": "Invalid JSON, field or request shape; code invalid_request.",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -2660,7 +2660,7 @@
         }
       },
       "Unauthorized": {
-        "description": "Missing or invalid credential/signature; foundation code unauthenticated.",
+        "description": "Missing or invalid session or runtime credential; code unauthenticated.",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -2710,7 +2710,7 @@
         }
       },
       "PayloadTooLarge": {
-        "description": "Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.",
+        "description": "Request exceeds this route's configured body limit; code request_too_large.",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -2793,7 +2793,7 @@
         "name": "x-csrf-token",
         "in": "header",
         "required": false,
-        "description": "Required for cookie-authenticated mutations together with exact configured Origin; not required for bearer-authenticated requests.",
+        "description": "Required for browser-session mutations; obtained from the Access session API.",
         "schema": {
           "type": "string",
           "minLength": 1,
@@ -2858,5 +2858,6 @@
         "scheme": "bearer"
       }
     }
-  }
+  },
+  "x-clawscarf-broker-base-path": "/_clawscarf/connections"
 }

@@ -14,6 +14,8 @@ import {
 import { resolveInstallation } from "./installation/resolve.js";
 import { initializeState } from "./local/state.js";
 import { liteLlmImage, postgresImage } from "./local/images.js";
+import { monitoredServices } from "./local/logs.js";
+import { monitorComposeServices } from "./local/service-monitors.js";
 
 const configuration = {
   schemaVersion: 1,
@@ -229,5 +231,19 @@ await test("lifecycle refuses unprotected component assemblies and reports no su
   );
   await assert.rejects(
     installationLogs(directory, "../../private/encryption.key"),
+  );
+  await mkdir(join(directory, "logs"));
+  await monitorComposeServices(
+    directory,
+    monitoredServices,
+    async (_command, args, filename) => {
+      const service = args.at(-1);
+      const content = `${service ?? "unknown"} stopped`;
+      await writeFile(join(directory, "logs", filename), content);
+      assert.equal(
+        await installationLogs(directory, filename.slice(0, -4)),
+        content,
+      );
+    },
   );
 });

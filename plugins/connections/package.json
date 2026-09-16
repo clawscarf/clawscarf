@@ -41,11 +41,11 @@
   },
   "scripts": {
     "setup": "npm ci --no-audit --no-fund",
-    "api:generate": "openapi-ts",
+    "api:generate": "node --experimental-strip-types scripts/derive-contract.ts && openapi-ts",
     "build": "npm run prepare:client && tsc -p tsconfig.build.json && node scripts/package-client.mjs",
     "artifact": "npm run build && node scripts/artifact.mjs",
     "check": "npm run prepare:client && tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/plugin.test.ts tests/rest-broker.test.ts",
+    "test": "node --experimental-strip-types --test tests/plugin.test.ts tests/rest-broker.test.ts tests/contract.test.ts",
     "test:native": "npm run build && node --experimental-strip-types --test tests/native-package.test.ts tests/configuration.test.ts",
     "prepare:client": "tsc -p tsconfig.sdk.json",
     "pretest": "npm run prepare:client"

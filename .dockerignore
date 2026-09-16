@@ -4,7 +4,10 @@
 !LICENSE
 !THIRD_PARTY_NOTICES.md
 !tsconfig*.json
+!ui/
+!ui/**
 !apps/
+!apps/process-lifecycle.ts
 !apps/companion/
 !apps/companion/**
 !services/
@@ -35,3 +38,8 @@
 !packs/
 !packs/research-team/
 !packs/research-team/**
+
+!scripts/build-companion.ts
+!scripts/release/
+!scripts/release/dependencies.ts
+!scripts/release/runtime-package.ts

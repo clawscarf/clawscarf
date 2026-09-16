@@ -32,7 +32,7 @@ export type ConnectorRuntimeSearchResult = {
     items: Array<ConnectorRuntimeMatch>;
     nextCursor: string | null;
     /**
-     * Present only when this agent has no usable connections before applying search filters. The URL identifies the authenticated installation; it grants no portal access. Managing connections requires the signed-in person's current installation administrator permission.
+     * Present only when this agent has no usable connections before applying search filters. The URL identifies the authenticated server; it grants no portal access. Managing connections requires the signed-in person's current native administrator permission.
      */
     guidance: null | ConnectorRuntimeSearchGuidance;
 };
@@ -74,14 +74,14 @@ export type Problem = {
      */
     detail: string;
     /**
-     * HTTP response correlation matching X-Request-Id in both compositions; absent when a client cannot obtain a server response.
+     * Request correlation ID for operator diagnostics.
      */
     requestId?: string;
     retry?: RetryGuidance;
 };
 
 /**
- * HTTP retry advice; hosted operation use is planned. Mutation safety still requires idempotency or reconciliation.
+ * Retry advice does not authorize replaying a mutation. Preserve idempotency keys and reconcile uncertain outcomes.
  */
 export type RetryGuidance = {
     /**
@@ -129,7 +129,7 @@ export type ConnectorActionDetail = {
 };
 
 /**
- * Durable invocation identity is scoped to installation credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation and catalog action version must still be current.
+ * Durable invocation identity is scoped to server credential, native session and toolCallId. Identical replay returns the existing receipt; changed arguments conflict. Never automatically redispatch an uncertain call. Exact connection generation and catalog action version must still be current.
  */
 export type ConnectorRuntimeCall = {
     context: ConnectorRuntimeContext;
@@ -224,11 +224,11 @@ export type SearchConnectorRuntimeData = {
 
 export type SearchConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -236,19 +236,19 @@ export type SearchConnectorRuntimeErrors = {
      */
     403: Problem;
     /**
-     * Resource absent or not accessible in the organization; code not_found.
+     * Resource absent or not accessible in the server; code not_found.
      */
     404: Problem;
     /**
-     * Idempotency payload conflict or allocated capacity exhausted; codes idempotency_conflict or installation_limit_reached.
+     * The command conflicts with current state or a previous idempotent request.
      */
     409: Problem;
     /**
-     * The observed installation revision is stale; code revision_conflict.
+     * The observed resource revision is stale; code revision_conflict.
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -289,11 +289,11 @@ export type DescribeConnectorRuntimeData = {
 
 export type DescribeConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -301,19 +301,19 @@ export type DescribeConnectorRuntimeErrors = {
      */
     403: Problem;
     /**
-     * Resource absent or not accessible in the organization; code not_found.
+     * Resource absent or not accessible in the server; code not_found.
      */
     404: Problem;
     /**
-     * Idempotency payload conflict or allocated capacity exhausted; codes idempotency_conflict or installation_limit_reached.
+     * The command conflicts with current state or a previous idempotent request.
      */
     409: Problem;
     /**
-     * The observed installation revision is stale; code revision_conflict.
+     * The observed resource revision is stale; code revision_conflict.
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -354,11 +354,11 @@ export type CallConnectorRuntimeData = {
 
 export type CallConnectorRuntimeErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -366,19 +366,19 @@ export type CallConnectorRuntimeErrors = {
      */
     403: Problem;
     /**
-     * Resource absent or not accessible in the organization; code not_found.
+     * Resource absent or not accessible in the server; code not_found.
      */
     404: Problem;
     /**
-     * Idempotency payload conflict or allocated capacity exhausted; codes idempotency_conflict or installation_limit_reached.
+     * The command conflicts with current state or a previous idempotent request.
      */
     409: Problem;
     /**
-     * The observed installation revision is stale; code revision_conflict.
+     * The observed resource revision is stale; code revision_conflict.
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -410,6 +410,75 @@ export type CallConnectorRuntimeResponses = {
 
 export type CallConnectorRuntimeResponse = CallConnectorRuntimeResponses[keyof CallConnectorRuntimeResponses];
 
+export type GetConnectorRuntimeInvocationData = {
+    body?: never;
+    path: {
+        invocationId: Id;
+    };
+    query: {
+        agentId: string;
+    };
+    url: '/v1/connector-runtime/invocations/{invocationId}';
+};
+
+export type GetConnectorRuntimeInvocationErrors = {
+    /**
+     * Invalid JSON, field or request shape; code invalid_request.
+     */
+    400: Problem;
+    /**
+     * Missing or invalid session or runtime credential; code unauthenticated.
+     */
+    401: Problem;
+    /**
+     * Authenticated caller lacks the required current authority; code forbidden.
+     */
+    403: Problem;
+    /**
+     * Resource absent or not accessible in the server; code not_found.
+     */
+    404: Problem;
+    /**
+     * The command conflicts with current state or a previous idempotent request.
+     */
+    409: Problem;
+    /**
+     * The observed resource revision is stale; code revision_conflict.
+     */
+    412: Problem;
+    /**
+     * Request exceeds this route's configured body limit; code request_too_large.
+     */
+    413: Problem;
+    /**
+     * Request body must use application/json; code unsupported_media_type.
+     */
+    415: Problem;
+    /**
+     * Request limit reached; code rate_limited.
+     */
+    429: Problem;
+    /**
+     * Safe failure response; no provider payload, stack trace or credential is exposed.
+     */
+    500: Problem;
+    /**
+     * Required service unavailable; code dependency_unavailable.
+     */
+    503: Problem;
+};
+
+export type GetConnectorRuntimeInvocationError = GetConnectorRuntimeInvocationErrors[keyof GetConnectorRuntimeInvocationErrors];
+
+export type GetConnectorRuntimeInvocationResponses = {
+    /**
+     * Current resource.
+     */
+    200: ConnectorRuntimeInvocation;
+};
+
+export type GetConnectorRuntimeInvocationResponse = GetConnectorRuntimeInvocationResponses[keyof GetConnectorRuntimeInvocationResponses];
+
 export type GetConnectorRuntimeResultPageData = {
     body?: never;
     path: {
@@ -424,11 +493,11 @@ export type GetConnectorRuntimeResultPageData = {
 
 export type GetConnectorRuntimeResultPageErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -436,19 +505,19 @@ export type GetConnectorRuntimeResultPageErrors = {
      */
     403: Problem;
     /**
-     * Resource absent or not accessible in the organization; code not_found.
+     * Resource absent or not accessible in the server; code not_found.
      */
     404: Problem;
     /**
-     * Idempotency payload conflict or allocated capacity exhausted; codes idempotency_conflict or installation_limit_reached.
+     * The command conflicts with current state or a previous idempotent request.
      */
     409: Problem;
     /**
-     * The observed installation revision is stale; code revision_conflict.
+     * The observed resource revision is stale; code revision_conflict.
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**
@@ -489,11 +558,11 @@ export type LookupConnectorRuntimeInvocationData = {
 
 export type LookupConnectorRuntimeInvocationErrors = {
     /**
-     * Invalid JSON, field, signature payload or request shape; code invalid_request.
+     * Invalid JSON, field or request shape; code invalid_request.
      */
     400: Problem;
     /**
-     * Missing or invalid credential/signature; foundation code unauthenticated.
+     * Missing or invalid session or runtime credential; code unauthenticated.
      */
     401: Problem;
     /**
@@ -501,19 +570,19 @@ export type LookupConnectorRuntimeInvocationErrors = {
      */
     403: Problem;
     /**
-     * Resource absent or not accessible in the organization; code not_found.
+     * Resource absent or not accessible in the server; code not_found.
      */
     404: Problem;
     /**
-     * Idempotency payload conflict or allocated capacity exhausted; codes idempotency_conflict or installation_limit_reached.
+     * The command conflicts with current state or a previous idempotent request.
      */
     409: Problem;
     /**
-     * The observed installation revision is stale; code revision_conflict.
+     * The observed resource revision is stale; code revision_conflict.
      */
     412: Problem;
     /**
-     * Request exceeds the 65,536-byte foundation HTTP limit; code request_too_large.
+     * Request exceeds this route's configured body limit; code request_too_large.
      */
     413: Problem;
     /**

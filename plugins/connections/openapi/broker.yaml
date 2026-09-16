@@ -1,6 +1,7 @@
+# Generated from services/connections/openapi.json; do not edit.
 openapi: 3.1.0
 info:
-  title: Connections broker runtime API
+  title: ClawScarf Connections broker runtime API
   version: 0.1.0
 paths:
   /v1/connector-runtime/search:
@@ -10,8 +11,7 @@ paths:
       description:
         Installation credential and trusted native agent context select
         currently permitted exact connections. Human cookies and CLI credentials
-        are not accepted. No organization/installation identity is accepted in
-        the payload.
+        are not accepted. No server identity is accepted in the payload.
       tags:
         - Connector runtime
       security:
@@ -59,8 +59,7 @@ paths:
       description:
         Installation credential and trusted native agent context select
         currently permitted exact connections. Human cookies and CLI credentials
-        are not accepted. No organization/installation identity is accepted in
-        the payload.
+        are not accepted. No server identity is accepted in the payload.
       tags:
         - Connector runtime
       security:
@@ -108,11 +107,11 @@ paths:
       x-fastify-config:
         bodyLimit: 262144
       description:
-        Durable invocation identity is scoped to installation credential,
-        native session and toolCallId. Identical replay returns the existing
-        receipt; changed arguments conflict. Never automatically redispatch an
-        uncertain call. Exact connection generation must still be current. New
-        dispatch also requires the published catalog and current action version;
+        Durable invocation identity is scoped to server credential, native
+        session and toolCallId. Identical replay returns the existing receipt;
+        changed arguments conflict. Never automatically redispatch an uncertain
+        call. Exact connection generation must still be current. New dispatch
+        also requires the published catalog and current action version;
         authorized receipt replay does not require retired catalog metadata.
       tags:
         - Connector runtime
@@ -154,13 +153,65 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /v1/connector-runtime/invocations/{invocationId}:
+    get:
+      operationId: getConnectorRuntimeInvocation
+      summary: Recover an invocation result
+      description:
+        Read an existing result under the current server credential and
+        matching agent grant. Never dispatch the operation again. Revoked
+        connection generations do not regain access after native state
+        restoration.
+      tags:
+        - Connector runtime
+      security:
+        - ConnectorRuntime: []
+      parameters:
+        - name: agentId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+      responses:
+        "200":
+          description: Current resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorRuntimeInvocation"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+    parameters:
+      - $ref: "#/components/parameters/ConnectionInvocationId"
   /v1/connector-runtime/invocations/{invocationId}/result:
     get:
       operationId: getConnectorRuntimeResultPage
       summary: Read a bounded page of retained result JSON
       description:
-        Read an existing result under the current installation credential
-        and matching agent grant. Never dispatch the operation again. Revoked
+        Read an existing result under the current server credential and
+        matching agent grant. Never dispatch the operation again. Revoked
         connection generations do not regain access after native state
         restoration.
       tags:
@@ -218,8 +269,8 @@ paths:
       operationId: lookupConnectorRuntimeInvocation
       summary: Find a receipt from its original native call identity
       description:
-        Read an existing result under the current installation credential
-        and matching agent grant. Never dispatch the operation again. Revoked
+        Read an existing result under the current server credential and
+        matching agent grant. Never dispatch the operation again. Revoked
         connection generations do not regain access after native state
         restoration.
       tags:
@@ -262,6 +313,10 @@ paths:
         "503":
           $ref: "#/components/responses/Unavailable"
 components:
+  securitySchemes:
+    ConnectorRuntime:
+      type: http
+      scheme: bearer
   schemas:
     ConnectorRuntimeSearch:
       type: object
@@ -340,9 +395,8 @@ components:
           description:
             Present only when this agent has no usable connections before
             applying search filters. The URL identifies the authenticated
-            installation; it grants no portal access. Managing connections
-            requires the signed-in person's current installation administrator
-            permission.
+            server; it grants no portal access. Managing connections requires
+            the signed-in person's current native administrator permission.
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/ConnectorRuntimeSearchGuidance"
@@ -458,14 +512,13 @@ components:
           description: Safe explanation without raw provider diagnostics or secrets.
         requestId:
           type: string
-          description: HTTP response correlation matching X-Request-Id in both
-            compositions; absent when a client cannot obtain a server response.
+          description: Request correlation ID for operator diagnostics.
         retry:
           $ref: "#/components/schemas/RetryGuidance"
     RetryGuidance:
       description:
-        HTTP retry advice; hosted operation use is planned. Mutation safety
-        still requires idempotency or reconciliation.
+        Retry advice does not authorize replaying a mutation. Preserve
+        idempotency keys and reconcile uncertain outcomes.
       type: object
       additionalProperties: false
       required:
@@ -624,11 +677,11 @@ components:
         - version
         - arguments
       description:
-        Durable invocation identity is scoped to installation credential,
-        native session and toolCallId. Identical replay returns the existing
-        receipt; changed arguments conflict. Never automatically redispatch an
-        uncertain call. Exact connection generation and catalog action version
-        must still be current.
+        Durable invocation identity is scoped to server credential, native
+        session and toolCallId. Identical replay returns the existing receipt;
+        changed arguments conflict. Never automatically redispatch an uncertain
+        call. Exact connection generation and catalog action version must still
+        be current.
     ConnectorRuntimeInvocation:
       type: object
       additionalProperties: false
@@ -854,14 +907,13 @@ components:
         - targetToolCallId
   responses:
     InvalidRequest:
-      description: Invalid JSON, field, signature payload or request shape; code
-        invalid_request.
+      description: Invalid JSON, field or request shape; code invalid_request.
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Unauthorized:
-      description: Missing or invalid credential/signature; foundation code unauthenticated.
+      description: Missing or invalid session or runtime credential; code unauthenticated.
       content:
         application/problem+json:
           schema:
@@ -875,27 +927,27 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     NotFound:
-      description: Resource absent or not accessible in the organization; code not_found.
+      description: Resource absent or not accessible in the server; code not_found.
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Conflict:
       description:
-        Idempotency payload conflict or allocated capacity exhausted; codes
-        idempotency_conflict or installation_limit_reached.
+        The command conflicts with current state or a previous idempotent
+        request.
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     PreconditionFailed:
-      description: The observed installation revision is stale; code revision_conflict.
+      description: The observed resource revision is stale; code revision_conflict.
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     PayloadTooLarge:
-      description: Request exceeds the 65,536-byte foundation HTTP limit; code
+      description: Request exceeds this route's configured body limit; code
         request_too_large.
       content:
         application/problem+json:
@@ -938,14 +990,6 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
-  securitySchemes:
-    ConnectorRuntime:
-      type: http
-      scheme: bearer
-      description:
-        Revocable installation-scoped broker credential issued only to the
-        native plugin. Has a distinct prefix and storage/authorization scheme
-        from human sessions and CLI credentials. Never a shared provider key.
   parameters:
     ConnectionInvocationId:
       name: invocationId

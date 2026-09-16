@@ -2,13 +2,13 @@ import { RefreshButton } from "../../shared/ui/refresh-button.js";
 import { useRef, useState } from "react";
 import type { Connection } from "../../../generated/client/types.gen.js";
 import { connectionMutationUncertain } from "./mutation-outcome.js";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "../../shared/shadcn/components/ui/dialog.js";
+} from "../../../../../ui/shadcn/components/ui/dialog.js";
 import { Feedback, Loading, ReadProgress } from "../../shared/ui/feedback.js";
 import { ConfirmAction } from "../../shared/ui/confirm-action.js";
 import { ConnectionEditor } from "./connection-editor.js";
@@ -24,7 +24,7 @@ import {
   setupPending,
   useConnections,
   useConnectorCatalog,
-  useRefreshConnections,
+  useRefreshConnectionMetadata,
 } from "./connection-queries.js";
 import {
   connectionGrantLabel,
@@ -51,23 +51,14 @@ type ConnectionModal =
     }
   | { kind: "disconnect"; connection: Connection };
 
-type RefreshContext = { onRefresh: () => void; refreshing: boolean };
-
-export function ConnectionsPage({
-  agentId,
-  refreshContext,
-}: {
-  agentId?: string;
-  refreshContext?: RefreshContext | undefined;
-}) {
+export function ConnectionsPage() {
   const collection = useRef<HTMLElement>(null);
   const connections = useConnections();
   const [showDisconnected, setShowDisconnected] = useState(false);
-  const catalog = useConnectorCatalog(true);
-  const refresh = useRefreshConnections();
+  const catalog = useConnectorCatalog();
+  const refresh = useRefreshConnectionMetadata();
   const [refreshing, setRefreshing] = useState(false);
   const refreshPage = () => {
-    refreshContext?.onRefresh();
     setRefreshing(true);
     void Promise.all([refresh(), catalog.refetch()]).finally(() =>
       setRefreshing(false),
@@ -117,9 +108,6 @@ export function ConnectionsPage({
       const finished = connection.state === "disconnected";
       if (canWrite && !finished) {
         actions.edit = () => setModal({ kind: "edit", connection });
-        if (agentId) actions.editLabel = "Change agent access";
-      }
-      if (canWrite && !finished && !agentId) {
         actions.refresh = () => {
           const uncertain =
             connectionMutationUncertain(inspect.error) &&
@@ -175,13 +163,7 @@ export function ConnectionsPage({
         connector,
         serviceUnavailable:
           serviceAvailability(connection.connectorId) === "unavailable",
-        accountLabel: null,
-        grantLabel: agentId
-          ? connection.grant.mode === "all" ||
-            connection.grant.agentIds.includes(agentId)
-            ? "Available"
-            : "Not assigned"
-          : connectionGrantLabel(connection),
+        grantLabel: connectionGrantLabel(connection),
         status: connectionStatus(connection),
         actions,
         busyLabel:
@@ -222,28 +204,17 @@ export function ConnectionsPage({
         <Loading label="Loading connections" />
       ) : connections.error && !connections.data ? (
         <RefreshButton
-          refreshing={
-            refreshing ||
-            catalog.isFetching ||
-            refreshContext?.refreshing === true
-          }
+          refreshing={refreshing || catalog.isFetching}
           onRefresh={refreshPage}
         />
       ) : (
         <ConnectionsTable
           items={rows}
-          grantHeading={agentId ? "This agent" : "Available to"}
           showDisconnected={showDisconnected}
           onShowDisconnected={setShowDisconnected}
-          refreshing={
-            refreshing ||
-            catalog.isFetching ||
-            refreshContext?.refreshing === true
-          }
+          refreshing={refreshing || catalog.isFetching}
           onRefresh={refreshPage}
-          {...(canWrite && !agentId
-            ? { onAdd: () => setModal({ kind: "catalog" }) }
-            : {})}
+          {...(canWrite ? { onAdd: () => setModal({ kind: "catalog" }) } : {})}
           {...(connections.hasNextPage
             ? {
                 searchLabel: "Search loaded connections",
@@ -301,9 +272,7 @@ export function ConnectionsPage({
           <DialogHeader>
             <DialogTitle>
               {modal?.kind === "edit"
-                ? agentId
-                  ? "Change agent access"
-                  : "Edit connection"
+                ? "Edit connection"
                 : modal?.kind === "setup"
                   ? "Connect account"
                   : "Add connection"}
@@ -314,7 +283,6 @@ export function ConnectionsPage({
               key={
                 modal.kind === "edit" ? modal.connection.id : modal.connector.id
               }
-              grantOnly={!!agentId}
               connector={
                 modal.kind === "create"
                   ? modal.connector

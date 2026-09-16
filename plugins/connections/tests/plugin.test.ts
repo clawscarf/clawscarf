@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { getToolPluginMetadata } from "openclaw/plugin-sdk/tool-plugin";
 import { Check } from "typebox/value";
 import plugin from "../src/index.ts";
@@ -476,5 +477,18 @@ await test("unconfigured tools are disabled and partial or unsafe configuration 
       brokerUrl: "https://user:secret@broker.example.test",
       credential: "test",
     }),
+  );
+});
+
+await test("the native manifest and runtime configuration schema have one shape", async () => {
+  const manifest: unknown = JSON.parse(
+    await readFile(new URL("../openclaw.plugin.json", import.meta.url), "utf8"),
+  );
+  assert.ok(
+    manifest && typeof manifest === "object" && "configSchema" in manifest,
+  );
+  assert.deepEqual(
+    manifest.configSchema,
+    JSON.parse(JSON.stringify(configSchema)),
   );
 });

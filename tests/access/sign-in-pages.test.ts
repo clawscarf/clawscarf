@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { safeReturn } from "../../services/access/service/session.js";
 import { createAccessHttp } from "../../services/access/runtime/http.js";
 import { AccessError } from "../../services/access/types/errors.js";
 
@@ -13,6 +14,7 @@ function failingService(error: Error) {
   };
   return {
     service: {
+      validateReturn: safeReturn,
       startLogin: fail,
       completeLogin: fail,
       localLogin: fail,

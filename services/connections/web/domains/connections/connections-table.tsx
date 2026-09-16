@@ -1,4 +1,4 @@
-import { Checkbox } from "../../shared/shadcn/components/ui/checkbox.js";
+import { Checkbox } from "../../../../../ui/shadcn/components/ui/checkbox.js";
 import { RefreshButton } from "../../shared/ui/refresh-button.js";
 import type { ReactNode } from "react";
 import {
@@ -11,22 +11,22 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { Badge } from "../../shared/shadcn/components/ui/badge.js";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Badge } from "../../../../../ui/shadcn/components/ui/badge.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../../shared/shadcn/components/ui/dropdown-menu.js";
+} from "../../../../../ui/shadcn/components/ui/dropdown-menu.js";
 import {
   TableCell,
   TableHead,
   TableRow,
-} from "../../shared/shadcn/components/ui/table.js";
+} from "../../../../../ui/shadcn/components/ui/table.js";
 import { CollectionTable } from "../../shared/ui/collection-table.js";
-import { cn } from "../../shared/shadcn/lib/utils.js";
+import { cn } from "../../../../../ui/shadcn/lib/utils.js";
 import { ConnectorLogo } from "./connector-logo.js";
 import type { ConnectionRowView } from "./presentation.js";
 
@@ -39,22 +39,18 @@ const statusColors = {
 
 export function ConnectionsTable({
   items,
-  grantHeading = "Available to",
   refreshing,
   onRefresh,
   onAdd,
-  accountAction,
   footer,
   searchLabel,
   showDisconnected,
   onShowDisconnected,
 }: {
   items: readonly ConnectionRowView[];
-  grantHeading?: string;
   refreshing: boolean;
   onRefresh: () => void;
   onAdd?: () => void;
-  accountAction?: ReactNode;
   footer?: ReactNode;
   searchLabel?: string;
   showDisconnected: boolean;
@@ -66,7 +62,7 @@ export function ConnectionsTable({
       items={items}
       columns={4}
       searchText={(item) =>
-        `${item.name} ${item.connector?.name ?? item.connectorId} ${item.accountLabel ?? ""}`
+        `${item.name} ${item.connector?.name ?? item.connectorId}`
       }
       empty="No connections yet."
       footer={
@@ -85,7 +81,6 @@ export function ConnectionsTable({
       actions={
         <div className="flex items-center gap-2">
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
-          {accountAction}
           {onAdd && (
             <Button type="button" onClick={onAdd}>
               <Plus aria-hidden="true" />
@@ -97,7 +92,7 @@ export function ConnectionsTable({
       headers={
         <>
           <TableHead>Connection</TableHead>
-          <TableHead className="hidden md:table-cell">{grantHeading}</TableHead>
+          <TableHead className="hidden md:table-cell">Available to</TableHead>
           <TableHead className="hidden md:table-cell">Status</TableHead>
           <TableHead className="w-12">
             <span className="sr-only">Actions</span>
@@ -123,7 +118,6 @@ function ConnectionRow({ connection }: { connection: ConnectionRowView }) {
             <p className="break-words font-medium">{connection.name}</p>
             <p className="break-words text-xs text-muted-foreground">
               {connection.connector?.name ?? connection.connectorId}
-              {connection.accountLabel && ` · ${connection.accountLabel}`}
               {connection.serviceUnavailable && " · Service unavailable"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground md:hidden">
@@ -251,7 +245,7 @@ function ConnectionActions({ connection }: { connection: ConnectionRowView }) {
             {actions.edit && (
               <DropdownMenuItem onSelect={actions.edit}>
                 <Pencil aria-hidden="true" />
-                {actions.editLabel ?? "Edit connection"}
+                Edit connection
               </DropdownMenuItem>
             )}
             {actions.refresh && (

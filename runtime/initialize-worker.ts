@@ -1,15 +1,9 @@
+import { lstat, mkdir, readdir } from "node:fs/promises";
 import {
-  chmod,
-  chown,
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+  isMissingFile,
+  readPrivateFile,
+  publishPrivateDirectory,
+} from "./private-files.js";
 import { join } from "node:path";
 import { z } from "zod";
 
@@ -54,13 +48,9 @@ export async function initializeWorkerHome(
       );
     for (const [name, content] of Object.entries(files)) {
       const path = join(target, name);
-      const metadata = await lstat(path);
       if (
-        !metadata.isFile() ||
-        (metadata.mode & 0o077) !== 0 ||
-        metadata.uid !== uid ||
-        metadata.gid !== gid ||
-        (await readFile(path, "utf8")) !== content
+        (await readPrivateFile(path, 16384, { uid, gid })).toString("utf8") !==
+        content
       )
         throw Error(
           "Worker identity or credentials differ; initialization will not replace them.",
@@ -68,14 +58,7 @@ export async function initializeWorkerHome(
     }
     return;
   } catch (error) {
-    if (!(
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "ENOENT" &&
-      "path" in error &&
-      error.path === target
-    ))
-      throw error;
+    if (!isMissingFile(error, target)) throw error;
   }
   await mkdir(home, { recursive: true, mode: 0o700 });
   if (!(await lstat(home)).isDirectory())
@@ -86,18 +69,5 @@ export async function initializeWorkerHome(
     )
   )
     throw Error("The worker home already contains unowned data.");
-  await chmod(home, 0o700);
-  const staging = await mkdtemp(join(home, ".clawscarf-bootstrap-"));
-  try {
-    for (const [name, content] of Object.entries(files)) {
-      const path = join(staging, name);
-      await writeFile(path, content, { flag: "wx", mode: 0o600 });
-      await chown(path, uid, gid);
-    }
-    await chown(staging, uid, gid);
-    await chown(home, uid, gid);
-    await rename(staging, target);
-  } finally {
-    await rm(staging, { recursive: true, force: true });
-  }
+  await publishPrivateDirectory(home, target, files, uid, gid);
 }

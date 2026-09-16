@@ -119,6 +119,10 @@ export async function composeCompanion(
               },
             }
           : {}),
+        applicationReturnPath: (path) =>
+          config.connections !== null &&
+          config.connections !== undefined &&
+          /^\/_clawscarf\/connections\/(?:return\/[a-zA-Z0-9-]+)?$/.test(path),
         navigationLinks: config.connections
           ? [{ label: "Connections", href: "/_clawscarf/connections/" }]
           : [],

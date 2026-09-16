@@ -1,5 +1,4 @@
-import { constants } from "node:fs";
-import { open } from "node:fs/promises";
+import { readPrivateFile } from "../../../runtime/private-files.js";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -10,44 +9,6 @@ import {
 const configurationLimit = 64 * 1024;
 const pairingCodeLimit = 16 * 1024;
 
-async function privateFile(
-  path: string,
-  maximumBytes: number,
-): Promise<string> {
-  const file = await open(
-    path,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-  );
-  try {
-    const info = await file.stat();
-    if (
-      !info.isFile() ||
-      info.uid !== process.getuid?.() ||
-      info.nlink !== 1 ||
-      (info.mode & 0o077) !== 0 ||
-      info.size > maximumBytes
-    )
-      throw new Error("Unsafe browser node private file");
-    const bytes = Buffer.alloc(maximumBytes + 1);
-    let length = 0;
-    while (length < bytes.length) {
-      const result = await file.read(
-        bytes,
-        length,
-        bytes.length - length,
-        length,
-      );
-      if (result.bytesRead === 0) break;
-      length += result.bytesRead;
-    }
-    if (length > maximumBytes)
-      throw new Error("Browser node private file exceeds its limit");
-    return bytes.subarray(0, length).toString("utf8").trim();
-  } finally {
-    await file.close();
-  }
-}
-
 /** Fixed policy/credential inputs; errors deliberately omit private input and causes. */
 export async function loadBrowserNodeInputs(
   configPath: string,
@@ -55,7 +16,9 @@ export async function loadBrowserNodeInputs(
 ) {
   try {
     const config: unknown = JSON.parse(
-      await privateFile(configPath, configurationLimit),
+      (await readPrivateFile(configPath, configurationLimit))
+        .toString("utf8")
+        .trim(),
     );
     validateBrowserNodeConfiguration(config);
   } catch {
@@ -64,7 +27,9 @@ export async function loadBrowserNodeInputs(
   let pairingCode: string | undefined;
   let unsafePairingFile = false;
   try {
-    pairingCode = await privateFile(pairingPath, pairingCodeLimit);
+    pairingCode = (await readPrivateFile(pairingPath, pairingCodeLimit))
+      .toString("utf8")
+      .trim();
   } catch (error) {
     unsafePairingFile = !(
       error instanceof Error &&

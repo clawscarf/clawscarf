@@ -1,4 +1,6 @@
-# Local assembly
+# Component operator internals
+
+Use the [installation CLI](installation.md) for a team installation. This document describes lower-level developer commands and the generated local configuration consumed by that CLI. Component-only examples deliberately omit parts of the product and are not alternative installation recipes.
 
 This operator path assembles the existing components for local evaluation on macOS
 arm64 with Docker Desktop. `prepare` initializes private configuration, the database
@@ -395,8 +397,12 @@ and incomplete observations. Its optional real Docker check uses
 Both that read-only check and normal startup through administrator verification
 passed against the retained development runtime.
 
-Private controller/forward logs are under `logs/` in the installation directory. Compose
-owns companion/Postgres logs. If network reservation fails, inspect Docker's address
+Private controller/forward and Compose exit-monitor logs are under `logs/` in the
+installation directory. `pnpm clawscarf logs --help` lists all readable operator logs,
+including model and browser service monitors. Compose owns the services' application
+logs. Failed subprocesses retain allowlisted exit status, signal, timeout or spawn
+error codes; arguments, environment, stdout and stderr are excluded from CLI errors.
+If network reservation fails, inspect Docker's address
 pools and this installation's recorded network intents before resuming. Setup does not
 classify Docker error messages as proof of pool exhaustion. A failed PostgreSQL start
 reports that separate stage and directs the operator to Compose status/logs. Port tests use actual loopback listeners;

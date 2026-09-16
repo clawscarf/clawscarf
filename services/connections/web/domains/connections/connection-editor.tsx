@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Connection } from "../../../generated/client/types.gen.js";
 import { connectionMutationUncertain } from "./mutation-outcome.js";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import { Feedback } from "../../shared/ui/feedback.js";
 import { useConnectionAgents } from "./connection-queries.js";
 import { ConnectionForm } from "./connection-form.js";
@@ -21,7 +21,6 @@ export function ConnectionEditor({
   connectorId,
   serviceAvailability,
   connection,
-  grantOnly = false,
   onSaved,
   onCreated,
   onBack,
@@ -30,7 +29,6 @@ export function ConnectionEditor({
   connectorId: string;
   serviceAvailability: ConnectorAvailability;
   connection?: Connection;
-  grantOnly?: boolean;
   onSaved: () => void;
   onCreated: (connection: Connection, error?: string, setupId?: string) => void;
   onBack?: () => void;
@@ -45,9 +43,7 @@ export function ConnectionEditor({
   const [createKey] = useState(() => crypto.randomUUID());
   const [setupKey] = useState(() => crypto.randomUUID());
   const [updateKey] = useState(() => crypto.randomUUID());
-  const canManage = true;
-  const canWrite =
-    canManage && (!!connection || serviceAvailability === "available");
+  const canWrite = !!connection || serviceAvailability === "available";
   const uncertainCreation = connectionMutationUncertain(create.error);
   const uncertainUpdate = connectionMutationUncertain(update.error);
   const submit = (value: ConnectionFormValue) => {
@@ -99,7 +95,7 @@ export function ConnectionEditor({
             void agents.refetch();
           },
         }}
-        mode={connection ? (grantOnly ? "grant" : "edit") : "create"}
+        mode={connection ? "edit" : "create"}
         disabled={!canWrite || uncertainCreation || uncertainUpdate}
         pending={create.isPending || start.isPending || update.isPending}
         error={create.error?.message ?? update.error?.message}
@@ -112,7 +108,7 @@ export function ConnectionEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={create.isPending || !canManage}
+            disabled={create.isPending}
             onClick={() => {
               const previous = create.variables;
               if (!previous) return;

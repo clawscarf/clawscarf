@@ -1,3 +1,4 @@
+import { checkConnectionsSchema } from "./schema.js";
 import {
   oneRow,
   transaction,
@@ -24,42 +25,6 @@ function view(row: PublicationRow): CatalogPublication | null {
     : { version: row.version, connectors: row.connectors };
 }
 
-export async function checkCatalogPublicationSchema(
-  database: Pick<Transaction, "query">,
-) {
-  await database.query(
-    "SELECT singleton,version,connectors FROM connection_catalog_publication LIMIT 0",
-  );
-  await database.query(
-    "SELECT preparation_dispatched_at,preparation_catalog_version,prepared_auth FROM connection_setups LIMIT 0",
-  );
-  const schema = oneRow(
-    await database.query<{
-      constraints: boolean;
-      indexes: boolean;
-      row: boolean;
-    }>(
-      `SELECT
-       (SELECT count(*)=5 FROM pg_constraint
-         WHERE conrelid='connection_catalog_publication'::regclass AND convalidated
-           AND conname IN ('connection_catalog_publication_pkey','connection_catalog_publication_singleton_check',
-             'connection_catalog_publication_version_check','connection_catalog_publication_connectors_check',
-             'connection_catalog_publication_unpublished'))
-       AND (SELECT count(*)=3 FROM pg_constraint WHERE conrelid='connection_setups'::regclass
-         AND conname IN ('connection_setups_prepared_auth','connection_setups_preparation_pair',
-           'connection_setups_preparation_catalog_version_check') AND convalidated) AS constraints,
-       (SELECT count(*)=4 FROM pg_index WHERE indisvalid AND indisready AND indexrelid IN (
-         to_regclass('connections_connector'),to_regclass('connection_accounts_catalog'),
-         to_regclass('connection_setups_catalog'),to_regclass('connection_invocations_catalog'))) AS indexes,
-       (SELECT count(*)=1 FROM connection_catalog_publication WHERE singleton=1) AS row`,
-    ),
-  );
-  if (!schema.constraints || !schema.indexes || !schema.row)
-    throw Error(
-      "Catalog publication requires the current database migrations.",
-    );
-}
-
 export class PostgresCatalogPublicationRepository implements CatalogPublicationRepository {
   constructor(private readonly pool: Database) {}
 
@@ -72,7 +37,7 @@ export class PostgresCatalogPublicationRepository implements CatalogPublicationR
   }
 
   checkSchema() {
-    return checkCatalogPublicationSchema(this.pool);
+    return transaction(this.pool, checkConnectionsSchema);
   }
 }
 

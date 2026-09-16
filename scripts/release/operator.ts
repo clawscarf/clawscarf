@@ -4,14 +4,15 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
-import { z } from "zod";
+import { writeRuntimePackage } from "./runtime-package.js";
 
 const execute = promisify(execFile);
 // Explicit operator payload: no companion server, source tooling or installation state.
 const payload = [
   "scripts/clawscarf.js",
   "scripts/installation",
-  "scripts/release",
+  "scripts/release/create.js",
+  "scripts/release/definition.js",
   "scripts/local.js",
   "scripts/controller.js",
   "scripts/models.js",
@@ -20,6 +21,7 @@ const payload = [
   "scripts/models",
   "scripts/packs",
   "runtime/configuration.js",
+  "runtime/model-contract.js",
   "runtime/connections-configuration.js",
   "services/access/repo",
   "services/access/types",
@@ -35,6 +37,7 @@ const payload = [
   "services/connections/providers/catalog/retirement.js",
   "services/connections/repo/catalog-publication.js",
   "services/connections/repo/database.js",
+  "services/connections/repo/schema.js",
   "services/connections/repo/bootstrap.js",
   "services/connections/repo/credential-store.js",
   "services/connections/service/catalog-publication.js",
@@ -60,44 +63,37 @@ export async function packageOperator(root: string, destination: string) {
   const stage = join(temporary, "package");
   await mkdir(stage);
   try {
-    const manifest = z
-      .object({
-        version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
-        engines: z.record(z.string(), z.string()),
-        packageManager: z.string(),
-        dependencies: z.record(z.string(), z.string()),
-        devDependencies: z.record(z.string(), z.string()),
-      })
-      .parse(JSON.parse(await readFile(join(root, "package.json"), "utf8")));
-    await writeFile(
-      join(stage, "package.json"),
-      JSON.stringify(
-        {
-          ...manifest,
-          name: "clawscarf-operator",
-          private: true,
-          type: "module",
-          license: "MIT",
-          scripts: {
-            clawscarf: "node scripts/clawscarf.js",
-            local: "node scripts/local.js",
-            controller: "node scripts/controller.js",
-            models: "node scripts/models.js",
-            packs: "node scripts/packs.js",
-            "connections-credential":
-              "node services/connections/credential-command.js",
-          },
-        },
-        null,
-        2,
-      ) + "\n",
-    );
     for (const path of payload) {
       const target = join(stage, path);
       await mkdir(resolve(target, ".."), { recursive: true });
       await cp(join(root, "dist", path), target, { recursive: true });
     }
-    for (const path of ["pnpm-lock.yaml", "LICENSE", "THIRD_PARTY_NOTICES.md"])
+    // Remote helpers are shipped as data, executed against their runtime SDK.
+    const manifest = await writeRuntimePackage(
+      root,
+      stage,
+      [
+        "scripts/clawscarf.js",
+        "scripts/local.js",
+        "scripts/controller.js",
+        "scripts/models.js",
+        "scripts/packs.js",
+        "services/connections/credential-command.js",
+      ],
+      {
+        name: "clawscarf-operator",
+        scripts: {
+          clawscarf: "node scripts/clawscarf.js",
+          local: "node scripts/local.js",
+          controller: "node scripts/controller.js",
+          models: "node scripts/models.js",
+          packs: "node scripts/packs.js",
+          "connections-credential":
+            "node services/connections/credential-command.js",
+        },
+      },
+    );
+    for (const path of ["LICENSE", "THIRD_PARTY_NOTICES.md"])
       await cp(join(root, path), join(stage, path));
     await cp(
       join(root, "release/operator.md"),

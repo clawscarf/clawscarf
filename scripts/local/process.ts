@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { constants } from "node:os";
 
 const execute = promisify(execFile);
 type LocalSetupErrorCode =
@@ -54,9 +55,57 @@ export class LocalSetupError extends Error {
   constructor(
     readonly code: LocalSetupErrorCode,
     message: string,
+    readonly commandFailure?: CommandFailure,
   ) {
     super(message);
     this.name = "LocalSetupError";
+  }
+}
+
+export type CommandFailure =
+  | { reason: "timeout" | "output_limit" | "unavailable" }
+  | { reason: "exit"; exitCode: number }
+  | { reason: "signal"; signal: string }
+  | { reason: "spawn"; systemCode: string };
+
+function commandFailure(error: unknown): CommandFailure {
+  if (!(error instanceof Error)) return { reason: "unavailable" };
+  const code = "code" in error ? error.code : undefined;
+  if (code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER")
+    return { reason: "output_limit" };
+  if ("killed" in error && error.killed === true) return { reason: "timeout" };
+  if (typeof code === "number" && Number.isSafeInteger(code))
+    return { reason: "exit", exitCode: code };
+  if ("signal" in error) {
+    for (const signal of Object.keys(constants.signals))
+      if (error.signal === signal) return { reason: "signal", signal };
+  }
+  if (
+    typeof code === "string" &&
+    [
+      "ENOENT",
+      "EACCES",
+      "ENOEXEC",
+      "ENOTDIR",
+      "EAGAIN",
+      "EMFILE",
+      "ENFILE",
+    ].includes(code)
+  )
+    return { reason: "spawn", systemCode: code };
+  return { reason: "unavailable" };
+}
+
+function failureDetail(failure: CommandFailure) {
+  switch (failure.reason) {
+    case "exit":
+      return `exit ${String(failure.exitCode)}`;
+    case "signal":
+      return failure.signal;
+    case "spawn":
+      return failure.systemCode;
+    default:
+      return failure.reason;
   }
 }
 
@@ -74,10 +123,12 @@ export async function run(
     });
     child.child.stdin?.end(options.input);
     return (await child).stdout;
-  } catch {
+  } catch (error) {
+    const failure = commandFailure(error);
     throw new LocalSetupError(
       "command_failed",
-      `The ${executable.split("/").at(-1) ?? "external"} command did not confirm success. Inspect this installation before retrying.`,
+      `An external command did not confirm success (${failureDetail(failure)}). Inspect this installation before retrying.`,
+      failure,
     );
   }
 }

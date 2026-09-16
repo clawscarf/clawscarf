@@ -55,7 +55,7 @@ that release requirement remains in [TODO.md](TODO.md).
 
 The Gateway and companion image recipes copy this file and the root [license](LICENSE) verbatim
 to `/usr/share/licenses/clawscarf`. The companion recipe additionally copies the
-incorporated [shadcn notice](services/connections/web/shared/shadcn/LICENSE.md)
+incorporated [shadcn notice](ui/shadcn/LICENSE.md)
 there as `shadcn-MIT.txt`. A local runtime rebuild verified the root notices against its build inputs.
 A local companion rebuild also verified the root and shadcn notices against build inputs. Relative
 source links in this file refer to the source checkout, not image filesystem paths.

@@ -6,6 +6,7 @@ import type { initialConfiguration } from "../../runtime/configuration.js";
 import {
   configurationSchema,
   nativeModelProvider,
+  nativeModelDefaults,
 } from "../models/configuration.js";
 import { networkRequirementSchema } from "../packs/policy.js";
 import type { LocalInput } from "./configuration.js";
@@ -89,9 +90,7 @@ export function withInitialModels(
       },
     },
     agents: {
-      defaults: {
-        model: { primary: `clawscarf/${models.configuration.defaultModel}` },
-      },
+      defaults: nativeModelDefaults(models.configuration),
     },
   };
 }

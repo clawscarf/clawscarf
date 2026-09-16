@@ -5,6 +5,8 @@ import { ConnectorProviderError } from "../../services/connections/types/provide
 import { createClient } from "../../services/connections/generated/client/client/index.js";
 import { callConnectorRuntime } from "../../services/connections/generated/client/sdk.gen.js";
 import { createConnectionsHttpFixture } from "./http.js";
+import { checkConnectionsSchema } from "../../services/connections/repo/schema.js";
+import { transaction } from "../../services/connections/repo/database.js";
 import { connectionsLifecycleFixture } from "./lifecycle-fixture.js";
 
 const databaseUrl = process.env.CLAWSCARF_CONNECTIONS_TEST_DATABASE_URL;
@@ -308,6 +310,38 @@ await test(
         [call.invocation.id],
       );
       assert.equal(after.rows[0]?.count, "0");
+    } finally {
+      await f.close();
+    }
+  },
+);
+
+await test(
+  "central schema readiness preserves integrity checks and rolls back damaged-schema probes",
+  { skip: !databaseUrl },
+  async () => {
+    const f = await connectionsLifecycleFixture(databaseUrl!);
+    try {
+      const probes = [
+        "ALTER TABLE connection_callback_receipts DROP CONSTRAINT connection_callback_receipts_toolkit_check",
+        "ALTER TABLE connection_returns DROP CONSTRAINT connection_returns_lifetime",
+        "ALTER TABLE connection_catalog_publication DROP CONSTRAINT connection_catalog_publication_unpublished",
+        "ALTER TABLE connection_setups DROP CONSTRAINT connection_setups_prepared_auth",
+        "ALTER TABLE connection_invocations DROP CONSTRAINT connection_invocations_result_retention_check",
+        "ALTER TABLE connection_result_pages DROP CONSTRAINT connection_result_pages_payload_check",
+        "DROP INDEX connection_returns_expiry",
+        "DELETE FROM connection_catalog_publication",
+      ];
+      for (const probe of probes) {
+        await assert.rejects(
+          transaction(f.pool, async (client) => {
+            await client.query(probe);
+            await checkConnectionsSchema(client);
+          }),
+          /Connections requires the current database migrations/u,
+        );
+        await f.repository.checkSchema();
+      }
     } finally {
       await f.close();
     }

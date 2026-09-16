@@ -22,7 +22,7 @@ production dependencies. The local development tag is not a published release.
 The recipe copies the root [license](../../LICENSE) and
 [third-party notices](../../THIRD_PARTY_NOTICES.md) verbatim to
 `/usr/share/licenses/clawscarf`, together with the incorporated
-[shadcn notice](../../services/connections/web/shared/shadcn/LICENSE.md) as
+[shadcn notice](../../ui/shadcn/LICENSE.md) as
 `shadcn-MIT.txt`. A local rebuild verified these retained files against build inputs;
 complete release license qualification remains open in the [remaining work](../../TODO.md).
 
@@ -50,7 +50,9 @@ docker compose -f deploy/compose/companion.yaml up -d
 The referenced file follows the [Access configuration](../../services/access/README.md#configuration-and-operation).
 Omitting Connections starts no provider, requires no Connections schema/catalog/key,
 and exposes disabled capabilities without account actions. The native People page
-contains no Connections navigation in this mode.
+contains no Connections navigation in this mode. Only enabled Connections grants
+login return destinations for its landing page and account-return pages; API and
+verification endpoints are never return destinations.
 
 To enable Connections, add the optional block:
 
@@ -120,3 +122,15 @@ Connections navigation. No fixture provider or provider credential was loaded.
 The rebuilt image also passed expired-callback checks over HTTPS: browsers receive
 the concise sign-in failure page, while API callers retain Problem Details. The
 page rendered at desktop and mobile sizes.
+
+The companion and Access-only entry share [process startup/shutdown](../process-lifecycle.ts).
+Failure to bind any listener closes the composed application; repeated shutdown
+requests close resources only once.
+
+The companion image derives its production dependencies from the compiled app and
+both separate migration entrypoints using the shared
+[runtime package writer](../../scripts/release/runtime-package.ts). Frontend assets
+are bundled at build time; React and installer tooling are absent from the runtime
+manifest. The package boundary test installs that frozen subset outside the
+checkout and imports the compiled composition. This checks dependency packaging,
+not a rebuilt Docker image or running service.

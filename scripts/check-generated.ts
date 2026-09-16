@@ -18,6 +18,7 @@ const capture = async () =>
       snapshot("services/access/generated"),
       snapshot("services/connections/generated"),
       snapshot("plugins/connections/generated"),
+      snapshot("plugins/connections/openapi"),
     ]),
   );
 const before = await capture();

@@ -47,6 +47,8 @@ export class OpenClawAuthority implements NativeAuthority {
     work: (gateway: NativeGateway) => Promise<T>,
   ) {
     return this.connect(this.gatewayOptions(credential), async (gateway) => {
+      if (!gateway.scopes.includes("operator.admin"))
+        throw new NativeFailure("access_denied");
       await self(gateway, actor.identity);
       return work(gateway);
     });
@@ -58,14 +60,12 @@ export class OpenClawAuthority implements NativeAuthority {
         z.object({ agents: z.array(z.object({ id: z.string().min(1) })) }),
         await gateway.read("agents.list", {}),
       );
-      await gateway.read("exec.approvals.get", {});
       return { agentIds: result.agents.map((agent) => agent.id) };
     });
   }
 
   async observeTeam(actor: NativeActor, credential: string) {
     return this.acting(actor, credential, async (gateway) => {
-      await gateway.read("exec.approvals.get", {});
       return teamEnrollmentState(await readState(gateway));
     });
   }

@@ -3,15 +3,15 @@ import * as api from "../generated/client/sdk.gen.js";
 import { request, problem } from "./request.js";
 import { Loading } from "./loading.js";
 import type { PeopleState } from "./people-state.js";
-import { Button } from "./shared/shadcn/components/ui/button.js";
-import { Input } from "./shared/shadcn/components/ui/input.js";
+import { Button } from "../../../ui/shadcn/components/ui/button.js";
+import { Input } from "../../../ui/shadcn/components/ui/input.js";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./shared/shadcn/components/ui/dialog.js";
+} from "../../../ui/shadcn/components/ui/dialog.js";
 function field(form: FormData, name: string): string {
   const value = form.get(name);
   return typeof value === "string" ? value : "";

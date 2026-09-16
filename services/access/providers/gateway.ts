@@ -1,8 +1,10 @@
 import {
   GatewayClient,
+  GatewayClientRequestError,
   isGatewayProtocolResponseError,
 } from "@openclaw/gateway-client";
 import { z } from "zod";
+import application from "../../../package.json" with { type: "json" };
 import { NativeFailure } from "../types/native-errors.js";
 
 const detailSchema = z.object({
@@ -20,8 +22,6 @@ export function isAccessDenied(error: unknown): boolean {
   return (
     (error.gatewayCode === "NOT_PAIRED" &&
       details.data.code === "DEVICE_IDENTITY_REQUIRED") ||
-    (details.data.reason === "websocket-upgrade-rejected" &&
-      [401, 403].includes(details.data.httpStatus ?? 0)) ||
     ["AUTH_REQUIRED", "AUTH_UNAUTHORIZED", "AUTH_SCOPE_MISMATCH"].includes(
       details.data.code ?? "",
     )
@@ -68,7 +68,7 @@ export async function withGateway<T>(
       Cookie: `clawscarf_session=${options.credential}`,
     },
     clientName: "gateway-client",
-    clientVersion: "2026.9.4",
+    clientVersion: application.version,
     mode: "backend",
     role: "operator",
     minProtocol: 4,
@@ -78,7 +78,17 @@ export async function withGateway<T>(
     requestTimeoutMs: 10_000,
     hostDeps: { logDebug() {}, logError() {} },
     onHelloOk: (hello) => ready.resolve(hello.auth?.scopes ?? []),
-    onConnectError: (error) => ready.reject(error),
+    onConnectError: (error) => {
+      const details =
+        error instanceof GatewayClientRequestError
+          ? detailSchema.safeParse(error.details)
+          : null;
+      const denied =
+        details?.success &&
+        details.data.reason === "websocket-upgrade-rejected" &&
+        [401, 403].includes(details.data.httpStatus ?? 0);
+      ready.reject(denied ? new NativeFailure("access_denied") : error);
+    },
     onClose: () => {
       if (!closing) ready.reject(new NativeFailure("unavailable"));
     },

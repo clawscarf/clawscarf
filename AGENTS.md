@@ -40,7 +40,8 @@
   entry/admission/revocation are fixed product requirements, not feature flags or recipe
   choices. Resource sizing and external ownership do not make those protections optional.
   Managed inference requires LiteLLM, bundled or externally operated; recipes cannot
-  bypass it with direct-provider setup. Optional capabilities cannot weaken protections; unsupported hosts/combinations must fail,
+  bypass it with direct-provider setup. Optional capabilities cannot weaken protections;
+  unsupported hosts/combinations must fail,
   not fall back. Distinguish current developer-component flexibility from the intended
   product contract. Validate example combinations against actual service dependencies;
   a proposed UX or unqualified integration must not become an accepted requirement.
@@ -51,7 +52,10 @@
 - Services use typed ports; repos own domain SQL; providers own vendor I/O and wire
   formats; runtime handlers are thin. Composition owns wiring and lifetimes. Use
   private domain modules, not speculative packages, forwarding layers or registries.
-  No cross-domain private imports. Enforce dependency direction mechanically.
+  No cross-domain private imports. Enforce dependency direction mechanically, including
+  operator tooling. Share UI and private-file primitives instead of maintaining copies.
+  Public installation configuration and lifecycle belong to the unified CLI; component
+  commands are implementation/developer interfaces.
 - Access and Connections have separate ownership. Connections remains optional:
   absent configuration requires no provider key, schema, calls or unusable UI/tools.
   Explicitly enabled invalid configuration fails visibly. Do not couple either

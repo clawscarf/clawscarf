@@ -204,6 +204,8 @@ The local control socket is private to the operator and never listens on TCP.
 `stop` requests orderly shutdown; poll `status` to observe supervisor exit. An absent
 supervisor is not proof that every container stopped after a crash. `logs` prints
 the last 100 lines of an allowlisted private operator log; treat logs as private.
+`logs --help` lists controller/forward and all Compose exit-monitor log names.
+Service application output remains available through Compose logs.
 `login` creates a new local login code; company deployments use their configured IdP.
 
 Company HTTPS/OIDC uses the existing explicit administrator subject/email bootstrap;

@@ -1,15 +1,15 @@
 import { useId, useState, type ReactNode } from "react";
 import { Plus, RefreshCw, Search } from "lucide-react";
-import { Badge } from "../../shared/shadcn/components/ui/badge.js";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Badge } from "../../../../../ui/shadcn/components/ui/badge.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../shared/shadcn/components/ui/dialog.js";
-import { Input } from "../../shared/shadcn/components/ui/input.js";
+} from "../../../../../ui/shadcn/components/ui/dialog.js";
+import { Input } from "../../../../../ui/shadcn/components/ui/input.js";
 import { Feedback, Loading } from "../../shared/ui/feedback.js";
 import type { ConnectorChoice } from "./presentation.js";
 import { ConnectorLogo } from "./connector-logo.js";

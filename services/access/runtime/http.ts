@@ -24,11 +24,12 @@ import type { Session } from "../types/model.js";
 import type { FastifyRequest } from "fastify";
 import { classifyFailure, failureDiagnostic } from "./failures.js";
 import { AccessError } from "../types/errors.js";
-import { safeReturn, type SessionService } from "../service/session.js";
+import type { SessionService } from "../service/session.js";
 import type { RouteHandlers } from "../generated/server/fastify.gen.js";
 export async function createAccessHttp(
   service: Pick<
     SessionService,
+    | "validateReturn"
     | "startLogin"
     | "completeLogin"
     | "localLogin"
@@ -46,7 +47,7 @@ export async function createAccessHttp(
   navigationLinks: readonly NavigationLink[] = [],
   logger: FastifyServerOptions["logger"] = { level: "error" },
 ) {
-  for (const link of navigationLinks) safeReturn(link.href);
+  for (const link of navigationLinks) service.validateReturn(link.href);
   const app = Fastify({
     logger,
     logController: new LogController({ disableRequestLogging: true }),
@@ -304,7 +305,9 @@ export async function createAccessHttp(
         .header("Content-Security-Policy", signInPagePolicy)
         .header("Referrer-Policy", "same-origin")
         .type("text/html")
-        .send(localSignInPage(safeReturn(req.query?.returnTo ?? "/"))),
+        .send(
+          localSignInPage(service.validateReturn(req.query?.returnTo ?? "/")),
+        ),
   );
   app.get("/_clawscarf/signed-out", async (_req, reply) =>
     reply.type("text/html").send(signedOutPage()),

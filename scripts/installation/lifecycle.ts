@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { launchLocal } from "../local/launch.js";
 import { readState } from "../local/state.js";
+import { localLogNames } from "../local/logs.js";
 import { withInstallationLock } from "./plan.js";
 import { InstallationError } from "./errors.js";
 import { activatePacks, packOutcomeSchema, type PackOutcome } from "./packs.js";
@@ -151,19 +152,9 @@ export async function controlInstallation(
     throw error;
   }
 }
-const logNames = [
-  "controller",
-  "execution",
-  "application",
-  "widgets",
-  "companion-wait",
-  "postgres-wait",
-  "execution-relay-wait",
-  "browser-node-wait",
-] as const;
 export async function installationLogs(directory: string, service: string) {
   await readState(resolve(directory));
-  const name = z.enum(logNames).parse(service);
+  const name = z.enum(localLogNames).parse(service);
   const log = await readFile(
     join(resolve(directory), "logs", `${name}.log`),
     "utf8",

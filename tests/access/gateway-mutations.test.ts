@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
+import application from "../../package.json" with { type: "json" };
 import { withGateway } from "../../services/access/providers/gateway.js";
 import { NativeFailure } from "../../services/access/types/native-errors.js";
 
@@ -52,6 +53,7 @@ await describe("Gateway mutation outcomes", async () => {
     type: z.literal("req"),
     id: z.string(),
     method: z.string(),
+    params: z.unknown().optional(),
   });
   type Reply = { code: string } | "disconnect" | "success";
   async function gatewayFixture(replies: Reply[]) {
@@ -62,6 +64,7 @@ await describe("Gateway mutation outcomes", async () => {
     const address = listener.address();
     assert.ok(address && typeof address !== "string");
     const methods: string[] = [];
+    let administratorProbes = 0;
     server.on("connection", (socket) => {
       socket.send(
         JSON.stringify({
@@ -78,6 +81,20 @@ await describe("Gateway mutation outcomes", async () => {
             : Buffer.from(raw);
         const request = frame.parse(JSON.parse(bytes.toString("utf8")));
         if (request.method === "connect") {
+          const handshake = z
+            .object({
+              client: z.object({
+                id: z.string(),
+                version: z.string(),
+                mode: z.string(),
+              }),
+            })
+            .parse(request.params);
+          assert.deepEqual(handshake.client, {
+            id: "gateway-client",
+            version: application.version,
+            mode: "backend",
+          });
           socket.send(
             JSON.stringify({
               type: "res",
@@ -94,6 +111,7 @@ await describe("Gateway mutation outcomes", async () => {
           return;
         }
         if (request.method === "exec.approvals.get") {
+          administratorProbes++;
           socket.send(
             JSON.stringify({
               type: "res",
@@ -132,6 +150,7 @@ await describe("Gateway mutation outcomes", async () => {
         credential: "fixture-session",
       },
       methods,
+      administratorProbes: () => administratorProbes,
       close: () =>
         new Promise<void>((resolve, reject) => {
           for (const client of server.clients) client.terminate();
@@ -160,6 +179,7 @@ await describe("Gateway mutation outcomes", async () => {
           (error: unknown) =>
             error instanceof NativeFailure && error.code === scenario.code,
         );
+        assert.equal(fixture.administratorProbes(), 1);
         assert.deepEqual(
           fixture.methods,
           ["config.patch"],
@@ -190,6 +210,41 @@ await describe("Gateway mutation outcomes", async () => {
         assert.equal(fixture.methods.length, 2);
       } finally {
         await fixture.close();
+      }
+    }
+  });
+  await test("SDK handshake HTTP authorization denial is definitive before dispatch, unlike server unavailability", async () => {
+    for (const status of [401, 403, 503]) {
+      const listener = createServer({ cert: certificate, key: privateKey });
+      listener.on("upgrade", (_request, socket) => {
+        socket.end(
+          `HTTP/1.1 ${status} Rejected\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`,
+        );
+      });
+      listener.listen(0, "127.0.0.1");
+      await once(listener, "listening");
+      const address = listener.address();
+      assert.ok(address && typeof address !== "string");
+      let dispatched = false;
+      try {
+        await assert.rejects(
+          withGateway(
+            {
+              origin: `https://127.0.0.1:${address.port}`,
+              credential: "revoked",
+            },
+            () => {
+              dispatched = true;
+              return Promise.resolve();
+            },
+          ),
+          { code: status === 503 ? "unavailable" : "access_denied" },
+        );
+        assert.equal(dispatched, false);
+      } finally {
+        await new Promise<void>((resolve, reject) =>
+          listener.close((error) => (error ? reject(error) : resolve())),
+        );
       }
     }
   });

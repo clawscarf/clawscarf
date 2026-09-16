@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Connection } from "../../../generated/client/types.gen.js";
 import { connectionMutationUncertain } from "./mutation-outcome.js";
-import { Button } from "../../shared/shadcn/components/ui/button.js";
+import { Button } from "../../../../../ui/shadcn/components/ui/button.js";
 import { Feedback, Loading } from "../../shared/ui/feedback.js";
 import { ConnectionSetup } from "./connection-setup.js";
 import {
@@ -53,7 +53,6 @@ export function ConnectionSession({
   const [dismissedInitial, setDismissedInitial] = useState(false);
   const [initialSetupId] = useState(connection.setup?.id ?? null);
   const observed = current.data;
-  const canWrite = true;
   if (current.isPending) return <Loading label="Loading connection" />;
   if (current.error || !observed)
     return (
@@ -135,12 +134,11 @@ export function ConnectionSession({
         (starting || activeSetup ? undefined : observed.failure?.detail) ??
         (dismissedInitial ? undefined : initialError)
       }
-      {...(canWrite &&
-      serviceAvailability === "available" &&
+      {...(serviceAvailability === "available" &&
       canStartConnectionSetup(observed)
         ? { onStart: begin, onStartAgain: begin }
         : {})}
-      {...(canWrite && setup?.state === "pending"
+      {...(setup?.state === "pending"
         ? {
             onContinue: () => {
               setDismissedInitial(true);
@@ -150,7 +148,7 @@ export function ConnectionSession({
             },
           }
         : {})}
-      {...(canWrite && activeSetup && setup
+      {...(activeSetup && setup
         ? {
             onCancel: () => {
               setHandoffId(null);
@@ -174,10 +172,6 @@ export function ConnectionSession({
         setDismissedInitial(true);
         if (handoffId && state !== "connected" && state !== "verifying") {
           void handoff.refetch();
-          void current.refetch();
-          return;
-        }
-        if (!canWrite) {
           void current.refetch();
           return;
         }

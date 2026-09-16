@@ -56,9 +56,11 @@ function fixture(
     updatedAt: 1,
     displayName,
   }));
+  const reads: string[] = [];
   const gateway: NativeGateway = {
     scopes: ["operator.admin"],
     read(method) {
+      reads.push(method);
       if (method === "users.self")
         return Promise.resolve({ profile: profiles[0] });
       if (method === "users.list") return Promise.resolve({ profiles });
@@ -119,6 +121,7 @@ function fixture(
   };
   return {
     config,
+    reads,
     authority: new OpenClawAuthority("https://team.example", { connect }),
     identity,
     other,
@@ -254,4 +257,18 @@ await test("team observation requires native administrator authority", async () 
     { code: "access_denied" },
   );
   assert.equal(configReads, 0);
+});
+
+await test("team observation uses one SDK-authorized connection without repeating its administrative probe", async () => {
+  const f = fixture();
+  await f.authority.observeTeam(
+    { identity: f.identity, sessionHash: "hash" },
+    "credential",
+  );
+  assert.deepEqual(f.reads, [
+    "users.self",
+    "config.get",
+    "users.list",
+    "config.get",
+  ]);
 });
