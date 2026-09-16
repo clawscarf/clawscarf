@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml tsconfig*.json ./
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY services ./services
+COPY generated/http ./generated/http
 COPY apps ./apps
 COPY ui ./ui
 COPY scripts/build-companion.ts ./scripts/build-companion.ts
@@ -24,6 +25,8 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist/package.json ./package.json
 COPY --from=build /app/dist/services ./services
+COPY --from=build /app/dist/generated/http ./generated/http
+COPY generated/http/LICENSE.md ./generated/http/LICENSE.md
 COPY --from=build /app/dist/apps ./apps
 COPY --from=build /app/services/access/dist/web ./services/access/dist/web
 COPY --from=build /app/services/connections/dist/web ./services/connections/dist/web

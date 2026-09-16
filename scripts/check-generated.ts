@@ -6,6 +6,7 @@ async function snapshot(path: string): Promise<readonly [string, string][]> {
   const rows: [string, string][] = [];
   for (const entry of await readdir(path, { withFileTypes: true })) {
     const file = join(path, entry.name);
+    if (file === "plugins/connections/generated/http") continue;
     if (entry.isDirectory()) rows.push(...(await snapshot(file)));
     else rows.push([file, await readFile(file, "utf8")]);
   }
@@ -15,6 +16,7 @@ async function snapshot(path: string): Promise<readonly [string, string][]> {
 const capture = async () =>
   JSON.stringify(
     await Promise.all([
+      snapshot("generated/http"),
       snapshot("services/access/generated"),
       snapshot("services/connections/generated"),
       snapshot("plugins/connections/generated"),
@@ -22,6 +24,7 @@ const capture = async () =>
     ]),
   );
 const before = await capture();
+execFileSync("pnpm", ["http:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["connections:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["access:generate"], { stdio: "inherit" });
 execFileSync(

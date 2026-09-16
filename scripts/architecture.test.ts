@@ -26,8 +26,10 @@ await test("independent companion and plugin imports pass; cross-boundary source
         'import { value } from "./value.js"; export { value };',
       "plugins/connections/src/value.ts": "export const value = 1;",
       "services/access/entry.ts":
-        'import { value } from "./value.js"; export { value };',
+        'export { value } from "../../generated/http/client.js";',
       "services/access/value.ts": "export const value = 2;",
+      "generated/http/client.ts": 'export { value } from "./helper.js";',
+      "generated/http/helper.ts": 'export { value } from "./client.js";',
     })) {
       const target = join(root, path);
       await mkdir(dirname(target), { recursive: true });
@@ -54,6 +56,23 @@ await test("independent companion and plugin imports pass; cross-boundary source
           error.stdout,
           /plugins-use-protocols-not-companion-internals/,
         );
+        return true;
+      },
+    );
+    await writeFile(
+      join(root, "services/access/entry.ts"),
+      'export { value } from "./value.js";',
+    );
+    await writeFile(
+      join(root, "services/access/value.ts"),
+      'export { value } from "./entry.js";',
+    );
+    await assert.rejects(
+      run(process.execPath, args, { cwd: root }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error && "stdout" in error);
+        assert.equal(typeof error.stdout, "string");
+        assert.match(String(error.stdout), /no-circular-imports/);
         return true;
       },
     );

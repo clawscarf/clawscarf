@@ -8,6 +8,7 @@ import { writeRuntimePackage } from "./runtime-package.js";
 
 const execute = promisify(execFile);
 const assets = [
+  "generated/http/LICENSE.md",
   "scripts/local/upgrade-rpc.py",
   "scripts/packs/transport.py",
   "scripts/packs/requirements.in",
@@ -34,6 +35,8 @@ export async function stageOperatorAssets(root: string) {
 // Explicit operator payload: no companion server, source tooling or installation state.
 const payload = [
   ...assets.filter((path) => !path.startsWith("scripts/")),
+  "generated/http/client",
+  "generated/http/core",
   "scripts/clawscarf.js",
   "scripts/installation",
   "scripts/release/create.js",

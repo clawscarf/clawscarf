@@ -3,6 +3,10 @@
 [LICENSE](LICENSE) applies to ClawScarf-owned work. It does not relicense upstream
 software, copied dependencies, assets or provider services.
 
+The shared [generated HTTP transport](generated/README.md) is emitted unchanged by
+`@hey-api/openapi-ts` 0.99.0. Its [MIT license](generated/http/LICENSE.md) accompanies
+the operator, companion and Connections plugin artifacts.
+
 ## Material currently adapted here
 
 AGENTS.md is adapted from RawClaw's contributor guide at commit

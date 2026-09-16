@@ -145,7 +145,7 @@ module.exports = {
     },
   ],
   options: {
-    doNotFollow: { path: "node_modules|/generated/" },
+    doNotFollow: { path: "node_modules|(^|/)generated/" },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {

@@ -9,6 +9,7 @@ and their referenced components; it is not a second authored contract. Regenerat
 service clients with `pnpm connections:generate` and the portable contract/client
 with `npm --prefix plugins/connections run api:generate`. `pnpm codegen:check`
 checks both clients and the portable contract for drift.
+All REST clients share the [generated HTTP transport](../../generated/README.md).
 
 The [unified installation CLI](../../deploy/local/installation.md#connections)
 can bootstrap local Connections on a fresh installation, including its initial scoped

@@ -223,3 +223,4 @@ company IdP, its deployed callback/TLS configuration, or interactive browser enr
 
 API generation emits one shared schema/type set, the fetch SDK and Fastify handler
 types in `generated/` from this component's OpenAPI contract.
+All REST clients share the [generated HTTP transport](../../generated/README.md).

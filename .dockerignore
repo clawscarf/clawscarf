@@ -12,6 +12,9 @@
 !apps/companion/**
 !services/
 !services/**
+!generated/
+!generated/http/
+!generated/http/**
 !deploy/
 !deploy/**
 !plugins/
@@ -28,6 +31,8 @@
 **/node_modules
 **/.local
 **/dist
+**/src/generated
+plugins/connections/generated/http
 **/.env
 **/.env.*
 !runtime/packs.sh

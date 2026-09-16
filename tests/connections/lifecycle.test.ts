@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { ConnectorProviderError } from "../../services/connections/types/provider.js";
-import { createClient } from "../../services/connections/generated/client/index.js";
+import { createClient } from "../../generated/http/client/index.js";
 import { callConnectorRuntime } from "../../services/connections/generated/sdk.gen.js";
 import { createConnectionsHttpFixture } from "./http.js";
 import { checkConnectionsSchema } from "../../services/connections/repo/schema.js";

@@ -11,8 +11,9 @@ COPY deploy/images/network-tools/build.sh /build.sh
 
 FROM upstream AS connections
 USER root
-WORKDIR /build/connections
+WORKDIR /build/plugins/connections
 COPY plugins/connections/ ./
+COPY generated/http/ /build/generated/http/
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
     && npm run artifact \
     && mkdir /out \
@@ -45,6 +46,7 @@ RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
 COPY scripts/packs.ts ./scripts/packs.ts
 COPY scripts/packs/ ./scripts/packs/
 COPY services/connections/generated/ ./services/connections/generated/
+COPY generated/http/ ./generated/http/
 RUN ./node_modules/.bin/tsc -p tsconfig.json \
     && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 

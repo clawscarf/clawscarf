@@ -360,6 +360,15 @@ await test(
           "filename" in first &&
           typeof first.filename === "string",
       );
+      const { stdout: listing } = await execute("tar", [
+        "-tzf",
+        join(directory, first.filename),
+      ]);
+      assert.ok(
+        listing.includes("package/dist/generated/http/client/index.js"),
+      );
+      assert.ok(listing.includes("package/dist/generated/http/LICENSE.md"));
+      assert.ok(!listing.includes("package/dist/generated/client/"));
       const locator = `npm-pack:${join(directory, first.filename)}`;
       // The authored plugin config is invalid until the manifest is installed. The CLI
       // reads it while planning installation, so seed it only after the actual install.

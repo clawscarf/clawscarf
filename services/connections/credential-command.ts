@@ -1,9 +1,8 @@
 import { open, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { Command } from "commander";
-import { createClient as accessClient } from "../access/generated/client/index.js";
 import { session } from "../access/generated/sdk.gen.js";
-import { createClient } from "./generated/client/index.js";
+import { createClient } from "../../generated/http/client/index.js";
 import {
   rotateConnectionCredential,
   revokeConnectionCredential,
@@ -58,7 +57,7 @@ async function authenticatedClient() {
     throw Error("Invalid session file.");
   const headers = { Cookie: `clawscarf_session=${credential}`, Origin: origin };
   const current = await session({
-    client: accessClient({ baseUrl: origin, headers, redirect: "error" }),
+    client: createClient({ baseUrl: origin, headers, redirect: "error" }),
     throwOnError: true,
     signal: AbortSignal.timeout(10000),
   });

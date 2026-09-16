@@ -75,8 +75,10 @@ client uses Hey API. [The service contract](../../services/connections/openapi.j
 is the source: `npm run api:generate` derives [the portable contract](openapi/broker.yaml) from its runtime
 security declarations and referenced components, then generates `generated/`.
 Run generation from this source checkout and commit both artifacts. Building and
-packaging the plugin uses the checked-in generated client, without a broker source
-or runtime dependency. Generated transport code alone disables
+packaging the plugin uses the checked-in generated client and the repository's
+[shared HTTP transport](../../generated/README.md). `prepare:client` stages that
+transport into ignored build inputs; the package includes its compiled copy and
+license, without a broker or checkout dependency at runtime. Generated code disables
 `exactOptionalPropertyTypes` during compilation; plugin code/tests remain strict.
 The artifact command writes the package and SHA-256 manifest to ignored
 `.local/artifact/`. Runtime dependencies are bundled; OpenClaw is supplied by the

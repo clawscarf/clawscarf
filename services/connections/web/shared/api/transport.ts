@@ -1,4 +1,4 @@
-import { createClient } from "../../../generated/client/index.js";
+import { createClient } from "../../../../../generated/http/client/index.js";
 import type { Problem, RetryGuidance } from "../../../generated/types.gen.js";
 
 export class ApiError extends Error {

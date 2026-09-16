@@ -5,10 +5,16 @@ export default defineConfig({
   output: {
     path: "services/access/generated",
     postProcess: ["prettier"],
+    module: {
+      resolve: (path) =>
+        path === "@hey-api/client-fetch"
+          ? "../../../generated/http/client/index.js"
+          : undefined,
+    },
   },
   plugins: [
     "@hey-api/typescript",
-    "@hey-api/client-fetch",
+    { name: "@hey-api/client-fetch", bundle: false },
     "@hey-api/sdk",
     "fastify",
   ],

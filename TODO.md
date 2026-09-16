@@ -1,31 +1,15 @@
 # Remaining work
 
 Select one slice at a time. This checklist does not authorize automatic continuation.
-Code reduction comes before new installation features. Current configuration and limits are in
+Current configuration and limits are in
 [README.md](README.md#installation-management-direction).
 
-## Larger code reductions — decide the replacement or lost behavior first
+## Upgrade decision
 
-- [ ] Verify a supported shared fetch-runtime dependency before replacing the three
-      identical generated transport trees (1,926 lines each; 3,852 duplicate lines).
-      The installed generator supports an external runtime package, not a shared-local-path
-      setting. Do not patch emitted imports or delete transitively used generated helpers.
 - [ ] Decide whether to retain the custom local replacement/upgrade feature or defer it.
       Its [upgrade implementation](scripts/local/upgrade.ts), state and Python helper total
       580 lines, with additional startup-gate code/tests. The gate exists for this workflow;
       removing it alone would break replacement. Retained-volume startup remains required.
-- [ ] Specify a smaller owner for local process/network orchestration before replacing
-      [launch/supervision](scripts/local/launch.ts), private status/stop control,
-      network allocation and runtime receipts. Identify the exact Compose/OpenShell
-      operations taking over each responsibility. None of these modules is dead code;
-      preserve two protected runtimes, resource ownership and reliable stop/start.
-- [ ] Decide which optional Connections extras to keep: offline retirement preflight
-      (86-line helper plus CLI/types), extracted file-field hints (57-line helper plus
-      contract/import paths), and large saved-result paging (481 lines across five modules
-      plus API/plugin/SQL paths). Removing them loses those specific capabilities.
-      Keep exact account grants, execution receipts, no-blind-replay guarantees and
-      eventual cleanup of cancelled/disconnected provider accounts. Live catalog
-      publication is a separate 376-line feature needing a safe update replacement.
 
 ## Owner-managed browser issue — DO NOT PICK UP AUTOMATICALLY
 
@@ -40,7 +24,7 @@ Code reduction comes before new installation features. Current configuration and
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Installation backlog — after code reduction, select before implementation
+## Installation backlog — select before implementation
 
 - [ ] **Finish retained-install capability changes.** Initial models, Connections
       and pack selections are wired. Add reviewed capability change/reapply operations
