@@ -7,7 +7,11 @@ OIDC adapter completed real administrator and invited-member login. The current 
 tree passed native member denial, open-session revocation and rejected reentry, plus generic
 OIDC handover/rejoining regressions. Logout requests fresh authentication on the next sign-in;
 WorkOS Connect currently has no logout endpoint in discovery, so this does not end its
-provider-wide session. Full installer registration wiring remains unfinished. Cloud Connections
+provider-wide session. Installer registration now defaults to hosted login and persists account-bound requests
+and credentials for retry. Custom OIDC bypasses registration. A fresh automatic installer
+journey passed device approval, registration, administrator sign-in, native People and a
+real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
+the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections
 and deployment are pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).

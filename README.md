@@ -51,8 +51,10 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 - Local administrator model responses and file tools passed. Native administrator
   and member execution passed through the separate worker, including administrative
   denial and forbidden network targets.
-- Fresh installer setup passed normal Docker networking, persistent startup, private
-  administrator claim through Dex and a real GPT-6 Astra browser response.
+- The current working tree passed fresh installer setup with normal Docker networking,
+  hosted account approval, automatic OIDC registration, persistent startup, private
+  administrator claim through WorkOS, native People and a real GPT-6 Astra / medium
+  browser response.
 - The assembled team profile passed local Dex browser login, enrollment, handover,
   revocation, bookmarks, widgets and hooks. Public deployment and release-artifact
   acceptance remain unqualified.
