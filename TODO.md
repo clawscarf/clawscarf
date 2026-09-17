@@ -6,20 +6,13 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-Current milestone: **M1**. Cloud owner-login routes, generated API contract and
-local HTTP/SDK checks are implemented; check/build pass. Real owner-login verification
-has passed with the owner-selected account. The new staging key is stored privately;
-exact localhost callback/login/logout URLs are configured. Browser sign-out verification
-is pending after the automation browser blocked navigation. Existing projects are untouched.
-No cloud deployment or M2 registration work has started.
+Current milestone: **M2**. Cloud owner login and logout passed against the dedicated
+WorkOS staging project using the owner-selected account. Local checks/build pass;
+existing WorkOS projects are untouched. No cloud deployment has been created.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
 native Connections replacement is part of this same batch, not a separate future task.
 
-- [ ] **M1 — Establish the cloud repository from existing code.** Create
-      `~/clawscarf/clawscarf-cloud` with concise contributor rules, notices and initial API contract.
-      Reuse Kora's cloud-authentication/deployment patterns and ClawScarf's service conventions;
-      start the service and verify its own owner login. No general WorkOS/Vercel feasibility study.
 - [ ] **M2 — Register installations.** Implement account ownership, separate management/runtime
       credentials and rotation/revocation. Prove two-account isolation and idempotent SaaS
       provisioning under an existing customer account. Register exact installation OIDC callbacks

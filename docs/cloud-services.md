@@ -1,9 +1,8 @@
 # Hosted login and Connections
 
 Selected product direction. The cloud owner-login service is implemented and locally
-tested; real WorkOS owner login passed, while browser sign-out verification and deployment
-are pending. Installation registration and cloud Connections are not implemented.
-The implementation sequence
+tested, including real WorkOS owner login and logout. Deployment is pending. Installation
+registration and cloud Connections are not implemented. The implementation sequence
 is owned only by [TODO.md](../TODO.md#hosted-login-and-native-connections).
 
 ## Product choices
