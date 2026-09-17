@@ -15,6 +15,7 @@ the installer for a fresh private link, never an ordinary unadmitted login. Clou
 with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
 administrator-checking adapter are implemented. Real account consent/execution,
 installer selection and cloud deployment remain pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+and the [configured-development runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).
 

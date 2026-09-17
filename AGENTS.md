@@ -12,6 +12,9 @@
   No parallel plans, frozen reports or changelog prose. Preserve unique open requirements.
   Use relative links and one owner per explanation. Reports and logs belong in ignored
   .local/ or CI artifacts; retain required manifests, lockfiles and migration history.
+- Update the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md) in the cloud repository
+  whenever a change affects its configured integration, callbacks, credentials locations or
+  deployment. Verify actual settings; keep secrets out and avoid duplicating the runbook here.
 - Reuse reviewed implementations and regressions. Preserve upstream pins, licenses and
   provenance in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Product code must stand
   alone without donor-product dependencies. Never change donor deployments.
