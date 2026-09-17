@@ -1,9 +1,13 @@
 # Hosted login and Connections
 
-Selected product direction. The cloud owner-login service is implemented and locally
-tested, including real WorkOS owner login and logout. Deployment is pending. Installation
-registration and cloud Connections are not implemented. The implementation sequence
-is owned only by [TODO.md](../TODO.md#hosted-login-and-native-connections).
+Selected product direction. Cloud owner login/logout and installation registration are
+implemented and locally tested against real WorkOS and PostgreSQL. Registration covers
+separate scoped credentials, revocation and exact OIDC callbacks. The existing installation
+OIDC adapter completed real login; installer integration and installation logout remain
+unfinished. WorkOS Connect currently has no logout endpoint in discovery. Cloud Connections
+and deployment are pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+are owned by that repository; the implementation sequence is owned only by
+[TODO.md](../TODO.md#hosted-login-and-native-connections).
 
 ## Product choices
 
