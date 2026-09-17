@@ -93,7 +93,7 @@ Expired links can be replaced with `administrator --issue`; completed setup cann
 reclaimed. Explicit subject/email bootstrap remains available for unattended configuration.
 Local evaluation uses a one-use login code instead.
 
-The illustrative **Team documents** recipe supplies GPT-6 Astra through OpenRouter,
+The illustrative **Team documents** recipe supplies GPT-6 Astra through direct OpenAI,
 with medium thinking. It does not include document ingestion or a document workflow.
 See [retained settings](#change-an-existing-installation) for supported changes and
 [TODO.md](../../TODO.md) for unfinished release and native application work.
@@ -121,7 +121,7 @@ Settings replace complete sections rather than recursively merging obsolete fiel
 
 The same `--settings` file can be supplied to `install`; complete supplied sections
 skip their questions. The example uses the recipe's model catalog and a private
-providers.env containing OPENROUTER_API_KEY. Without a recipe catalog, Models must
+providers.env containing OPENAI_API_KEY. Without a recipe catalog, Models must
 also supply configurationFile. Noninteractive configuration rejects missing credentials
 or disabled Models before writing files; it never prompts. Credentials belong in private
 files, not literal command-line arguments. Precedence is recipe defaults, settings overrides,

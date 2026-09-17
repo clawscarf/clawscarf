@@ -31,8 +31,8 @@
         "tools": true,
         "input": ["text", "image"],
         "route": {
-          "model": "openrouter/openai/gpt-6-astra",
-          "apiKeyEnv": "OPENROUTER_API_KEY"
+          "model": "openai/gpt-6-astra",
+          "apiKeyEnv": "OPENAI_API_KEY"
         }
       }
     ],

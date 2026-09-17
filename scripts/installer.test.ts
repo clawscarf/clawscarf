@@ -185,7 +185,6 @@ async function fixture(t: TestContext) {
     "Model catalog": "file",
     "Model catalog file": models,
     "secret:OpenAI LLM API key": "test-key",
-    "secret:OpenRouter LLM API key": "test-key",
     Connections: "off",
     "Start now?": false,
     [`Install in ${directory}?`]: true,
@@ -785,12 +784,12 @@ await test(
       directory: f.directory,
       recipe: "team-documents",
     });
-    assert.ok(ui.questions.includes("secret:OpenRouter LLM API key"));
+    assert.ok(ui.questions.includes("secret:OpenAI LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
     assert.ok(
       ui.questions.findIndex((question) =>
         question.endsWith("— configure installation"),
-      ) < ui.questions.indexOf("secret:OpenRouter LLM API key"),
+      ) < ui.questions.indexOf("secret:OpenAI LLM API key"),
     );
     assert.ok(!ui.questions.includes("Connections"));
     const file = await saveConfiguration(
@@ -806,6 +805,10 @@ await test(
       await import("./models/configuration.js");
     const routes = gatewayRoutesSchema.parse(modelConfig);
     assert.equal(routes.defaultModel, "gpt-6-astra");
+    assert.deepEqual(routes.models[0]?.route, {
+      model: "openai/gpt-6-astra",
+      apiKeyEnv: "OPENAI_API_KEY",
+    });
     assert.equal(routes.thinkingDefault, "medium");
     assert.ok(
       nativeAssignments(

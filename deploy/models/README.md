@@ -240,7 +240,9 @@ are not supported product installation modes.
 
 [The release catalog](catalog.json) contains model/provider choices for initial setup.
 Release creation embeds it by default; a release input can supply its own `modelCatalog`.
-Recipes choose defaults from those offerings. Model limits are explicit data, not
+Catalog order controls model/provider menu order, with direct providers first and
+OpenRouter last. Recipes choose defaults from those offerings; Team documents selects
+direct OpenAI GPT-6 Astra with medium reasoning. Model limits are explicit data, not
 a discovery call made during installation. The current catalog conservatively enables
 text input; it does not claim tested image handling or every upstream model capability.
 

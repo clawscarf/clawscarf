@@ -11,7 +11,7 @@ Packs menu lists release packs, while explicit installation JSON may select a lo
 pack directory for development. See [release contents](../../release/README.md).
 
 [Team documents](team-documents.json) is an illustrative starting point. Its model catalog
-selects GPT-6 Astra through OpenRouter with medium thinking; setup asks for the provider
+selects GPT-6 Astra through direct OpenAI with medium thinking; setup asks for the provider
 key. The catalog is copied into the installation and remains customizable. Live provider
 execution for this recipe is not yet qualified. It supplies no document
 pack, ingestion system or validated question-answering behavior. Those are deliberately
