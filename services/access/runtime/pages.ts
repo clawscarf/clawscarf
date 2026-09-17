@@ -26,6 +26,8 @@ export function signedOutPage() {
 
 /** Only fixed copy and local links reach the page; provider/query details stay out. */
 export function signInFailurePage(code: string, local: boolean) {
+  if (code === "administrator_setup_required")
+    return `<!doctype html>${head}<body><main><h1>Finish administrator setup</h1><p>Return to the installer and open its private administrator sign-in link. If it expired, choose to create a new link in the terminal.</p></main></body></html>`;
   const title = code === "forbidden" ? "Access unavailable" : "Sign-in failed";
   const detail =
     code === "forbidden"

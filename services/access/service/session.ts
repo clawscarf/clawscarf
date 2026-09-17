@@ -52,6 +52,11 @@ export class SessionService {
         url: `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(next)}`,
         cookie: "",
       };
+    if (!setupToken && !(await this.store.administratorSetup()).complete)
+      throw new AccessError(
+        "administrator_setup_required",
+        "Return to the installer for a private administrator sign-in link.",
+      );
     const cookie = token(),
       state = token(),
       nonce = token(),
@@ -77,11 +82,17 @@ export class SessionService {
     if (!this.provider)
       throw new AccessError("forbidden", "Company login is not configured.");
     const transaction = await this.store.consumeLogin(hash(cookie), state);
-    if (!transaction)
+    if (!transaction) {
+      if (!(await this.store.administratorSetup()).complete)
+        throw new AccessError(
+          "administrator_setup_required",
+          "Return to the installer for a new administrator sign-in link.",
+        );
       throw new AccessError(
         "invalid_authorization",
         "Login expired or was already used. Start again.",
       );
+    }
     const { identity, logoutUrl } = await this.provider.exchange({
       ...transaction,
       callbackUrl,

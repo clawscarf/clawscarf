@@ -7,6 +7,7 @@ const errorStatus = {
   forbidden: 403,
   invalid_request: 400,
   invalid_authorization: 400,
+  administrator_setup_required: 409,
   email_unverified: 403,
   csrf_failed: 403,
   dependency_unavailable: 503,

@@ -50,7 +50,10 @@ Native initial configuration must use the same `clawscarf:<UUID>` identity.
 Without an explicit administrator identity, the local operator issues a private setup
 link using [the setup command](runtime/setup.ts) with `--issue`. The link expires after
 15 minutes. Its holder authenticates through the configured OIDC provider with a verified
-email; Access binds that exact issuer/subject, verifies native administrator authority,
+email. Until setup completes, ordinary sign-in and expired login callbacks direct the
+owner back to the installer for its private link rather than starting an unadmitted login.
+The link never grants access without successful authentication and native verification.
+Access binds that exact issuer/subject, verifies native administrator authority,
 prepares native team access and only then admits the user and creates their browser
 session. A temporary server-side credential permits this verification before admission.
 Replacing the link invalidates outstanding setup credentials; a failed native check can

@@ -849,7 +849,23 @@ await test(
           target,
         );
       }
-      await assert.rejects(callback(), { code: "forbidden" });
+      await assert.rejects(callback(), {
+        code: "administrator_setup_required",
+      });
+      const abandoned = await service.startLogin(
+        "/_clawscarf/setup-complete",
+        "replacement",
+      );
+      await pool.query("DELETE FROM clawscarf_access.login_transactions");
+      await assert.rejects(
+        service.completeLogin(
+          abandoned.cookie,
+          "expired-state",
+          "http://127.0.0.1:18800/_clawscarf/callback",
+        ),
+        { code: "administrator_setup_required" },
+      );
+      assert.equal((await repo.administratorSetup()).complete, false);
       await assert.rejects(callback("replacement"), {
         code: "access_denied",
       });

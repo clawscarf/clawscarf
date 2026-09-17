@@ -6,6 +6,8 @@ import { createAccessHttp } from "../../services/access/runtime/http.js";
 import { failureDiagnostic } from "../../services/access/runtime/failures.js";
 import { NativeFailure } from "../../services/access/types/native-errors.js";
 
+import { AccessError } from "../../services/access/types/errors.js";
+
 const origin = "https://clawscarf.example";
 const service = {
   validateReturn: safeReturn,
@@ -22,6 +24,33 @@ const service = {
   csrf() {},
   logout: () => Promise.reject(new Error("unused")),
 };
+
+await test("unfinished administrator setup returns terminal guidance without an ordinary sign-in link", async () => {
+  const fail = () =>
+    Promise.reject(
+      new AccessError("administrator_setup_required", "private details"),
+    );
+  const app = await createAccessHttp(
+    { ...service, startLogin: fail, completeLogin: fail },
+    origin,
+  );
+  try {
+    for (const url of [
+      "/_clawscarf/login",
+      "/_clawscarf/callback?state=expired&code=expired",
+    ]) {
+      const response = await app.inject({
+        url,
+        headers: { accept: "text/html" },
+      });
+      assert.equal(response.statusCode, 409);
+      assert.match(response.body, /Return to the installer/);
+      assert.doesNotMatch(response.body, /href=|private details/);
+    }
+  } finally {
+    await app.close();
+  }
+});
 
 await test("malformed JSON, empty JSON, unsupported content types and oversize input retain client status", async () => {
   const app = await createAccessHttp(service, origin);

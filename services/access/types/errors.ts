@@ -3,6 +3,7 @@ export type AccessCode =
   | "forbidden"
   | "invalid_request"
   | "invalid_authorization"
+  | "administrator_setup_required"
   | "email_unverified"
   | "csrf_failed"
   | "dependency_unavailable"
