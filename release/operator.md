@@ -32,7 +32,8 @@ The current local assembly supports macOS arm64 with Docker Desktop only.
 
 The installer reviews recipe settings before credentials, prepares the installation,
 and offers **Start now**. It starts a macOS user service; closing the terminal leaves it
-running. OIDC setup supplies a private first-administrator claim link. The same public
+running. Administrator setup supplies a private sign-in link and waits for successful
+browser setup, with replacement links offered on expiry. The same public
 operations are available through `configure`, `validate`, `plan`, `apply`, `start`,
 `status`, `stop`, `login` and `administrator`. See the source installation guide for
 current retained-settings limitations. The interactive installer still creates new

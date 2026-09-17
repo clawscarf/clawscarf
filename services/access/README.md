@@ -25,11 +25,15 @@ requires a loopback public origin and normally a loopback bind. In a container,
 port must remain loopback-only. Set the container UID/GID to the owner of the private
 configuration mount, preserving restrictive file permissions. The operator runs
 [local-token command](runtime/local-token.ts) to create a five-minute,
-one-use sign-in code and receives the local sign-in URL. The code is exchanged for
+one-use sign-in link. Its code is carried in the URL fragment, read and cleared by the
+browser, then submitted only when the user selects **Continue**. It is exchanged for
 an HTTP-only session cookie, never a permanent anonymous administrator session.
 Issuing a new code invalidates any outstanding code.
-The command's `--json` option returns `{ "url": "…", "code": "…" }` for private
+The command's `--json` option returns `{ "url": "…", "code": "…", "expiresAt": "…" }` for private
 operator tooling. Treat that output as a temporary credential; never log it as diagnostics.
+The local operator can observe that specific login with `--status <code-sha256>`.
+Consumption and session creation commit together; a failed session write cannot signal
+completion. The installer waits for this confirmation, not merely an opened link.
 
 For the assembled single-host path, use the [team profile](../../deploy/local/README.md#team-profile).
 
@@ -52,6 +56,8 @@ session. A temporary server-side credential permits this verification before adm
 Replacing the link invalidates outstanding setup credentials; a failed native check can
 be retried only by the bound identity. Completion consumes the link permanently, including
 across restarts. The command without `--issue` reports setup status without issuing a link.
+Setup links finish on an authenticated page directing the administrator back to the
+terminal. The installer offers a replacement link on expiry; cancelling leaves services running.
 
 Unattended configuration can instead supply both `administratorSubject` and
 `administratorEmail`. Ordinary company sign-in never enrolls another identity. `runtime.managementOrigin` optionally selects

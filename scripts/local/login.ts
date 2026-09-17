@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { compose } from "./compose.js";
 import * as access from "../../services/access/generated/sdk.gen.js";
 import { LocalSetupError } from "./process.js";
@@ -6,7 +7,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ensurePrivateFile, readState } from "./state.js";
 
-export async function localLoginCode(directory: string) {
+async function localTokenCommand(
+  directory: string,
+  args: string[],
+): Promise<unknown> {
   if ((await readState(directory)).input.team)
     throw new LocalSetupError(
       "invalid_team_configuration",
@@ -21,10 +25,31 @@ export async function localLoginCode(directory: string) {
     "node",
     "services/access/runtime/local-token.js",
     "--json",
+    ...args,
   ]);
+  return JSON.parse(output);
+}
+export async function localLoginCode(directory: string) {
   return z
-    .strictObject({ url: z.url(), code: z.string().min(1) })
-    .parse(JSON.parse(output));
+    .strictObject({
+      url: z.url(),
+      code: z.string().min(1),
+      expiresAt: z.iso.datetime(),
+    })
+    .parse(await localTokenCommand(directory, []));
+}
+export async function localLoginStatus(directory: string, code: string) {
+  return z
+    .strictObject({
+      complete: z.boolean(),
+      expiresAt: z.iso.datetime().nullable(),
+    })
+    .parse(
+      await localTokenCommand(directory, [
+        "--status",
+        createHash("sha256").update(code).digest("hex"),
+      ]),
+    );
 }
 /** Uses the same one-use login and native-authorized REST path as the browser. */
 export async function verifyLocalAdministrator(

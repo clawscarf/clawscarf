@@ -92,7 +92,11 @@ Sign in through your provider; Access binds the verified identity and verifies n
 administrator authority before completing setup. Ordinary sign-in cannot claim the server.
 Expired links can be replaced with `administrator --issue`; completed setup cannot be
 reclaimed. Explicit subject/email bootstrap remains available for unattended configuration.
-Local evaluation uses a one-use login code instead.
+Local evaluation uses a five-minute, one-use link with the code included in its URL
+fragment; select **Continue** in the browser without copying a separate code. Both
+flows show **Administrator ready** after sign-in. The installer waits for confirmation,
+then continues automatically. Expired links offer a retry; cancelling keeps the server
+running. Links are clickable in supporting terminals and remain visible for copying.
 
 The illustrative **Team documents** recipe supplies GPT-6 Astra through direct OpenAI,
 with medium thinking. It does not include document ingestion or a document workflow.
@@ -220,7 +224,7 @@ inference or continuous health of every upstream provider. `logs` prints
 the last 100 lines of an allowlisted private operator log; treat logs as private.
 `logs --help` lists controller/forward and all Compose exit-monitor log names.
 Service application output remains available through Compose logs.
-`login` creates a new local login code; company deployments use their configured IdP.
+`login` creates a new local sign-in link; company deployments use their configured IdP.
 
 Company HTTPS/OIDC supports the private administrator claim or explicit subject/email bootstrap;
 copyable invitation links and native People management are planned, with explicit

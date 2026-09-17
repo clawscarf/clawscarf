@@ -55,6 +55,15 @@ await test(
       );
       const code = randomUUID();
       await repo.createLocalToken(hash(code));
+      assert.equal((await repo.localTokenStatus(hash(code))).complete, false);
+      // A failed session write must not consume the link or signal completion.
+      await pool.query(`CREATE FUNCTION clawscarf_access.reject_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'session unavailable'; END $$;
+        CREATE TRIGGER reject_session BEFORE INSERT ON clawscarf_access.browser_sessions FOR EACH ROW EXECUTE FUNCTION clawscarf_access.reject_session();`);
+      await assert.rejects(service.localLogin(code), /session unavailable/);
+      assert.equal((await repo.localTokenStatus(hash(code))).complete, false);
+      await pool.query(
+        "DROP TRIGGER reject_session ON clawscarf_access.browser_sessions; DROP FUNCTION clawscarf_access.reject_session()",
+      );
       const outcomes = await Promise.allSettled([
         service.localLogin(code),
         service.localLogin(code),
@@ -65,6 +74,7 @@ await test(
       );
       const success = outcomes.find((value) => value.status === "fulfilled");
       assert.ok(success?.status === "fulfilled");
+      assert.equal((await repo.localTokenStatus(hash(code))).complete, true);
       const actor = await service.authenticate(success.value.session);
       assert.equal(actor.user.id, id.administrator.id);
       assert.throws(() =>
@@ -111,6 +121,21 @@ await test(
         const form = await app.inject({ url: "/_clawscarf/local-sign-in" });
         assert.equal(form.headers["referrer-policy"], "same-origin");
         assert.match(form.body, /Sign-in code/);
+        assert.match(
+          form.headers["content-security-policy"] ?? "",
+          /script-src 'sha256-/,
+        );
+        const complete = await app.inject({
+          url: "/_clawscarf/setup-complete",
+          cookies: { clawscarf_session: success.value.session },
+        });
+        assert.equal(complete.statusCode, 200);
+        assert.match(complete.body, /Administrator ready/);
+        assert.match(complete.body, /Return to your terminal/);
+        assert.equal(
+          (await app.inject({ url: "/_clawscarf/setup-complete" })).statusCode,
+          401,
+        );
         const me = await app.inject({
           url: "/_clawscarf/session",
           headers: { cookie: `clawscarf_session=${success.value.session}` },
@@ -805,7 +830,10 @@ await test(
         native,
       );
       async function callback(setup?: string) {
-        const login = await service.startLogin("/", setup);
+        const login = await service.startLogin(
+          setup ? "/_clawscarf/setup-complete" : "/",
+          setup,
+        );
         const response = await fetch(login.url, { redirect: "manual" });
         await response.body?.cancel();
         const target = response.headers.get("location");
@@ -828,7 +856,13 @@ await test(
       );
       await repo.withEnrollmentLock(async (locked) => {
         await assert.rejects(
-          locked.finishAdministratorSetup(hash("replacement"), bound.id),
+          locked.finishAdministratorSetup(
+            hash("replacement"),
+            bound.id,
+            hash("session"),
+            "csrf",
+            null,
+          ),
           { code: "23514" },
         );
       });
@@ -837,7 +871,15 @@ await test(
         "ALTER TABLE clawscarf_access.users DROP CONSTRAINT reject_admission",
       );
       failNative = false;
+      await pool.query(`CREATE FUNCTION clawscarf_access.reject_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.purpose='browser' THEN RAISE EXCEPTION 'session unavailable'; END IF; RETURN NEW; END $$;
+        CREATE TRIGGER reject_session BEFORE INSERT ON clawscarf_access.browser_sessions FOR EACH ROW EXECUTE FUNCTION clawscarf_access.reject_session();`);
+      await assert.rejects(callback("replacement"), /session unavailable/);
+      assert.equal((await repo.administratorSetup()).complete, false);
+      await pool.query(
+        "DROP TRIGGER reject_session ON clawscarf_access.browser_sessions; DROP FUNCTION clawscarf_access.reject_session()",
+      );
       const completed = await callback("replacement");
+      assert.equal(completed.returnTo, "/_clawscarf/setup-complete");
       assert.equal(
         (await service.authenticate(completed.session)).user.id,
         bound.id,

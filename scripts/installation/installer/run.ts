@@ -9,6 +9,7 @@ import {
   progress,
   requireTerminal,
   terminalPrompts,
+  terminalLink,
   type InstallerPrompts,
 } from "./prompts.js";
 import { saveConfiguration } from "../save.js";
@@ -16,7 +17,7 @@ import { planInstallation, applyInstallation } from "../plan.js";
 import { doctorInstallation } from "../doctor.js";
 import { startInstallation } from "../lifecycle.js";
 import { administratorSetup } from "../administrator.js";
-import { localLoginCode } from "../../local/login.js";
+import { localLoginCode, localLoginStatus } from "../../local/login.js";
 import { InstallationError } from "../errors.js";
 
 const operations = {
@@ -26,6 +27,7 @@ const operations = {
   start: startInstallation,
   administrator: administratorSetup,
   login: localLoginCode,
+  loginStatus: localLoginStatus,
 };
 export async function installFromAnswers(
   options: InstallOptions,
@@ -78,41 +80,31 @@ export async function installFromAnswers(
     if (config.access.mode === "oidc") {
       const current = await operator.administrator(stateDirectory);
       if (!current.complete) {
-        const claim = await operator.administrator(stateDirectory, true);
-        if (!claim.url || !claim.expiresAt)
-          throw new InstallationError(
-            "unavailable",
-            "Administrator setup did not return a login link.",
-          );
-        ui.note(
-          `${claim.url}\nPrivate, one-use link. Sign in to become this server's administrator. Expires at ${claim.expiresAt}.`,
-          "Set up administrator",
+        await browserSignIn(
+          ui,
+          task,
+          () => operator.administrator(stateDirectory, true),
+          () => operator.administrator(stateDirectory),
         );
-        await task("Waiting for administrator sign-in", async (signal) => {
-          while (Date.now() < Date.parse(claim.expiresAt ?? "")) {
-            signal.throwIfAborted();
-            if ((await operator.administrator(stateDirectory)).complete) return;
-            await delay(3000, undefined, { signal }).catch((error: unknown) => {
-              signal.throwIfAborted();
-              throw error;
-            });
-          }
-          throw new InstallationError(
-            "unavailable",
-            `Setup link expired. Issue another with: pnpm clawscarf administrator --directory ${quote(directory)} --issue`,
-          );
-        });
       }
       const origin =
         config.exposure.mode === "https"
           ? config.exposure.applicationOrigin
           : "";
-      ui.note(origin, "OpenClaw");
+      ui.note(terminalLink(origin), "OpenClaw");
     } else {
-      const login = await operator.login(stateDirectory);
-      ui.note(
-        `${login.url}\nOne-use code: ${login.code}`,
-        "Administrator login",
+      let code = "";
+      await browserSignIn(
+        ui,
+        task,
+        async () => {
+          const login = await operator.login(stateDirectory);
+          code = login.code;
+          const url = new URL(login.url);
+          url.searchParams.set("returnTo", "/_clawscarf/setup-complete");
+          return { url: url.toString(), expiresAt: login.expiresAt };
+        },
+        () => operator.loginStatus(stateDirectory, code),
       );
     }
     ui.note(
@@ -131,6 +123,44 @@ export async function installFromAnswers(
       "Installation needs attention",
     );
     throw error;
+  }
+}
+async function browserSignIn(
+  ui: InstallerPrompts,
+  task: typeof progress,
+  issue: () => Promise<{ url?: string | undefined; expiresAt: string | null }>,
+  observe: () => Promise<{ complete: boolean; expiresAt: string | null }>,
+) {
+  for (;;) {
+    const link = await issue();
+    if (!link.url || !link.expiresAt)
+      throw new InstallationError(
+        "unavailable",
+        "Administrator setup did not return a login link.",
+      );
+    ui.note(
+      `${terminalLink(link.url)}\nPrivate, one-use link. Expires at ${link.expiresAt}.`,
+      "Set up administrator",
+    );
+    const complete = await task(
+      "Waiting for administrator sign-in",
+      async (signal) => {
+        for (;;) {
+          signal.throwIfAborted();
+          const status = await observe();
+          if (status.complete) return true;
+          if (!status.expiresAt || Date.now() >= Date.parse(status.expiresAt))
+            return false;
+          await delay(3000, undefined, { signal }).catch((error: unknown) => {
+            signal.throwIfAborted();
+            throw error;
+          });
+        }
+      },
+    );
+    if (complete) return;
+    if (!(await ui.confirm("Login link expired. Create a new link?", true)))
+      throw new InstallerCancelled();
   }
 }
 function quote(value: string) {

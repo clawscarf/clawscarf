@@ -413,6 +413,7 @@ await test(
     for (const fail of [false, true, "cancel"] as const) {
       const f = await fixture(t);
       const calls: string[] = [];
+      let links = 0;
       const answers: Record<string, string | string[] | boolean> = {
         ...f.answers,
       };
@@ -454,18 +455,44 @@ await test(
         },
         administrator: () =>
           Promise.resolve({ complete: true, expiresAt: null }),
-        login: () =>
-          Promise.resolve({
-            url: "http://127.0.0.1:18800/_clawscarf/local-sign-in",
+        login: () => {
+          links++;
+          return Promise.resolve({
+            url: "http://127.0.0.1:18800/_clawscarf/local-sign-in#code=one-use-fixture",
             code: "one-use-fixture",
-          }),
+            expiresAt: new Date(Date.now() + 300_000).toISOString(),
+          });
+        },
+        loginStatus: (_state, code) => {
+          assert.equal(code, "one-use-fixture");
+          if (links === 1) {
+            calls.push("login-expired");
+            return Promise.resolve({
+              complete: false,
+              expiresAt: new Date(0).toISOString(),
+            });
+          }
+          calls.push("login-complete");
+          return Promise.resolve({ complete: true, expiresAt: null });
+        },
       });
       if (fail) await assert.rejects(work);
       else assert.equal((await work).state, "running");
       assert.deepEqual(
         calls,
-        fail ? ["doctor", "apply"] : ["doctor", "apply", "start"],
+        fail
+          ? ["doctor", "apply"]
+          : ["doctor", "apply", "start", "login-expired", "login-complete"],
       );
+      if (!fail) {
+        assert.equal(links, 2);
+        assert.ok(
+          ui.notes.some((note) =>
+            note.includes("returnTo=%2F_clawscarf%2Fsetup-complete#code="),
+          ),
+        );
+        assert.ok(!ui.notes.some((note) => note.includes("One-use code:")));
+      }
       assert.ok(
         !(
           await readFile(join(f.directory, "installation.json"), "utf8")

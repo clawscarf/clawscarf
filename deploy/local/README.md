@@ -362,9 +362,9 @@ runtime, establishes standard SSH application/widget forwards and starts the com
 It checks native health, then exercises local login and native administrator authorization
 through the generated REST client. The verification session is logged out after its
 check. In another terminal, `pnpm clawscarf login --state .local/my-team` issues a
-five-minute, one-use code. Foreground logs never contain that credential. Ordinary
-[installation start](installation.md) runs persistently and returns the
-login continuation directly to its caller.
+five-minute, one-use sign-in link. Foreground logs never contain that credential.
+Ordinary [installation start](installation.md) runs persistently; use `login` explicitly
+to obtain a link. The installer supplies the link and waits for browser sign-in.
 Initial native team preparation establishes the administrator profile and explicit role
 once. Its pending/completed records prevent an uncertain change from being replayed
 automatically. Later startup verifies access without reapplying those native settings.

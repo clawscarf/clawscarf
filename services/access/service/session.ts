@@ -25,6 +25,7 @@ export function safeReturn(
     (url.pathname.startsWith("/_clawscarf") &&
       url.pathname !== "/_clawscarf/team/" &&
       url.pathname !== "/_clawscarf/account/" &&
+      url.pathname !== "/_clawscarf/setup-complete" &&
       !applicationPath(url.pathname)) ||
     url.pathname + url.search !== value
   )
@@ -90,6 +91,7 @@ export class SessionService {
         "Sign in with a verified email address.",
       );
     const setupTokenHash = transaction.setupTokenHash;
+    const session = token();
     const user = setupTokenHash
       ? await this.store.withEnrollmentLock(async (store) => {
           if (!this.native)
@@ -111,15 +113,26 @@ export class SessionService {
             };
             await this.native.verifyAdministrator(actor, credential);
             await this.native.prepareTeam(actor, credential);
-            await store.finishAdministratorSetup(setupTokenHash, person.id);
+            await store.finishAdministratorSetup(
+              setupTokenHash,
+              person.id,
+              hash(session),
+              token(),
+              logoutUrl,
+            );
             return person;
           } finally {
             await store.revokeDelegation(hash(credential));
           }
         })
       : await this.store.admitIdentity(identity);
-    const session = token();
-    await this.store.createSession(user.id, hash(session), token(), logoutUrl);
+    if (!setupTokenHash)
+      await this.store.createSession(
+        user.id,
+        hash(session),
+        token(),
+        logoutUrl,
+      );
     return { session, returnTo: this.validateReturn(transaction.returnTo) };
   }
   async localLogin(value: string, returnTo = "/") {
@@ -129,14 +142,18 @@ export class SessionService {
         "forbidden",
         "Local sign-in is disabled in team mode.",
       );
-    const user = await this.store.consumeLocalToken(hash(value));
-    if (!user)
+    const session = token();
+    if (
+      !(await this.store.createLocalSession(
+        hash(value),
+        hash(session),
+        token(),
+      ))
+    )
       throw new AccessError(
         "invalid_authorization",
         "Local sign-in expired or was already used.",
       );
-    const session = token();
-    await this.store.createSession(user.id, hash(session), token(), null);
     return { session, returnTo: next };
   }
   async authenticate(value: string): Promise<Session> {

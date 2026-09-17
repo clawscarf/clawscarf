@@ -3,6 +3,8 @@ import {
   signedOutPage,
   signInFailurePage,
   signInPagePolicy,
+  localSignInPagePolicy,
+  setupCompletePage,
 } from "./pages.js";
 import Fastify, {
   type FastifyInstance,
@@ -146,6 +148,7 @@ export async function createAccessHttp(
         "/_clawscarf/callback",
         "/_clawscarf/local",
         "/_clawscarf/local-sign-in",
+        "/_clawscarf/setup-complete",
       ].includes(req.routeOptions.url ?? "")
     ) {
       void reply
@@ -305,13 +308,20 @@ export async function createAccessHttp(
     },
     async (req, reply) =>
       reply
-        .header("Content-Security-Policy", signInPagePolicy)
+        .header("Content-Security-Policy", localSignInPagePolicy)
         .header("Referrer-Policy", "same-origin")
         .type("text/html")
         .send(
           localSignInPage(service.validateReturn(req.query?.returnTo ?? "/")),
         ),
   );
+  app.get("/_clawscarf/setup-complete", async (req, reply) => {
+    await service.authenticate(req.cookies.clawscarf_session ?? "");
+    return reply
+      .header("Content-Security-Policy", signInPagePolicy)
+      .type("text/html")
+      .send(setupCompletePage());
+  });
   app.get("/_clawscarf/signed-out", async (_req, reply) =>
     reply.type("text/html").send(signedOutPage()),
   );

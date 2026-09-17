@@ -18,7 +18,7 @@ try {
       throw Error("Company login is not configured.");
     const value = token();
     await storage.repository.beginAdministratorSetup(hash(value));
-    url = `${config.origin}/_clawscarf/login?setup=${encodeURIComponent(value)}`;
+    url = `${config.origin}/_clawscarf/login?setup=${encodeURIComponent(value)}&returnTo=${encodeURIComponent("/_clawscarf/setup-complete")}`;
   }
   process.stdout.write(
     JSON.stringify({

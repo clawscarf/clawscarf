@@ -162,6 +162,7 @@ async function fixture() {
         return Promise.resolve({
           code: "fixture-one-use-code",
           url: `${origin}/_clawscarf/local-sign-in`,
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
         });
       });
     },

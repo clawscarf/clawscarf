@@ -235,7 +235,22 @@ export class PostgresAccessStore implements AccessStore {
     csrfToken: string,
     logoutUrl: string | null,
   ) {
-    const result = await (this.client ?? this.pool).query(
+    await this.insertSession(
+      this.client ?? this.pool,
+      userId,
+      digest,
+      csrfToken,
+      logoutUrl,
+    );
+  }
+  private async insertSession(
+    client: Pool | PoolClient,
+    userId: string,
+    digest: string,
+    csrfToken: string,
+    logoutUrl: string | null,
+  ) {
+    const result = await client.query(
       "INSERT INTO clawscarf_access.browser_sessions(hash,user_id,admission_revision,csrf,logout_redirect) SELECT $1,id,revision,$3,$4 FROM clawscarf_access.users WHERE id=$2 AND admitted",
       [
         digest,
@@ -431,7 +446,13 @@ export class PostgresAccessStore implements AccessStore {
       return user(person);
     });
   }
-  async finishAdministratorSetup(digest: string, userId: string) {
+  async finishAdministratorSetup(
+    digest: string,
+    userId: string,
+    sessionHash: string,
+    csrfToken: string,
+    logoutUrl: string | null,
+  ) {
     await this.transaction(async (client) => {
       const claimed = await client.query(
         "UPDATE clawscarf_access.server SET setup_complete=true,setup_token_hash=NULL,setup_expires_at=NULL WHERE NOT setup_complete AND setup_token_hash=$1 AND administrator_id=$2 AND setup_subject IS NOT NULL AND setup_expires_at>clock_timestamp() RETURNING id",
@@ -450,19 +471,48 @@ export class PostgresAccessStore implements AccessStore {
         "DELETE FROM clawscarf_access.browser_sessions WHERE purpose='setup' AND user_id=$1",
         [userId],
       );
+      await this.insertSession(
+        client,
+        userId,
+        sessionHash,
+        csrfToken,
+        logoutUrl,
+      );
     });
   }
-  async consumeLocalToken(digest: string) {
+  async createLocalSession(
+    digest: string,
+    sessionHash: string,
+    csrfToken: string,
+  ) {
     return this.transaction(async (client) => {
       const consumed = await client.query(
-        "DELETE FROM clawscarf_access.local_tokens WHERE hash=$1 AND expires_at>clock_timestamp() RETURNING hash",
+        "UPDATE clawscarf_access.local_tokens SET consumed_at=clock_timestamp() WHERE hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() RETURNING hash",
         [digest],
       );
-      if (consumed.rowCount !== 1) return null;
+      if (consumed.rowCount !== 1) return false;
       const result = await client.query<UserRow>(
         "SELECT u.* FROM clawscarf_access.users u JOIN clawscarf_access.server s ON s.administrator_id=u.id WHERE u.admitted",
       );
-      return result.rows[0] ? user(result.rows[0]) : null;
+      const person = result.rows[0];
+      if (!person)
+        throw new AccessError("forbidden", "This account is not admitted.");
+      await this.insertSession(client, person.id, sessionHash, csrfToken, null);
+      return true;
     });
+  }
+  async localTokenStatus(digest: string) {
+    const result = await (this.client ?? this.pool).query<{
+      consumed_at: Date | null;
+      expires_at: Date;
+    }>(
+      "SELECT consumed_at,expires_at FROM clawscarf_access.local_tokens WHERE hash=$1",
+      [digest],
+    );
+    const row = result.rows[0];
+    return {
+      complete: row?.consumed_at != null,
+      expiresAt: row?.expires_at.toISOString() ?? null,
+    };
   }
 }

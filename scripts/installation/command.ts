@@ -27,7 +27,7 @@ import { upgradeLocal } from "../local/upgrade.js";
 import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
 import { operateConnectionsRuntime } from "../local/connections-runtime.js";
-import { progress } from "./installer/prompts.js";
+import { progress, terminalLink } from "./installer/prompts.js";
 import { runInstaller } from "./installer/run.js";
 import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
 import { runSettings, readInstallationSettings } from "./installer/settings.js";
@@ -250,7 +250,11 @@ export function installationCommand() {
     });
   withLocation(program.command("login")).action(
     async (options: LocationOptions) => {
-      output(await localLoginCode(await resolveLocation(options)));
+      const login = await localLoginCode(await resolveLocation(options));
+      output(
+        login,
+        `${terminalLink(login.url)}\nExpires at ${login.expiresAt}.`,
+      );
     },
   );
   withLocation(program.command("upgrade"))

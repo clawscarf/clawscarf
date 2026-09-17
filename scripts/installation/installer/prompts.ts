@@ -5,6 +5,12 @@ import { InstallationError } from "../errors.js";
 export class InstallerCancelled extends Error {}
 export class SectionCancelled extends Error {}
 export type Choice = { value: string; label: string; hint?: string };
+/** OSC 8 adds terminal links; the visible URL also works in terminals without it. */
+export function terminalLink(url: string): string {
+  return process.stdout.isTTY && process.env.TERM !== "dumb"
+    ? `\u001b]8;;${url}\u001b\\${url}\u001b]8;;\u001b\\`
+    : url;
+}
 export interface InstallerPrompts {
   text(
     message: string,
