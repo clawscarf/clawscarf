@@ -3,8 +3,11 @@
 Selected product direction. Cloud owner login/logout and installation registration are
 implemented and locally tested against real WorkOS and PostgreSQL. Registration covers
 separate scoped credentials, revocation and exact OIDC callbacks. The existing installation
-OIDC adapter completed real login; installer integration and installation logout remain
-unfinished. WorkOS Connect currently has no logout endpoint in discovery. Cloud Connections
+OIDC adapter completed real administrator and invited-member login. The current working
+tree passed native member denial, open-session revocation and rejected reentry, plus generic
+OIDC handover/rejoining regressions. Logout requests fresh authentication on the next sign-in;
+WorkOS Connect currently has no logout endpoint in discovery, so this does not end its
+provider-wide session. Full installer registration wiring remains unfinished. Cloud Connections
 and deployment are pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).
