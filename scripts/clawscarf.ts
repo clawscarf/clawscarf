@@ -3,8 +3,8 @@ import { ModelConfigurationError } from "../runtime/model-contract.js";
 import { CommanderError } from "commander";
 import { ZodError } from "zod";
 import { InstallationError } from "./installation/errors.js";
-import { LocalSetupError } from "./local/process.js";
-import { LocalDatabaseError } from "./local/database.js";
+import { LocalSetupError } from "./deployment/process.js";
+import { LocalDatabaseError } from "./deployment/database.js";
 import { InstallerCancelled } from "./installation/installer/prompts.js";
 import { installationCommand } from "./installation/command.js";
 const program = installationCommand();
@@ -22,12 +22,22 @@ try {
     error instanceof LocalSetupError ||
     error instanceof LocalDatabaseError ||
     error instanceof ModelConfigurationError;
+  const remote =
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    "detail" in error &&
+    typeof error.detail === "string"
+      ? { code: error.code, detail: error.detail }
+      : null;
   const failure = {
     ...(error instanceof LocalSetupError && error.commandFailure
       ? { command: error.commandFailure }
       : {}),
     code:
-      error instanceof InstallerCancelled
+      remote?.code ??
+      (error instanceof InstallerCancelled
         ? "cancelled"
         : known
           ? error.code
@@ -35,9 +45,10 @@ try {
             ? "invalid_configuration"
             : error instanceof CommanderError
               ? "invalid_arguments"
-              : "operation_failed",
+              : "operation_failed"),
     detail:
-      error instanceof InstallerCancelled
+      remote?.detail ??
+      (error instanceof InstallerCancelled
         ? "Cancelled. Saved files and any running installation are retained."
         : error instanceof ModelConfigurationError
           ? `Model configuration failed (${error.code}).${error.code === "outcome_unknown" ? " Inspect native settings before retrying an apply." : ""}`
@@ -55,7 +66,7 @@ try {
                 "."
               : error instanceof CommanderError
                 ? error.message
-                : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried.",
+                : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried."),
   };
   process.stderr.write(
     (program.opts<{ json?: boolean }>().json

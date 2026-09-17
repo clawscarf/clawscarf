@@ -34,13 +34,17 @@ module.exports = {
     {
       name: "operator-internals-do-not-import-cli-entries",
       severity: "error",
-      from: { path: "^scripts/(installation|local|models|packs|release)/" },
-      to: { path: "^scripts/(clawscarf|local|models|packs|controller)\\.ts$" },
+      from: {
+        path: "^scripts/(installation|deployment|models|packs|release)/",
+      },
+      to: {
+        path: "^scripts/(clawscarf|deployment|models|packs|controller)\\.ts$",
+      },
     },
     {
       name: "component-operators-do-not-import-installation-ui",
       severity: "error",
-      from: { path: "^scripts/(local|models|packs)/" },
+      from: { path: "^scripts/(deployment|models|packs)/" },
       to: { path: "^scripts/installation/" },
     },
     {
@@ -135,7 +139,10 @@ module.exports = {
       name: "plugins-use-protocols-not-companion-internals",
       severity: "error",
       from: { path: "^plugins/" },
-      to: { path: "^(services|scripts)/" },
+      to: {
+        path: "^(services|scripts)/",
+        pathNot: "^services/access/generated/",
+      },
     },
     {
       name: "companions-do-not-import-plugin-or-tooling-internals",

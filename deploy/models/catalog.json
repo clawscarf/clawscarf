@@ -13,7 +13,8 @@
       "route": {
         "model": "openai/gpt-6-astra",
         "apiKeyEnv": "OPENAI_API_KEY"
-      }
+      },
+      "api": "openai-responses"
     },
     "reasoningLevels": ["low", "medium", "high"]
   },
@@ -31,7 +32,8 @@
       "route": {
         "model": "openai/gpt-5.6-terra",
         "apiKeyEnv": "OPENAI_API_KEY"
-      }
+      },
+      "api": "openai-responses"
     },
     "reasoningLevels": ["low", "medium", "high"]
   },
@@ -49,7 +51,8 @@
       "route": {
         "model": "openai/gpt-5.6-luna",
         "apiKeyEnv": "OPENAI_API_KEY"
-      }
+      },
+      "api": "openai-responses"
     },
     "reasoningLevels": ["low", "medium", "high"]
   },

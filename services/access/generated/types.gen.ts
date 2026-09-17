@@ -28,6 +28,26 @@ export type NavigationLink = {
     href: string;
 };
 
+export type Role = {
+    id: string;
+    administrator: boolean;
+};
+
+export type Person = {
+    id: string;
+    identity: string;
+    name: string;
+    email: string;
+    role: string | null;
+};
+
+export type Invitation = {
+    id: string;
+    email: string;
+    expiresAt: string;
+    status: 'pending' | 'accepted' | 'revoked' | 'expired';
+};
+
 export type HealthData = {
     body?: never;
     path?: never;
@@ -64,6 +84,10 @@ export type StartLoginData = {
          * Private, one-use first-administrator setup token.
          */
         setup?: string;
+        /**
+         * Private, one-use member invitation token.
+         */
+        invitation?: string;
     };
     url: '/_clawscarf/login';
 };
@@ -226,11 +250,12 @@ export type ListPeopleResponses = {
      * Success
      */
     200: {
-        people: Array<User>;
+        people: Array<Person>;
         /**
          * Current native enrollment configuration, observed without mutation after administrator authorization.
          */
         enrollment: 'ready' | 'preparation_required' | 'configuration_required';
+        roles: Array<Role>;
     };
 };
 
@@ -307,6 +332,116 @@ export type PrepareTeamErrors = {
 export type PrepareTeamError = PrepareTeamErrors[keyof PrepareTeamErrors];
 
 export type PrepareTeamResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type SetPersonRoleData = {
+    body: {
+        role: string;
+        expectedRole: string | null;
+    };
+    path: {
+        userId: string;
+    };
+    query?: never;
+    url: '/_clawscarf/people/{userId}/role';
+};
+
+export type SetPersonRoleErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type SetPersonRoleError = SetPersonRoleErrors[keyof SetPersonRoleErrors];
+
+export type SetPersonRoleResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type ListInvitationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/_clawscarf/invitations';
+};
+
+export type ListInvitationsErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type ListInvitationsError = ListInvitationsErrors[keyof ListInvitationsErrors];
+
+export type ListInvitationsResponses = {
+    /**
+     * Success
+     */
+    200: {
+        invitations: Array<Invitation>;
+    };
+};
+
+export type ListInvitationsResponse = ListInvitationsResponses[keyof ListInvitationsResponses];
+
+export type CreateInvitationData = {
+    body: {
+        email: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/_clawscarf/invitations';
+};
+
+export type CreateInvitationErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type CreateInvitationError = CreateInvitationErrors[keyof CreateInvitationErrors];
+
+export type CreateInvitationResponses = {
+    /**
+     * Success
+     */
+    200: {
+        invitation: Invitation;
+        url: string;
+    };
+};
+
+export type CreateInvitationResponse = CreateInvitationResponses[keyof CreateInvitationResponses];
+
+export type RevokeInvitationData = {
+    body?: never;
+    path: {
+        invitationId: string;
+    };
+    query?: never;
+    url: '/_clawscarf/invitations/{invitationId}';
+};
+
+export type RevokeInvitationErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type RevokeInvitationError = RevokeInvitationErrors[keyof RevokeInvitationErrors];
+
+export type RevokeInvitationResponses = {
     /**
      * Success
      */

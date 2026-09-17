@@ -1,7 +1,11 @@
+import { registerHostedLogin } from "../../cloud/registration.js";
+import { authorizeCloud } from "../../cloud/login.js";
+import { savedSetup } from "../configure.js";
 import * as clack from "@clack/prompts";
+import { styleText } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
 import { writeFile } from "node:fs/promises";
-import { resolve, join } from "node:path";
+import { dirname, resolve, join } from "node:path";
 import { collectInstallation, type InstallOptions } from "./collect.js";
 import {
   InstallerCancelled,
@@ -17,7 +21,6 @@ import { planInstallation, applyInstallation } from "../plan.js";
 import { doctorInstallation } from "../doctor.js";
 import { startInstallation } from "../lifecycle.js";
 import { administratorSetup } from "../administrator.js";
-import { localLoginCode, localLoginStatus } from "../../local/login.js";
 import { InstallationError } from "../errors.js";
 
 const operations = {
@@ -26,8 +29,7 @@ const operations = {
   apply: applyInstallation,
   start: startInstallation,
   administrator: administratorSetup,
-  login: localLoginCode,
-  loginStatus: localLoginStatus,
+  register: registerHostedLogin,
 };
 export async function installFromAnswers(
   options: InstallOptions,
@@ -38,27 +40,61 @@ export async function installFromAnswers(
       ui.note(message, "Startup");
     }),
 ) {
+  const saved = await savedSetup(options);
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
-  for (;;) {
+  while (!saved) {
     draft = await collectInstallation(ui, options, draft);
     try {
-      if (await ui.confirm(`Install in ${draft.directory}?`)) break;
+      if (await ui.confirm(`Install in ${draft.directory}?`, true)) break;
       return { state: "cancelled" };
     } catch (error) {
       if (!(error instanceof SectionCancelled)) throw error;
     }
   }
-  const { directory, config, inputs } = draft;
-  const configFile = await saveConfiguration(directory, config, inputs);
+  const setup =
+    saved ??
+    (draft
+      ? {
+          configFile: await saveConfiguration(
+            draft.directory,
+            draft.config,
+            draft.inputs,
+          ),
+          config: draft.config,
+        }
+      : undefined);
+  if (!setup)
+    throw new InstallationError(
+      "invalid_configuration",
+      "No installation settings were collected.",
+    );
+  const { configFile, config } = setup;
+  const directory = dirname(configFile);
   const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
   try {
+    await task("Setting up sign-in", (signal) =>
+      operator.register(configFile, (url) =>
+        authorizeCloud(
+          url,
+          (link, code) => {
+            ui.note(
+              `${terminalLink(link)}\n\nApproval code: ${code}`,
+              styleText(
+                ["bold", "yellow"],
+                "ACTION REQUIRED — Sign in to ClawScarf",
+              ),
+            );
+          },
+          signal,
+        ),
+      ),
+    );
     const plan = await task("Checking installation settings", () =>
       operator.plan(configFile),
     );
     await writeFile(planFile, JSON.stringify(plan, null, 2) + "\n", {
       mode: 0o600,
-      flag: "wx",
     });
     await task("Checking Docker and required images", () =>
       operator.doctor(configFile),
@@ -68,47 +104,28 @@ export async function installFromAnswers(
     );
     const files = { configFile, planFile, stateDirectory };
     if (!(await ui.confirm("Start now?", true))) {
-      ui.note(
-        `pnpm clawscarf start --directory ${quote(directory)}`,
-        "Start later",
-      );
+      ui.note(`clawscarf start --directory ${quote(directory)}`, "Start later");
       return { state: "prepared", ...files };
     }
     await task("Starting ClawScarf", (_signal, report) =>
       operator.start(stateDirectory, report),
     );
-    if (config.access.mode === "oidc") {
-      const current = await operator.administrator(stateDirectory);
-      if (!current.complete) {
-        await browserSignIn(
-          ui,
-          task,
-          () => operator.administrator(stateDirectory, true),
-          () => operator.administrator(stateDirectory),
-        );
-      }
-      const origin =
-        config.exposure.mode === "https"
-          ? config.exposure.applicationOrigin
-          : "";
-      ui.note(terminalLink(origin), "OpenClaw");
-    } else {
-      let code = "";
+    const current = await operator.administrator(stateDirectory);
+    if (!current.complete) {
       await browserSignIn(
         ui,
         task,
-        async () => {
-          const login = await operator.login(stateDirectory);
-          code = login.code;
-          const url = new URL(login.url);
-          url.searchParams.set("returnTo", "/_clawscarf/setup-complete");
-          return { url: url.toString(), expiresAt: login.expiresAt };
-        },
-        () => operator.loginStatus(stateDirectory, code),
+        () => operator.administrator(stateDirectory, true),
+        () => operator.administrator(stateDirectory),
       );
     }
+    const origin =
+      config.exposure.mode === "https"
+        ? config.exposure.applicationOrigin
+        : `http://127.0.0.1:${String(config.exposure.applicationPort)}`;
+    ui.note(terminalLink(origin), "OpenClaw");
     ui.note(
-      `Status: pnpm clawscarf status --directory ${quote(directory)}\nStop: pnpm clawscarf stop --directory ${quote(directory)}`,
+      `Status: clawscarf status --directory ${quote(directory)}\nStop: clawscarf stop --directory ${quote(directory)}`,
       "Commands",
     );
     return { state: "running", ...files };
@@ -119,7 +136,7 @@ export async function installFromAnswers(
     )
       throw error;
     ui.note(
-      `Configuration: ${configFile}\nStatus: pnpm clawscarf status --directory ${quote(directory)}\nLogs: pnpm clawscarf logs --directory ${quote(directory)} --service supervisor\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
+      `Resume: clawscarf install --directory ${quote(directory)}\nConfiguration: ${configFile}\nStatus: clawscarf status --directory ${quote(directory)}\nLogs: clawscarf logs --directory ${quote(directory)} --service controller\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
       "Installation needs attention",
     );
     throw error;
@@ -139,8 +156,8 @@ async function browserSignIn(
         "Administrator setup did not return a login link.",
       );
     ui.note(
-      `${terminalLink(link.url)}\nPrivate, one-use link. Expires at ${link.expiresAt}.`,
-      "Set up administrator",
+      `ClawScarf has started. Open this private link in your browser to sign in, then return here.\n\n${terminalLink(link.url)}\n\nExpires at ${link.expiresAt}.`,
+      styleText(["bold", "yellow"], "ACTION REQUIRED — Administrator sign-in"),
     );
     const complete = await task(
       "Waiting for administrator sign-in",

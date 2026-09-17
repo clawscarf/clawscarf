@@ -13,7 +13,13 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "rewriteRelativeImportExtensions": true
+    "rewriteRelativeImportExtensions": true,
+    "disableSourceOfProjectReferenceRedirect": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "references": [
+    {
+      "path": "../../tsconfig.sdk.json"
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 import type { InstallationConfiguration } from "../../configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
 import { field } from "../inputs.js";
-import { connectionsBrokerUrlSchema } from "../../../local/configuration.js";
+import { connectionsBrokerUrlSchema } from "../../../deployment/configuration.js";
 import { InstallationError } from "../../errors.js";
 import { optionalCa } from "./certificates.js";
 import type { SetupInputs } from "../../save.js";

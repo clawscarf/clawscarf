@@ -41,6 +41,12 @@ await test(
     let administrator = true,
       nativeChecks = 0;
     const native: NativeAuthority = {
+      people: async (actor, credential) => ({
+        enrollment: await native.observeTeam(actor, credential),
+        roles: [],
+        people: [],
+      }),
+      setRole: () => Promise.resolve(),
       observeTeam: () =>
         administrator
           ? Promise.resolve("ready")

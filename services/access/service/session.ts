@@ -23,8 +23,6 @@ export function safeReturn(
     url.origin !== origin ||
     url.hash ||
     (url.pathname.startsWith("/_clawscarf") &&
-      url.pathname !== "/_clawscarf/team/" &&
-      url.pathname !== "/_clawscarf/account/" &&
       url.pathname !== "/_clawscarf/setup-complete" &&
       !applicationPath(url.pathname)) ||
     url.pathname + url.search !== value
@@ -45,8 +43,20 @@ export class SessionService {
   validateReturn(value: string): string {
     return safeReturn(value, this.applicationReturnPath);
   }
-  async startLogin(returnTo = "/", setupToken?: string, reauthenticate = false) {
+  async startLogin(
+    returnTo = "/",
+    setupToken?: string,
+    invitationToken?: string,
+    reauthenticate = false,
+  ) {
     const next = this.validateReturn(returnTo);
+    if (setupToken && invitationToken)
+      throw new AccessError(
+        "invalid_request",
+        "Choose setup or an invitation.",
+      );
+    if (invitationToken && !this.provider)
+      throw new AccessError("forbidden", "Invitations require company login.");
     if (!this.provider)
       return {
         url: `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(next)}`,
@@ -75,6 +85,9 @@ export class SessionService {
       codeVerifier,
       returnTo: next,
       ...(setupToken ? { setupTokenHash: hash(setupToken) } : {}),
+      ...(invitationToken
+        ? { invitationTokenHash: hash(invitationToken) }
+        : {}),
     });
     return { url, cookie };
   }
@@ -104,6 +117,51 @@ export class SessionService {
       );
     const setupTokenHash = transaction.setupTokenHash;
     const session = token();
+    if (transaction.invitationTokenHash) {
+      const digest = transaction.invitationTokenHash;
+      await this.store.withEnrollmentLock(async (store) => {
+        const native = this.native;
+        if (!native)
+          throw new AccessError(
+            "dependency_unavailable",
+            "Enrollment is unavailable.",
+          );
+        const credential = token();
+        const sponsor = await store.bindInvitation(
+          digest,
+          identity,
+          hash(credential),
+        );
+        try {
+          const actor = {
+            identity: sponsor.user.identity,
+            sessionHash: sponsor.hash,
+          };
+          await this.native.verifyAdministrator(actor, credential);
+          const person = await store.prepareEnrollment({
+            ...identity,
+            email: identity.email.toLowerCase(),
+          });
+          const sessions = new SessionService(store, null, this.origin);
+          await sessions.withEnrollmentSession(
+            sponsor.hash,
+            person.id,
+            (target) => native.enroll(actor, credential, person, target),
+          );
+          await this.native.verifyAdministrator(actor, credential);
+          await store.finishInvitation(
+            digest,
+            person.id,
+            hash(session),
+            token(),
+            logoutUrl,
+          );
+        } finally {
+          await store.revokeDelegation(sponsor.hash);
+        }
+      });
+      return { session, returnTo: this.validateReturn(transaction.returnTo) };
+    }
     const user = setupTokenHash
       ? await this.store.withEnrollmentLock(async (store) => {
           if (!this.native)

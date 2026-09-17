@@ -13,7 +13,6 @@ import Fastify, {
   LogController,
 } from "fastify";
 import cookie from "@fastify/cookie";
-import staticFiles from "@fastify/static";
 import formbody from "@fastify/formbody";
 import openapiGlue from "fastify-openapi-glue";
 import { fileURLToPath } from "node:url";
@@ -43,9 +42,16 @@ export async function createAccessHttp(
   registerApplication?: (app: FastifyInstance) => Promise<void>,
   enrollment?: Pick<
     EnrollmentService,
-    "list" | "prepareTeam" | "enroll" | "remove" | "enabled"
+    | "list"
+    | "prepareTeam"
+    | "enroll"
+    | "remove"
+    | "enabled"
+    | "setRole"
+    | "invitations"
+    | "invite"
+    | "revokeInvitation"
   >,
-  webRoot?: string,
   navigationLinks: readonly NavigationLink[] = [],
   logger: FastifyServerOptions["logger"] = { level: "error" },
 ) {
@@ -221,6 +227,28 @@ export async function createAccessHttp(
     return enrollment;
   };
   const handlers = {
+    setPersonRole: async (req, reply) => {
+      await team().setRole(
+        await actor(req, true),
+        req.params.userId,
+        req.body.role,
+        req.body.expectedRole,
+      );
+      return reply.code(200).send();
+    },
+    listInvitations: async (req, reply) =>
+      reply.code(200).send(await team().invitations(await actor(req, false))),
+    createInvitation: async (req, reply) =>
+      reply
+        .code(200)
+        .send(await team().invite(await actor(req, true), req.body.email)),
+    revokeInvitation: async (req, reply) => {
+      await team().revokeInvitation(
+        await actor(req, true),
+        req.params.invitationId,
+      );
+      return reply.code(200).send();
+    },
     listPeople: async (req, reply) =>
       reply.code(200).send(await team().list(await actor(req, false))),
     prepareTeam: async (req, reply) => {
@@ -240,6 +268,7 @@ export async function createAccessHttp(
       const result = await service.startLogin(
         req.query?.returnTo ?? "/",
         req.query?.setup,
+        req.query?.invitation,
         req.cookies.clawscarf_reauthenticate === "1",
       );
       cookies(reply, "clawscarf_login", result.cookie, 600);
@@ -333,21 +362,6 @@ export async function createAccessHttp(
   app.get("/_clawscarf/signed-out", async (_req, reply) =>
     reply.type("text/html").send(signedOutPage()),
   );
-  if (webRoot) {
-    await app.register(async (routes) => {
-      await routes.register(staticFiles, {
-        root: webRoot + "/assets",
-        prefix: "/_clawscarf/team/assets/",
-        wildcard: false,
-      });
-      routes.get("/_clawscarf/account/", async (_req, reply) =>
-        reply.sendFile("index.html", webRoot),
-      );
-      routes.get("/_clawscarf/team/", async (_req, reply) =>
-        reply.sendFile("index.html", webRoot),
-      );
-    });
-  }
   try {
     await registerApplication?.(app);
     await app.ready();

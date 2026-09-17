@@ -15,7 +15,11 @@ import { SetupInputs } from "./save.js";
 import { loadRecipes } from "./recipes/load.js";
 import { verifyReleasePacks } from "../release/packs.js";
 
-export type SetupOptions = { release?: string; recipes?: string };
+export type SetupOptions = {
+  release?: string;
+  recipes?: string;
+  cloudUrl?: string;
+};
 export async function setupContext(options: SetupOptions) {
   const releaseFile = resolve(
     options.release ??
@@ -30,7 +34,7 @@ export async function setupContext(options: SetupOptions) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT")
       throw new InstallationError(
         "unavailable",
-        "No bundled release is available. Use a published operator bundle, or supply --release <file> for development. See deploy/local/installation.md for preparing release inputs.",
+        "No bundled release is available. Use a published operator bundle, or supply --release <file> for development. See deploy/deployment/installation.md for preparing release inputs.",
       );
     throw error;
   }
@@ -48,7 +52,12 @@ export async function setupContext(options: SetupOptions) {
     ? await loadRecipes(resolve(options.recipes))
     : release.recipes;
   await verifyReleasePacks(release, releaseFile, recipes);
-  return { release, releaseFile, recipes };
+  return {
+    release,
+    releaseFile,
+    recipes,
+    ...(options.cloudUrl ? { cloudUrl: options.cloudUrl } : {}),
+  };
 }
 export type SetupContext = Awaited<ReturnType<typeof setupContext>>;
 
@@ -69,7 +78,14 @@ export function recipeConfiguration(
     releaseFile: context.releaseFile,
     stateDirectory: "./state",
     exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },
-    access: { mode: "local", administratorName: "Administrator" },
+    access: {
+      mode: "hosted",
+      administratorName: "Administrator",
+      registrationFile: "./secrets/hosted-login.json",
+      ...((context.cloudUrl ?? context.release.cloudUrl)
+        ? { cloudUrl: context.cloudUrl ?? context.release.cloudUrl }
+        : {}),
+    },
     resources: {
       gateway: { cpu: "2", memory: "2Gi" },
       worker: { cpu: "2", memory: "2Gi" },

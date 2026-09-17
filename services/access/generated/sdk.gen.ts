@@ -3,7 +3,7 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from '../../../generated/http/client/index.js';
 
 import { client } from './client.gen.js';
-import type { CompleteLoginData, CompleteLoginErrors, CompleteLoginResponses, EnrollPersonData, EnrollPersonErrors, EnrollPersonResponses, HealthData, HealthErrors, HealthResponses, ListPeopleData, ListPeopleErrors, ListPeopleResponses, LocalLoginData, LocalLoginErrors, LocalLoginResponses, LogoutData, LogoutErrors, LogoutResponses, PrepareTeamData, PrepareTeamErrors, PrepareTeamResponses, RemovePersonData, RemovePersonErrors, RemovePersonResponses, SessionData, SessionErrors, SessionResponses, StartLoginData, StartLoginErrors, StartLoginResponses } from './types.gen.js';
+import type { CompleteLoginData, CompleteLoginErrors, CompleteLoginResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, EnrollPersonData, EnrollPersonErrors, EnrollPersonResponses, HealthData, HealthErrors, HealthResponses, ListInvitationsData, ListInvitationsErrors, ListInvitationsResponses, ListPeopleData, ListPeopleErrors, ListPeopleResponses, LocalLoginData, LocalLoginErrors, LocalLoginResponses, LogoutData, LogoutErrors, LogoutResponses, PrepareTeamData, PrepareTeamErrors, PrepareTeamResponses, RemovePersonData, RemovePersonErrors, RemovePersonResponses, RevokeInvitationData, RevokeInvitationErrors, RevokeInvitationResponses, SessionData, SessionErrors, SessionResponses, SetPersonRoleData, SetPersonRoleErrors, SetPersonRoleResponses, StartLoginData, StartLoginErrors, StartLoginResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -98,5 +98,53 @@ export const prepareTeam = <ThrowOnError extends boolean = false>(options?: Opti
             type: 'apiKey'
         }, { name: 'x-csrf-token', type: 'apiKey' }],
     url: '/_clawscarf/team',
+    ...options
+});
+
+export const setPersonRole = <ThrowOnError extends boolean = false>(options: Options<SetPersonRoleData, ThrowOnError>): RequestResult<SetPersonRoleResponses, SetPersonRoleErrors, ThrowOnError> => (options.client ?? client).put<SetPersonRoleResponses, SetPersonRoleErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/people/{userId}/role',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const listInvitations = <ThrowOnError extends boolean = false>(options?: Options<ListInvitationsData, ThrowOnError>): RequestResult<ListInvitationsResponses, ListInvitationsErrors, ThrowOnError> => (options?.client ?? client).get<ListInvitationsResponses, ListInvitationsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }],
+    url: '/_clawscarf/invitations',
+    ...options
+});
+
+export const createInvitation = <ThrowOnError extends boolean = false>(options: Options<CreateInvitationData, ThrowOnError>): RequestResult<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError> => (options.client ?? client).post<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/invitations',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const revokeInvitation = <ThrowOnError extends boolean = false>(options: Options<RevokeInvitationData, ThrowOnError>): RequestResult<RevokeInvitationResponses, RevokeInvitationErrors, ThrowOnError> => (options.client ?? client).delete<RevokeInvitationResponses, RevokeInvitationErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'clawscarf_session',
+            type: 'apiKey'
+        }, { name: 'x-csrf-token', type: 'apiKey' }],
+    url: '/_clawscarf/invitations/{invitationId}',
     ...options
 });

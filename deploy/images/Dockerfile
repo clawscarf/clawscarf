@@ -31,8 +31,10 @@ RUN node download.mjs \
 
 FROM upstream AS access
 USER root
-WORKDIR /build/access
+WORKDIR /build/plugins/access
 COPY plugins/access/ ./
+COPY services/access/generated/ /build/services/access/generated/
+COPY generated/http/ /build/generated/http/
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
     && npm run build \
     && mkdir /out \

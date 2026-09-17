@@ -1,0 +1,16 @@
+export const localLogNames = [
+  "controller",
+  "execution",
+  "application",
+  "widgets",
+  "companion",
+  "postgres",
+  "models",
+  "models-database",
+  "execution-relay",
+  "browser",
+  "browser-egress",
+  "browser-node",
+  "browser-node-ingress",
+  "browser-node-dns",
+] as const;

@@ -9,14 +9,14 @@
   },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "build": "rm -rf dist && tsc -b tsconfig.sdk.json && tsc -p tsconfig.build.json && node --import tsx scripts/build-operator.ts && node --import tsx scripts/build-companion.ts && pnpm connectors:plugin:build && pnpm connections:web:build && pnpm access:web:build && pnpm access:plugin:build",
+    "build": "rm -rf dist && tsc -b tsconfig.sdk.json && tsc -p tsconfig.build.json && node --import tsx scripts/build-operator.ts && node --import tsx scripts/build-companion.ts && pnpm connectors:plugin:build && pnpm connections:web:build && pnpm access:plugin:build",
     "check": "pnpm format:check && pnpm codegen:check && pnpm typecheck && pnpm lint && pnpm architecture:check && pnpm docs:check && pnpm test && pnpm connectors:plugin:check && pnpm access:plugin:check",
     "typecheck": "tsc -b tsconfig.sdk.json && tsc --noEmit",
     "lint": "eslint ui apps scripts services tests runtime deploy/execution plugins/access/src plugins/connections/src plugins/connections/tests plugins/connections/scripts eslint.config.mjs .dependency-cruiser.cjs",
     "docs:check": "node --import tsx scripts/check-docs.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --import tsx --test scripts/*.test.ts tests/access/*.test.ts tests/connections/*.test.ts tests/models/*.test.ts tests/packs/*.test.ts tests/runtime/*.test.ts tests/companion/*.test.ts tests/local/*.test.ts",
+    "test": "node --import tsx --test scripts/*.test.ts tests/access/*.test.ts tests/connections/*.test.ts tests/models/*.test.ts tests/packs/*.test.ts tests/runtime/*.test.ts tests/companion/*.test.ts tests/deployment/*.test.ts",
     "connectors:plugin:setup": "npm --prefix plugins/connections run setup",
     "connectors:plugin:check": "npm --prefix plugins/connections run check && npm --prefix plugins/connections test",
     "connectors:plugin:build": "npm --prefix plugins/connections run build",
@@ -31,14 +31,13 @@
     "connections:web:build": "vite build --config services/connections/web/vite.config.ts",
     "connections:web:dev": "vite --config services/connections/web/vite.config.ts",
     "test:connections": "node --import tsx --test tests/connections/*.test.ts",
-    "access:web:build": "vite build --config services/access/web/vite.config.ts",
-    "access:web:dev": "vite --config services/access/web/vite.config.ts",
     "access:plugin:setup": "npm --prefix plugins/access ci --ignore-scripts",
     "access:plugin:build": "npm --prefix plugins/access run build",
     "access:plugin:check": "npm --prefix plugins/access run check && npm --prefix plugins/access run validate",
     "companion:start": "node --import tsx apps/companion/entry.ts",
     "clawscarf": "node --import tsx scripts/clawscarf.ts",
-    "http:generate": "node --import tsx scripts/generate-http.ts"
+    "http:generate": "node --import tsx scripts/generate-http.ts",
+    "cloud:generate": "openapi-ts -f scripts/cloud-api.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

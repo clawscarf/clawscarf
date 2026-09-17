@@ -48,7 +48,7 @@ export async function installationSummary(
       : config.exposure.applicationOrigin;
   return [
     `${config.name} — ${origin}`,
-    `Administrator: ${config.access.administratorName} · ${config.access.mode === "local" ? "Local login" : "Company login"}`,
+    `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
     `Models: ${model}`,
     `Connections: ${config.connections.mode === "disabled" ? "Off" : config.connections.mode}`,
     `Browser: ${config.browser.enabled ? "Experimental" : "Off"} · Packs: ${config.packs.flatMap((pack) => pack.members).join(", ") || "None"}`,

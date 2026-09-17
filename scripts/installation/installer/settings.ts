@@ -69,13 +69,12 @@ The server must stop. Pack changes finish at the next start.`,
     if (!(await ui.confirm("Apply these settings?"))) return;
     attempted = true;
     const current = await controlInstallation(directory, "status");
-    if (current.supervisor !== "not_running") {
+    if (current.state !== "stopped") {
       await progress("Stopping ClawScarf", async (signal) => {
         await controlInstallation(directory, "stop");
         const deadline = Date.now() + 120_000;
         while (
-          (await controlInstallation(directory, "status")).supervisor !==
-          "not_running"
+          (await controlInstallation(directory, "status")).state !== "stopped"
         ) {
           if (Date.now() >= deadline)
             throw new InstallationError(
@@ -104,7 +103,7 @@ The server must stop. Pack changes finish at the next start.`,
       );
     else
       ui.note(
-        `pnpm clawscarf start --state '${directory.replaceAll("'", "'\\''")}'`,
+        `clawscarf start --state '${directory.replaceAll("'", "'\\''")}'`,
         "Start later",
       );
   } catch (error) {

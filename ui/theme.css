@@ -4,7 +4,6 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 @source "./**/*.{ts,tsx}";
-@source "../services/access/web/**/*.{ts,tsx}";
 @source "../services/connections/web/**/*.{ts,tsx}";
 @custom-variant dark (&:is(.dark *));
 :root {

@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
-import { dirname, resolve, join } from "node:path";
-import { localInput } from "../../local/configuration.js";
+import { dirname, resolve } from "node:path";
+import { localInput } from "../../deployment/configuration.js";
 import {
   installationSchema,
   type InstallationDraft,
@@ -19,7 +19,7 @@ import {
 } from "../setup.js";
 import type { InstallerPrompts } from "./prompts.js";
 import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
-import { collectAccess } from "./sections/access.js";
+import { collectAccess, collectExposure } from "./sections/access.js";
 import {
   collectConnections,
   collectConnectionCredentials,
@@ -96,14 +96,6 @@ export async function collectInstallation(
       continue;
     }
     if (!options.existing) await newDirectory(directory);
-    if (
-      !options.existing &&
-      Buffer.byteLength(join(directory, "state/operator.sock")) > 100
-    )
-      throw new InstallationError(
-        "invalid_configuration",
-        "Choose a shorter installation directory (the control socket path must fit within 100 bytes).",
-      );
     const recipe = context.recipes.find((recipe) => recipe.id === recipeId);
     if (recipeId === undefined)
       throw new InstallationError(
@@ -119,6 +111,11 @@ export async function collectInstallation(
       resolveConfigurationInputs(
         setupDraft(context, recipeId, settings, inputs),
         options.settings ? dirname(resolve(options.settings)) : process.cwd(),
+      );
+    if (!options.existing && config.access.mode === "hosted")
+      config.access.registrationFile = resolve(
+        directory,
+        "secrets/hosted-login.json",
       );
     const presetFile = recipe?.models
       ? recipeModelFile(recipe.models, inputs)
@@ -168,11 +165,6 @@ export async function collectInstallation(
               await ui.text("New installation directory", directory),
             );
             await newDirectory(next);
-            if (Buffer.byteLength(join(next, "state/operator.sock")) > 100)
-              throw new InstallationError(
-                "invalid_configuration",
-                "Choose a shorter directory for the control socket.",
-              );
             directory = next;
             break;
           }
@@ -196,6 +188,9 @@ export async function collectInstallation(
             };
             break;
           }
+          case "exposure":
+            config.exposure = await collectExposure(ui, config);
+            break;
           case "access":
             config = {
               ...config,
@@ -347,6 +342,14 @@ export async function collectInstallation(
               inputs,
             );
             config = { ...config, ...(await collectPackInputs(ui, config)) };
+            if (config.access.mode === "hosted" && !options.existing) {
+              config.access.registrationFile = resolve(
+                directory,
+                "secrets/hosted-login.json",
+              );
+              config.access.cloudUrl ??=
+                context.cloudUrl ?? context.release.cloudUrl;
+            }
             const parsed = installationSchema.parse(config);
             assertReleaseCapabilities(context, parsed);
             const issues = await packRequirements(parsed);

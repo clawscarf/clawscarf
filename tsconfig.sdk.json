@@ -12,7 +12,8 @@
   "include": [
     "services/access/generated/**/*.ts",
     "services/connections/generated/**/*.ts",
-    "generated/http/**/*.ts"
+    "generated/http/**/*.ts",
+    "scripts/cloud/generated/**/*.ts"
   ],
   "exclude": [],
   "references": []

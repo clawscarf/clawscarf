@@ -1,7 +1,7 @@
 import { AccessError } from "../types/errors.js";
 import type { AccessStore, Identity, Session } from "../types/model.js";
 import type { NativeAuthority } from "../types/native.js";
-import { SessionService } from "./session.js";
+import { SessionService, hash, token } from "./session.js";
 /** Serializes companion enrollment; native adapter also guards native config revisions. */
 export class EnrollmentService {
   constructor(
@@ -61,7 +61,7 @@ export class EnrollmentService {
       actor,
       this.store,
       async (_sessions, credential, current) => {
-        const enrollment = await this.native.observeTeam(
+        const observed = await this.native.people(
           {
             identity: current.user.identity,
             name: current.user.name,
@@ -69,7 +69,17 @@ export class EnrollmentService {
           },
           credential,
         );
-        return { people: await this.store.people(), enrollment };
+        return {
+          people: (await this.store.people()).map((person) => ({
+            ...person,
+            role:
+              observed.people.find(
+                (profile) => profile.identity === person.identity,
+              )?.role ?? null,
+          })),
+          roles: observed.roles,
+          enrollment: observed.enrollment,
+        };
       },
     );
   }
@@ -113,6 +123,67 @@ export class EnrollmentService {
       await store.activateEnrollment(person.id);
       return person;
     });
+  }
+  setRole(
+    actor: Session,
+    userId: string,
+    role: string,
+    expectedRole: string | null,
+  ) {
+    return this.change(actor, async (store, _sessions, credential) => {
+      const person = await store.person(userId);
+      if (!person) throw new AccessError("invalid_request", "Unknown person.");
+      await this.native.setRole(
+        { identity: actor.user.identity, sessionHash: actor.hash },
+        credential,
+        person.identity,
+        role,
+        expectedRole,
+        await store.eligibleIdentities(),
+      );
+    });
+  }
+  invitations(actor: Session) {
+    return this.authenticated(
+      actor,
+      this.store,
+      async (_sessions, credential, current) => {
+        await this.native.verifyAdministrator(
+          { identity: current.user.identity, sessionHash: current.hash },
+          credential,
+        );
+        return { invitations: await this.store.invitations() };
+      },
+    );
+  }
+  invite(actor: Session, email: string) {
+    if (!this.enabled)
+      throw new AccessError("forbidden", "Invitations require company login.");
+    return this.change(actor, async (store, _sessions, credential) => {
+      // Observe only: incomplete native setup must never be repaired by creating an invitation.
+      if (
+        (await this.native.observeTeam(
+          { identity: actor.user.identity, sessionHash: actor.hash },
+          credential,
+        )) !== "ready"
+      )
+        throw new AccessError(
+          "invalid_request",
+          "Prepare team access before inviting people.",
+        );
+      const secret = token();
+      const invitation = await store.createInvitation(
+        actor.user.id,
+        email,
+        hash(secret),
+      );
+      const url = new URL("/_clawscarf/login", this.origin);
+      url.searchParams.set("invitation", secret);
+      return { invitation, url: url.toString() };
+    });
+  }
+  revokeInvitation(actor: Session, id: string) {
+    return this.change(actor, (store) => store.revokeInvitation(id));
   }
   remove(actor: Session, userId: string) {
     return this.change(actor, async (store, _sessions, credential) => {

@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { Marked, Parser, TextRenderer } from "marked";
@@ -135,7 +136,12 @@ if (import.meta.main) {
     { encoding: "utf8" },
   )
     .split("\0")
-    .filter((path) => path.endsWith(".md") && !path.endsWith("/LICENSE.md"));
+    .filter(
+      (path) =>
+        path.endsWith(".md") &&
+        !path.endsWith("/LICENSE.md") &&
+        existsSync(resolve(root, path)),
+    );
   const failures = await checkDocuments(root, files);
   if (failures.length) {
     console.error(failures.join("\n"));

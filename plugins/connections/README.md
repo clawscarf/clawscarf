@@ -55,7 +55,7 @@ metadata from SQLite. It preserves the source-file hash and requires no reader
 sidecars, including on a read-only stopped home. Configuration mutations retain full
 native validation. Stored configuration does not prove package loading or tool
 readiness; the caller owns restart and native execution verification. See
-[local activation](../../deploy/local/README.md#activate-connections).
+[local activation](../../deploy/deployment/README.md#activate-connections).
 
 ## Build and verify
 

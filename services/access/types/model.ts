@@ -17,6 +17,7 @@ export interface LoginTransaction {
   codeVerifier: string;
   returnTo: string;
   setupTokenHash?: string | undefined;
+  invitationTokenHash?: string | undefined;
 }
 export interface Session {
   hash: string;
@@ -37,7 +38,32 @@ export interface LoginProvider {
     codeVerifier: string;
   }): Promise<{ identity: Identity; logoutUrl: string | null }>;
 }
+export interface Invitation {
+  id: string;
+  email: string;
+  expiresAt: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+}
 export interface AccessStore {
+  invitations(): Promise<Invitation[]>;
+  createInvitation(
+    sponsorId: string,
+    email: string,
+    tokenHash: string,
+  ): Promise<Invitation>;
+  revokeInvitation(id: string): Promise<void>;
+  bindInvitation(
+    tokenHash: string,
+    identity: Identity,
+    credentialHash: string,
+  ): Promise<Session>;
+  finishInvitation(
+    tokenHash: string,
+    userId: string,
+    sessionHash: string,
+    csrf: string,
+    logoutUrl: string | null,
+  ): Promise<void>;
   withEnrollmentLock<T>(work: (store: AccessStore) => Promise<T>): Promise<T>;
   people(): Promise<User[]>;
   eligibleIdentities(): Promise<string[]>;

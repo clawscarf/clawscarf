@@ -1,4 +1,5 @@
-import { run } from "../local/process.js";
+import { openshellGatewayImage } from "../deployment/images.js";
+import { run } from "../deployment/process.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 export async function doctorInstallation(configFile: string) {
   const resolved = await resolveInstallation(configFile, await allocatePorts());
@@ -6,6 +7,8 @@ export async function doctorInstallation(configFile: string) {
   await run("docker", ["compose", "version"]);
   const images = [
     resolved.input.runtimeImage,
+    resolved.input.openshellClientImage,
+    openshellGatewayImage,
     resolved.input.companionImage,
     resolved.release.images.postgres,
     resolved.release.images.worker,

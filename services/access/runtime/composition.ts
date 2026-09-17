@@ -6,7 +6,6 @@ import type {
 } from "../types/native.js";
 import { OpenClawAuthority } from "../providers/native.js";
 import { EnrollmentService } from "../service/enrollment.js";
-import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
 import { DeploymentOidcProvider } from "../providers/oidc.js";
 import { openAccessStorage } from "./storage.js";
@@ -83,7 +82,6 @@ export async function composeAccess(
         ? (app) => registerApplication(app, access, native, identity)
         : undefined,
       enrollment,
-      fileURLToPath(new URL("../dist/web", import.meta.url)),
       options.navigationLinks,
     );
     const activeHttp = http;

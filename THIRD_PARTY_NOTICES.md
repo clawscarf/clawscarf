@@ -87,3 +87,8 @@ provenance. Paths below are relative to that donor, not files already present he
 | Connection account UI                 | src/apps/web/domains/connections/ and its shared visual/form dependencies                                                           | Copy the working flow and visual primitives; remove organization routing through explicit standalone composition.                                            |
 | Model gateway                         | runtime/ai-gateway/, deploy/ai-gateway/, src/composition/ai/ and applicable src/domains/ai/ code                                    | Reuse LiteLLM integration/configuration and tests; replace hosted-source/admission/catalog wiring where needed. Do not recreate the removed inference proxy. |
 | Acceptance                            | tests/ and corresponding helpers for identity, logout, ingress, native roles, connections, model gateway and browser flows          | Transfer regressions with each capability; adapt fixtures and run against the new runtime. Donor success is not new-target acceptance.                       |
+
+The OpenShell forwarding image packages Alpine Linux, OpenSSH and lsof through Alpine's
+package manager, plus the checksum-verified upstream OpenShell 0.0.116 Linux CLI.
+Package license metadata is retained in the image. OpenShell is Apache-2.0;
+see [upstream license](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/LICENSE).

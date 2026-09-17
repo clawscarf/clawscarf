@@ -73,6 +73,16 @@ function fixture(
       return Promise.resolve({});
     },
     mutate(method, input) {
+      if (method === "users.setRole") {
+        const data = z
+          .object({ profileId: z.string(), role: z.string() })
+          .parse(input);
+        const profile = profiles.find((item) => item.id === data.profileId);
+        assert.ok(profile);
+        profile.role = data.role;
+        writes++;
+        return Promise.resolve({ profile });
+      }
       if (method === "users.setDisplayName") {
         const data = z
           .object({ profileId: z.string(), displayName: z.string() })
@@ -271,4 +281,46 @@ await test("team observation uses one SDK-authorized connection without repeatin
     "users.list",
     "config.get",
   ]);
+});
+
+await test("role assignment observes current roles and rejects stale or unusable administrator handover", async () => {
+  const f = fixture();
+  const actor = { identity: f.identity, sessionHash: "hash" };
+  const inventory = await f.authority.people(actor, "credential");
+  assert.deepEqual(inventory.roles.map((role) => role.id).sort(), [
+    "admin",
+    "member",
+  ]);
+  await assert.rejects(
+    f.authority.setRole(actor, "credential", f.identity, "member", "member", [
+      f.identity,
+      f.other,
+    ]),
+    { code: "revision_conflict" },
+  );
+  await assert.rejects(
+    f.authority.setRole(actor, "credential", f.identity, "member", "admin", [
+      f.identity,
+    ]),
+    { code: "last_administrator" },
+  );
+  f.config.gateway.auth.identityScopes["clawscarf:other"] = [];
+  await assert.rejects(
+    f.authority.setRole(actor, "credential", f.identity, "member", "admin", [
+      f.identity,
+      f.other,
+    ]),
+    { code: "last_administrator" },
+  );
+  assert.equal(f.writes(), 0);
+  f.config.gateway.auth.identityScopes["clawscarf:other"] = ["operator.admin"];
+  await f.authority.setRole(
+    actor,
+    "credential",
+    f.identity,
+    "member",
+    "admin",
+    [f.identity, f.other],
+  );
+  assert.equal(f.writes(), 1);
 });

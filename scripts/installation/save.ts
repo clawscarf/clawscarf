@@ -30,14 +30,10 @@ export async function saveConfiguration(
   retained = false,
 ) {
   const config = installationSchema.parse(value);
-  if (
-    Buffer.byteLength(
-      join(resolve(directory, config.stateDirectory), "operator.sock"),
-    ) > 100
-  )
+  if (config.access.mode === "hosted" && !config.access.cloudUrl)
     throw new InstallationError(
       "invalid_configuration",
-      "Choose a shorter installation directory (the control socket path must fit within 100 bytes).",
+      "This development release has no cloud URL. Supply --cloud-url or configure your own OIDC provider before installing.",
     );
   const files = new Map<string, Buffer>();
   async function secret(source: string, name: string) {

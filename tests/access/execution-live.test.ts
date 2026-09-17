@@ -10,12 +10,12 @@ import { composeAccess } from "../../services/access/runtime/composition.js";
 import { EnrollmentService } from "../../services/access/service/enrollment.js";
 import { hash, token } from "../../services/access/service/session.js";
 import { isAccessDenied } from "../../services/access/providers/gateway.js";
-import { readState } from "../../scripts/local/state.js";
+import { readState } from "../../scripts/deployment/state.js";
 import {
   verifyExecutionBinding,
   verifyRuntimeBinding,
-} from "../../scripts/local/runtime-binding.js";
-import { run } from "../../scripts/local/process.js";
+} from "../../scripts/deployment/runtime-binding.js";
+import { run } from "../../scripts/deployment/process.js";
 
 const configPath = process.env.CLAWSCARF_NATIVE_TEST_CONFIG;
 const sessionPath = process.env.CLAWSCARF_NATIVE_TEST_SESSION_FILE;

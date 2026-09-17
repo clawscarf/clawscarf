@@ -11,7 +11,6 @@ COPY ui ./ui
 COPY scripts/build-companion.ts ./scripts/build-companion.ts
 COPY scripts/release/dependencies.ts scripts/release/runtime-package.ts ./scripts/release/
 RUN pnpm exec tsc -b tsconfig.sdk.json && pnpm exec tsc -p tsconfig.build.json \
- && pnpm exec vite build --config services/access/web/vite.config.ts \
  && pnpm exec vite build --config services/connections/web/vite.config.ts \
  && node --import tsx scripts/build-companion.ts
 
@@ -28,7 +27,6 @@ COPY --from=build /app/dist/services ./services
 COPY --from=build /app/dist/generated/http ./generated/http
 COPY generated/http/LICENSE.md ./generated/http/LICENSE.md
 COPY --from=build /app/dist/apps ./apps
-COPY --from=build /app/services/access/dist/web ./services/access/dist/web
 COPY --from=build /app/services/connections/dist/web ./services/connections/dist/web
 COPY services/access/openapi.json ./services/access/openapi.json
 COPY services/access/migrations ./services/access/migrations

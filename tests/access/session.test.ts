@@ -11,13 +11,7 @@ import {
 } from "../../services/access/providers/streams.js";
 
 await test("return paths preserve native navigation without open redirects or auth loops", () => {
-  for (const value of [
-    "/",
-    "/settings/models",
-    "/sessions?agent=main",
-    "/_clawscarf/team/",
-    "/_clawscarf/account/",
-  ])
+  for (const value of ["/", "/settings/models", "/sessions?agent=main"])
     assert.equal(safeReturn(value), value);
   for (const value of [
     "//evil.example",

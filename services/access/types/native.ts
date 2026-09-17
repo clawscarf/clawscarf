@@ -8,7 +8,21 @@ export interface NativeActor {
 export type TeamEnrollmentState =
   "ready" | "preparation_required" | "configuration_required";
 
+export interface NativePeople {
+  enrollment: TeamEnrollmentState;
+  roles: { id: string; administrator: boolean }[];
+  people: { identity: string; role: string | null }[];
+}
 export interface NativeAuthority {
+  people(actor: NativeActor, credential: string): Promise<NativePeople>;
+  setRole(
+    actor: NativeActor,
+    credential: string,
+    identity: string,
+    role: string,
+    expectedRole: string | null,
+    eligibleIdentities: readonly string[],
+  ): Promise<void>;
   /** Observes enrollment configuration using current native administrator authority. */
   observeTeam(
     actor: NativeActor,

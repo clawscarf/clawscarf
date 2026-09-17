@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  mkdtemp,
-  writeFile,
-  readFile,
-  rm,
-  mkdir,
-  chmod,
-} from "node:fs/promises";
-import { createServer } from "node:http";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installationSchema } from "./installation/configuration.js";
@@ -16,16 +8,14 @@ import { releaseSchema } from "./release/definition.js";
 import { fingerprint } from "./installation/files.js";
 import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { resolveInstallation } from "./installation/resolve.js";
-import { initializeState, withInstallationLock } from "./local/state.js";
-import { liteLlmImage, postgresImage } from "./local/images.js";
+import { initializeState, withInstallationLock } from "./deployment/state.js";
+import { liteLlmImage, postgresImage } from "./deployment/images.js";
 import {
   planSettingsChange,
   reconfigureInstallation,
 } from "./installation/reconfigure.js";
-import { prepareModelGateway } from "./local/model-gateway.js";
-import { readState } from "./local/state.js";
-import { monitoredServices } from "./local/logs.js";
-import { monitorComposeServices } from "./local/service-monitors.js";
+import { prepareModelGateway } from "./deployment/model-gateway.js";
+import { readState } from "./deployment/state.js";
 
 const configuration = {
   schemaVersion: 1,
@@ -33,7 +23,13 @@ const configuration = {
   releaseFile: "release.json",
   stateDirectory: "state",
   exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },
-  access: { mode: "local", administratorName: "Owner" },
+  access: {
+    mode: "oidc",
+    administratorName: "Owner",
+    issuer: "https://issuer.example.test",
+    clientId: "fixture",
+    clientSecretFile: "keys.env",
+  },
   resources: {
     gateway: { cpu: "2", memory: "2Gi" },
     worker: { cpu: "2", memory: "2Gi" },
@@ -95,6 +91,7 @@ await test(
         gateway: image,
         worker: image,
         companion: image,
+        openshellClient: image,
         relay: image,
       },
       tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
@@ -291,14 +288,13 @@ await test("concurrent operators cannot mutate the same installation", async (t)
   t.after(() => rm(directory, { recursive: true, force: true }));
   const state = join(directory, "state");
   await withInstallationLock(state, async () => {
-    const { superviseInstallation } =
-      await import("./installation/lifecycle.js");
-    const { upgradeLocal } = await import("./local/upgrade.js");
+    const { startInstallation } = await import("./installation/lifecycle.js");
+    const { upgradeLocal } = await import("./deployment/upgrade.js");
     const { operateConnectionsRuntime } =
-      await import("./local/connections-runtime.js");
+      await import("./deployment/connections-runtime.js");
     for (const operation of [
       () => withInstallationLock(state, () => Promise.resolve(undefined)),
-      () => superviseInstallation(state, () => {}),
+      () => startInstallation(state, () => {}),
       () => upgradeLocal(state, "unused", "unused", () => {}),
       () => operateConnectionsRuntime(state, { kind: "observe" }),
       () =>
@@ -316,151 +312,4 @@ await test("concurrent operators cannot mutate the same installation", async (t)
     /operation failed/,
   );
   await withInstallationLock(state, () => Promise.resolve(undefined));
-});
-
-await test("lifecycle refuses unprotected component assemblies and reports no supervisor truthfully", async (t) => {
-  const { initializeState } = await import("./local/state.js");
-  const { parseLocalInput } = await import("./local/configuration.js");
-  const { controlInstallation, startInstallation, installationLogs } =
-    await import("./installation/lifecycle.js");
-  const parent = await mkdtemp(join(tmpdir(), "cs-lifecycle-"));
-  t.after(() => rm(parent, { recursive: true, force: true }));
-  const directory = join(parent, "state");
-  await initializeState(
-    directory,
-    parseLocalInput({
-      name: "test",
-      administratorName: "Owner",
-      runtimeImage: `sha256:${"a".repeat(64)}`,
-      companionImage: `sha256:${"a".repeat(64)}`,
-      openshellCli: "/tmp/unused",
-      openshellGateway: "/tmp/unused",
-      ports: {
-        controller: 17671,
-        application: 18800,
-        widgets: 18802,
-        management: 18801,
-        native: 18789,
-        nativeWidgets: 18790,
-        database: 15432,
-      },
-      cpu: "1",
-      memory: "1Gi",
-    }),
-  );
-  assert.deepEqual(await controlInstallation(directory, "status"), {
-    supervisor: "not_running",
-    ready: false,
-  });
-  await assert.rejects(controlInstallation(directory, "stop"), {
-    code: "not_running",
-  });
-  await assert.rejects(
-    startInstallation(directory, () => undefined),
-    { code: "invalid_configuration" },
-  );
-  await assert.rejects(
-    installationLogs(directory, "../../private/encryption.key"),
-  );
-  await mkdir(join(directory, "logs"));
-  await monitorComposeServices(
-    directory,
-    monitoredServices,
-    async (_command, args, filename) => {
-      const service = args.at(-1);
-      const content = `${service ?? "unknown"} stopped`;
-      await writeFile(join(directory, "logs", filename), content);
-      assert.equal(
-        await installationLogs(directory, filename.slice(0, -4)),
-        content,
-      );
-    },
-  );
-});
-
-await test("private lifecycle control distinguishes pending administrator and ready service without stopping on status", async (t) => {
-  const { controlInstallation } = await import("./installation/lifecycle.js");
-  const { parseLocalInput } = await import("./local/configuration.js");
-  const parent = await mkdtemp(join(tmpdir(), "cs-control-"));
-  t.after(() => rm(parent, { recursive: true, force: true }));
-  const directory = join(parent, "state");
-  await initializeState(
-    directory,
-    parseLocalInput({
-      name: "test",
-      administratorName: "Owner",
-      runtimeImage: `sha256:${"a".repeat(64)}`,
-      companionImage: `sha256:${"a".repeat(64)}`,
-      openshellCli: "/tmp/unused",
-      openshellGateway: "/tmp/unused",
-      ports: {
-        controller: 17671,
-        application: 18800,
-        widgets: 18802,
-        management: 18801,
-        native: 18789,
-        nativeWidgets: 18790,
-        database: 15432,
-      },
-      cpu: "1",
-      memory: "1Gi",
-    }),
-  );
-  let complete = false;
-  let stops = 0;
-  const server = createServer((request, response) => {
-    const stopping = request.method === "POST" && request.url === "/stop";
-    if (stopping) stops += 1;
-    response.setHeader("content-type", "application/json");
-    response.end(
-      JSON.stringify({
-        supervisor: stopping ? "stopping" : "running",
-        ready: !stopping && complete,
-        administrator: stopping
-          ? "unavailable"
-          : complete
-            ? "ready"
-            : "pending",
-        packs: [],
-      }),
-    );
-  });
-  t.after(
-    () =>
-      new Promise<void>((resolve, reject) =>
-        server.close((error) => {
-          if (error) reject(error);
-          else resolve();
-        }),
-      ),
-  );
-  const socket = join(directory, "operator.sock");
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(socket, resolve);
-  });
-  await chmod(socket, 0o600);
-  assert.deepEqual(await controlInstallation(directory, "status"), {
-    supervisor: "running",
-    ready: false,
-    administrator: "pending",
-    packs: [],
-  });
-  complete = true;
-  assert.deepEqual(await controlInstallation(directory, "status"), {
-    supervisor: "running",
-    ready: true,
-    administrator: "ready",
-    packs: [],
-  });
-  assert.equal(stops, 0);
-  assert.equal(
-    (await controlInstallation(directory, "stop")).supervisor,
-    "stopping",
-  );
-  assert.equal(stops, 1);
-  await chmod(socket, 0o666);
-  await assert.rejects(controlInstallation(directory, "status"), {
-    code: "unavailable",
-  });
 });

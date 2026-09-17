@@ -11,7 +11,7 @@ namespace or depend on either platform's database. The public origin configures 
 browser admission and native OAuth callback/session/viewer link generation; widgets
 retain their separate origin.
 `standaloneNavigation` defaults to true and enables the bundled native account/People
-navigation. A hosting platform supplying its own entry UI sets it to false.
+pages. A hosting platform supplying its own entry UI sets it to false.
 The command refuses to overwrite a file. Validate with the pinned OpenClaw CLI
 before launch; it is not a reconfiguration or migration command.
 
@@ -22,7 +22,7 @@ invite/external session catalogs, restricted Codex dynamic tools, separate widge
 origin, self-only sessions, disabled elevated execution and Chrome's sandbox.
 The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. Member policy requires native sandboxing;
-the [local execution option](../deploy/local/README.md#separate-execution-worker)
+the [local execution option](../deploy/deployment/README.md#separate-execution-worker)
 configures a separately owned SSH worker. Component confinement and assembled native
 member/administrator command and file-read probes passed on the local candidate;
 both used the worker and could not reach the four forbidden test destinations.
@@ -88,7 +88,7 @@ repairs retained material. The [runtime regression](../tests/runtime/configure-c
 uses the actual pinned SDK and verifies configured observation without SQLite
 sidecars or filesystem changes, source-file hashes, retained disablement and refusal
 of invalid native core settings. Observation checks stored configuration, not loaded
-tools; see [local activation](../deploy/local/README.md#activate-connections).
+tools; see [local activation](../deploy/deployment/README.md#activate-connections).
 
 Replacement images support an operator-controlled startup gate. When
 `CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
@@ -96,7 +96,7 @@ root-owned `/etc/clawscarf-start-ready` marker before starting OpenClaw. The ope
 restores controller settings and stops compute before publishing that marker. The next
 normal start boots the supervisor with restored settings before launching OpenClaw.
 It is absent from normal fresh startup; it does not change OpenClaw itself or store
-controller credentials in the guest. See the [upgrade procedure](../deploy/local/README.md#runtime-upgrade).
+controller credentials in the guest. See the [upgrade procedure](../deploy/deployment/README.md#runtime-upgrade).
 
 ## Capability controls
 

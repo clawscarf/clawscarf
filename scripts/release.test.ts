@@ -20,7 +20,7 @@ import { setupContext, recipeConfiguration } from "./installation/setup.js";
 import { verifyReleasePacks } from "./release/packs.js";
 import { connectionCatalogFiles } from "../tests/connections/catalog.js";
 import { openConnectorCatalog } from "../services/connections/providers/catalog/provider.js";
-import { liteLlmImage, postgresImage } from "./local/images.js";
+import { liteLlmImage, postgresImage } from "./deployment/images.js";
 
 await test("release bundles survive relocation without source files and reject missing or altered payloads", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-release-"));
@@ -53,10 +53,9 @@ await test("release bundles survive relocation without source files and reject m
       postgres: postgresImage,
       models: liteLlmImage,
       ...Object.fromEntries(
-        ["gateway", "worker", "companion", "relay"].map((key) => [
-          key,
-          "sha256:" + "a".repeat(64),
-        ]),
+        ["gateway", "worker", "companion", "relay", "openshellClient"].map(
+          (key) => [key, "sha256:" + "a".repeat(64)],
+        ),
       ),
     },
     tools: { openshell: { version: "0.0.116", cli: "tool", gateway: "tool" } },

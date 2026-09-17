@@ -83,6 +83,12 @@ await test(
       let nativeWrites = 0;
       let deny = false;
       const native: NativeAuthority = {
+        people: async (actor, credential) => ({
+          enrollment: await native.observeTeam(actor, credential),
+          roles: [],
+          people: [],
+        }),
+        setRole: () => Promise.resolve(),
         observeTeam: () =>
           deny
             ? Promise.reject(new NativeFailure("access_denied"))
@@ -131,7 +137,8 @@ await test(
         });
         assert.equal(complete.statusCode, 200);
         assert.match(complete.body, /Administrator ready/);
-        assert.match(complete.body, /Return to your terminal/);
+        assert.doesNotMatch(complete.body, /href="\/"/);
+        assert.match(complete.body, /return to your terminal/);
         assert.equal(
           (await app.inject({ url: "/_clawscarf/setup-complete" })).statusCode,
           401,
@@ -477,6 +484,12 @@ await test(
       // This case tests HTTP/session/admission boundaries. Native permission
       // enforcement and promotion are exercised by native-live.test.ts.
       const native: NativeAuthority = {
+        people: async (actor, credential) => ({
+          enrollment: await native.observeTeam(actor, credential),
+          roles: [],
+          people: [],
+        }),
+        setRole: () => Promise.resolve(),
         observeTeam: (actor) =>
           actor.identity === identity.administrator.identity
             ? Promise.resolve("ready")
@@ -557,10 +570,10 @@ await test(
       assert.equal((await app.inject(enrollment)).statusCode, 200);
       assert.equal(enrollmentCalls, 2);
       const memberResponse = await (
-        await beginOidcBrowserLogin(app, "/_clawscarf/team/")
+        await beginOidcBrowserLogin(app, "/")
       ).complete();
       assert.equal(memberResponse.statusCode, 302);
-      assert.equal(memberResponse.headers.location, "/_clawscarf/team/");
+      assert.equal(memberResponse.headers.location, "/");
       const memberCookie = memberResponse.cookies.find(
         (cookie) => cookie.name === "clawscarf_session",
       );
@@ -812,6 +825,12 @@ await test(
       let failNative = true;
       let credential = "";
       const native: NativeAuthority = {
+        people: async (actor, credential) => ({
+          enrollment: await native.observeTeam(actor, credential),
+          roles: [],
+          people: [],
+        }),
+        setRole: () => Promise.resolve(),
         observeTeam: () => Promise.resolve("ready"),
         verifyAdministrator: async (actor, value) => {
           credential = value;
@@ -821,7 +840,7 @@ await test(
           );
           assert.equal(actor.identity, identity.administrator.identity);
           if (failNative) throw new NativeFailure("access_denied");
-          return { agentIds: ["main"] };
+          return Promise.resolve({ agentIds: ["main"] });
         },
         prepareTeam: () => Promise.resolve(),
         enroll: () => Promise.resolve(),
@@ -926,6 +945,174 @@ await test(
       await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
       await pool.end();
       await oidc.close();
+    }
+  },
+);
+
+await test(
+  "invitations bind verified identity, fail closed and consume with admission atomically",
+  { skip: !url },
+  async () => {
+    const { oidcFixture } = await import("./oidc.js");
+    const { beginOidcBrowserLogin } = await import("./oidc-http.js");
+    const { DeploymentOidcProvider } =
+      await import("../../services/access/providers/oidc.js");
+    const pool = new pg.Pool({ connectionString: url });
+    const oidc = await oidcFixture();
+    let app: Awaited<ReturnType<typeof createAccessHttp>> | undefined;
+    try {
+      await migrate(pool);
+      const repo = new PostgresAccessStore(pool, randomBytes(32), {
+        issuer: oidc.origin,
+        subject: "alice",
+        email: "alice@example.test",
+        name: "Alice",
+      });
+      const owner = (await repo.initialize()).administrator;
+      const origin = "http://127.0.0.1:18990";
+      let uncertain = false;
+      let denied = false;
+      const native: NativeAuthority = {
+        verifyAdministrator: (actor) => {
+          if (denied || actor.identity !== owner.identity)
+            throw new NativeFailure("access_denied");
+          return Promise.resolve({ agentIds: ["main"] });
+        },
+        observeTeam: () => Promise.resolve("ready"),
+        people: () =>
+          Promise.resolve({ enrollment: "ready", roles: [], people: [] }),
+        prepareTeam: () => Promise.resolve(),
+        setRole: () => Promise.resolve(),
+        revoke: () => Promise.resolve(),
+        enroll: async (actor, credential, person, target) => {
+          assert.equal(
+            (await repo.authenticateSession(hash(credential)))?.user.identity,
+            actor.identity,
+          );
+          assert.equal(
+            (await repo.authenticateSession(hash(target)))?.user.identity,
+            person.identity,
+          );
+          if (uncertain) throw new NativeFailure("outcome_unknown");
+        },
+      };
+      const service = new SessionService(
+        repo,
+        new DeploymentOidcProvider({
+          issuer: oidc.origin,
+          clientId: oidc.clientId,
+          clientSecret: oidc.clientSecret,
+          redirectUri: origin + "/_clawscarf/callback",
+        }),
+        origin,
+        undefined,
+        native,
+      );
+      const team = new EnrollmentService(repo, native, origin, oidc.origin);
+      app = await createAccessHttp(service, origin, undefined, team);
+      const login = await (await beginOidcBrowserLogin(app, "/")).complete();
+      const ownerCookie = login.cookies.find(
+        (item) => item.name === "clawscarf_session",
+      )?.value;
+      assert.ok(ownerCookie);
+      const actor = await service.authenticate(ownerCookie);
+      const headers = {
+        cookie: `clawscarf_session=${ownerCookie}`,
+        origin,
+        "x-csrf-token": actor.csrfToken,
+      };
+      const invite = async (email = "bob@example.test") => {
+        const response = await app!.inject({
+          method: "POST",
+          url: "/_clawscarf/invitations",
+          headers,
+          payload: { email },
+        });
+        assert.equal(response.statusCode, 200, response.body);
+        return z
+          .object({ invitation: z.object({ id: z.string() }), url: z.string() })
+          .parse(response.json());
+      };
+      const claim = async (link: string, subject = "bob") => {
+        oidc.setUser(subject);
+        const secret = new URL(link).searchParams.get("invitation");
+        assert.ok(secret);
+        return (await beginOidcBrowserLogin(app!, "/", secret)).complete();
+      };
+      assert.equal(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/_clawscarf/invitations",
+            cookies: { clawscarf_session: ownerCookie },
+            payload: { email: "bob@example.test" },
+          })
+        ).statusCode,
+        403,
+      );
+      const first = await invite();
+      assert.equal((await claim(first.url, "charlie")).statusCode, 400);
+      denied = true;
+      assert.equal((await claim(first.url)).statusCode, 403);
+      denied = false;
+      uncertain = true;
+      assert.equal((await claim(first.url)).statusCode, 503);
+      oidc.setUser("bob");
+      assert.equal(
+        (await (await beginOidcBrowserLogin(app, "/")).complete()).statusCode,
+        403,
+      );
+      uncertain = false;
+      await pool.query(`CREATE FUNCTION clawscarf_access.reject_invited_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.purpose='browser' THEN RAISE EXCEPTION 'session unavailable'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER reject_invited_session BEFORE INSERT ON clawscarf_access.browser_sessions FOR EACH ROW EXECUTE FUNCTION clawscarf_access.reject_invited_session();`);
+      assert.equal((await claim(first.url)).statusCode, 503);
+      assert.equal((await repo.people()).length, 1);
+      assert.equal((await repo.invitations())[0]?.status, "pending");
+      await pool.query(
+        "DROP TRIGGER reject_invited_session ON clawscarf_access.browser_sessions; DROP FUNCTION clawscarf_access.reject_invited_session()",
+      );
+      const accepted = await claim(first.url);
+      assert.equal(accepted.statusCode, 302, accepted.body);
+      const memberCookie = accepted.cookies.find(
+        (item) => item.name === "clawscarf_session",
+      )?.value;
+      assert.ok(memberCookie);
+      const member = await service.authenticate(memberCookie);
+      assert.equal((await claim(first.url)).statusCode, 400);
+      assert.equal((await repo.invitations())[0]?.status, "accepted");
+      await assert.rejects(team.invite(member, "charlie@example.test"), {
+        code: "access_denied",
+      });
+      const revoked = await invite("charlie@example.test");
+      await team.revokeInvitation(actor, revoked.invitation.id);
+      assert.equal((await claim(revoked.url, "charlie")).statusCode, 400);
+      const expired = await invite("charlie@example.test");
+      await pool.query(
+        "UPDATE clawscarf_access.invitations SET expires_at=now()-interval '1 second' WHERE id=$1",
+        [expired.invitation.id],
+      );
+      assert.equal((await claim(expired.url, "charlie")).statusCode, 400);
+      const stale = await invite("charlie@example.test");
+      await repo.removeEnrollment(owner.id);
+      await repo.activateEnrollment(owner.id);
+      assert.equal((await claim(stale.url, "charlie")).statusCode, 400);
+      await repo.removeEnrollment(member.user.id);
+      await assert.rejects(service.authenticate(memberCookie), {
+        code: "unauthenticated",
+      });
+      assert.equal(
+        (
+          await pool.query<{ n: number }>(
+            "SELECT count(*)::int AS n FROM clawscarf_access.browser_sessions WHERE purpose IN ('invitation','enrollment')",
+          )
+        ).rows[0]?.n,
+        0,
+      );
+    } finally {
+      await app?.close();
+      await oidc.close();
+      await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
+      await pool.end();
     }
   },
 );

@@ -53,19 +53,21 @@ node --import tsx scripts/controller.ts init \
   --gateway /absolute/path/to/openshell-gateway \
   --cli /absolute/path/to/openshell \
   --name clawscarf --port 17671
-node --import tsx scripts/controller.ts start --directory .local/controller
 ```
 
 Initialization refuses an existing directory. It uses OpenShell's own PKI generator,
 stores certificates and signing keys privately, registers the mTLS endpoint and
 writes the documented Docker-driver configuration. It never disables TLS validation
-or gives the application a Docker socket. `start` runs in the foreground; a service
-manager can supervise that same command. Controller state stays in the selected
-directory. No new identity or certificate is generated on restart.
+or gives the application a Docker socket. The unified installer renders a Compose
+controller service using the pinned upstream gateway image, with a loopback published
+mTLS endpoint. Its state stays in the selected directory. No new identity or certificate
+is generated on restart. For a prepared installation, start just the controller with
+`docker compose -f <state>/compose.json up -d controller`. The host gateway executable
+is used only for certificate generation during preparation, never as a resident process.
 Inherited `OPENSHELL_*` overrides are rejected so another installation's settings
 cannot silently replace this controller's TLS, authentication or endpoint configuration.
 
-In another terminal, select that isolated CLI configuration:
+Select that isolated CLI configuration when using component commands:
 
 ```sh
 export XDG_CONFIG_HOME="$PWD/.local/controller/config"
@@ -192,7 +194,7 @@ and Docker sockets stay outside both application and worker.
 OpenClaw's native OpenShell backend needs controller-user authority for worker
 lifecycle. Our local controller's mTLS identity is broader than worker execution,
 so ClawScarf does not copy it into the Gateway. The external operator owns worker
-creation, persistence and stopping through [local setup](../local/README.md).
+creation, persistence and stopping through [local setup](../deployment/README.md).
 
 Neither SSH nor the native OpenShell backend supports native sandboxed-browser
 provisioning in this release. The [shared browser](../execution/browser/README.md)

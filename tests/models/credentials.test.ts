@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { promisify } from "node:util";
-import { ensureCertificates } from "../../scripts/local/certificates.js";
+import { ensureCertificates } from "../../scripts/deployment/certificates.js";
 const execute = promisify(execFile);
 
 await test("credential CLI issues and revokes over private TLS only with the trusted CA", async () => {

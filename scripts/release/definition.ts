@@ -1,8 +1,9 @@
+import { cloudUrlSchema } from "../cloud/url.js";
 import { z } from "zod";
 import { modelSchema } from "../models/configuration.js";
 import { recipesSchema } from "../installation/recipes/definition.js";
 
-import { liteLlmImage, postgresImage } from "../local/images.js";
+import { liteLlmImage, postgresImage } from "../deployment/images.js";
 
 export const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const image = z
@@ -14,6 +15,7 @@ const file = z.strictObject({ file: z.string().min(1), sha256: digest });
 /** Release metadata is build output, not deployment state or customer configuration. */
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
+  cloudUrl: cloudUrlSchema.optional(),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
   recipes: recipesSchema,
   packs: z
@@ -47,6 +49,7 @@ export const releaseSchema = z.strictObject({
     gateway: image,
     worker: image,
     companion: image,
+    openshellClient: image,
     relay: image,
     models: z.literal(liteLlmImage).optional(),
     browser: z

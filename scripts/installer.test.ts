@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { z } from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { test, type TestContext } from "node:test";
@@ -28,7 +29,7 @@ import { installFromAnswers } from "./installation/installer/run.js";
 import { installationSchema } from "./installation/configuration.js";
 import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { fingerprint, readJson } from "./installation/files.js";
-import { liteLlmImage, postgresImage } from "./local/images.js";
+import { liteLlmImage, postgresImage } from "./deployment/images.js";
 
 await test("cancelling progress settles the current operation and prevents continuation", async () => {
   const { stdout } = await promisify(execFile)(
@@ -131,6 +132,7 @@ async function fixture(t: TestContext) {
     JSON.stringify({
       schemaVersion: 1,
       version: "0.1.0-dev",
+      cloudUrl: "https://cloud.example.test",
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
       recipes: [],
@@ -139,6 +141,7 @@ async function fixture(t: TestContext) {
         models: liteLlmImage,
         gateway: image,
         companion: image,
+        openshellClient: image,
         worker: image,
         relay: image,
       },
@@ -171,6 +174,13 @@ async function fixture(t: TestContext) {
   await writeFile(
     settings,
     JSON.stringify({
+      access: {
+        mode: "oidc",
+        administratorName: "Administrator",
+        issuer: "https://issuer.example.test",
+        clientId: "fixture",
+        clientSecretFile: env,
+      },
       models: {
         mode: "litellm",
         configurationFile: models,
@@ -276,10 +286,10 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        Access: "oidc",
+        "Use your own OIDC provider?": true,
+        "Make this server available over HTTPS?": true,
         "Application HTTPS origin": "https://team.example.test:8443",
-        "Widgets HTTPS origin (separate listener port)":
-          "https://widgets.example.test:8445",
+        "Widgets HTTPS origin": "https://widgets.example.test:8445",
         "TLS certificate file": key,
         "TLS private key file": key,
         "OIDC issuer": "https://identity.example.test",
@@ -287,7 +297,7 @@ await test(
         "OIDC client secret": "file",
         "OIDC client secret file": key,
       },
-      ["access"],
+      ["exposure", "access"],
     );
     const { config } = await collectInstallation(ui, f);
     const path = await saveConfiguration(f.directory, config);
@@ -447,24 +457,25 @@ await test(
           calls.push("start");
           assert.equal(state, join(f.directory, "state"));
           return Promise.resolve({
-            supervisor: "running" as const,
+            state: "running" as const,
             ready: true,
             packs: [],
             administrator: "ready" as const,
+            services: [],
           });
         },
-        administrator: () =>
-          Promise.resolve({ complete: true, expiresAt: null }),
-        login: () => {
-          links++;
-          return Promise.resolve({
-            url: "http://127.0.0.1:18800/_clawscarf/local-sign-in#code=one-use-fixture",
-            code: "one-use-fixture",
-            expiresAt: new Date(Date.now() + 300_000).toISOString(),
-          });
-        },
-        loginStatus: (_state, code) => {
-          assert.equal(code, "one-use-fixture");
+        register: async () => {},
+        administrator: (_state, issue) => {
+          if (issue) {
+            links++;
+            return Promise.resolve({
+              url: "http://127.0.0.1:18800/_clawscarf/login?setup=fixture",
+              complete: false,
+              expiresAt: new Date(Date.now() + 300_000).toISOString(),
+            });
+          }
+          if (links === 0)
+            return Promise.resolve({ complete: false, expiresAt: null });
           if (links === 1) {
             calls.push("login-expired");
             return Promise.resolve({
@@ -488,7 +499,7 @@ await test(
         assert.equal(links, 2);
         assert.ok(
           ui.notes.some((note) =>
-            note.includes("returnTo=%2F_clawscarf%2Fsetup-complete#code="),
+            note.includes("/_clawscarf/login?setup=fixture"),
           ),
         );
         assert.ok(!ui.notes.some((note) => note.includes("One-use code:")));
@@ -630,6 +641,13 @@ await test(
         models: {
           mode: "litellm",
           upstreamEnvironmentFile: "initial-models.env",
+        },
+        access: {
+          mode: "oidc",
+          administratorName: "Administrator",
+          issuer: "https://issuer.example.test",
+          clientId: "fixture",
+          clientSecretFile: "initial-models.env",
         },
         name: "configured-team",
         connections: {
@@ -784,7 +802,7 @@ await test(
       draft.inputs,
     );
     const { loadGatewayConfiguration } =
-      await import("./local/model-gateway.js");
+      await import("./deployment/model-gateway.js");
     const loaded = await loadGatewayConfiguration(
       models,
       join(f.directory, "secrets/models.env"),
@@ -855,7 +873,11 @@ await test(
           assignment.value === "medium",
       ),
     );
-    assert.equal((await planInstallation(file)).capabilities.models, "litellm");
+    assert.equal(
+      installationSchema.parse(await readJson(file)).access.mode,
+      "hosted",
+    );
+    assert.ok(!ui.questions.includes("Use your own OIDC provider?"));
     const supplied = new Answers(f.answers);
     await collectInstallation(supplied, {
       ...f,
@@ -1108,10 +1130,10 @@ await test(
     await writeFile(key, "private-test-secret", { mode: 0o600 });
     const values = {
       ...f.answers,
-      Access: "oidc",
+      "Use your own OIDC provider?": true,
+      "Make this server available over HTTPS?": true,
       "Application HTTPS origin": "https://team.example.test:8443",
-      "Widgets HTTPS origin (separate listener port)":
-        "https://widgets.example.test:8445",
+      "Widgets HTTPS origin": "https://widgets.example.test:8445",
       "TLS certificate file": key,
       "TLS private key file": key,
       "OIDC issuer": "https://identity.example.test",
@@ -1119,7 +1141,7 @@ await test(
       "OIDC client secret": "file",
       "OIDC client secret file": key,
     };
-    const ui = new Answers(values, ["access"]);
+    const ui = new Answers(values, ["exposure", "access"]);
     const first = await collectInstallation(ui, f);
     assert.ok(
       ui.questions.indexOf("Save section changes?") <
@@ -1129,7 +1151,7 @@ await test(
     first.config.access.administratorSubject = "provided-subject";
     first.config.access.administratorEmail = "owner@example.test";
     const second = await collectInstallation(
-      new Answers(values, ["access"]),
+      new Answers(values, ["exposure", "access"]),
       f,
       first,
     );
@@ -1330,6 +1352,62 @@ await test(
         await readJson(join(f.directory, "models.json")),
       ),
       changed,
+    );
+  },
+);
+
+await test(
+  "unattended hosted setup uses the same registration and plans a real OIDC installation",
+  local,
+  async (t) => {
+    const { default: Fastify } = await import("fastify");
+    const { randomUUID } = await import("node:crypto");
+    const { configureInstallation } =
+      await import("./installation/configure.js");
+    const { resolveInstallation } = await import("./installation/resolve.js");
+    const f = await fixture(t);
+    const models = z
+      .object({ models: installationSchema.shape.models })
+      .parse(await readJson(f.settings));
+    await writeFile(f.settings, JSON.stringify(models));
+    const app = Fastify();
+    t.after(() => app.close());
+    const id = randomUUID();
+    const credential = join(f.parent, "cloud-credential");
+    await writeFile(credential, "owner-token", { mode: 0o600 });
+    app.get("/api/account", () => ({ accountId: randomUUID() }));
+    app.post("/api/installations", (request) => {
+      assert.equal(request.headers.authorization, "Bearer owner-token");
+      return { id, origin: "http://127.0.0.1:18800", oidcState: "ready" };
+    });
+    app.get("/api/installations/:id/identity", () => ({
+      issuer: "https://identity.example",
+      clientId: "registered-client",
+      clientSecret: "private-client-secret",
+    }));
+    const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
+    const result = await configureInstallation({
+      ...f,
+      recipe: "custom",
+      cloudUrl,
+      cloudCredentialFile: credential,
+    });
+    const plan = await planInstallation(result.configFile);
+    const resolved = await resolveInstallation(
+      result.configFile,
+      plan.internalPorts,
+    );
+    assert.equal(resolved.config.access.mode, "hosted");
+    assert.equal(resolved.input.team?.clientId, "registered-client");
+    assert.equal(resolved.input.team.administratorSubject, undefined);
+    await app.close();
+    await configureInstallation({ directory: f.directory });
+    await assert.rejects(
+      configureInstallation({
+        directory: f.directory,
+        cloudUrl: "https://different.example",
+      }),
+      { code: "change_unsupported" },
     );
   },
 );

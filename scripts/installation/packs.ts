@@ -6,7 +6,7 @@ import { planPack, applyPack } from "../packs/lifecycle.js";
 import { planSchema } from "../packs/model.js";
 import type { NativeClaws } from "../packs/native.js";
 import { OpenShellClaws } from "../packs/openshell.js";
-import { readState, resourceNames, writePrivate } from "../local/state.js";
+import { readState, resourceNames, writePrivate } from "../deployment/state.js";
 import { fingerprint, readJson } from "./files.js";
 
 export const selectionSchema = z.strictObject({

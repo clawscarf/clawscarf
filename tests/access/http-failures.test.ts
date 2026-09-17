@@ -5,7 +5,6 @@ import { safeReturn } from "../../services/access/service/session.js";
 import { createAccessHttp } from "../../services/access/runtime/http.js";
 import { failureDiagnostic } from "../../services/access/runtime/failures.js";
 import { NativeFailure } from "../../services/access/types/native-errors.js";
-
 import { AccessError } from "../../services/access/types/errors.js";
 
 const origin = "https://clawscarf.example";
@@ -98,7 +97,6 @@ await test("unexpected failures emit allowlisted diagnostics with the response r
   const app = await createAccessHttp(
     service,
     origin,
-    undefined,
     undefined,
     undefined,
     [],

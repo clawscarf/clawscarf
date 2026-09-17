@@ -1,5 +1,6 @@
+import { cloudUrlSchema } from "../cloud/url.js";
 import { z } from "zod";
-import { localInput } from "../local/configuration.js";
+import { localInput } from "../deployment/configuration.js";
 const path = z.string().min(1);
 const disabled = z.strictObject({ mode: z.literal("disabled") });
 const resources = z.strictObject({
@@ -43,7 +44,9 @@ export const installationSchema = z
     ]),
     access: z.discriminatedUnion("mode", [
       z.strictObject({
-        mode: z.literal("local"),
+        mode: z.literal("hosted"),
+        cloudUrl: cloudUrlSchema.optional(),
+        registrationFile: path.default("./secrets/hosted-login.json"),
         administratorName: localInput.shape.administratorName,
       }),
       z.strictObject({
@@ -109,12 +112,6 @@ export const installationSchema = z
         code: "custom",
         message:
           "Selected packs require a Python OpenShell SDK and explicit experimental Claws acknowledgement.",
-      });
-    if ((value.access.mode === "local") !== (value.exposure.mode === "local"))
-      context.addIssue({
-        code: "custom",
-        message:
-          "Local access requires loopback exposure; company OIDC requires HTTPS.",
       });
   });
 export type InstallationConfiguration = z.infer<typeof installationSchema>;

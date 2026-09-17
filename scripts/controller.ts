@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import {
   chmod,
   copyFile,
@@ -30,6 +30,7 @@ const release = z
   .object({
     openshell: z.object({
       version: z.string().min(1),
+      gatewayImage: z.string().regex(/@sha256:[a-f0-9]{64}$/),
       supervisorImage: z.string().regex(/@sha256:[a-f0-9]{64}$/),
     }),
   })
@@ -63,19 +64,13 @@ async function verifyExecutable(path: string) {
   if (!stdout.trim().split(/\s+/).includes(release.version))
     throw Error(`Use the pinned OpenShell ${release.version} executable.`);
 }
-async function load(directory: string) {
-  const value: unknown = JSON.parse(
-    await readFile(join(directory, "controller.json"), "utf8"),
-  );
-  return settingsSchema.parse(value);
-}
 function toml(directory: string, settings: Settings) {
   const path = (value: string) => JSON.stringify(join(directory, "tls", value));
   return `[openshell]
 version = 1
 [openshell.gateway]
 name = ${JSON.stringify(settings.name)}
-bind_address = "127.0.0.1:${String(settings.port)}"
+bind_address = "0.0.0.0:${String(settings.port)}"
 compute_drivers = ["docker"]
 disable_tls = false
 [openshell.gateway.tls]
@@ -191,35 +186,4 @@ command
       );
     },
   );
-command
-  .command("start")
-  .requiredOption("--directory <path>", "Private controller directory")
-  .action(async (options: { directory: string }) => {
-    const directory = resolve(options.directory);
-    const settings = await load(directory);
-    await verifyExecutable(settings.gateway);
-    const child = spawn(
-      settings.gateway,
-      ["--config", join(directory, "gateway.toml")],
-      { env: environment(directory), stdio: "inherit" },
-    );
-    const forward = (signal: NodeJS.Signals) => child.kill(signal);
-    const interrupt = () => forward("SIGINT"),
-      terminate = () => forward("SIGTERM");
-    process.on("SIGINT", interrupt);
-    process.on("SIGTERM", terminate);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        child.once("error", reject);
-        child.once("exit", (code, signal) => {
-          if (code === 0 || signal === "SIGINT" || signal === "SIGTERM")
-            resolve();
-          else reject(Error("Controller exited unsuccessfully."));
-        });
-      });
-    } finally {
-      process.off("SIGINT", interrupt);
-      process.off("SIGTERM", terminate);
-    }
-  });
 await command.parseAsync();

@@ -70,6 +70,95 @@ export class OpenClawAuthority implements NativeAuthority {
     });
   }
 
+  async people(actor: NativeActor, credential: string) {
+    return this.acting(actor, credential, async (gateway) => {
+      const state = await readState(gateway);
+      return {
+        enrollment: teamEnrollmentState(state),
+        roles: Object.entries(state.config.gateway.roles.definitions)
+          .filter(([id]) => id !== pendingRole)
+          .map(([id, role]) => ({
+            id,
+            administrator: role.scopes.includes("operator.admin"),
+          })),
+        people: state.profiles
+          .filter((profile) => !profile.mergedInto)
+          .flatMap((profile) =>
+            profile.emails
+              .filter((identity) => identity.startsWith("clawscarf:"))
+              .map((identity) => ({
+                identity,
+                role:
+                  profileFor(state.profiles, identity)?.role ??
+                  state.config.gateway.roles.default,
+              })),
+          ),
+      };
+    });
+  }
+  async setRole(
+    actor: NativeActor,
+    credential: string,
+    identity: string,
+    role: string,
+    expectedRole: string | null,
+    eligibleIdentities: readonly string[],
+  ) {
+    await mutationThenObserve(
+      () =>
+        this.acting(actor, credential, async (gateway) => {
+          const state = await readState(gateway);
+          requireTeam(state);
+          const profile = profileFor(state.profiles, identity);
+          const definition = state.config.gateway.roles.definitions[role];
+          if (
+            !profile ||
+            !definition ||
+            role === pendingRole ||
+            !eligibleIdentities.includes(identity)
+          )
+            throw new NativeFailure("request_rejected");
+          if (
+            (profile.role ?? state.config.gateway.roles.default) !==
+            expectedRole
+          )
+            throw new NativeFailure("revision_conflict");
+          if (
+            !definition.scopes.includes("operator.admin") &&
+            !eligibleIdentities.some(
+              (candidate) =>
+                candidate !== identity && isAdministrator(state, candidate),
+            )
+          )
+            throw new NativeFailure("last_administrator");
+          await gateway.mutate("users.setRole", {
+            profileId: profile.id,
+            role,
+          });
+        }),
+      async () => {
+        // A caller demoting themselves can no longer observe the admin-only inventory.
+        if (identity === actor.identity) {
+          await this.connect(
+            this.gatewayOptions(credential, []),
+            async (gateway) => {
+              if ((await self(gateway, identity)).role !== role)
+                throw new NativeFailure("outcome_unknown");
+            },
+          );
+        } else {
+          await this.acting(actor, credential, async (gateway) => {
+            if (
+              profileFor((await readState(gateway)).profiles, identity)
+                ?.role !== role
+            )
+              throw new NativeFailure("outcome_unknown");
+          });
+        }
+      },
+    );
+  }
+
   async prepareTeam(actor: NativeActor, credential: string) {
     if (actor.name)
       await this.enrichName(actor, credential, {

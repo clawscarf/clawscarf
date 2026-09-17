@@ -15,7 +15,7 @@ The publication design is:
 | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | npm: `@clawscarf/cli`     | Compiled `clawscarf` command and its operator assets. No source checkout or TypeScript build for users. |
 | GitHub Releases: `vX.Y.Z` | Matching platform payload archives, release metadata, checksums and required license/source notices.    |
-| GHCR                      | Runtime and companion images referenced by registry digest in the release metadata.                     |
+| GHCR                      | Application, companion and forwarding images referenced by registry digest in the release metadata.     |
 
 The intended first command is `npx @clawscarf/cli@latest install`. npm chooses the
 CLI version; that CLI downloads its **exact matching** platform bundle, verifies it,
@@ -69,9 +69,14 @@ of byte-identical image builds or compressed archives.
 
 Build inputs follow the [release schema](../scripts/release/definition.ts), except
 `tools.openshell.cli` and `gateway` are source executable paths and `packs` is an
-array of source directories. Paths resolve relative to the input file. The builder
+array of source directories. `images.openshellClient` is the exact built
+[forwarding image](../deploy/images/README.md#openshell-forwarding-image); the upstream
+controller image is pinned in the [component manifest](components.json). Paths resolve
+relative to the input file. The builder
 embeds recipe objects supplied in `recipes`; the default model catalog comes from
 [deploy/models/catalog.json](../deploy/models/catalog.json). An optional
+`cloudUrl` supplies the hosted login service origin; development can override it with
+`install --cloud-url`. No cloud service has been deployed yet.
 `connectorCatalogDirectory` supplies a prepared catalog; only validated runtime
 catalog files are copied, not importer state or adjacent credentials.
 
@@ -89,5 +94,5 @@ packs into releases does not make that example a finished document workflow.
 The CLI, Docker images and pack operator's Python SDK are still separate development
 prerequisites. This command assembles payloads; it does not build images, install the
 SDK or publish a complete download. Keep the resulting bundle available to the
-installation. [Local installation](../deploy/local/installation.md) and
+installation. [Local installation](../deploy/deployment/installation.md) and
 [operator packaging](operator.md) describe the current commands and limitations.

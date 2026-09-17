@@ -5,14 +5,14 @@ LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
 No external hosting control plane or billing hook is required.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
-For a new local installation, [initial model setup](../local/README.md#initial-model-setup)
+For a new local installation, [initial model setup](../deployment/README.md#initial-model-setup)
 combines this configuration, a scoped runtime key and its network permission before
 first startup. Existing installations use the explicit configuration commands below.
 Fresh setup and explicit configuration share the model/default mapping, including
 an optional `thinkingDefault`. Omitted thinking settings preserve native defaults.
 
 For bundled models in a new complete installation, use the
-[unified LiteLLM selection](../local/installation.md#models). It owns the private
+[unified LiteLLM selection](../deployment/installation.md#models). It owns the private
 TLS listener, separate model database, initial scoped key and start/stop lifecycle.
 The component commands below remain available for explicit model operations; their
 full configuration includes the endpoint, unlike the unified route-only input.
@@ -162,6 +162,10 @@ run. This qualifies the successful transport/tool execution, not repeatable mode
 quality or a production model recommendation. These isolated controlled/Ollama
 tests required no paid provider credentials.
 
+A fresh installation from rebuilt development images passed direct OpenAI GPT-6 Astra
+with medium reasoning and a native `session_status` tool call from the browser through
+LiteLLM Responses. The previous universal Chat Completions setting failed this combination.
+
 The fresh local assembly passed integrated initial model/credential/policy setup
 and a native administrator browser conversation through the rebuilt runtime,
 private-TLS LiteLLM and OpenRouter GPT-5.4 Mini. Native
@@ -232,7 +236,7 @@ provider options; the tested local Qwen route used LiteLLM's standard
 native tool execution, not model answer accuracy.
 
 The unified installer requires bundled or existing LiteLLM. Its recipe/review flow is
-documented in the [installation guide](../local/installation.md#terminal-installer).
+documented in the [installation guide](../deployment/installation.md#terminal-installer).
 Component operators may still use disabled-model fixtures for isolated tests; those
 are not supported product installation modes.
 
@@ -240,6 +244,10 @@ are not supported product installation modes.
 
 [The release catalog](catalog.json) contains model/provider choices for initial setup.
 Release creation embeds it by default; a release input can supply its own `modelCatalog`.
+Each model can select the native `api` protocol (`openai-completions` or
+`openai-responses`) used between OpenClaw and LiteLLM. Direct OpenAI offerings use
+Responses so tool calls and reasoning work together; other offerings use Chat
+Completions unless specified. LiteLLM owns upstream translation.
 Catalog order controls model/provider menu order, with direct providers first and
 OpenRouter last. Recipes choose defaults from those offerings; Team documents selects
 direct OpenAI GPT-6 Astra with medium reasoning. Model limits are explicit data, not
@@ -254,7 +262,7 @@ Provider route prefixes use LiteLLM's documented
 configuration routes, not a claim that each account/model combination has passed live
 inference. The installer asks for keys only after reviewing the selected settings.
 
-The installation [settings editor](../local/installation.md#change-an-existing-installation)
+The installation [settings editor](../deployment/installation.md#change-an-existing-installation)
 can update routes, defaults and provider keys. Changing enabled models updates only
 the existing runtime key’s model permissions through LiteLLM; it does not regenerate
 the key, unblock it or extend its expiry. Explicit recovery first observes matching

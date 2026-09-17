@@ -117,7 +117,7 @@ not a member-tool or production-assembly qualification. The browser controller i
 that candidate runs outside OpenShell, with the Gateway and execution worker still
 inside OpenShell. A separate [private browser-node assembly](../browser-node/README.md)
 also passed private ingress and member/admin native tool calls with explicit node
-selection. The local operator enrolls and supervises that native node;
+selection. The local operator enrolls that native node and Compose runs it;
 ordinary model-selected `host` control still encounters the Gateway DNS-preflight
 limitation described in
 [execution placement](../../openshell/README.md#execution-placement).

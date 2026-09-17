@@ -4,6 +4,7 @@ import {
   configurationSchema,
   liteLlmConfiguration,
   nativeAssignments,
+  nativeModelProvider,
 } from "../../scripts/models/configuration.js";
 const input = {
   mode: "litellm",
@@ -85,4 +86,29 @@ await test("runtime gateway transport requires TLS outside loopback", () => {
     }).success,
     true,
   );
+});
+
+await test("per-model protocols preserve Responses reasoning/tools alongside Chat Completions", () => {
+  const config = configurationSchema.parse({
+    ...input,
+    thinkingDefault: "medium",
+    models: [
+      input.models[0],
+      {
+        ...input.models[0],
+        id: "responses",
+        reasoning: true,
+        api: "openai-responses",
+      },
+    ],
+  });
+  assert.notEqual(config.mode, "disabled");
+  if (config.mode === "disabled") throw Error("Expected enabled models");
+  const provider = nativeModelProvider(config);
+  assert.equal(provider.api, "openai-completions");
+  assert.equal(provider.models[0]?.api, undefined);
+  assert.equal(provider.models[1]?.api, "openai-responses");
+  assert.equal(provider.models[1]?.reasoning, true);
+  assert.equal(provider.models[1]?.compat.supportsTools, true);
+  assert.equal(config.thinkingDefault, "medium");
 });

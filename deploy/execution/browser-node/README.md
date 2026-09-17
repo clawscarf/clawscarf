@@ -1,6 +1,6 @@
 # Native browser controller
 
-The [local operator](../../local/README.md#shared-browser) prepares, enrolls,
+The [local operator](../../deployment/README.md#shared-browser) prepares, enrolls,
 starts and stops this optional controller. Prepared-stack startup and explicit native
 navigation passed locally. Ordinary model-selected browsing remains blocked by the
 [upstream routing bug](#upstream-browser-routing-bug), assigned to the owner separately.
@@ -127,7 +127,7 @@ These component trials do not qualify ordinary model-selected browser use or Lin
 
 ## Operator lifecycle
 
-[Preparation](../../../scripts/local/browser-node.ts) creates owned node/configuration
+[Preparation](../../../scripts/deployment/browser-node.ts) creates owned node/configuration
 volumes, a private TLS certificate and fixed network files. The node receives a separate
 internal machine network for its Gateway ingress and DNS resolver, plus Chromium's
 isolated CDP network. No node/ingress/DNS ports are published. The ingress and resolver
@@ -135,7 +135,7 @@ bind only their reserved machine addresses; their second network supplies upstre
 connectivity, not a public listener. The certificate is pinned and checked on startup;
 expired or changed material fails visibly rather than being silently replaced.
 
-[Startup](../../../scripts/local/browser-node-pairing.ts) verifies the owned Gateway
+[Startup](../../../scripts/deployment/browser-node-pairing.ts) verifies the owned Gateway
 binding, records pairing intent and issues one node-only bootstrap. It waits for the
 public SDK's admitted node record and a connection timestamp from the current container
 start. On success it records the device ID privately and removes the bootstrap file.
@@ -143,7 +143,7 @@ Restarts require that same admitted device; revocation, lost identity or uncerta
 initial enrollment never triggers automatic re-pairing. Changed/ambiguous identity,
 container exit and readiness timeout fail visibly, with retained state for inspection.
 No user login, shared Gateway password or administrator credential authorizes the node.
-The operator supervises all three services and stops them before the Gateway.
+Compose owns all three services; the CLI stops them before the Gateway.
 
 Fresh-stack automatic enrollment, administrator verification and native public navigation
 passed using exact local images on macOS arm64/Docker Desktop. A full operator

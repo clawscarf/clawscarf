@@ -1,24 +1,22 @@
 import { defineControlUiPlugin } from "openclaw/plugin-sdk/control-ui";
+import { account as mountAccount } from "./account.js";
+import { people as mountPeople } from "./people.js";
 export default defineControlUiPlugin({
   id: "clawscarf-access",
   activate(host) {
     const account = host.ui.registerPage({
       id: "account",
-      label: "Your account",
-      mount() {
-        window.location.replace("/_clawscarf/account/");
-      },
+      label: "Account",
+      mount: mountAccount,
     });
     const people = host.ui.registerPage({
       id: "people",
       label: "People",
-      mount() {
-        window.location.replace("/_clawscarf/team/");
-      },
+      mount: mountPeople,
     });
     const accountNavigation = host.ui.registerNavigation({
       id: "account",
-      label: "Your account",
+      label: "Account",
       icon: "user",
       page: { id: "account" },
       defaultVisible: true,

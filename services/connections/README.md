@@ -1,5 +1,10 @@
 # Connections companion
 
+This describes the current local implementation. The selected
+[cloud-service design](../../docs/cloud-services.md) moves broker ownership to a
+separate repository and replaces this companion's web page with native OpenClaw UI.
+The runtime tools and reviewed broker behavior are reused, not rewritten wholesale.
+
 Optional same-origin account management and tool broker for one ClawScarf server.
 The [OpenClaw plugin](../../plugins/connections/README.md) exposes search, describe
 and call tools; accounts, provider credentials, grants and receipts stay here.
@@ -11,7 +16,7 @@ with `npm --prefix plugins/connections run api:generate`. `pnpm codegen:check`
 checks both clients and the portable contract for drift.
 All REST clients share the [generated HTTP transport](../../generated/README.md).
 
-The [unified installation CLI](../../deploy/local/installation.md#connections)
+The [unified installation CLI](../../deploy/deployment/installation.md#connections)
 can bootstrap local Connections on a fresh installation, including its initial scoped
 runtime credential and native plugin settings. Offline bootstrap uses the repository
 transaction and never replaces or reactivates existing credentials. External mode
@@ -89,7 +94,7 @@ pnpm exec tsx services/connections/credential-command.ts \
 The private, operator-owned session file contains the current `clawscarf_session` value. The CLI obtains
 CSRF state through the access API; it does not bypass native administration. The
 output file must not exist and is created with mode 0600. For local assembly, use
-[stopped-runtime activation](../../deploy/local/README.md#activate-connections)
+[stopped-runtime activation](../../deploy/deployment/README.md#activate-connections)
 to supply it to the plugin. The CLI accepts an exact HTTPS origin or loopback HTTP
 origin and follows no redirects. Use `revoke` instead of `rotate` to disable its access. Never automatically
 retry a lost rotation response; explicitly rotate again if the outcome is uncertain.

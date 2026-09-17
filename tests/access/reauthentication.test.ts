@@ -24,7 +24,7 @@ await test("sign-out requires fresh OIDC authentication until a successful callb
   const app = await createAccessHttp(
     {
       validateReturn: safeReturn,
-      async startLogin(_returnTo, _setup, reauthenticate) {
+      async startLogin(_returnTo, _setup, _invitation, reauthenticate) {
         return {
           cookie: "pending",
           url: await provider.authorization({

@@ -5,9 +5,10 @@ import type { FastifyInstance } from "fastify";
 export async function beginOidcBrowserLogin(
   app: FastifyInstance,
   returnTo: string,
+  invitation?: string,
 ) {
   const start = await app.inject({
-    url: `/_clawscarf/login?returnTo=${encodeURIComponent(returnTo)}`,
+    url: `/_clawscarf/login?returnTo=${encodeURIComponent(returnTo)}${invitation ? `&invitation=${encodeURIComponent(invitation)}` : ""}`,
   });
   assert.equal(start.statusCode, 302);
   const cookie = start.cookies.find(

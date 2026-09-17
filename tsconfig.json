@@ -30,7 +30,11 @@
     "ui/**/*.ts",
     "ui/**/*.tsx"
   ],
-  "exclude": ["services/access/generated", "services/connections/generated"],
+  "exclude": [
+    "services/access/generated",
+    "services/connections/generated",
+    "scripts/cloud/generated"
+  ],
   "references": [
     {
       "path": "./tsconfig.sdk.json"

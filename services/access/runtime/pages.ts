@@ -6,8 +6,9 @@ history.replaceState(null, "", location.pathname + location.search);
 if (code) {
   document.getElementById("code").value = code;
   document.getElementById("code-field").hidden = true;
-  document.getElementById("instruction").textContent = "Continue to sign in as the local administrator.";
-  document.querySelector("button").focus();
+  document.getElementById("instruction").textContent = "Signing you in…";
+  document.querySelector("button").hidden = true;
+  document.querySelector("form").requestSubmit();
 }`;
 export const signInPagePolicy =
   "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
@@ -18,7 +19,7 @@ export function localSignInPage(returnTo: string) {
   return `<!doctype html>${head}<body><main><h1>ClawScarf</h1><form method="post" action="/_clawscarf/local?returnTo=${encodeURIComponent(returnTo)}"><div id="code-field"><label for="code">Sign-in code</label><input id="code" name="token" type="password" required autocomplete="off" autofocus></div><p id="instruction">Enter the one-use code from your terminal.</p><button type="submit">Continue</button></form></main><script>${linkScript}</script></body></html>`;
 }
 export function setupCompletePage() {
-  return `<!doctype html>${head}<body><main><h1>Administrator ready</h1><p>Return to your terminal to finish installation.</p><a href="/">OpenClaw</a></main></body></html>`;
+  return `<!doctype html>${head}<body><main><h1>Administrator ready</h1><p>You can close this page and return to your terminal to finish installation.</p></main></body></html>`;
 }
 export function signedOutPage() {
   return `<!doctype html>${head}<body><main><h1>Signed out</h1><a href="/_clawscarf/login">Sign in</a></main></body></html>`;

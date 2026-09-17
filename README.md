@@ -10,19 +10,27 @@ reusable agent packs. Run it on infrastructure you control.
 > have passed on macOS arm64 with Docker Desktop. This is not yet a qualified
 > production release or a downloadable one-command installation.
 
+The selected [hosted login and Connections design](docs/cloud-services.md) replaces
+token-only evaluation login with convenient cloud authentication, while retaining
+customer OIDC. Connections remains independently optional. The installer now defaults to hosted login, with custom OIDC as an override. The cloud
+service has not been deployed; development releases need an explicit cloud URL.
+Connections cloud integration remains unfinished.
+
 ## What it contains
 
 | Component                                                | Responsibility                                                                                                                          |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | [Runtime](runtime/README.md)                             | Pinned vanilla OpenClaw, native defaults and persistent home. Agents, roles, conversations and configuration stay native.               |
 | [OpenShell](deploy/openshell/README.md)                  | Externally controlled protection around the Gateway and separate [execution worker](deploy/execution/worker/README.md).                 |
-| [Access](services/access/README.md)                      | Local administrator login or generic company OIDC, enrollment, protected entry and session revocation.                                  |
+| [Access](services/access/README.md)                      | Hosted login or generic company OIDC, enrollment, protected entry and session revocation.                                               |
 | [Connections](services/connections/README.md) — optional | Account setup, agent grants and a small [search/describe/call plugin](plugins/connections/README.md). External broker or local service. |
 | [Models](deploy/models/README.md)                        | Existing LiteLLM or bundled LiteLLM; provider credentials stay outside OpenClaw.                                                        |
 | [Packs](packs/README.md) — optional                      | Native agent/skill/workflow bundles with prerequisites and preview; includes a researcher/reviewer example.                             |
 
-Compose runs the [companion](apps/companion/README.md) and its PostgreSQL database;
-OpenShell owns the Gateway and execution worker. Access and Connections are separate
+Compose runs the OpenShell controller, forwarding services, the
+[companion](apps/companion/README.md), PostgreSQL and bundled LiteLLM. OpenShell owns
+the protected Gateway and execution worker containers. The CLI starts/stops this stack
+and then exits; no host daemon or launchd registration is required. Access and Connections are separate
 modules in the companion process. Connections can be omitted entirely. Its native
 plugin can also use an external broker. PostgreSQL stores identity/sessions and,
 when enabled, connection accounts; it does not duplicate native roles or pack state.
@@ -36,12 +44,13 @@ code; MCP and skill visibility are not universal authorization boundaries.
 ## Run the preview
 
 Follow [contributor setup and builds](scripts/README.md), then the
-[installation CLI guide](deploy/local/installation.md). The current path requires source
+[installation CLI guide](deploy/deployment/installation.md). The current path requires source
 builds, the pinned controller tools, **macOS arm64 and Docker Desktop**. Check the
 [measured footprint](deploy/openshell/README.md#development-footprint) before starting.
 
-Local evaluation requires no company IdP, public DNS, cloud account or VM allocation.
-The [team profile](deploy/local/README.md#team-profile) adds HTTPS and generic OIDC.
+Loopback installations need no public DNS or VM allocation. Hosted login requires a
+ClawScarf account; custom OIDC works independently of the cloud. HTTPS exposure is
+configured separately from login.
 The installer requires bundled or existing LiteLLM; Connections and packs are optional.
 Lower-level component tests can omit models, in which case the Gateway starts with
 outbound traffic denied. That policy is not a blanket network policy for every companion.
@@ -51,10 +60,12 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 - Local administrator model responses and file tools passed. Native administrator
   and member execution passed through the separate worker, including administrative
   denial and forbidden network targets.
-- The current working tree passed fresh installer setup with normal Docker networking,
-  hosted account approval, automatic OIDC registration, persistent startup, private
-  administrator claim through WorkOS, native People and a real GPT-6 Astra / medium
-  browser response.
+- The rebuilt development images passed local one-use browser login, native Account/People
+  pages and a direct OpenAI GPT-6 Astra response with medium reasoning and a tool call
+  through LiteLLM Responses.
+- Fresh installer setup passed normal Docker networking, hosted account approval,
+  automatic OIDC registration, persistent startup, private administrator claim through
+  WorkOS, native People and a real GPT-6 Astra / medium browser response.
 - The assembled team profile passed local Dex browser login, enrollment, handover,
   revocation, bookmarks, widgets and hooks. Public deployment and release-artifact
   acceptance remain unqualified.
@@ -76,9 +87,9 @@ optional capabilities are not release requirements. Vanilla ClawHub discovery st
 
 ## Installation management
 
-The [installation CLI](deploy/local/installation.md) is the public configuration and
+The [installation CLI](deploy/deployment/installation.md) is the public configuration and
 lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
-defaults for that document. The [component guide](deploy/local/README.md) covers internal
+defaults for that document. The [component guide](deploy/deployment/README.md) covers internal
 developer operations; it is not a second supported installation format.
 The menu reviews settings before credentials, starts persistently on macOS when selected, and provides
 the private OIDC administrator claim. The `settings` editor and matching plan/apply
@@ -86,10 +97,11 @@ commands change retained models, Connections and pack selections; the installati
 guide records the native pack-removal limitation. [Release bundles](release/README.md)
 copy tools, catalogs and recipe-selected packs into a movable directory. npm/GitHub/GHCR
 publication and automatic download remain unfinished.
-People management belongs to a mandatory OpenClaw UI plugin; account
-linking belongs to the optional Connections plugin, backed by the external companion
-services. Those native management pages are planned; current navigation opens companion
-pages. [TODO.md](TODO.md) is the only task checklist, including that deferred work.
+The bundled [Account and People plugin](plugins/access/README.md) renders inside OpenClaw.
+Administrators invite people using copyable links, assign native roles and remove access.
+The external Access companion enforces admission and revocation. Connections remains
+optional and uses its existing companion page; its native UI rewrite is part of the
+selected [hosted-services integration](docs/cloud-services.md).
 
 The unified product design fixes OpenShell Gateway protection, a separate protected
 shared worker and authenticated entry/admission/revocation. Recipes vary deployment

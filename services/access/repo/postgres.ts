@@ -30,6 +30,7 @@ const loginSchema = z
     codeVerifier: z.string(),
     returnTo: z.string(),
     setupTokenHash: z.string().optional(),
+    invitationTokenHash: z.string().optional(),
   })
   .strict();
 const user = (row: UserRow): User => ({
@@ -104,6 +105,118 @@ export class PostgresAccessStore implements AccessStore {
         client.release();
       }
     }
+  }
+  async invitations() {
+    const result = await (this.client ?? this.pool).query<
+      import("../types/model.js").Invitation
+    >(
+      `SELECT id,email,expires_at::text AS "expiresAt",
+       CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN accepted_at IS NOT NULL THEN 'accepted'
+       WHEN expires_at<=clock_timestamp() THEN 'expired' ELSE 'pending' END AS status
+       FROM clawscarf_access.invitations ORDER BY expires_at DESC LIMIT 1000`,
+    );
+    return result.rows.map((row) => ({
+      ...row,
+      expiresAt: new Date(row.expiresAt).toISOString(),
+    }));
+  }
+  async createInvitation(sponsorId: string, email: string, tokenHash: string) {
+    const result = await (this.client ?? this.pool).query<{
+      id: string;
+      email: string;
+      expires_at: Date;
+    }>(
+      `INSERT INTO clawscarf_access.invitations(id,token_hash,email,sponsor_id,sponsor_revision)
+       SELECT $1,$2,$3,id,revision FROM clawscarf_access.users WHERE id=$4 AND admitted
+       AND (SELECT count(*) FROM clawscarf_access.invitations WHERE accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now())<1000
+       RETURNING id,email,expires_at`,
+      [randomUUID(), tokenHash, email.toLowerCase(), sponsorId],
+    );
+    const row = result.rows[0];
+    if (!row)
+      throw new AccessError(
+        "rate_limited",
+        "Cannot create another invitation.",
+      );
+    return {
+      id: row.id,
+      email: row.email,
+      expiresAt: row.expires_at.toISOString(),
+      status: "pending" as const,
+    };
+  }
+  async revokeInvitation(id: string) {
+    await (this.client ?? this.pool).query(
+      "UPDATE clawscarf_access.invitations SET revoked_at=clock_timestamp() WHERE id=$1 AND accepted_at IS NULL",
+      [id],
+    );
+  }
+  async bindInvitation(
+    digest: string,
+    identity: Identity,
+    credentialHash: string,
+  ) {
+    if (!identity.emailVerified)
+      throw new AccessError(
+        "email_unverified",
+        "Use a verified email address.",
+      );
+    return this.transaction(async (client) => {
+      const result = await client.query<UserRow>(
+        `UPDATE clawscarf_access.invitations i SET subject=$2 FROM clawscarf_access.users u
+         WHERE i.token_hash=$1 AND i.sponsor_id=u.id AND u.admitted AND u.revision=i.sponsor_revision
+         AND u.issuer=$3 AND i.email=$4 AND (i.subject IS NULL OR i.subject=$2)
+         AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>clock_timestamp()
+         RETURNING u.*`,
+        [
+          digest,
+          identity.subject,
+          identity.issuer,
+          identity.email.toLowerCase(),
+        ],
+      );
+      const sponsor = result.rows[0];
+      if (!sponsor)
+        throw new AccessError(
+          "invalid_authorization",
+          "Invitation expired, was used, or belongs to another account.",
+        );
+      await client.query(
+        `INSERT INTO clawscarf_access.browser_sessions(hash,purpose,user_id,admission_revision,csrf,expires_at)
+         VALUES($1,'invitation',$2,$3,'',clock_timestamp()+interval '3 minutes')`,
+        [credentialHash, sponsor.id, sponsor.revision],
+      );
+      return { hash: credentialHash, user: user(sponsor), csrfToken: "" };
+    });
+  }
+  async finishInvitation(
+    digest: string,
+    userId: string,
+    sessionHash: string,
+    csrf: string,
+    logoutUrl: string | null,
+  ) {
+    await this.transaction(async (client) => {
+      const result = await client.query(
+        `UPDATE clawscarf_access.invitations i SET accepted_at=clock_timestamp()
+         FROM clawscarf_access.users sponsor,clawscarf_access.users target
+         WHERE i.token_hash=$1 AND target.id=$2 AND target.subject=i.subject AND target.email=i.email
+         AND sponsor.id=i.sponsor_id AND sponsor.admitted AND sponsor.revision=i.sponsor_revision
+         AND target.issuer=sponsor.issuer AND NOT target.admitted
+         AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>clock_timestamp()`,
+        [digest, userId],
+      );
+      if (result.rowCount !== 1)
+        throw new AccessError(
+          "invalid_authorization",
+          "Invitation is no longer available.",
+        );
+      await client.query(
+        "UPDATE clawscarf_access.users SET admitted=true,revision=revision+1 WHERE id=$1",
+        [userId],
+      );
+      await this.insertSession(client, userId, sessionHash, csrf, logoutUrl);
+    });
   }
   async eligibleIdentities() {
     const result = await (this.client ?? this.pool).query<{ id: string }>(
@@ -341,7 +454,7 @@ export class PostgresAccessStore implements AccessStore {
   }
   async revokeDelegation(digest: string) {
     await (this.client ?? this.pool).query(
-      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 AND (parent_hash IS NOT NULL OR purpose='setup')",
+      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 AND (parent_hash IS NOT NULL OR purpose IN ('setup','invitation'))",
       [digest],
     );
   }

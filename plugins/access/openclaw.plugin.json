@@ -1,8 +1,8 @@
 {
   "id": "clawscarf-access",
-  "name": "ClawScarf account",
+  "name": "ClawScarf People",
   "version": "0.1.0",
-  "description": "Open your ClawScarf account or manage team admission.",
+  "description": "Account, team invitations and native role assignments.",
   "activation": {
     "onStartup": true
   },
@@ -12,7 +12,7 @@
     "properties": {}
   },
   "controlUi": {
-    "entry": "dist/control-ui/7f4c4434c3c7c2c5f38e9397350aef3f498e6be1c7123dad57d06154528b1460/index.js"
+    "entry": "dist/control-ui/eab98897925d7013ed06d344046b3af1cdcc76c21783ea752e58bfccc937e643/index.js"
   },
   "contracts": {
     "tools": []

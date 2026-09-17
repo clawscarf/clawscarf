@@ -1,5 +1,5 @@
 import type { InstallationConfiguration } from "../../configuration.js";
-import { localInput } from "../../../local/configuration.js";
+import { localInput } from "../../../deployment/configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
 import { field } from "../inputs.js";
 

@@ -2,12 +2,12 @@ import { dirname, join, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { prepareLocal } from "../local/prepare.js";
+import { prepareLocal } from "../deployment/prepare.js";
 import {
   readState,
   ensurePrivateFile,
   withInstallationLock,
-} from "../local/state.js";
+} from "../deployment/state.js";
 import { fingerprint, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";

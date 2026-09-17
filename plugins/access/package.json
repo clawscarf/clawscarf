@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Native account navigation for the ClawScarf access companion.",
+  "description": "Native Account and People pages for ClawScarf.",
   "license": "MIT",
   "files": [
     "dist",

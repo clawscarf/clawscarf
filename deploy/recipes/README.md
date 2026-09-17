@@ -17,7 +17,7 @@ execution for this recipe is not yet qualified. It supplies no document
 pack, ingestion system or validated question-answering behavior. Those are deliberately
 outside the menu implementation. Connections and browser default to off.
 
-The [installation guide](../local/installation.md#terminal-installer) owns commands.
+The [installation guide](../deployment/installation.md#terminal-installer) owns commands.
 Use `--recipes <directory>` to replace the release catalogue for development; JSON
 files are loaded deterministically and duplicate/invalid IDs fail. `Custom` remains
 available without recipe provenance. Recipe choices cannot disable OpenShell protection,

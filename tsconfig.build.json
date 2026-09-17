@@ -11,7 +11,6 @@
     "services/access/generated",
     "services/connections/generated",
     "services/connections/web",
-    "services/access/web",
     "ui"
   ]
 }

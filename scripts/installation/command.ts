@@ -1,3 +1,5 @@
+import { peopleCommand } from "../people.js";
+import { confirmDeletion, deleteInstallation } from "./delete.js";
 import { writeResult } from "../output.js";
 import { modelsCommand } from "../models/command.js";
 import { packsCommand } from "../packs/command.js";
@@ -15,18 +17,17 @@ import { readJson } from "./files.js";
 import { planInstallation, applyInstallation } from "./plan.js";
 import {
   startInstallation,
-  superviseInstallation,
   controlInstallation,
   installationLogs,
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
-import { localLoginCode } from "../local/login.js";
-import { localLogNames } from "../local/logs.js";
+import { localLoginCode } from "../deployment/login.js";
+import { localLogNames } from "../deployment/logs.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
-import { upgradeLocal } from "../local/upgrade.js";
+import { upgradeLocal } from "../deployment/upgrade.js";
 import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
-import { operateConnectionsRuntime } from "../local/connections-runtime.js";
+import { operateConnectionsRuntime } from "../deployment/connections-runtime.js";
 import { progress, terminalLink } from "./installer/prompts.js";
 import { runInstaller } from "./installer/run.js";
 import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
@@ -41,6 +42,7 @@ export function installationCommand() {
       "--json",
       "Print machine-readable results; diagnostics go to stderr",
     );
+  program.addCommand(peopleCommand(program));
   const output = (value: unknown, human?: string) => {
     writeResult(program, value, human);
   };
@@ -57,6 +59,7 @@ export function installationCommand() {
       "--recipes <directory>",
       "Developer override: local recipe catalogue",
     )
+    .option("--cloud-url <url>", "Development override: ClawScarf Cloud origin")
     .option("--recipe <id>", "Starting recipe, or custom")
     .option("--directory <path>", "New private installation directory")
     .option(
@@ -87,11 +90,16 @@ export function installationCommand() {
   program
     .command("configure")
     .description(
-      "Write a new installation configuration without prompts or provisioning",
+      "Configure a new installation and register hosted login, or resume saved setup",
     )
     .option("--release <file>")
     .option("--recipes <directory>")
-    .requiredOption("--recipe <id>", "Recipe ID, or custom")
+    .option("--recipe <id>", "Recipe ID, or custom (new installations)")
+    .option("--cloud-url <url>", "Development override: ClawScarf Cloud origin")
+    .option(
+      "--cloud-credential-file <file>",
+      "Private cloud owner/provisioner credential for unattended setup",
+    )
     .requiredOption("--directory <path>", "New private installation directory")
     .option(
       "--settings <file>",
@@ -100,7 +108,8 @@ export function installationCommand() {
     .action(
       async (
         options: SetupOptions & {
-          recipe: string;
+          recipe?: string;
+          cloudCredentialFile?: string;
           directory: string;
           settings?: string;
         },
@@ -192,24 +201,17 @@ export function installationCommand() {
         output(await reconfigureInstallation(config, fingerprint));
       },
     );
-  withLocation(program.command("start"))
-    .option("--foreground", "Developer: run the supervisor in this terminal")
-    .action(async (options: LocationOptions & { foreground?: boolean }) => {
+  withLocation(program.command("start")).action(
+    async (options: LocationOptions) => {
       const state = await resolveLocation(options);
-      const { foreground } = options;
-      if (foreground) {
-        await superviseInstallation(state, (message) => {
-          process.stderr.write(message + "\n");
-        });
-        return;
-      }
       const result = await progress(
         "Starting ClawScarf",
         (_signal, report) => startInstallation(state, report),
         program.opts<{ json?: boolean }>(),
       );
       output(result, statusText(result));
-    });
+    },
+  );
   withLocation(program.command("administrator"))
     .description("Observe or issue the private first-administrator setup link")
     .option(
@@ -221,16 +223,57 @@ export function installationCommand() {
         await administratorSetup(await resolveLocation(options), options.issue),
       );
     });
-  for (const action of ["status", "stop"] as const)
-    withLocation(program.command(action)).action(
-      async (options: LocationOptions) => {
-        const result = await controlInstallation(
-          await resolveLocation(options),
-          action,
+  for (const action of ["status", "stop"] as const) {
+    const command = withLocation(program.command(action));
+    if (action === "stop")
+      command
+        .option(
+          "--delete",
+          "Permanently delete this installation's Docker resources and data",
+        )
+        .option(
+          "--confirm-delete <state-directory>",
+          "Unattended deletion: confirm the exact absolute state directory",
+        )
+        .option(
+          "--accept-data-loss",
+          "Unattended deletion: acknowledge permanent loss of all installation data",
         );
+    command.action(
+      async (
+        options: LocationOptions & {
+          delete?: boolean;
+          confirmDelete?: string;
+          acceptDataLoss?: boolean;
+        },
+      ) => {
+        const directory = await resolveLocation(options);
+        if (options.delete) {
+          await confirmDeletion(directory, {
+            ...options,
+            ...program.opts<{ json?: boolean }>(),
+          });
+          const result = await progress(
+            "Deleting installation",
+            (signal) => deleteInstallation(directory, signal),
+            program.opts<{ json?: boolean }>(),
+          );
+          output(
+            result,
+            "Installation deleted from Docker. You can now remove its installation folder.",
+          );
+          return;
+        }
+        if (options.confirmDelete !== undefined || options.acceptDataLoss)
+          throw new InstallationError(
+            "invalid_configuration",
+            "Deletion confirmations require --delete.",
+          );
+        const result = await controlInstallation(directory, action);
         output(result, statusText(result));
       },
     );
+  }
   withLocation(program.command("logs"))
     .requiredOption("--service <name>", localLogNames.join(", "))
     .action(async (options: LocationOptions & { service: string }) => {
@@ -335,7 +378,7 @@ export function installationCommand() {
 
 function statusText(status: Awaited<ReturnType<typeof controlInstallation>>) {
   const lines = [
-    `Server: ${status.supervisor === "not_running" ? "Stopped" : status.supervisor}`,
+    `Server: ${status.state}`,
     `Ready: ${status.ready ? "Yes" : "No"}`,
   ];
   if ("administrator" in status) {

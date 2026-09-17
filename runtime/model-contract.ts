@@ -24,6 +24,7 @@ const assignmentSchema = z.discriminatedUnion("path", [
           z.strictObject({
             id: z.string().min(1),
             name: z.string().min(1),
+            api: z.enum(["openai-completions", "openai-responses"]).optional(),
             input: z.array(z.enum(["text", "image"])).min(1),
             reasoning: z.boolean(),
             contextWindow: z.number().int().positive(),

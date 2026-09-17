@@ -1,31 +1,31 @@
-import { applyConnectionSettings } from "../local/connection-settings.js";
+import { applyConnectionSettings } from "../deployment/connection-settings.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { compose } from "../local/compose.js";
+import { compose } from "../deployment/compose.js";
 import { setRuntimeCredentialModels } from "../models/credentials.js";
 import { resolveConfigurationInputs } from "./configure.js";
 import { ModelConfigurationError } from "../../runtime/model-contract.js";
 import {
   loadGatewayConfiguration,
   prepareModelGateway,
-} from "../local/model-gateway.js";
+} from "../deployment/model-gateway.js";
 import {
   readInitialConnectionsEndpoint,
   loadInitialConnections,
   prepareInitialConnections,
-} from "../local/connections.js";
+} from "../deployment/connections.js";
 import { configureStoppedRuntimeModels } from "../models/runtime.js";
-import { loadInitialModels } from "../local/models.js";
+import { loadInitialModels } from "../deployment/models.js";
 import {
   readState,
   resourceNames,
   withInstallationLock,
   writePrivate,
-} from "../local/state.js";
-import { requireNoUpgrade } from "../local/upgrade-state.js";
-import { run } from "../local/process.js";
+} from "../deployment/state.js";
+import { requireNoUpgrade } from "../deployment/upgrade-state.js";
+import { run } from "../deployment/process.js";
 import { selectionSchema } from "./packs.js";
 import { installationSchema } from "./configuration.js";
 import { resolveInstallation } from "./resolve.js";

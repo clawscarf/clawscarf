@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { compose } from "../local/compose.js";
+import { compose } from "../deployment/compose.js";
 
 /** Local operator command; no public endpoint can issue an ownership claim. */
 export async function administratorSetup(directory: string, issue = false) {

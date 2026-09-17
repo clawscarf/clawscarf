@@ -1,18 +1,22 @@
+import { hostedOidc } from "../cloud/registration.js";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
-import { loadGatewayConfiguration } from "../local/model-gateway.js";
+import { loadGatewayConfiguration } from "../deployment/model-gateway.js";
 import { createServer } from "node:net";
 import { releaseSchema } from "../release/definition.js";
 import { verifyReleasePacks } from "../release/packs.js";
-import { parseLocalInput, type LocalInput } from "../local/configuration.js";
-import { loadInitialModels } from "../local/models.js";
+import {
+  parseLocalInput,
+  type LocalInput,
+} from "../deployment/configuration.js";
+import { loadInitialModels } from "../deployment/models.js";
 import {
   loadInitialConnections,
   readInitialConnectionToken,
-} from "../local/connections.js";
-import { readTeamMaterials } from "../local/team.js";
+} from "../deployment/connections.js";
+import { readTeamMaterials } from "../deployment/team.js";
 import { installationSchema } from "./configuration.js";
 import { fingerprint, readInputFile, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
@@ -116,9 +120,16 @@ export async function resolveInstallation(
     inputs[filename] = fingerprint(await readInputFile(filename, secret));
     return filename;
   }
-  const local = config.exposure.mode === "local";
   const exposure = config.exposure;
-  const access = config.access;
+  const access =
+    config.access.mode === "hosted"
+      ? {
+          ...config.access,
+          ...(await hostedOidc(
+            await inputFile(config.access.registrationFile, true),
+          )),
+        }
+      : config.access;
   const input: LocalInput = parseLocalInput({
     name: config.name,
     administratorName: access.administratorName,
@@ -127,6 +138,7 @@ export async function resolveInstallation(
     relayImage: release.images.relay,
     openshellCli: cli,
     openshellGateway: gateway,
+    openshellClientImage: release.images.openshellClient,
     cpu: config.resources.gateway.cpu,
     memory: config.resources.gateway.memory,
     ports: {
@@ -160,25 +172,28 @@ export async function resolveInstallation(
           },
         }
       : {}),
-    ...(!local && exposure.mode === "https" && access.mode === "oidc"
-      ? {
-          team: {
+    team: {
+      ...(exposure.mode === "https"
+        ? {
             origin: exposure.applicationOrigin,
             widgetOrigin: exposure.widgetOrigin,
             certificateFile: await inputFile(exposure.certificateFile, false),
             keyFile: await inputFile(exposure.keyFile, true),
-            issuer: access.issuer,
-            clientId: access.clientId,
-            clientSecretFile: await inputFile(access.clientSecretFile, true),
-            ...(access.administratorSubject
-              ? {
-                  administratorSubject: access.administratorSubject,
-                  administratorEmail: access.administratorEmail,
-                }
-              : {}),
-          },
-        }
-      : {}),
+          }
+        : {
+            origin: `http://127.0.0.1:${String(exposure.applicationPort)}`,
+            widgetOrigin: `http://127.0.0.1:${String(exposure.widgetPort)}`,
+          }),
+      issuer: access.issuer,
+      clientId: access.clientId,
+      clientSecretFile: await inputFile(access.clientSecretFile, true),
+      ...("administratorSubject" in access && access.administratorSubject
+        ? {
+            administratorSubject: access.administratorSubject,
+            administratorEmail: access.administratorEmail,
+          }
+        : {}),
+    },
     ...(config.models.mode === "external"
       ? {
           models: {

@@ -2,6 +2,7 @@ import { z } from "zod";
 export const modelSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/),
   name: z.string().min(1).max(200),
+  api: z.enum(["openai-completions", "openai-responses"]).optional(),
   enabled: z.boolean(),
   contextWindow: z.number().int().positive(),
   maxTokens: z.number().int().positive(),
@@ -101,6 +102,7 @@ export function nativeModelProvider(config: EnabledModelConfiguration) {
       .map((model) => ({
         id: model.id,
         name: model.name,
+        ...(model.api ? { api: model.api } : {}),
         input: model.input,
         reasoning: model.reasoning,
         contextWindow: model.contextWindow,

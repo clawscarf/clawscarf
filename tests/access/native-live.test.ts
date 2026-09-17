@@ -200,6 +200,8 @@ await test(
         redirectUri: config.origin + "/_clawscarf/callback",
       }),
       config.origin,
+      undefined,
+      app.native,
     );
     const team = new EnrollmentService(
       app.repository,
@@ -242,11 +244,9 @@ await test(
       });
     async function login(subject: string) {
       oidc.setUser(subject);
-      const result = await (
-        await beginOidcBrowserLogin(http, "/_clawscarf/team/")
-      ).complete();
+      const result = await (await beginOidcBrowserLogin(http, "/")).complete();
       assert.equal(result.statusCode, 302);
-      assert.equal(result.headers.location, "/_clawscarf/team/");
+      assert.equal(result.headers.location, "/");
       const cookie = result.cookies.find(
         (value) => value.name === "clawscarf_session",
       );
@@ -270,30 +270,21 @@ await test(
       assert.equal(result.statusCode, 200, result.body);
       return pending;
     }
-    async function promote(credential: string, identity: string, name: string) {
-      await withGateway(
-        {
-          origin: config.origin,
-          ...(config.runtime.managementOrigin
-            ? { endpoint: config.runtime.managementOrigin }
-            : {}),
-          credential,
-        },
-        async (gateway) => {
-          const profile = profileFor(
-            (await readState(gateway)).profiles,
-            identity,
-          );
-          assert.ok(profile);
-          assert.equal(profile.role, "member");
-          assert.equal(profile.displayName, name);
-          await gateway.mutate("users.setRole", {
-            profileId: profile.id,
-            role: "admin",
-          });
-        },
+    async function promote(credential: string, identity: string) {
+      const actor = await sessions.authenticate(credential);
+      const observed = await team.list(actor);
+      const person = observed.people.find(
+        (person) => person.identity === identity,
       );
-      assert.equal((await people(credential)).statusCode, 200);
+      assert.ok(person);
+      assert.equal(person.role, "member");
+      const result = await http.inject({
+        method: "PUT",
+        url: `/_clawscarf/people/${person.id}/role`,
+        headers: await headers(credential),
+        payload: { role: "admin", expectedRole: "member" },
+      });
+      assert.equal(result.statusCode, 200, result.body);
     }
     async function stream(credential: string, scopes: string[]) {
       const connected = Promise.withResolvers<void>();
@@ -350,22 +341,49 @@ await test(
         firstPerson.id,
       );
       assert.equal((await people(firstCredential)).statusCode, 403);
-      await promote(ownerCredential, firstPerson.identity, first.name);
+      await promote(ownerCredential, firstPerson.identity);
       assert.equal((await people(firstCredential)).statusCode, 200);
-      const secondPerson = await enroll(firstCredential, second);
-      const secondCredential = await login(second.subject);
+      const invitation = await team.invite(
+        await sessions.authenticate(firstCredential),
+        second.email,
+      );
+      const secret = new URL(invitation.url).searchParams.get("invitation");
+      assert.ok(secret);
+      oidc.setUser(second.subject);
+      const accepted = await (
+        await beginOidcBrowserLogin(http, "/", secret)
+      ).complete();
+      assert.equal(accepted.statusCode, 302, accepted.body);
+      const secondCredential = accepted.cookies.find(
+        (cookie) => cookie.name === "clawscarf_session",
+      )?.value;
+      assert.ok(secondCredential);
+      const secondPerson = (await sessions.authenticate(secondCredential)).user;
+      cleanup.add(secondPerson.id);
+      assert.equal(
+        (await (await beginOidcBrowserLogin(http, "/", secret)).complete())
+          .statusCode,
+        400,
+      );
       assert.equal(
         (await sessions.authenticate(secondCredential)).user.id,
         secondPerson.id,
       );
       assert.equal((await people(secondCredential)).statusCode, 403);
-      await promote(firstCredential, secondPerson.identity, second.name);
+      await promote(firstCredential, secondPerson.identity);
       assert.equal((await people(secondCredential)).statusCode, 200);
 
+      await team.setRole(
+        await sessions.authenticate(secondCredential),
+        firstPerson.id,
+        "member",
+        "admin",
+      );
+      assert.equal((await people(firstCredential)).statusCode, 403);
       const removed = await http.inject({
         method: "DELETE",
         url: "/_clawscarf/people/" + firstPerson.id,
-        headers: await headers(firstCredential),
+        headers: await headers(secondCredential),
       });
       assert.equal(removed.statusCode, 200, removed.body);
       cleanup.delete(firstPerson.id);

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { packageOperator } from "./release/operator.js";
-import { postgresImage } from "./local/images.js";
+import { postgresImage } from "./deployment/images.js";
 
 const execute = promisify(execFile);
 await test(
@@ -132,10 +132,9 @@ await test(
         images: {
           postgres: postgresImage,
           ...Object.fromEntries(
-            ["gateway", "worker", "companion", "relay"].map((name) => [
-              name,
-              "sha256:" + "a".repeat(64),
-            ]),
+            ["gateway", "worker", "companion", "relay", "openshellClient"].map(
+              (name) => [name, "sha256:" + "a".repeat(64)],
+            ),
           ),
         },
         tools: {

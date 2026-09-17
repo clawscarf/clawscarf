@@ -12,7 +12,7 @@ pnpm check
 ```
 
 The root build compiles repository tooling, companion TypeScript and the Connections
-and Access plugins and both standalone browser surfaces; it does not produce an OpenClaw runtime image.
+and Access plugins and the standalone Connections browser surface; it does not produce an OpenClaw runtime image.
 Plugin packages own their separate SDK dependency, build and acceptance commands.
 Connections configuration tests use private copies of plugin metadata and source entry files,
 so they do not depend on compiled plugin output being present during a build. Compiled
@@ -41,14 +41,14 @@ The companion fetch SDKs are compiled separately by [tsconfig.sdk.json](../tscon
 because its generator does not support exact optional property checking. The main
 project retains that check and consumes their generated declarations.
 
-The [local assembly](../deploy/local/README.md) uses the public CLI’s `apply`,
-`start` and `login` for private state, supervised operation and local entry. It
+The [deployment operators](../deploy/deployment/README.md) in `deployment/` use the public CLI’s `apply`,
+`start` and `administrator` for private state, container lifecycle and administrator entry. It
 has local acceptance evidence in that guide; clean-machine release qualification remains separate.
 The build clears its compiled output first so removed source files cannot survive in an archive.
 The compiled operator includes the Access and Connections migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
 
-The [unified installation CLI](../deploy/local/installation.md) is in `installation/`.
+The [unified installation CLI](../deploy/deployment/installation.md) is in `installation/`.
 [Setup](installation/setup.ts) owns recipe defaults and section replacement;
 [configuration writing](installation/save.ts) owns private files. The `installer/sections/`
 modules collect feature-specific answers; shared prompts render the revisitable menu.
@@ -90,9 +90,9 @@ CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.
 CLAWSCARF_TEST_COMPANION_PACKAGE=1 pnpm exec tsx --test scripts/package-companion.test.ts
 ```
 
-The archive also passed retained-installation preparation and supervised startup
+The archive also passed retained-installation preparation and startup
 through verified native administrator access from an extracted directory outside
-the checkout. Its migrations, policy and spawned controller/helpers were resolved
+the checkout. Its migrations, policy and component helpers were resolved
 from that archive; the pinned images and controller binaries remained external inputs.
 This packaging check is separate from a clean-machine runtime installation and
 does not qualify a published release or an upgrade.
@@ -144,5 +144,12 @@ Shared frontend primitives and theme live in `ui/`; they cannot import service o
 
 Retained installation editing uses `clawscarf settings --state <directory>`; its
 noninteractive plan/apply commands share the same operations. See the
-[installation guide](../deploy/local/installation.md#change-an-existing-installation)
+[installation guide](../deploy/deployment/installation.md#change-an-existing-installation)
 for supported changes, persistence and failure handling.
+
+The [cloud API snapshot](cloud/openapi.json) comes from clawscarf-cloud’s API contract
+at commit `154387c`.
+After an upstream contract change, replace the snapshot and run `pnpm cloud:generate`;
+`codegen:check` verifies the generated consumer. It shares the existing HTTP transport.
+Hosted registration and OAuth device authorization live in `scripts/cloud/`; custom OIDC
+bypasses that registration path.

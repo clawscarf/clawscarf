@@ -28,6 +28,9 @@ await test("independent companion and plugin imports pass; cross-boundary source
       "services/access/entry.ts":
         'export { value } from "../../generated/http/client.js";',
       "services/access/value.ts": "export const value = 2;",
+      "services/access/generated/sdk.gen.ts": "export const value = 3;",
+      "plugins/access/src/index.ts":
+        'export { value } from "../../../services/access/generated/sdk.gen.js";',
       "generated/http/client.ts": 'export { value } from "./helper.js";',
       "generated/http/helper.ts": 'export { value } from "./client.js";',
     })) {
@@ -283,10 +286,10 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
     );
     const files = [
       "scripts/installation/command",
-      "scripts/local/prepare",
+      "scripts/deployment/prepare",
       "scripts/clawscarf",
       "ui/button",
-      "services/access/web/page",
+      "services/connections/web/page",
       "services/access/repo/postgres",
       "services/access/repo/private",
     ];
@@ -302,27 +305,27 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
     ];
     for (const [source, allowed, forbidden, rule] of [
       [
-        "scripts/local/prepare",
+        "scripts/deployment/prepare",
         "../../services/access/repo/postgres.js",
         "../../services/access/repo/private.js",
         "operator-services-use-named-boundaries",
       ],
       [
-        "scripts/local/prepare",
+        "scripts/deployment/prepare",
         "../../services/access/repo/postgres.js",
         "../installation/command.js",
         "component-operators-do-not-import-installation-ui",
       ],
       [
         "scripts/installation/command",
-        "../local/prepare.js",
+        "../deployment/prepare.js",
         "../clawscarf.js",
         "operator-internals-do-not-import-cli-entries",
       ],
       [
         "ui/button",
         "./input.js",
-        "../services/access/web/page.js",
+        "../services/connections/web/page.js",
         "shared-ui-is-domain-independent",
       ],
       [
@@ -351,7 +354,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       await write(`${source}.ts`, "export const value = 1;");
     }
     await write(
-      "services/access/web/page.ts",
+      "services/connections/web/page.ts",
       'export {value} from "../../../ui/button.js";',
     );
     await run(process.execPath, args, { cwd: root });

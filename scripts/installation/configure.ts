@@ -1,3 +1,4 @@
+import { registerHostedLogin } from "../cloud/registration.js";
 import { packRequirements } from "./requirements.js";
 import { InstallationError } from "./errors.js";
 import { dirname, resolve } from "node:path";
@@ -7,7 +8,7 @@ import {
   assertReleaseCapabilities,
   type SetupOptions,
 } from "./setup.js";
-import { readJson } from "./files.js";
+import { readJson, readInputFile } from "./files.js";
 import { saveConfiguration, SetupInputs } from "./save.js";
 import { installationSchema, type InstallationDraft } from "./configuration.js";
 
@@ -19,6 +20,8 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
   const config = structuredClone(value);
   const path = (input: string) => (input ? resolve(base, input) : input);
   config.releaseFile = path(config.releaseFile);
+  if (config.access.mode === "hosted")
+    config.access.registrationFile = path(config.access.registrationFile);
   if (config.access.mode === "oidc")
     config.access.clientSecretFile = path(config.access.clientSecretFile);
   if (config.exposure.mode === "https") {
@@ -59,11 +62,32 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
 
 export async function configureInstallation(
   options: SetupOptions & {
-    recipe: string;
+    recipe?: string;
     directory: string;
     settings?: string;
+    cloudCredentialFile?: string;
   },
 ) {
+  const authorize = async () => {
+    if (!options.cloudCredentialFile)
+      throw new InstallationError(
+        "invalid_configuration",
+        "Hosted registration requires --cloud-credential-file for unattended setup. Use install for browser sign-in.",
+      );
+    return (await readInputFile(options.cloudCredentialFile, true))
+      .toString("utf8")
+      .trim();
+  };
+  const saved = await savedSetup(options);
+  if (saved) {
+    await registerHostedLogin(saved.configFile, authorize);
+    return { state: "configured", configFile: saved.configFile };
+  }
+  if (!options.recipe)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Choose --recipe for a new installation.",
+    );
   const context = await setupContext(options);
   const settings = options.settings ? await readJson(options.settings) : {};
   const inputs = new SetupInputs(resolve(options.directory));
@@ -71,6 +95,11 @@ export async function configureInstallation(
     setupDraft(context, options.recipe, settings, inputs),
     options.settings ? dirname(resolve(options.settings)) : process.cwd(),
   );
+  if (draft.access.mode === "hosted")
+    draft.access.registrationFile = resolve(
+      options.directory,
+      "secrets/hosted-login.json",
+    );
   if (!draft.models)
     throw new InstallationError(
       "invalid_configuration",
@@ -86,10 +115,44 @@ export async function configureInstallation(
     config,
     inputs,
   );
+  await registerHostedLogin(configFile, authorize);
   return {
     state: "configured",
     configFile,
     release: context.release.version,
     recipe: options.recipe,
   };
+}
+
+/** Only install/configure without new selections can resume saved setup. */
+export async function savedSetup(options: {
+  directory?: string;
+  recipe?: string;
+  settings?: string;
+  release?: string;
+  recipes?: string;
+  cloudUrl?: string;
+}) {
+  if (!options.directory) return undefined;
+  const configFile = resolve(options.directory, "installation.json");
+  let config: ReturnType<typeof installationSchema.parse>;
+  try {
+    config = installationSchema.parse(await readJson(configFile));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return undefined;
+    throw error;
+  }
+  if (
+    options.recipe ||
+    options.settings ||
+    options.release ||
+    options.recipes ||
+    options.cloudUrl
+  )
+    throw new InstallationError(
+      "change_unsupported",
+      "To resume saved setup, pass only --directory (and a cloud credential file for unattended registration). Use settings for changes to an installed server.",
+    );
+  return { configFile, config };
 }

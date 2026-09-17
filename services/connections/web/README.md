@@ -24,7 +24,7 @@ the service independently verifies current OpenClaw administrator access.
 `pnpm connections:web:dev` runs Vite against a local companion on port 3000.
 The shared header provides OpenClaw and Sign out, using the generated Access
 logout endpoint with its current CSRF token. The same theme scope and responsive
-header geometry are used by People. The built output is ignored. Operational setup belongs in the [service README](../README.md).
+header geometry follow the shared companion UI components. The built output is ignored. Operational setup belongs in the [service README](../README.md).
 
 ## Reuse
 

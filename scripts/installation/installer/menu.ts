@@ -48,8 +48,15 @@ export function installationMenu(
     row(
       "access",
       "Access",
-      config.access.mode === "local" ? "Local login" : "Company login",
-      config.access.mode === "local" ? "Loopback only" : "OIDC",
+      config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC",
+      "Configure your own OIDC provider (optional)",
+    ),
+    row(
+      "exposure",
+      "Network",
+      config.exposure.mode === "local"
+        ? "This computer"
+        : config.exposure.applicationOrigin,
     ),
     row("models", "Models", modelSummary ?? "Choose a model"),
     row(

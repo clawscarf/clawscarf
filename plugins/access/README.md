@@ -1,24 +1,28 @@
-# ClawScarf account navigation
+# Native Account and People
 
-A small native UI plugin for the standalone Access companion. It adds **Your
-account** to OpenClaw’s navigation, opening the same-origin companion account page
-where every admitted user can sign out. Native administrators also see **People**.
-The companion independently verifies current authority for management operations;
-nav visibility is only a presentation hint.
+The bundled `clawscarf-access` plugin renders **Account** and **People** inside
+OpenClaw, using its public experimental Control UI plugin API in pinned 2026.9.4.
+Account shows the signed-in identity and sign-out. People is visible to native
+administrators: it lists members and their observed native roles, assigns existing
+roles, creates copyable invitations, revokes invitations and removes access.
+Role definitions remain OpenClaw configuration; there is no second role database.
 
-This plugin uses the public experimental `openclaw/plugin-sdk/control-ui` page and
-navigation registrations in pinned OpenClaw 2026.9.4. It does not inject UI, intercept
-native logout, add tools or implement authentication. Build and validate with
-`npm --prefix plugins/access run build` and `npm --prefix plugins/access run validate`.
-The native builder records content-addressed browser assets in the manifest.
-Enable the plugin and `gateway.controlUi.experimental.customPlugins` in an explicit
-reviewed preset; administrators can disable either. The native sidebar and account
-page navigation have been checked in the browser against that pinned release.
+The browser calls the Access companion's generated REST client on the same origin.
+Every management request verifies the current browser session and native administrator
+authority; writes also require CSRF protection. Sidebar visibility grants no permission.
+Plugin JavaScript is trusted application code, not a sandbox. It receives neither a
+provider secret nor a reusable backend administrator credential. Disabling the plugin
+hides these pages without disabling ingress authentication or revocation.
 
-The Access companion must serve `/_clawscarf/account/` and `/_clawscarf/team/` on the
-same origin as OpenClaw. Other distributions or RawClaw may omit this plugin and
-provide their own navigation. There are no RawClaw dependencies.
+The installation preset includes the plugin by default. Account works in local and
+OIDC modes. The token-only component fixture has one operator-managed administrator
+and no invitations; new installations use OIDC.
+The external companion serves login/callback/setup endpoints, not an Access dashboard.
+Connections retains its existing separate interface until its own selected rewrite.
 
-See [Access](../../services/access/README.md) for session, enrollment and logout
-semantics and upstream’s [native UI plugin documentation](https://docs.openclaw.ai/plugins/feature-plugins)
-for the experimental host contract.
+Build with `pnpm access:plugin:build`; validate with `pnpm access:plugin:check`.
+The native builder bundles the shared generated REST client and records hashed assets
+in [the plugin manifest](openclaw.plugin.json). There is no separately hosted frontend or injected DOM.
+The plugin uses native page/navigation registrations and host dialogs, with a small
+page renderer. See [Access](../../services/access/README.md) for backend behavior and
+[upstream's plugin UI contract](https://docs.openclaw.ai/plugins/feature-plugins).

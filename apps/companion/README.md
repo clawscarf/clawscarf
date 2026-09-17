@@ -49,14 +49,13 @@ docker compose -f deploy/compose/companion.yaml up -d
 
 The referenced file follows the [Access configuration](../../services/access/README.md#configuration-and-operation).
 Omitting Connections starts no provider, requires no Connections schema/catalog/key,
-and exposes disabled capabilities without account actions. The native People page
-contains no Connections navigation in this mode. Only enabled Connections grants
+and exposes disabled capabilities without account actions. The native People page contains no Connections link in this mode. Only enabled Connections grants
 login return destinations for its landing page and account-return pages; API and
 verification endpoints are never return destinations.
 
 To enable Connections, add the optional block:
 
-The [local assembly](../../deploy/local/README.md#optional-connections)
+The [local assembly](../../deploy/deployment/README.md#optional-connections)
 can generate this configuration and prepare its private catalog/database inputs.
 For independently operated companions, supply the equivalent configuration below.
 
@@ -94,7 +93,7 @@ broker with a scoped bearer credential and a trusted CA. Runtime authentication
 rejects missing, revoked and mixed bearer/session credentials. This origin does
 not expose account management, login, native HTTP or WebSocket paths. Connections
 omitted means this route is absent. Native credential provisioning and
-[activation](../../deploy/local/README.md#activate-connections) remain explicit
+[activation](../../deploy/deployment/README.md#activate-connections) remain explicit
 operator actions; enabling the broker does not configure the plugin.
 
 The process runs the existing Connections maintenance sweep once at startup and

@@ -88,7 +88,8 @@ export async function readConfiguration(
   if (config.applicationTls && new URL(config.origin).protocol !== "https:")
     throw Error("Application TLS requires an HTTPS origin.");
   if (
-    config.identity.mode === "local" &&
+    (config.identity.mode === "local" ||
+      new URL(config.origin).protocol === "http:") &&
     (!["127.0.0.1", "localhost", "[::1]"].includes(hostname) ||
       (!["127.0.0.1", "::1"].includes(config.host) &&
         !(config.containerLoopbackPublication && config.host === "0.0.0.0")))
@@ -96,14 +97,31 @@ export async function readConfiguration(
     throw Error("Local access binds only to loopback.");
   if (
     config.identity.mode === "oidc" &&
-    new URL(config.origin).protocol !== "https:"
+    new URL(config.origin).protocol !== "https:" &&
+    !(
+      new URL(config.origin).protocol === "http:" &&
+      ["127.0.0.1", "localhost", "[::1]"].includes(hostname)
+    )
   )
-    throw Error("Team access requires HTTPS.");
+    throw Error("Network-accessible OIDC requires HTTPS.");
   if (
     Boolean(config.runtime.widgetOrigin) !==
     Boolean(config.runtime.widgetUpstream)
   )
     throw Error("Configure widget origin and upstream together.");
+  if (config.runtime.widgetOrigin) {
+    const widget = new URL(config.runtime.widgetOrigin);
+    if (
+      widget.protocol !== "https:" &&
+      !(
+        widget.protocol === "http:" &&
+        ["127.0.0.1", "localhost", "[::1]"].includes(widget.hostname) &&
+        (["127.0.0.1", "::1"].includes(config.host) ||
+          (config.containerLoopbackPublication && config.host === "0.0.0.0"))
+      )
+    )
+      throw Error("Network-accessible widgets require HTTPS.");
+  }
   if (config.runtime.widgetOrigin === config.origin)
     throw Error("Widgets need a separate origin.");
   if (

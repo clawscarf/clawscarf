@@ -54,6 +54,7 @@ await test(
           {
             id: "team",
             name: "Team",
+            api: "openai-responses",
             enabled: true,
             contextWindow: 10000,
             maxTokens: 1000,
@@ -96,6 +97,12 @@ await test(
         primary: "clawscarf/team",
         fallbacks: ["customer/own"],
       });
+      assert.equal(
+        z
+          .object({ models: z.array(z.object({ api: z.string() })) })
+          .parse(actual.models.providers.clawscarf).models[0]?.api,
+        "openai-responses",
+      );
       await configureNativeModels(executable, { mode: "disabled" }, true);
       assert.deepEqual(JSON.parse(await readFile(configPath, "utf8")), parsed);
     } finally {

@@ -16,8 +16,10 @@ The image includes:
 - The built [Connections plugin](../../plugins/connections/README.md), at
   `/app/clawscarf/connections`. Its operator configuration helper resolves the
   OpenClaw SDK through a peer symlink to the image's single upstream installation.
-- The native [account navigation plugin](../../plugins/access/README.md), at
-  `/app/clawscarf/access`, enabled only by the standalone navigation preset.
+- The native [Account and People plugin](../../plugins/access/README.md), at
+  `/app/clawscarf/access`, enabled only by the standalone navigation preset. Its build
+  includes the shared generated Access client; no external account-page redirect is
+  packaged.
 - The [native launcher](../../runtime/README.md), at `/app/clawscarf/bin/openclaw`,
   used for Gateway startup and operator commands.
 - The [fresh-volume initializer](../../runtime/initialize.ts), with its compiled entry
@@ -34,7 +36,7 @@ The image includes:
   browser volume. It retains profile state and verifies its private CDP identity.
 - The stopped [Connections configuration helper](../../runtime/configure-connections.ts),
   at `/app/clawscarf/configure-connections-main.js`, and the launcher's scoped credential
-  loader. The [local activation procedure](../local/README.md#activate-connections)
+  loader. The [local activation procedure](../deployment/README.md#activate-connections)
   owns their use; provider keys are never supplied to these helpers.
 - The compiled [model configuration helper](../../runtime/models.ts), at
   `/app/clawscarf/models-main.js`, for applying a scoped gateway credential and selected
@@ -95,7 +97,7 @@ Installing the package does not make it a sandboxed worker tool or establish
 per-member shell isolation. Do not bypass that native restriction.
 
 The selected [shared browser](../execution/browser/README.md) runs Chromium
-outside this Gateway image with its sandbox intact. [Local setup](../local/README.md#shared-browser)
+outside this Gateway image with its sandbox intact. [Local setup](../deployment/README.md#shared-browser)
 configures the native remote CDP profile, scoped network route and sandboxed-tool
 permission. Browser execution remains separate from Codex permissions and native
 shell placement. Installing Chromium in the Gateway image does not qualify
@@ -152,3 +154,19 @@ and [browser runtime helper](https://github.com/raw-labs/claw/blob/45d6b16b8c2d0
 (source reference only; the pilot is not acceptance evidence for this image).
 Their root-owned binary copy and browser-skill mirror address pilot-specific
 permission paths and are not automatically copied into this image.
+
+## OpenShell forwarding image
+
+Build the trusted forwarding client alongside the application images:
+
+```sh
+docker build -f deploy/images/openshell-client.Dockerfile -t clawscarf-openshell-client:dev .
+docker image inspect clawscarf-openshell-client:dev --format '{{.Id}}'
+```
+
+Put that exact image ID in the development release's `images.openshellClient`.
+The image contains the checksum-pinned OpenShell 0.0.116 Linux CLI, OpenSSH and full
+`lsof` (BusyBox's implementation does not support OpenShell's port checks). It carries
+no credentials. Compose mounts only the installation's controller client configuration.
+The controller uses the upstream gateway image pinned in the [component manifest](../../release/components.json);
+the application and execution worker remain protected OpenShell containers.

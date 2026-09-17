@@ -1,15 +1,23 @@
 # Standalone access
 
-Generic OIDC and a protected local sign-in flow for one ClawScarf server. The service
+Generic OIDC for one ClawScarf server; the installer configures either hosted login
+or the user’s own OIDC provider. Token-only login remains a component fixture. The service
 owns enrollment and revocable browser sessions; OpenClaw owns application roles.
 There are no RawClaw organizations, allocations, host records or provider accounts.
 
+The token-only local mode below is current preview behavior, selected for replacement
+by [hosted login with a customer-OIDC alternative](../../docs/cloud-services.md).
+No bundled identity server is planned. The first-admin claim remains distinct from
+ordinary account login; the existing native People interface remains the management UI.
+
 The implementation contains a session service, Postgres persistence, generated
-OpenAPI handlers/client, a native streaming reverse proxy and separate CLI entry
-points. Native enrollment has REST, CLI and a People page. Administrator proof and team
+OpenAPI handlers/client, a native streaming reverse proxy and the unified `clawscarf people` commands. Native enrollment has REST, CLI and a People page. Administrator proof and team
 preparation, member enrollment, member administrator denial and administrator
-self-revocation pass against native OpenClaw 2026.9.4. The assembled [team profile](../../deploy/local/README.md#team-profile)
-also has Dex/browser enrollment and handover acceptance; full team qualification remains open.
+self-revocation pass against native OpenClaw 2026.9.4. The assembled [team profile](../../deploy/deployment/README.md#team-profile)
+also has Dex/browser enrollment and handover acceptance. The native Account/People pages
+have passed a two-person browser flow with a signed local OIDC provider and vanilla
+OpenClaw 2026.9.4, including invitations, role handover and revoked-session denial.
+External company-provider configuration must still be verified for each deployment.
 
 ## Configuration and operation
 
@@ -26,7 +34,8 @@ port must remain loopback-only. Set the container UID/GID to the owner of the pr
 configuration mount, preserving restrictive file permissions. The operator runs
 [local-token command](runtime/local-token.ts) to create a five-minute,
 one-use sign-in link. Its code is carried in the URL fragment, read and cleared by the
-browser, then submitted only when the user selects **Continue**. It is exchanged for
+browser, then automatically submitted by POST. A page opened without the fragment
+still offers manual code entry. It is exchanged for
 an HTTP-only session cookie, never a permanent anonymous administrator session.
 Issuing a new code invalidates any outstanding code.
 The command's `--json` option returns `{ "url": "…", "code": "…", "expiresAt": "…" }` for private
@@ -35,15 +44,24 @@ The local operator can observe that specific login with `--status <code-sha256>`
 Consumption and session creation commit together; a failed session write cannot signal
 completion. The installer waits for this confirmation, not merely an opened link.
 
-For the assembled single-host path, use the [team profile](../../deploy/local/README.md#team-profile).
+For the assembled single-host path, use the [team profile](../../deploy/deployment/README.md#team-profile).
 
-The [People interface](web/README.md) observes native enrollment readiness on its
+The [native People plugin](../../plugins/access/README.md) observes native enrollment readiness on its
 existing list read; it does not store a second readiness flag or change native
-configuration during refresh. REST and CLI list responses include `enrollment`.
+configuration during refresh. REST and CLI list responses include `enrollment`, observed native roles and assignments.
 
 Team identity uses `mode: "oidc"`, `issuer`, `clientId` and `clientSecretFile`.
-Team mode requires an HTTPS origin. The provider callback is
+Network-accessible installations require HTTPS. Loopback-only installations may use
+HTTP with an HTTPS OIDC provider; their application and widget listeners must remain
+bound to loopback (including Docker publication). The provider callback is
 `<origin>/_clawscarf/callback`; its post-logout callback is `<origin>/_clawscarf/signed-out`.
+Sign-out revokes the local session and follows the provider logout endpoint when
+available. The next successful browser login must request fresh authentication with
+OIDC `prompt=login`, including when the provider has no logout endpoint. The browser
+marker clears only after successful callback; failed attempts retain it. Rejected or
+unverified identities also trigger fresh authentication, so retrying can select another account. This does not
+claim to terminate a provider-wide session when its logout endpoint is unavailable.
+
 The initial administrator has a stable UUID reserved before native configuration.
 Native initial configuration must use the same `clawscarf:<UUID>` identity.
 
@@ -73,19 +91,16 @@ unchanged and ingress records the actual network peer.
   durable server ID and initial administrator identity before generating native config.
   Identity and local-token commands open only Access storage; they require neither
   browser assets, native runtime availability nor OIDC/TLS secret files.
-- Build the browser assets with `pnpm access:web:build`, then run `pnpm access:start`.
-- Open `/_clawscarf/team/` for the People page. It requires current native administrator
-  authority. The [CLI](runtime/cli.ts) uses the same generated REST client; run it
-  with `node --import tsx`, `--origin` and a private `--session-file`. Its commands
-  are `people`, `prepare`, `enroll` and `remove`. Local mode cannot enroll company users.
-- A member is enrolled by the configured provider’s subject ID, email and name.
-  Native team preparation assigns the initial administrator explicitly before changing
-  the default role to pending. Enrollment remains closed until native member assignment
-  succeeds. Application roles are edited in OpenClaw, not duplicated in this database.
+- Build the native UI with `pnpm access:plugin:build`; run `pnpm access:start` for the
+  backend alone, or use the companion composition with optional Connections.
+- Open **Account** or **People** inside OpenClaw. People requires current native
+  administrator authority; the CLI commands below enforce the same checks.
+- Native preparation assigns the initial administrator explicitly before changing the
+  default role to pending. Invitation acceptance assigns the existing member role.
 - Run `pnpm access:generate` after changing [the contract](openapi.json).
 
 [The companion application](../../apps/companion/README.md) is the process entry for
-Access plus optional Connections. Its image includes both browser surfaces.
+Access plus optional Connections. Its image includes the existing Connections browser surface; Account/People assets ship in the native plugin.
 The Access-only command above remains useful for isolated component work. Both entries
 use the same [process lifecycle](../../apps/process-lifecycle.ts), including cleanup
 after a partially failed startup and one shutdown for simultaneous signals.
@@ -97,6 +112,46 @@ checks; this fragment is not a finished local installer.
 The management client uses OpenClaw’s canonical `gateway-client` / `backend`
 identity and advertises the ClawScarf package version. The SDK dependency version
 is pinned separately; it is not the caller’s application version.
+
+## Invitations and roles
+
+People is the native administrator page; Account is available to every admitted user.
+An administrator creates an invitation for an email address and copies its link. Links
+expire after seven days and may be revoked. There is no email delivery service. The
+recipient signs in through the configured generic OIDC provider; the verified email
+must match. The first valid attempt binds the OIDC subject, so a failed native enrollment
+cannot transfer the invitation to another identity. Successful native member enrollment,
+admission, invitation consumption and browser session creation are confirmed before entry.
+Database admission and invitation consumption commit atomically.
+
+Acceptance rechecks the issuing administrator's current admission revision and native
+authority. Removal/rejoining or demotion of the issuer prevents an old invitation from
+being used. Short-lived internal credentials exist only during that acceptance; they
+are never sent to the browser and are removed afterward. Uncertain native writes leave
+the recipient unadmitted; retry requires using the invitation again. They are never
+replayed automatically. Ordinary OIDC sign-in alone never admits a person.
+
+Invitations grant the existing native `member` role. Administrators assign other native
+roles separately, with an expected-current-role check. Demotion/removal must leave another
+currently admitted and natively eligible administrator. Admission removal invalidates
+sessions and closes active ingress streams; it does not delete native profiles, team
+files or automations. Rejoining resets retained native authority before admitting the
+person again. External edits remain visible on refresh; refreshing does not reapply them.
+
+Authenticated automation uses the same generated REST client:
+
+```sh
+pnpm clawscarf people --origin https://team.example --session-file /private/session list
+pnpm clawscarf people --origin https://team.example --session-file /private/session invite colleague@example.com
+pnpm clawscarf people --origin https://team.example --session-file /private/session invitations
+pnpm clawscarf people --origin https://team.example --session-file /private/session role USER_ID admin --expected-role member
+pnpm clawscarf people --origin https://team.example --session-file /private/session remove USER_ID
+pnpm clawscarf people --origin https://team.example --session-file /private/session revoke-invitation INVITATION_ID
+```
+
+Add global `--json` for structured output. The session file is private authentication
+material for a currently signed-in user, not an operator override. Local mode exposes
+Account and its sole administrator, but cannot issue team invitations.
 
 ## Security and state
 
@@ -151,7 +206,7 @@ profile displays the configured administrator name. A real native regression als
 verifies 40 concurrent authenticated page requests, member enrollment, explicit
 administrator promotion, self-revocation and
 closure of an already-open Gateway connection while preserving another administrator.
-See the [assembled team acceptance](../../deploy/local/README.md#team-profile)
+See the [assembled team acceptance](../../deploy/deployment/README.md#team-profile)
 for browser login, enrollment and two-tab revocation through a separate Dex provider.
 The configured runtime must not be reachable by untrusted
 callers bypassing ingress. Application and widget origins must be distinct; widget
@@ -173,15 +228,15 @@ native nested iframe.
 Active application connections are revalidated every two seconds. Revoked identities
 close; an unresolved authorization check closes only when its freshness expires.
 Healthy streams have no arbitrary maximum connection lifetime. Native RPC payloads
-are never filtered or rewritten. Sign out in the companion header revokes its session
+are never filtered or rewritten. Sign out in native Account revokes its session
 and redirects through provider logout when configured. Native OpenClaw currently has
 no configured external-logout hook in the inspected control-UI/trusted-proxy schema;
 its token/disconnect actions must not be treated as companion logout. The
-[account navigation plugin](../../plugins/access/README.md) uses OpenClaw’s supported
-native UI extension to open the companion account page; it remains separately
-optional for other distributions.
+[Account and People plugin](../../plugins/access/README.md) renders those pages
+inside OpenClaw and calls the external Access API. It is bundled by default;
+authentication and revocation remain enforced independently of its UI.
 
-The database retains server identity, admitted users, login transactions and sessions.
+The database retains server identity, admitted users, invitations, login transactions and sessions.
 Keep database and encryption key together. Stop/restart must preserve them. There is
 no backup/restore promise or recovery automation in this component.
 
@@ -239,16 +294,9 @@ against the real Gateway: member denial, native administrator promotion and hand
 rejoin resetting prior administrator authority, and logout closing only the affected
 native stream. The test IdP is composed into test handlers without changing the
 running companion's identity configuration. These checks do not qualify an external
-company IdP, its deployed callback/TLS configuration, or interactive browser enrollment.
+company IdP, its deployed callback/TLS configuration, or a published-release installation. The native-page browser check described above
+was run against an isolated development build.
 
 API generation emits one shared schema/type set, the fetch SDK and Fastify handler
 types in `generated/` from this component's OpenAPI contract.
 All REST clients share the [generated HTTP transport](../../generated/README.md).
-
-Sign-out revokes the local session and follows the provider logout endpoint when
-available. The next browser login requests fresh authentication with OIDC
-`prompt=login`, including when the provider has no logout endpoint. The browser
-marker clears only after successful callback; failed attempts retain it. Rejected
-or unverified identities also trigger fresh authentication so retrying can select
-another account. This does not terminate a provider-wide session when its logout
-endpoint is unavailable.

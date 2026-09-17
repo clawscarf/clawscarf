@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { localInput } from "../../../local/configuration.js";
-import { InstallationError } from "../../errors.js";
 import type { InstallationDraft } from "../../configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
 import { field, inputFile } from "../inputs.js";
@@ -9,46 +7,79 @@ export async function collectAccess(
   ui: InstallerPrompts,
   current: InstallationDraft,
 ) {
-  const administratorName = current.access.administratorName;
-  const previous = current.access.mode === "oidc" ? current.access : undefined;
-  const https =
-    current.exposure.mode === "https" ? current.exposure : undefined;
-  const mode = await ui.select(
-    "Access",
-    [
-      {
-        value: "local",
-        label: "Local evaluation",
-        hint: "Loopback only; one-use administrator login code",
-      },
-      {
-        value: "oidc",
-        label: "Team server with OIDC",
-        hint: "Sign in through your provider to become administrator",
-      },
-    ],
-    current.access.mode,
+  const custom = await ui.confirm(
+    "Use your own OIDC provider?",
+    current.access.mode === "oidc",
   );
-  let exposure: InstallationDraft["exposure"];
-  let access: InstallationDraft["access"];
-  if (mode === "local") {
+  if (!custom)
+    return {
+      access: {
+        mode: "hosted" as const,
+        administratorName: current.access.administratorName,
+        registrationFile: "./secrets/hosted-login.json",
+        ...(current.access.mode === "hosted" && current.access.cloudUrl
+          ? { cloudUrl: current.access.cloudUrl }
+          : {}),
+      },
+    };
+  const previous = current.access.mode === "oidc" ? current.access : undefined;
+  const origin =
+    current.exposure.mode === "https"
+      ? current.exposure.applicationOrigin
+      : `http://127.0.0.1:${String(current.exposure.applicationPort)}`;
+  ui.note(
+    `Callback: ${origin}/_clawscarf/callback\nAfter logout: ${origin}/_clawscarf/signed-out`,
+    "OIDC application URLs",
+  );
+  const issuer = await field(ui, "OIDC issuer", z.url(), previous?.issuer);
+  const clientId = await ui.text("OIDC client ID", previous?.clientId);
+  return {
+    access: {
+      mode: "oidc" as const,
+      administratorName: current.access.administratorName,
+      issuer,
+      clientId,
+      clientSecretFile:
+        previous?.issuer === issuer && previous.clientId === clientId
+          ? previous.clientSecretFile
+          : "",
+      ...(previous?.issuer === issuer &&
+      previous.clientId === clientId &&
+      previous.administratorSubject &&
+      previous.administratorEmail
+        ? {
+            administratorSubject: previous.administratorSubject,
+            administratorEmail: previous.administratorEmail,
+          }
+        : {}),
+    },
+  };
+}
+
+export async function collectExposure(
+  ui: InstallerPrompts,
+  current: InstallationDraft,
+) {
+  const network = await ui.confirm(
+    "Make this server available over HTTPS?",
+    current.exposure.mode === "https",
+  );
+  if (!network) {
     const port = z
       .string()
       .regex(/^\d+$/)
       .refine(
-        (value) =>
-          z.number().int().min(1024).max(65535).safeParse(Number(value))
-            .success,
+        (value) => Number(value) >= 1024 && Number(value) <= 65535,
         "Use a port from 1024 to 65535.",
       );
+    const previous =
+      current.exposure.mode === "local" ? current.exposure : undefined;
     const applicationPort = Number(
       await field(
         ui,
         "Application port",
         port,
-        current.exposure.mode === "local"
-          ? String(current.exposure.applicationPort)
-          : "18800",
+        String(previous?.applicationPort ?? 18800),
       ),
     );
     const widgetPort = Number(
@@ -57,86 +88,49 @@ export async function collectAccess(
         "Widgets port",
         port.refine(
           (value) => Number(value) !== applicationPort,
-          "Use a different port from the application.",
+          "Use a different port.",
         ),
-        current.exposure.mode === "local"
-          ? String(current.exposure.widgetPort)
-          : "18802",
+        String(previous?.widgetPort ?? 18802),
       ),
     );
-    exposure = { mode: "local", applicationPort, widgetPort };
-    access = { mode: "local", administratorName };
-  } else if (mode === "oidc") {
-    const team = localInput.shape.team.unwrap();
-    const applicationOrigin = await field(
-      ui,
-      "Application HTTPS origin",
-      z.url().pipe(team.shape.origin),
-      https?.applicationOrigin,
+    return { mode: "local" as const, applicationPort, widgetPort };
+  }
+  const previous =
+    current.exposure.mode === "https" ? current.exposure : undefined;
+  const origin = z
+    .url()
+    .refine(
+      (value) =>
+        new URL(value).origin === value && new URL(value).protocol === "https:",
+      "Use an HTTPS origin.",
     );
-    const widgetOrigin = await field(
-      ui,
-      "Widgets HTTPS origin (separate listener port)",
-      z
-        .url()
-        .pipe(team.shape.widgetOrigin)
-        .refine(
-          (value) => new URL(value).port !== new URL(applicationOrigin).port,
-          "Use distinct listener ports for this single-host deployment.",
-        ),
-      https?.widgetOrigin,
-    );
-    ui.note(
-      `Configure your OIDC client callback as ${applicationOrigin}/_clawscarf/callback and post-logout callback as ${applicationOrigin}/_clawscarf/signed-out. DNS and a valid TLS certificate for both origins must already exist. A private setup link will establish the administrator after startup.`,
-      "OIDC prerequisites",
-    );
-    exposure = {
-      mode: "https",
-      applicationOrigin,
-      widgetOrigin,
-      certificateFile: await inputFile(
-        ui,
-        "TLS certificate file",
-        false,
-        https?.certificateFile,
-      ),
-      keyFile:
-        https?.applicationOrigin === applicationOrigin &&
-        https.widgetOrigin === widgetOrigin
-          ? https.keyFile
-          : "",
-    };
-    const accessIssuer = await field(
-      ui,
-      "OIDC issuer",
-      z.url().pipe(team.shape.issuer),
-      previous?.issuer,
-    );
-    const accessClientId = await ui.text("OIDC client ID", previous?.clientId);
-    access = {
-      mode: "oidc",
-      administratorName,
-      issuer: accessIssuer,
-      clientId: accessClientId,
-      ...(previous?.issuer === accessIssuer &&
-      previous.clientId === accessClientId &&
-      previous.administratorSubject &&
-      previous.administratorEmail
-        ? {
-            administratorSubject: previous.administratorSubject,
-            administratorEmail: previous.administratorEmail,
-          }
-        : {}),
-      clientSecretFile:
-        previous?.issuer === accessIssuer &&
-        previous.clientId === accessClientId
-          ? previous.clientSecretFile
-          : "",
-    };
-  } else
-    throw new InstallationError(
-      "invalid_configuration",
-      "Select local or OIDC access.",
-    );
-  return { access, exposure };
+  const applicationOrigin = await field(
+    ui,
+    "Application HTTPS origin",
+    origin,
+    previous?.applicationOrigin,
+  );
+  const widgetOrigin = await field(
+    ui,
+    "Widgets HTTPS origin",
+    origin.refine(
+      (value) => new URL(value).port !== new URL(applicationOrigin).port,
+      "Use distinct listener ports.",
+    ),
+    previous?.widgetOrigin,
+  );
+  const certificateFile = await inputFile(
+    ui,
+    "TLS certificate file",
+    false,
+    previous?.certificateFile,
+  );
+  return {
+    mode: "https" as const,
+    applicationOrigin,
+    widgetOrigin,
+    certificateFile,
+    keyFile:
+      previous?.certificateFile === certificateFile ? previous.keyFile : "",
+  };
 }

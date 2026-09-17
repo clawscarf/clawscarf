@@ -9,8 +9,8 @@ import {
   selectionSchema,
 } from "../../scripts/installation/packs.js";
 import { openPack } from "../../scripts/packs/source.js";
-import { initializeState } from "../../scripts/local/state.js";
-import { parseLocalInput } from "../../scripts/local/configuration.js";
+import { initializeState } from "../../scripts/deployment/state.js";
+import { parseLocalInput } from "../../scripts/deployment/configuration.js";
 class Fixture extends NativeClaws {
   mutations = 0;
   fail = false;
@@ -57,6 +57,7 @@ for (const uncertain of [false, true])
         companionImage: `sha256:${"a".repeat(64)}`,
         openshellCli: "/tmp/unused",
         openshellGateway: "/tmp/unused",
+        openshellClientImage: `sha256:${"a".repeat(64)}`,
         ports: {
           controller: 17671,
           application: 18800,

@@ -4,7 +4,6 @@ export type InstallationErrorCode =
   | "release_mismatch"
   | "stale_plan"
   | "change_unsupported"
-  | "not_running"
   | "unavailable";
 export class InstallationError extends Error {
   constructor(
