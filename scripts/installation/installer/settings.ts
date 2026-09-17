@@ -124,7 +124,7 @@ export async function runSettings(directory: string) {
   clack.intro("ClawScarf — installation settings");
   try {
     await editInstallationSettings(directory, terminalPrompts);
-    clack.outro("Settings review finished.");
+    clack.outro("Done.");
   } catch (error) {
     if (
       !(error instanceof InstallerCancelled) &&

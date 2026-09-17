@@ -107,7 +107,7 @@ export async function installFromAnswers(
         config.exposure.mode === "https"
           ? config.exposure.applicationOrigin
           : "";
-      ui.note(origin, "Open OpenClaw");
+      ui.note(origin, "OpenClaw");
     } else {
       const login = await operator.login(stateDirectory);
       ui.note(
@@ -116,8 +116,8 @@ export async function installFromAnswers(
       );
     }
     ui.note(
-      `Try a new chat in OpenClaw.\nStatus: pnpm clawscarf status --directory ${quote(directory)}\nStop: pnpm clawscarf stop --directory ${quote(directory)}`,
-      "Server running",
+      `Status: pnpm clawscarf status --directory ${quote(directory)}\nStop: pnpm clawscarf stop --directory ${quote(directory)}`,
+      "Commands",
     );
     return { state: "running", ...files };
   } catch (error) {
@@ -151,8 +151,8 @@ export async function runInstaller(options: InstallOptions) {
     else
       clack.outro(
         result.state === "prepared"
-          ? "Installed. Start it when ready."
-          : "ClawScarf is running. You can close this terminal.",
+          ? "Installed. Not running."
+          : "ClawScarf is running.",
       );
   } catch (error) {
     if (
