@@ -7,8 +7,11 @@ import {
 } from "../../runtime/configuration.js";
 import { createDevelopmentRelease } from "../release/create.js";
 import { Command } from "commander";
+import { z } from "zod";
 import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { installationSchema } from "./configuration.js";
+import { readJson } from "./files.js";
 import { planInstallation, applyInstallation } from "./plan.js";
 import {
   startInstallation,
@@ -147,21 +150,15 @@ export function installationCommand() {
     .action(async (options: { config: string; plan: string }) => {
       output(await applyInstallation(options.config, options.plan));
     });
-  const settings = program
-    .command("settings")
+  const settings = withLocation(program.command("settings"))
     .description(
       "View, edit or explicitly reapply this installation's settings",
     )
-    .option("--state <directory>", "Existing installation state")
-    .action(async (options: { state?: string; json?: boolean }) => {
-      if (!options.state)
-        throw new InstallationError(
-          "invalid_configuration",
-          "Use settings --state <directory>, or settings plan/apply --config <file>.",
-        );
+    .action(async (options: LocationOptions) => {
+      const state = await resolveLocation(options);
       if (settings.optsWithGlobals<{ json?: boolean }>().json)
-        writeResult(settings, await readInstallationSettings(options.state));
-      else await runSettings(options.state);
+        writeResult(settings, await readInstallationSettings(state));
+      else await runSettings(state);
     });
   settings
     .command("plan")
@@ -195,57 +192,53 @@ export function installationCommand() {
         output(await reconfigureInstallation(config, fingerprint));
       },
     );
-  program
-    .command("start")
-    .requiredOption("--state <directory>")
+  withLocation(program.command("start"))
     .option("--foreground", "Developer: run the supervisor in this terminal")
-    .action(
-      async ({
-        state,
-        foreground,
-      }: {
-        state: string;
-        foreground?: boolean;
-      }) => {
-        if (foreground) {
-          await superviseInstallation(state, (message) => {
-            process.stderr.write(message + "\n");
-          });
-          return;
-        }
-        const result = await progress(
-          "Starting ClawScarf",
-          (_signal, report) => startInstallation(state, report),
-          program.opts<{ json?: boolean }>(),
-        );
-        output(result, statusText(result));
-      },
-    );
-  program
-    .command("administrator")
+    .action(async (options: LocationOptions & { foreground?: boolean }) => {
+      const state = await resolveLocation(options);
+      const { foreground } = options;
+      if (foreground) {
+        await superviseInstallation(state, (message) => {
+          process.stderr.write(message + "\n");
+        });
+        return;
+      }
+      const result = await progress(
+        "Starting ClawScarf",
+        (_signal, report) => startInstallation(state, report),
+        program.opts<{ json?: boolean }>(),
+      );
+      output(result, statusText(result));
+    });
+  withLocation(program.command("administrator"))
     .description("Observe or issue the private first-administrator setup link")
-    .requiredOption("--state <directory>")
     .option(
       "--issue",
       "Replace the pending setup link; cannot reclaim an initialized server",
     )
-    .action(async ({ state, issue }: { state: string; issue?: boolean }) => {
-      output(await administratorSetup(resolve(state), issue));
+    .action(async (options: LocationOptions & { issue?: boolean }) => {
+      output(
+        await administratorSetup(await resolveLocation(options), options.issue),
+      );
     });
   for (const action of ["status", "stop"] as const)
-    program
-      .command(action)
-      .requiredOption("--state <directory>")
-      .action(async ({ state }: { state: string }) => {
-        const result = await controlInstallation(state, action);
+    withLocation(program.command(action)).action(
+      async (options: LocationOptions) => {
+        const result = await controlInstallation(
+          await resolveLocation(options),
+          action,
+        );
         output(result, statusText(result));
-      });
-  program
-    .command("logs")
-    .requiredOption("--state <directory>")
+      },
+    );
+  withLocation(program.command("logs"))
     .requiredOption("--service <name>", localLogNames.join(", "))
-    .action(async ({ state, service }: { state: string; service: string }) => {
-      const text = await installationLogs(state, service);
+    .action(async (options: LocationOptions & { service: string }) => {
+      const { service } = options;
+      const text = await installationLogs(
+        await resolveLocation(options),
+        service,
+      );
       if (program.opts<{ json?: boolean }>().json) output({ service, text });
       else process.stdout.write(text);
     });
@@ -255,26 +248,24 @@ export function installationCommand() {
     .action(async ({ config }: { config: string }) => {
       output(await doctorInstallation(config));
     });
-  program
-    .command("login")
-    .requiredOption("--state <directory>")
-    .action(async ({ state }: { state: string }) => {
-      output(await localLoginCode(resolve(state)));
-    });
-  program
-    .command("upgrade")
-    .requiredOption("--state <directory>")
+  withLocation(program.command("login")).action(
+    async (options: LocationOptions) => {
+      output(await localLoginCode(await resolveLocation(options)));
+    },
+  );
+  withLocation(program.command("upgrade"))
     .requiredOption("--runtime-image <digest>")
     .requiredOption("--python <executable>")
     .requiredOption("--yes")
     .action(
-      async (options: {
-        state: string;
-        runtimeImage: string;
-        python: string;
-      }) => {
+      async (
+        options: LocationOptions & {
+          runtimeImage: string;
+          python: string;
+        },
+      ) => {
         await upgradeLocal(
-          options.state,
+          await resolveLocation(options),
           options.runtimeImage,
           options.python,
           (message) => {
@@ -289,23 +280,16 @@ export function installationCommand() {
     .description(
       "Observe or explicitly configure the stopped native Connections integration",
     );
-  connections
-    .command("observe")
-    .requiredOption(
-      "--state <directory>",
-      "Stopped private installation directory; start only its controller",
-    )
-    .action(async (options: { state: string }) => {
+  withLocation(connections.command("observe")).action(
+    async (options: LocationOptions) => {
       output(
-        await operateConnectionsRuntime(options.state, { kind: "observe" }),
+        await operateConnectionsRuntime(await resolveLocation(options), {
+          kind: "observe",
+        }),
       );
-    });
-  connections
-    .command("configure")
-    .requiredOption(
-      "--state <directory>",
-      "Stopped private installation directory; start only its controller",
-    )
+    },
+  );
+  withLocation(connections.command("configure"))
     .requiredOption(
       "--credential-file <path>",
       "Private file containing the scoped broker token",
@@ -314,9 +298,9 @@ export function installationCommand() {
       "--yes",
       "Replace only the Connections endpoint and credential; preserve native disablement and other settings",
     )
-    .action(async (options: { state: string; credentialFile: string }) => {
+    .action(async (options: LocationOptions & { credentialFile: string }) => {
       output(
-        await operateConnectionsRuntime(options.state, {
+        await operateConnectionsRuntime(await resolveLocation(options), {
           kind: "configure",
           credentialFile: options.credentialFile,
         }),
@@ -360,4 +344,30 @@ function statusText(status: Awaited<ReturnType<typeof controlInstallation>>) {
       lines.push(`Pack ${pack.member}: ${pack.state}`);
   }
   return lines.join("\n");
+}
+
+type LocationOptions = { directory?: string; state?: string };
+function withLocation(command: Command) {
+  return command
+    .option(
+      "--directory <path>",
+      "Installation directory selected during install",
+    )
+    .option("--state <path>", "Use the private state directory directly");
+}
+
+/** Lifecycle operators receive state, whichever public location option was used. */
+async function resolveLocation({ directory, state }: LocationOptions) {
+  if ((!directory && !state) || (directory && state))
+    throw new InstallationError(
+      "invalid_configuration",
+      "Supply either --directory <installation> or --state <state-folder>.",
+    );
+  if (directory) {
+    const config = z
+      .object({ stateDirectory: installationSchema.shape.stateDirectory })
+      .parse(await readJson(join(resolve(directory), "installation.json")));
+    return resolve(directory, config.stateDirectory);
+  }
+  return resolve(state ?? "");
 }

@@ -67,7 +67,7 @@ export async function installFromAnswers(
     const files = { configFile, planFile, stateDirectory };
     if (!(await ui.confirm("Start now?"))) {
       ui.note(
-        `pnpm clawscarf start --state ${quote(stateDirectory)}`,
+        `pnpm clawscarf start --directory ${quote(directory)}`,
         "Start later",
       );
       return { state: "prepared", ...files };
@@ -99,7 +99,7 @@ export async function installFromAnswers(
           }
           throw new InstallationError(
             "unavailable",
-            `Setup link expired. Issue another with: pnpm clawscarf administrator --state ${quote(stateDirectory)} --issue`,
+            `Setup link expired. Issue another with: pnpm clawscarf administrator --directory ${quote(directory)} --issue`,
           );
         });
       }
@@ -116,7 +116,7 @@ export async function installFromAnswers(
       );
     }
     ui.note(
-      `Try a new chat in OpenClaw.\nStatus: pnpm clawscarf status --state ${quote(stateDirectory)}\nStop: pnpm clawscarf stop --state ${quote(stateDirectory)}`,
+      `Try a new chat in OpenClaw.\nStatus: pnpm clawscarf status --directory ${quote(directory)}\nStop: pnpm clawscarf stop --directory ${quote(directory)}`,
       "Server running",
     );
     return { state: "running", ...files };
@@ -127,7 +127,7 @@ export async function installFromAnswers(
     )
       throw error;
     ui.note(
-      `Configuration: ${configFile}\nStatus: pnpm clawscarf status --state ${quote(stateDirectory)}\nLogs: pnpm clawscarf logs --state ${quote(stateDirectory)} --service supervisor\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
+      `Configuration: ${configFile}\nStatus: pnpm clawscarf status --directory ${quote(directory)}\nLogs: pnpm clawscarf logs --directory ${quote(directory)} --service supervisor\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
       "Installation needs attention",
     );
     throw error;

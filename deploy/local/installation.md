@@ -194,14 +194,21 @@ progress messages on stderr. Start registers a macOS user service and returns wh
 terminal leaves the server running. Start reports server readiness without generating
 a login credential. Use `login` for local sign-in, or `administrator --issue` for a
 pending OIDC administrator setup. `start --foreground` remains a developer option.
-Use the same CLI for operation:
+Use the same CLI for operation (here the installation directory is `./team`):
 
 ```sh
-pnpm clawscarf status --state ./state
-pnpm clawscarf stop --state ./state
-pnpm clawscarf logs --state ./state --service controller
-pnpm clawscarf login --state ./state
+pnpm clawscarf status --directory ./team
+pnpm clawscarf stop --directory ./team
+pnpm clawscarf logs --directory ./team --service controller
+pnpm clawscarf login --directory ./team
 ```
+
+`--directory` is the same folder supplied to `install` or `configure`. Existing-installation
+commands (start, stop, status, logs, login, administrator, settings, upgrade and Connections
+operations) read its installation.json to locate state, including a custom state location.
+Alternatively, pass `--state` with the private state folder itself, for example
+`pnpm clawscarf status --state ./team/state`. Supply one location option, not both.
+Settings plan/apply still take `--config` because they review a candidate configuration.
 
 The local control socket is private to the operator and never listens on TCP.
 `stop` requests orderly shutdown; poll `status` to observe supervisor exit. An absent
@@ -344,7 +351,7 @@ operations return `operation_busy`. Internal preparation and launch do not reacq
 ### Change an existing installation
 
 ```sh
-pnpm clawscarf settings --state ./team/state
+pnpm clawscarf settings --directory ./team
 ```
 
 The editor reads the accepted configuration from the state directory, including
@@ -357,7 +364,7 @@ and offers to start it again. There is no separate restart or reconfigure comman
 Automation uses the same planner and apply operation:
 
 ```sh
-pnpm clawscarf settings --state ./team/state --json > candidate.json
+node --import tsx scripts/clawscarf.ts settings --directory ./team --json > candidate.json
 # Edit candidate.json and its referenced model/credential files.
 pnpm clawscarf settings plan --config ./candidate.json
 pnpm clawscarf stop --state ./team/state # if running; wait for status to report stopped

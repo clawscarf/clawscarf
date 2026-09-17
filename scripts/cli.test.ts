@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { once } from "node:events";
-import { chmod, mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -20,7 +20,11 @@ const cli = (...args: string[]) =>
 await test("CLI status/start use readable output or explicit JSON without issuing credentials", async (t) => {
   const root = await mkdtemp("/tmp/clawscarf-cli-");
   t.after(() => rm(root, { recursive: true, force: true }));
-  const directory = join(root, "state");
+  const directory = join(root, "private-runtime");
+  await writeFile(
+    join(root, "installation.json"),
+    JSON.stringify({ stateDirectory: "./private-runtime", name: "team" }),
+  );
   await initializeState(directory, {
     name: "team",
     administratorName: "Administrator",
@@ -74,7 +78,7 @@ await test("CLI status/start use readable output or explicit JSON without issuin
       /Server: running\nReady: Yes\nAdministrator: ready/,
     );
     assert.doesNotMatch(human.stdout, /https?:|code|\{/);
-    const json = await cli(command, "--state", directory, "--json");
+    const json = await cli(command, "--directory", root, "--json");
     assert.deepEqual(JSON.parse(json.stdout), {
       supervisor: "running",
       ready: true,
@@ -86,6 +90,49 @@ await test("CLI status/start use readable output or explicit JSON without issuin
       command === "start" ? "Starting ClawScarf\n" : "",
     );
   }
+  for (const command of [
+    ["start"],
+    ["status"],
+    ["stop"],
+    ["login"],
+    ["administrator"],
+    ["settings"],
+    ["logs", "--service", "supervisor"],
+    ["upgrade", "--runtime-image", "unused", "--python", "unused", "--yes"],
+    ["connections", "observe"],
+    ["connections", "configure", "--credential-file", "unused", "--yes"],
+  ]) {
+    await assert.rejects(
+      cli(...command, "--directory", root, "--state", directory, "--json"),
+      (error: unknown) => {
+        assert.ok(
+          error instanceof Error &&
+            "stderr" in error &&
+            typeof error.stderr === "string",
+        );
+        assert.partialDeepStrictEqual(JSON.parse(error.stderr), {
+          code: "invalid_configuration",
+        });
+        assert.match(error.stderr, /Supply either/);
+        return true;
+      },
+    );
+  }
+  const candidate = join(root, "invalid.json");
+  await writeFile(candidate, "{}");
+  await assert.rejects(
+    cli("settings", "plan", "--config", candidate, "--json"),
+    (error: unknown) => {
+      assert.ok(
+        error instanceof Error &&
+          "stderr" in error &&
+          typeof error.stderr === "string",
+      );
+      assert.match(error.stderr, /Invalid or missing fields/);
+      assert.doesNotMatch(error.stderr, /Supply either/);
+      return true;
+    },
+  );
   ready = false;
   const pending = await cli("status", "--state", directory);
   assert.match(pending.stdout, /Ready: No/);
