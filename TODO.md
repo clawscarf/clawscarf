@@ -7,7 +7,7 @@ Open work only. Select a task before implementing; this list does not authorize 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
 Hosted login and automatic installer registration are verified locally through native
-administrator access and a real model response. M3 is complete; M4 is next, not started.
+administrator access and a real model response. M3 is complete; M4 is in progress (cloud provider/catalog port first).
 No cloud deployment yet. Development releases must supply or override the cloud URL.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
