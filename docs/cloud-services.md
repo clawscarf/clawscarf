@@ -1,8 +1,9 @@
 # Hosted login and Connections
 
 Selected product direction. The cloud owner-login service is implemented and locally
-tested; real WorkOS login verification and deployment are pending. Installation
-registration and cloud Connections are not implemented. The implementation sequence
+tested; real WorkOS owner login passed, while browser sign-out verification and deployment
+are pending. Installation registration and cloud Connections are not implemented.
+The implementation sequence
 is owned only by [TODO.md](../TODO.md#hosted-login-and-native-connections).
 
 ## Product choices
@@ -39,7 +40,7 @@ not another VM control plane or a framework of separately deployed microservices
 
 ```text
 clawscarf-cloud/
-  README.md, AGENTS.md, TODO.md, LICENSE
+  README.md, AGENTS.md, LICENSE
   api/                  OpenAPI contract and generated client
   src/
     http/               routes and managed-host entrypoint

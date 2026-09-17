@@ -8,9 +8,9 @@ Selected design: [hosted login and Connections](docs/cloud-services.md). Stages 
 payment integration and privately operated broker packaging come later.
 Current milestone: **M1**. Cloud owner-login routes, generated API contract and
 local HTTP/SDK checks are implemented; check/build pass. Real owner-login verification
-awaits approval to store the new ClawScarf staging API key privately. The dedicated
-project and exact localhost callback/login/logout URLs are configured; existing projects
-are untouched.
+has passed with the owner-selected account. The new staging key is stored privately;
+exact localhost callback/login/logout URLs are configured. Browser sign-out verification
+is pending after the automation browser blocked navigation. Existing projects are untouched.
 No cloud deployment or M2 registration work has started.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
