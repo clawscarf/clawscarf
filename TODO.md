@@ -6,18 +6,23 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-Current milestone: **M3**. Cloud owner login/logout and installation registration are
-implemented. Real PostgreSQL/REST tests cover two-account isolation, scoped credentials,
-rotation/revocation and idempotent provisioning; real WorkOS client registration and
-installation-adapter login passed. Checks/build pass. No cloud deployment yet.
+Current milestone: **M3**. Cloud owner login/logout, terminal device authorization and
+installation registration are implemented. Real PostgreSQL/REST and WorkOS checks pass.
+The current ClawScarf working tree passed a fresh loopback installation: hosted OIDC
+administrator setup completed and opened native
+People; logout subsequently displayed a fresh provider sign-in form. Full installer cloud
+registration wiring, second-person acceptance/revocation and provider recovery remain open.
+No cloud deployment yet.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
 native Connections replacement is part of this same batch, not a separate future task.
 
 - [ ] **M3 — Deliver real login.** A fresh installer run establishes the first administrator;
       normal login/logout, account switching, provider recovery and a two-person invitation/revocation
-      flow work. Resolve provider logout: WorkOS Connect discovery currently has no logout
-      endpoint. Prove customer OIDC without cloud registration. No bundled IdP or token-only default.
+      flow work. Finish installer cloud registration wiring and verify customer OIDC without
+      cloud registration. WorkOS Connect has no discovered logout endpoint: local logout revokes
+      Access sessions and the next login requests fresh authentication; this is not global provider
+      logout. No bundled IdP or token-only default.
 - [ ] **M4 — Run Connections in the cloud.** Move reviewed broker/catalog/provider code and
       regressions; replace local-session coupling with installation scope. Link a real account and
       execute one tool through API/CLI, proving scoped management denial and runtime revocation.

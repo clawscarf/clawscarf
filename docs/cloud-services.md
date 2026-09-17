@@ -183,8 +183,14 @@ against our actual localhost, private-LAN and public-host flows before committin
 wire contract. The intended browser path is an installation-specific OIDC client with
 exact callbacks, PKCE, state and nonce, using existing Access OIDC handling. Do not build
 an OAuth issuer, accept wildcard callbacks or distribute our WorkOS management secret.
-Device authorization can approve installation registration; it does not replace normal
-browser login. Configure social sign-in such as Google centrally. Account recovery belongs
+Device authorization approves cloud ownership through the dedicated public CLI client;
+the cloud verifies its signed access token's issuer, audience, expiry and client ID.
+It does not replace normal browser login. Loopback-only installations support HTTP OIDC
+callbacks with application/widget ports published only on loopback; LAN/public installations
+require HTTPS. Access sign-out revokes its local session and requests `prompt=login` on
+the next login. Provider-wide logout additionally depends on a discovered logout endpoint;
+WorkOS Connect currently supplies none. Social sign-in is a central provider choice.
+Account recovery belongs
 to the hosted identity provider, not a new ClawScarf password UI or per-installation SMTP
 configuration. Verify recovery, logout and account switching as well as initial sign-in.
 
