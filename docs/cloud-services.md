@@ -247,9 +247,11 @@ unsigned browser claim. A self-hosting root administrator controls that installa
 this does not give access to another cloud customer's records or allowance.
 
 Account linking creates an expiring setup bound to the installation, actor and exact
-account. Provider OAuth callbacks terminate at the cloud. The native page observes the
-result through its local adapter, rechecking actor admission and native authority before
-activation. No inbound cloud connection to a laptop or private server is required.
+account. Provider OAuth callbacks terminate at the cloud, which returns the opaque receipt
+through the same browser to the installation. The local adapter rechecks that returning browser's
+admission and native authority before completing activation. The originating tab cannot
+activate another browser's callback by polling. No inbound cloud connection to a laptop
+or private server is required.
 Late/duplicate callbacks, lost sessions and revoked initiators must not activate accounts.
 OAuth success alone is insufficient. Reuse the existing explicit uncertain outcomes.
 
