@@ -43,7 +43,7 @@ USER root
 WORKDIR /build/pack-tools
 COPY deploy/images/pack-tools/ ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY scripts/packs.ts ./scripts/packs.ts
+COPY scripts/packs.ts scripts/output.ts ./scripts/
 COPY scripts/packs/ ./scripts/packs/
 COPY services/connections/generated/ ./services/connections/generated/
 COPY generated/http/ ./generated/http/

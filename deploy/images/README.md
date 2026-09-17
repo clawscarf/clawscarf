@@ -57,7 +57,9 @@ The image includes:
   SQLite temporary files within the permitted writable paths.
 
 The pack executable is compiled from this repository's [CLI](../../scripts/packs.ts)
-and [native lifecycle adapter](../../scripts/packs/lifecycle.ts). Its private
+and [native lifecycle adapter](../../scripts/packs/lifecycle.ts), including the shared
+CLI output formatter. Like the installation CLI, it prints readable output by default;
+operator callers request `--json`. Its private
 [build manifest](pack-tools/package.json) pins the existing Commander and Zod
 dependencies for this image artifact; it is not another published application
 package or an alternate OpenClaw installation.
