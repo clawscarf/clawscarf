@@ -188,7 +188,9 @@ a preview is not a reservation. Apply rejects changed inputs/state. After an int
 apply, create a fresh preview to resume; existing resource receipts govern resumption.
 A successful apply means prepared, not a verified running application.
 
-Start registers a macOS user service and returns when startup finishes. Closing the
+Start uses the same progress display as installer startup and retained settings.
+Interactive terminals show a spinner; redirected output and `--json` use plain
+progress messages on stderr. Start registers a macOS user service and returns when startup finishes. Closing the
 terminal leaves the server running. Start reports server readiness without generating
 a login credential. Use `login` for local sign-in, or `administrator --issue` for a
 pending OIDC administrator setup. `start --foreground` remains a developer option.

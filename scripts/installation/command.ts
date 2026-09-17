@@ -24,6 +24,7 @@ import { upgradeLocal } from "../local/upgrade.js";
 import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
 import { operateConnectionsRuntime } from "../local/connections-runtime.js";
+import { progress } from "./installer/prompts.js";
 import { runInstaller } from "./installer/run.js";
 import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
 import { runSettings, readInstallationSettings } from "./installer/settings.js";
@@ -206,12 +207,18 @@ export function installationCommand() {
         state: string;
         foreground?: boolean;
       }) => {
-        const result = await (
-          foreground ? superviseInstallation : startInstallation
-        )(state, (message) => {
-          process.stderr.write(message + "\n");
-        });
-        if (result) output(result, statusText(result));
+        if (foreground) {
+          await superviseInstallation(state, (message) => {
+            process.stderr.write(message + "\n");
+          });
+          return;
+        }
+        const result = await progress(
+          "Starting ClawScarf",
+          (_signal, report) => startInstallation(state, report),
+          program.opts<{ json?: boolean }>(),
+        );
+        output(result, statusText(result));
       },
     );
   program

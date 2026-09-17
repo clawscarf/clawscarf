@@ -81,7 +81,10 @@ await test("CLI status/start use readable output or explicit JSON without issuin
       packs: [],
       administrator: "ready",
     });
-    assert.equal(json.stderr, "");
+    assert.equal(
+      json.stderr,
+      command === "start" ? "Starting ClawScarf\n" : "",
+    );
   }
   ready = false;
   const pending = await cli("status", "--state", directory);

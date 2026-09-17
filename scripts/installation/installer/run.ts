@@ -32,7 +32,9 @@ export async function installFromAnswers(
   ui: InstallerPrompts,
   operator = operations,
   task: typeof progress = async (_message, work) =>
-    work(new AbortController().signal),
+    work(new AbortController().signal, (message) => {
+      ui.note(message, "Startup");
+    }),
 ) {
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
   for (;;) {
@@ -70,10 +72,8 @@ export async function installFromAnswers(
       );
       return { state: "prepared", ...files };
     }
-    await task("Starting ClawScarf", () =>
-      operator.start(stateDirectory, (message) => {
-        ui.note(message, "Startup");
-      }),
+    await task("Starting ClawScarf", (_signal, report) =>
+      operator.start(stateDirectory, report),
     );
     if (config.access.mode === "oidc") {
       const current = await operator.administrator(stateDirectory);

@@ -92,26 +92,40 @@ export function requireTerminal() {
 
 export async function progress<T>(
   message: string,
-  work: (signal: AbortSignal) => Promise<T>,
+  work: (signal: AbortSignal, report: (message: string) => void) => Promise<T>,
+  options: { json?: boolean } = {},
 ): Promise<T> {
   const cancellation = new AbortController();
-  const spinner = clack.spinner({
-    onCancel: () => {
-      cancellation.abort(new InstallerCancelled());
-      clack.log.info(
-        "Cancellation requested. Waiting for the current operation to settle; no following step will start.",
-      );
-    },
-  });
-  spinner.start(message);
+  const cancel = () => {
+    if (cancellation.signal.aborted) return;
+    cancellation.abort(new InstallerCancelled());
+    process.stderr.write(
+      "Cancellation requested. Waiting for the current operation to settle; no following step will start.\n",
+    );
+  };
+  const spinner =
+    !options.json && process.stderr.isTTY
+      ? clack.spinner({ output: process.stderr, onCancel: cancel })
+      : undefined;
+  const report = (detail: string) => {
+    if (spinner) spinner.message(detail);
+    else process.stderr.write(detail + "\n");
+  };
+  if (spinner) spinner.start(message);
+  else {
+    process.once("SIGINT", cancel);
+    report(message);
+  }
   try {
-    const result = await work(cancellation.signal);
-    if (spinner.isCancelled) throw new InstallerCancelled();
-    spinner.stop(message);
+    const result = await work(cancellation.signal, report);
+    cancellation.signal.throwIfAborted();
+    spinner?.stop(message);
     return result;
   } catch (error) {
-    if (error instanceof InstallerCancelled) spinner.stop("Stopped.");
-    else spinner.error("Could not complete this step.");
+    if (error instanceof InstallerCancelled) spinner?.stop("Stopped.");
+    else spinner?.error("Could not complete this step.");
     throw error;
+  } finally {
+    process.off("SIGINT", cancel);
   }
 }

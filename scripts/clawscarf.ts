@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { InstallationError } from "./installation/errors.js";
 import { LocalSetupError } from "./local/process.js";
 import { LocalDatabaseError } from "./local/database.js";
+import { InstallerCancelled } from "./installation/installer/prompts.js";
 import { installationCommand } from "./installation/command.js";
 const program = installationCommand();
 const commands = [program];
@@ -25,36 +26,41 @@ try {
     ...(error instanceof LocalSetupError && error.commandFailure
       ? { command: error.commandFailure }
       : {}),
-    code: known
-      ? error.code
-      : error instanceof ZodError
-        ? "invalid_configuration"
-        : error instanceof CommanderError
-          ? "invalid_arguments"
-          : "operation_failed",
-    detail:
-      error instanceof ModelConfigurationError
-        ? `Model configuration failed (${error.code}).${error.code === "outcome_unknown" ? " Inspect native settings before retrying an apply." : ""}`
+    code:
+      error instanceof InstallerCancelled
+        ? "cancelled"
         : known
-          ? error.message
+          ? error.code
           : error instanceof ZodError
-            ? "Invalid or missing fields: " +
-              [
-                ...new Set(
-                  error.issues.map(
-                    (issue) => issue.path.join(".") || "configuration",
-                  ),
-                ),
-              ].join(", ") +
-              "."
+            ? "invalid_configuration"
             : error instanceof CommanderError
-              ? error.message
-              : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried.",
+              ? "invalid_arguments"
+              : "operation_failed",
+    detail:
+      error instanceof InstallerCancelled
+        ? "Cancelled. Saved files and any running installation are retained."
+        : error instanceof ModelConfigurationError
+          ? `Model configuration failed (${error.code}).${error.code === "outcome_unknown" ? " Inspect native settings before retrying an apply." : ""}`
+          : known
+            ? error.message
+            : error instanceof ZodError
+              ? "Invalid or missing fields: " +
+                [
+                  ...new Set(
+                    error.issues.map(
+                      (issue) => issue.path.join(".") || "configuration",
+                    ),
+                  ),
+                ].join(", ") +
+                "."
+              : error instanceof CommanderError
+                ? error.message
+                : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried.",
   };
   process.stderr.write(
     (program.opts<{ json?: boolean }>().json
       ? JSON.stringify(failure)
       : `Error: ${failure.detail}`) + "\n",
   );
-  process.exitCode = 1;
+  process.exitCode = error instanceof InstallerCancelled ? 130 : 1;
 }
