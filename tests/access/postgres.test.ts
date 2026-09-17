@@ -254,6 +254,11 @@ await test(
           },
         });
         assert.equal(logout.statusCode, 200);
+        const freshLogin = logout.cookies.find(
+          (cookie) => cookie.name === "clawscarf_reauthenticate",
+        );
+        assert.equal(freshLogin?.value, "1");
+        assert.equal(freshLogin?.httpOnly, true);
         await assert.rejects(service.authenticate(success.value.session), {
           code: "unauthenticated",
         });

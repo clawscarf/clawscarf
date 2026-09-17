@@ -64,6 +64,7 @@ export class DeploymentOidcProvider implements LoginProvider {
     state: string;
     nonce: string;
     codeChallenge: string;
+    reauthenticate?: boolean;
   }) {
     try {
       return oidc
@@ -75,6 +76,7 @@ export class DeploymentOidcProvider implements LoginProvider {
           redirect_uri: this.input.redirectUri,
           response_type: "code",
           scope: "openid profile email",
+          ...(input.reauthenticate ? { prompt: "login" } : {}),
         })
         .toString();
     } catch {

@@ -28,6 +28,7 @@ export interface LoginProvider {
     state: string;
     nonce: string;
     codeChallenge: string;
+    reauthenticate?: boolean;
   }): Promise<string>;
   exchange(input: {
     callbackUrl: string;

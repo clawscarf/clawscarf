@@ -131,6 +131,11 @@ export async function createAccessHttp(
     if (req.routeOptions.url === "/_clawscarf/callback")
       cookies(reply, "clawscarf_login", "", 0);
     const { code, status, bodyTooLarge, category } = classifyFailure(error);
+    if (
+      req.routeOptions.url === "/_clawscarf/callback" &&
+      (code === "forbidden" || code === "email_unverified")
+    )
+      cookies(reply, "clawscarf_reauthenticate", "1", 31536000);
     if (status >= 500) {
       req.log.error({
         event: "access_request_failed",
@@ -235,6 +240,7 @@ export async function createAccessHttp(
       const result = await service.startLogin(
         req.query?.returnTo ?? "/",
         req.query?.setup,
+        req.cookies.clawscarf_reauthenticate === "1",
       );
       cookies(reply, "clawscarf_login", result.cookie, 600);
       return reply.redirect(result.url);
@@ -247,6 +253,7 @@ export async function createAccessHttp(
       );
       cookies(reply, "clawscarf_session", result.session, 43200);
       cookies(reply, "clawscarf_login", "", 0);
+      cookies(reply, "clawscarf_reauthenticate", "", 0);
       return reply.redirect(result.returnTo);
     },
     localLogin: async (req, reply) => {
@@ -288,6 +295,7 @@ export async function createAccessHttp(
       );
       const redirect = await service.logout(session);
       cookies(reply, "clawscarf_session", "", 0);
+      cookies(reply, "clawscarf_reauthenticate", "1", 31536000);
       return reply.code(200).send({ redirect });
     },
   } satisfies RouteHandlers;

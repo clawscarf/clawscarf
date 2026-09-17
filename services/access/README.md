@@ -241,3 +241,11 @@ company IdP, its deployed callback/TLS configuration, or interactive browser enr
 API generation emits one shared schema/type set, the fetch SDK and Fastify handler
 types in `generated/` from this component's OpenAPI contract.
 All REST clients share the [generated HTTP transport](../../generated/README.md).
+
+Sign-out revokes the local session and follows the provider logout endpoint when
+available. The next browser login requests fresh authentication with OIDC
+`prompt=login`, including when the provider has no logout endpoint. The browser
+marker clears only after successful callback; failed attempts retain it. Rejected
+or unverified identities also trigger fresh authentication so retrying can select
+another account. This does not terminate a provider-wide session when its logout
+endpoint is unavailable.

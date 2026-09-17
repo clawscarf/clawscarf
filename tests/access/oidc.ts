@@ -11,6 +11,7 @@ export async function oidcFixture(logout = false) {
   let subject = "alice";
   let emailVerified = true;
   let invalidNonce = false;
+  let unavailable = false;
   const clientSecret = randomBytes(32).toString("hex");
   const codes = new Map<
     string,
@@ -27,6 +28,11 @@ export async function oidcFixture(logout = false) {
       try {
         const url = new URL(req.url!, origin);
         res.setHeader("Content-Type", "application/json");
+        if (unavailable) {
+          res.writeHead(503);
+          res.end(JSON.stringify({ error: "temporarily_unavailable" }));
+          return;
+        }
         if (url.pathname === "/.well-known/openid-configuration") {
           res.end(
             JSON.stringify({
@@ -146,6 +152,9 @@ export async function oidcFixture(logout = false) {
     },
     setInvalidNonce: (value: boolean) => {
       invalidNonce = value;
+    },
+    setUnavailable: (value: boolean) => {
+      unavailable = value;
     },
     close: () =>
       new Promise<void>((resolve, reject) =>

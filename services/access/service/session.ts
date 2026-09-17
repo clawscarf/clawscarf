@@ -45,7 +45,7 @@ export class SessionService {
   validateReturn(value: string): string {
     return safeReturn(value, this.applicationReturnPath);
   }
-  async startLogin(returnTo = "/", setupToken?: string) {
+  async startLogin(returnTo = "/", setupToken?: string, reauthenticate = false) {
     const next = this.validateReturn(returnTo);
     if (!this.provider)
       return {
@@ -57,6 +57,7 @@ export class SessionService {
       nonce = token(),
       codeVerifier = token();
     const url = await this.provider.authorization({
+      reauthenticate,
       state,
       nonce,
       codeChallenge: createHash("sha256")
