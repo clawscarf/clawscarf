@@ -37,6 +37,10 @@
   not the installer. Target People as mandatory native UI and Connections as optional
   native UI; keep Access and broker enforcement outside OpenClaw. Empty Connections
   is a valid installed capability, not an unfinished setup step.
+- Target hosted login by default with customer OIDC always available; do not bundle an
+  identity server. Login and Connections are independent choices. Connector quota or
+  payment state must never gate team login. Keep future hosting consumers on the same
+  scoped service contract, without a second signup or duplicated broker implementation.
 - Connections uses a generic catalog/provider adapter and small search/describe/call tools.
   Preserve exact accounts, agent grants, scoped credentials and explicit outcomes.
   Provider schemas are advisory; validate our envelopes. No connector-specific repairs
@@ -67,9 +71,11 @@
   operations and advanced details out of normal copy. Esc returns to the parent screen
   and exits at the root; no Back rows. Save accepts section edits; Esc discards unaccepted
   section edits and new secrets while retaining accepted answers. Ctrl+C exits. Keep
-  runnable behavior and limits in the [CLI guide](deploy/local/installation.md), and
+  runnable behavior and limits in the [CLI guide](deploy/deployment/installation.md), and
   unfinished work only in TODO.md; do not retain a parallel implementation plan.
 - CLI output is for people by default; `--json` emits machine-readable results on stdout.
+  Display commands as `clawscarf …`; never expose development launchers such as pnpm
+  or TypeScript entry points in product messages.
   Keep progress and diagnostics on stderr, never mix them into JSON, and issue login
   credentials only during explicit login/administrator setup or the installer.
 - Reuse UI primitives. Keep actions beside data, layouts consistent and copy concise.

@@ -2,6 +2,44 @@
 
 Open work only. Select a task before implementing; this list does not authorize continuation.
 
+## Hosted login and native Connections
+
+Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
+payment integration and privately operated broker packaging come later.
+Current milestone: **M1**. Cloud service implementation is starting; real owner-login
+verification awaits the owner signing back into the WorkOS dashboard.
+
+Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
+native Connections replacement is part of this same batch, not a separate future task.
+
+- [ ] **M1 — Establish the cloud repository from existing code.** Create
+      `~/clawscarf/clawscarf-cloud` with concise contributor rules, notices and initial API contract.
+      Reuse Kora's cloud-authentication/deployment patterns and ClawScarf's service conventions;
+      start the service and verify its own owner login. No general WorkOS/Vercel feasibility study.
+- [ ] **M2 — Register installations.** Implement account ownership, separate management/runtime
+      credentials and rotation/revocation. Prove two-account isolation and idempotent SaaS
+      provisioning under an existing customer account. Register exact installation OIDC callbacks
+      and private client credentials; no second signup or VM machinery.
+- [ ] **M3 — Deliver real login.** A fresh installer run establishes the first administrator;
+      normal login/logout, account switching, provider recovery and a two-person invitation/revocation
+      flow work. Prove customer OIDC without cloud registration. No bundled IdP or token-only default.
+- [ ] **M4 — Run Connections in the cloud.** Move reviewed broker/catalog/provider code and
+      regressions; replace local-session coupling with installation scope. Link a real account and
+      execute one tool through API/CLI, proving scoped management denial and runtime revocation.
+      Adapt scheduled cleanup and provider deadlines using Kora's cloud deployment as the reference.
+- [ ] **M5 — Enforce quotas.** Add total, per-installation and per-backend execution quotas and
+      separate upstream budgets. Prove concurrent limits, duplicate requests and uncertain outcomes
+      cannot bypass/double-charge allowance. Set finite free limits; exhausted users can still log in.
+- [ ] **M6 — Deliver native Connections.** Replace the external page with native OpenClaw UI
+      and matching CLI for linking, reconnect/disconnect, inactive-entry removal, grants and usage.
+      Verify a real native-page OAuth/tool journey, member denial and useful loading/error states.
+- [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
+      through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
+      disabled/empty Connections, and remove superseded token-login and local broker/UI paths.
+- [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
+      journeys with native Connections, multiple installations, tenant isolation and quota/revocation
+      failures. Deploy the tested artifacts, update actual status and clean up disposable infrastructure.
+
 ## Installer and releases
 
 - [ ] Fix native pack removal when an attached automation requires Gateway authentication
@@ -14,21 +52,10 @@ Open work only. Select a task before implementing; this list does not authorize 
 - [ ] Test a complete release on a clean supported machine through administrator login
       and a real model response, then publish the matching npm CLI, GitHub assets and GHCR images.
 
-## Native application management — separate from installation
-
-- [ ] Build People using OpenClaw's native plugin UI: copyable invitations (no SMTP),
-      admission, native role assignment, administrator handover and explicit removal.
-      Include authenticated CLI operations and two-person login/open-session revocation tests;
-      ordinary OIDC login grants no admission, and removal must leave team files/automations intact.
-- [ ] Build optional Connections using OpenClaw's native plugin UI and authenticated CLI:
-      account linking, callbacks, reconnect/disconnect and agent grants. Verify real account OAuth
-      and a tool call; disabled installations expose no Connections UI/tools. Keep enforcement
-      in the external backend; do not add account linking to the installer.
-
 ## Upgrade decision
 
 - [ ] Decide whether to retain the custom local replacement/upgrade feature or defer it.
-      Its [upgrade implementation](scripts/local/upgrade.ts), state and Python helper total
+      Its [upgrade implementation](scripts/deployment/upgrade.ts), state and Python helper total
       580 lines, with additional startup-gate code/tests. The gate exists for this workflow;
       removing it alone would break replacement. Retained-volume startup remains required.
 
@@ -47,18 +74,16 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Bugs to investigate
 
-- [ ] Investigate the intermittent POSIX [process-group cleanup test](tests/local/supervisor.test.ts)
-      failure under the parallel suite; isolated tests pass.
-      Preserve structured signal failure diagnostics before changing cleanup timing.
-
 ## Future decisions
 
 - [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
       choose packs/Connections explicitly rather than treating the example as a finished product.
 - [ ] Select Lobster, Codex or other optional packs individually. Preserve vanilla ClawHub
       discovery unless a supported curation approach is explicitly selected.
-- [ ] Decide independent Connections deployment/authentication/storage if needed;
-      the current optional service shares the Access companion process and public ports.
+- [ ] Package privately operated Connections against the same broker contract, independent of
+      our hosted identity/billing services. The separation is part of the selected cloud design.
+- [ ] Add payment integration to the cloud allowance policy when selected; keep connector
+      usage separate from software licensing and any future AI-credit accounting.
 - [ ] Make ClawScarf easier to embed into a hosting product: define and qualify generic external
       ingress and directory-backed storage for hosting products built on top.
 - [ ] Qualify Linux/WSL, changed-upstream-version upgrades and external hosting
