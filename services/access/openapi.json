@@ -72,6 +72,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "setup",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "description": "Private, one-use first-administrator setup token."
           }
         ],
         "security": []

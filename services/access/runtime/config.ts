@@ -64,8 +64,8 @@ const configSchema = z
             }, "Use an issuer URL without credentials, query or fragment."),
           clientId: z.string().min(1),
           clientSecretFile: z.string().min(1),
-          administratorSubject: z.string().min(1),
-          administratorEmail: z.string().email(),
+          administratorSubject: z.string().min(1).optional(),
+          administratorEmail: z.string().email().optional(),
         })
         .strict(),
     ]),
@@ -77,6 +77,14 @@ export async function readConfiguration(
 ): Promise<AccessConfiguration> {
   const config = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
   const hostname = new URL(config.origin).hostname;
+  if (
+    config.identity.mode === "oidc" &&
+    Boolean(config.identity.administratorSubject) !==
+      Boolean(config.identity.administratorEmail)
+  )
+    throw Error(
+      "Provide both administrator subject and email, or neither for a setup link.",
+    );
   if (config.applicationTls && new URL(config.origin).protocol !== "https:")
     throw Error("Application TLS requires an HTTPS origin.");
   if (

@@ -8,7 +8,6 @@ import {
 import { InstallationError } from "../errors.js";
 import { installationMenu } from "./menu.js";
 import { packRequirements } from "../requirements.js";
-import { ZodError } from "zod";
 import { InstallerCancelled, SectionCancelled } from "./prompts.js";
 import { SetupInputs } from "../save.js";
 import {
@@ -19,20 +18,27 @@ import {
   type SetupOptions,
 } from "../setup.js";
 import type { InstallerPrompts } from "./prompts.js";
-import { absolute, field, newDirectory } from "./inputs.js";
+import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
 import { collectAccess } from "./sections/access.js";
-import { collectConnections } from "./sections/connections.js";
-import { collectModels } from "./sections/models.js";
-import { collectPacks } from "./sections/packs.js";
+import {
+  collectConnections,
+  collectConnectionCredentials,
+} from "./sections/connections.js";
+import { collectModels, collectModelCredentials } from "./sections/models.js";
+import { collectPacks, collectPackInputs } from "./sections/packs.js";
 import { readJson } from "../files.js";
 import { resolveConfigurationInputs } from "../configure.js";
-import { installationSummary } from "./summary.js";
+import { installationSummary, modelSummary } from "./summary.js";
+import { secretInput } from "./secrets.js";
+import { collectExternalModels } from "./sections/external-models.js";
+import { inputFile } from "./inputs.js";
 import { collectResources } from "./sections/resources.js";
 
 export type InstallOptions = SetupOptions & {
   directory?: string;
   recipe?: string;
   settings?: string;
+  existing?: boolean;
 };
 interface InstallationDraftState {
   directory: string;
@@ -53,26 +59,32 @@ export async function collectInstallation(
   startingPoint: for (;;) {
     let directory: string;
     try {
-      if (chooseRecipe)
-        recipeId = await ui.select(
-          "Starting point",
-          [
-            ...context.recipes.map((recipe) => ({
-              value: recipe.id,
-              label: recipe.name,
-              hint:
-                recipe.maturity === "example"
-                  ? "Example defaults; workflow not included"
-                  : recipe.description,
-            })),
-            {
-              value: "custom",
-              label: "Custom",
-              hint: "Choose your own settings",
-            },
-          ],
-          recipeId,
-        );
+      if (chooseRecipe) {
+        try {
+          recipeId = await ui.select(
+            "Starting point",
+            [
+              ...context.recipes.map((recipe) => ({
+                value: recipe.id,
+                label: recipe.name,
+                hint:
+                  recipe.maturity === "example"
+                    ? "Example defaults; workflow not included"
+                    : recipe.description,
+              })),
+              {
+                value: "custom",
+                label: "Custom",
+                hint: "Choose your own settings",
+              },
+            ],
+            recipeId,
+          );
+        } catch (error) {
+          if (error instanceof SectionCancelled) throw new InstallerCancelled();
+          throw error;
+        }
+      }
       directory = absolute(
         retained?.directory ??
           options.directory ??
@@ -83,8 +95,11 @@ export async function collectInstallation(
       chooseRecipe = true;
       continue;
     }
-    await newDirectory(directory);
-    if (Buffer.byteLength(join(directory, "state/operator.sock")) > 100)
+    if (!options.existing) await newDirectory(directory);
+    if (
+      !options.existing &&
+      Buffer.byteLength(join(directory, "state/operator.sock")) > 100
+    )
       throw new InstallationError(
         "invalid_configuration",
         "Choose a shorter installation directory (the control socket path must fit within 100 bytes).",
@@ -105,59 +120,40 @@ export async function collectInstallation(
         setupDraft(context, recipeId, settings, inputs),
         options.settings ? dirname(resolve(options.settings)) : process.cwd(),
       );
-    const initialConfiguration = JSON.stringify(config);
     const presetFile = recipe?.models
       ? recipeModelFile(recipe.models, inputs)
       : undefined;
-    let customize = !retained && recipeId === "custom";
-    let askRequiredModels = !customize && !config.models;
+    if (!config.models && presetFile)
+      config.models = {
+        mode: "litellm",
+        configurationFile: presetFile,
+        upstreamEnvironmentFile: "",
+      };
 
+    const initialConfiguration = JSON.stringify(config);
     if (recipe) ui.note(recipe.description, recipe.name);
     for (;;) {
       const customized = JSON.stringify(config) !== initialConfiguration;
       const pendingPacks = await packRequirements(config);
       let choice: string;
       try {
-        if (askRequiredModels) {
-          askRequiredModels = false;
-          choice = "required-models";
-        } else if (!customize) {
-          ui.note(
-            await installationSummary(config, inputs),
-            recipe?.name ?? "Installation",
-          );
-          choice = await ui.select(
-            "Review installation",
-            [
-              {
-                value: config.models ? "review" : "required-models",
-                label: config.models ? "Continue" : "Set up models",
-              },
-              { value: "customize", label: "Customize" },
-            ],
-            config.models ? "review" : "required-models",
-          );
-          if (choice === "customize") {
-            customize = true;
-            continue;
-          }
-        } else {
-          choice = await ui.select(
-            `${recipe?.name ?? "Custom"}${customized ? " · customized" : ""} — configure installation`,
-            installationMenu(
-              config,
-              directory,
-              Boolean(context.release.images.browser),
-              pendingPacks,
-            ),
-          );
-        }
+        choice = await ui.select(
+          options.existing
+            ? `${config.name} — settings`
+            : `${recipe?.name ?? "Custom"}${customized ? " · customized" : ""} — configure installation`,
+          installationMenu(
+            config,
+            directory,
+            Boolean(context.release.images.browser),
+            pendingPacks,
+            await modelSummary(config, inputs),
+            options.existing,
+          ),
+          "review",
+        );
       } catch (error) {
         if (!(error instanceof SectionCancelled)) throw error;
-        if (customize) {
-          customize = false;
-          continue;
-        }
+        if (options.existing) throw new InstallerCancelled();
         retained = { directory, config, inputs };
         chooseRecipe = true;
         continue startingPoint;
@@ -203,10 +199,9 @@ export async function collectInstallation(
           case "access":
             config = {
               ...config,
-              ...(await collectAccess(ui, config, inputs)),
+              ...(await collectAccess(ui, config)),
             };
             break;
-          case "required-models":
           case "models":
             config.models = await collectModels(
               ui,
@@ -214,16 +209,66 @@ export async function collectInstallation(
               config.models,
               inputs,
               presetFile,
-              choice === "required-models",
+              options.existing,
+            );
+            break;
+          case "model-credentials":
+            if (!config.models)
+              throw new InstallationError(
+                "invalid_configuration",
+                "Select a model first.",
+              );
+            config.models = await collectModelCredentials(
+              ui,
+              config.models.mode === "litellm"
+                ? { ...config.models, upstreamEnvironmentFile: "" }
+                : { ...config.models, credentialFile: "" },
+              inputs,
+            );
+            break;
+          case "connection-credentials":
+            config.connections = await collectConnectionCredentials(
+              ui,
+              config.connections.mode === "local"
+                ? { ...config.connections, apiKeyFile: "" }
+                : config.connections.mode === "external"
+                  ? { ...config.connections, credentialFile: "" }
+                  : config.connections,
+              inputs,
             );
             break;
           case "connections":
             config.connections = await collectConnections(
               ui,
               config.connections,
-              inputs,
+              context.release.connectorCatalogDirectory
+                ? resolve(
+                    dirname(context.releaseFile),
+                    context.release.connectorCatalogDirectory,
+                  )
+                : undefined,
             );
             break;
+          case "advanced-models": {
+            const file = await inputFile(ui, "Model catalog file", false);
+            const mode = await ui.select(
+              "Model gateway",
+              [
+                { value: "bundled", label: "Run with this installation" },
+                { value: "external", label: "Existing LiteLLM gateway" },
+              ],
+              "bundled",
+            );
+            config.models =
+              mode === "external"
+                ? await collectExternalModels(ui, inputs, file, config.models)
+                : {
+                    mode: "litellm",
+                    configurationFile: file,
+                    upstreamEnvironmentFile: "",
+                  };
+            break;
+          }
           case "resources":
             config.resources = await collectResources(ui, config.resources);
             break;
@@ -248,16 +293,60 @@ export async function collectInstallation(
               config.models,
               config.connections,
               config,
+              context.release.packs.map((pack) => ({
+                id: pack.id,
+                directory: resolve(
+                  dirname(context.releaseFile),
+                  "packs",
+                  pack.id,
+                ),
+              })),
             );
-            delete config.packOperator;
+            if (!options.existing) delete config.packOperator;
             config = { ...config, ...selection };
             break;
           }
           case "review": {
-            if (customize) {
-              customize = false;
-              continue;
-            }
+            if (!config.models)
+              config.models = await collectModels(
+                ui,
+                context.release,
+                undefined,
+                inputs,
+                presetFile,
+                options.existing,
+              );
+            ui.note(
+              await installationSummary(config, inputs),
+              "Selected settings",
+            );
+            config.models = await collectModelCredentials(
+              ui,
+              config.models,
+              inputs,
+            );
+            if (config.exposure.mode === "https" && !config.exposure.keyFile)
+              config.exposure.keyFile = await inputFile(
+                ui,
+                "TLS private key file",
+                true,
+              );
+            if (
+              config.access.mode === "oidc" &&
+              !config.access.clientSecretFile
+            )
+              config.access.clientSecretFile = await secretInput(
+                ui,
+                inputs,
+                "OIDC client secret",
+                "oidc-client-secret",
+              );
+            config.connections = await collectConnectionCredentials(
+              ui,
+              config.connections,
+              inputs,
+            );
+            config = { ...config, ...(await collectPackInputs(ui, config)) };
             const parsed = installationSchema.parse(config);
             assertReleaseCapabilities(context, parsed);
             const issues = await packRequirements(parsed);
@@ -274,7 +363,6 @@ export async function collectInstallation(
             );
         }
         if (
-          choice !== "required-models" &&
           (!isDeepStrictEqual(config, previousConfig) ||
             directory !== previousDirectory ||
             !isDeepStrictEqual(inputs.files, previousInputs)) &&
@@ -289,14 +377,9 @@ export async function collectInstallation(
         for (const [path, bytes] of previousInputs)
           inputs.files.set(path, bytes);
         if (error instanceof SectionCancelled) continue;
-        ui.note(
-          error instanceof InstallationError
-            ? error.message
-            : error instanceof ZodError
-              ? "Check the selected configuration fields and their supported values."
-              : "Could not read the selected inputs. Check their paths, contents and permissions.",
-          "Section needs attention",
-        );
+        const message = inputErrorMessage(error);
+        if (!message) throw error;
+        ui.note(message, "Section needs attention");
       }
     }
   }

@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import {
+  mkdtemp,
+  writeFile,
+  readFile,
+  rm,
+  mkdir,
+  chmod,
+} from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installationSchema } from "./installation/configuration.js";
@@ -10,6 +18,12 @@ import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { resolveInstallation } from "./installation/resolve.js";
 import { initializeState, withInstallationLock } from "./local/state.js";
 import { liteLlmImage, postgresImage } from "./local/images.js";
+import {
+  planSettingsChange,
+  reconfigureInstallation,
+} from "./installation/reconfigure.js";
+import { prepareModelGateway } from "./local/model-gateway.js";
+import { readState } from "./local/state.js";
 import { monitoredServices } from "./local/logs.js";
 import { monitorComposeServices } from "./local/service-monitors.js";
 
@@ -74,6 +88,7 @@ await test(
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
       recipes: [],
+      packs: [],
       images: {
         postgres: postgresImage,
         models: liteLlmImage,
@@ -170,6 +185,103 @@ await test(
     await assert.rejects(planInstallation(path), {
       code: "change_unsupported",
     });
+    const retained = await readState(join(directory, "state"));
+    await writeFile(
+      join(directory, "state/release.json"),
+      JSON.stringify(release),
+    );
+    await writeFile(
+      join(directory, "state/packs.json"),
+      JSON.stringify(resolved.packSelection),
+    );
+    await prepareModelGateway(join(directory, "state"), retained);
+    const modelRoot = join(directory, "state/private/models");
+    const master = await readFile(join(modelRoot, "master-key"), "utf8");
+    await writeFile(join(modelRoot, "runtime-key"), "sk-existing-revoked-key", {
+      mode: 0o600,
+    });
+    await writeFile(
+      join(directory, "models.json"),
+      JSON.stringify({ ...modelFile, thinkingDefault: "medium" }),
+    );
+    await writeFile(
+      join(directory, "state/prepared.json"),
+      JSON.stringify({ ownerId: retained.ownerId }),
+    );
+    const changedSettings = await planSettingsChange(path);
+    await withInstallationLock(changedSettings.directory, () =>
+      assert.rejects(
+        reconfigureInstallation(path, changedSettings.fingerprint),
+        { code: "operation_busy" },
+      ),
+    );
+    await prepareModelGateway(
+      join(directory, "state"),
+      { ...retained, input: changedSettings.desired.input },
+      { replaceConfiguration: true },
+    );
+    assert.equal(await readFile(join(modelRoot, "master-key"), "utf8"), master);
+    assert.equal(
+      await readFile(join(modelRoot, "runtime-key"), "utf8"),
+      "sk-existing-revoked-key",
+    );
+    assert.match(
+      await readFile(join(modelRoot, "native.json"), "utf8"),
+      /"thinkingDefault":"medium"/,
+    );
+    const retainedNative = await readFile(join(modelRoot, "native.json"));
+    await writeFile(
+      path,
+      JSON.stringify({
+        ...configuration,
+        resources: {
+          ...configuration.resources,
+          gateway: { cpu: "4", memory: "4Gi" },
+        },
+      }),
+    );
+    await assert.rejects(planSettingsChange(path), {
+      code: "change_unsupported",
+    });
+    await writeFile(path, JSON.stringify(configuration));
+    await writeFile(
+      join(directory, "models.json"),
+      JSON.stringify({
+        ...modelFile,
+        defaultModel: "another",
+        models: modelFile.models.map((model) => ({ ...model, id: "another" })),
+      }),
+    );
+    const differentModel = await planSettingsChange(path);
+    assert.notEqual(differentModel.fingerprint, changedSettings.fingerprint);
+    await writeFile(
+      join(directory, "state/inputs.sha256"),
+      "new-accepted-revision",
+    );
+    assert.notEqual(
+      (await planSettingsChange(path)).fingerprint,
+      differentModel.fingerprint,
+    );
+    await writeFile(
+      join(directory, "state/prepared.json"),
+      JSON.stringify({
+        ownerId: retained.ownerId,
+        settingsPending: differentModel.desired.fingerprint,
+      }),
+    );
+    assert.equal((await planSettingsChange(path)).resuming, true);
+    await writeFile(
+      join(directory, "keys.env"),
+      "PROVIDER_KEY=changed-again\n",
+    );
+    await assert.rejects(planSettingsChange(path), {
+      code: "change_unsupported",
+    });
+    assert.deepEqual(
+      await readFile(join(modelRoot, "native.json")),
+      retainedNative,
+    );
+    await writeFile(join(directory, "models.json"), JSON.stringify(modelFile));
     await writeFile(join(directory, "tool"), "changed");
     await assert.rejects(planInstallation(path), { code: "release_mismatch" });
   },
@@ -179,13 +291,14 @@ await test("concurrent operators cannot mutate the same installation", async (t)
   t.after(() => rm(directory, { recursive: true, force: true }));
   const state = join(directory, "state");
   await withInstallationLock(state, async () => {
-    const { startInstallation } = await import("./installation/lifecycle.js");
+    const { superviseInstallation } =
+      await import("./installation/lifecycle.js");
     const { upgradeLocal } = await import("./local/upgrade.js");
     const { operateConnectionsRuntime } =
       await import("./local/connections-runtime.js");
     for (const operation of [
       () => withInstallationLock(state, () => Promise.resolve(undefined)),
-      () => startInstallation(state, () => {}),
+      () => superviseInstallation(state, () => {}),
       () => upgradeLocal(state, "unused", "unused", () => {}),
       () => operateConnectionsRuntime(state, { kind: "observe" }),
       () =>
@@ -263,4 +376,91 @@ await test("lifecycle refuses unprotected component assemblies and reports no su
       );
     },
   );
+});
+
+await test("private lifecycle control distinguishes pending administrator and ready service without stopping on status", async (t) => {
+  const { controlInstallation } = await import("./installation/lifecycle.js");
+  const { parseLocalInput } = await import("./local/configuration.js");
+  const parent = await mkdtemp(join(tmpdir(), "cs-control-"));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const directory = join(parent, "state");
+  await initializeState(
+    directory,
+    parseLocalInput({
+      name: "test",
+      administratorName: "Owner",
+      runtimeImage: `sha256:${"a".repeat(64)}`,
+      companionImage: `sha256:${"a".repeat(64)}`,
+      openshellCli: "/tmp/unused",
+      openshellGateway: "/tmp/unused",
+      ports: {
+        controller: 17671,
+        application: 18800,
+        widgets: 18802,
+        management: 18801,
+        native: 18789,
+        nativeWidgets: 18790,
+        database: 15432,
+      },
+      cpu: "1",
+      memory: "1Gi",
+    }),
+  );
+  let complete = false;
+  let stops = 0;
+  const server = createServer((request, response) => {
+    const stopping = request.method === "POST" && request.url === "/stop";
+    if (stopping) stops += 1;
+    response.setHeader("content-type", "application/json");
+    response.end(
+      JSON.stringify({
+        supervisor: stopping ? "stopping" : "running",
+        ready: !stopping && complete,
+        administrator: stopping
+          ? "unavailable"
+          : complete
+            ? "ready"
+            : "pending",
+        packs: [],
+      }),
+    );
+  });
+  t.after(
+    () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        }),
+      ),
+  );
+  const socket = join(directory, "operator.sock");
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socket, resolve);
+  });
+  await chmod(socket, 0o600);
+  assert.deepEqual(await controlInstallation(directory, "status"), {
+    supervisor: "running",
+    ready: false,
+    administrator: "pending",
+    packs: [],
+  });
+  complete = true;
+  assert.deepEqual(await controlInstallation(directory, "status"), {
+    supervisor: "running",
+    ready: true,
+    administrator: "ready",
+    packs: [],
+  });
+  assert.equal(stops, 0);
+  assert.equal(
+    (await controlInstallation(directory, "stop")).supervisor,
+    "stopping",
+  );
+  assert.equal(stops, 1);
+  await chmod(socket, 0o666);
+  await assert.rejects(controlInstallation(directory, "status"), {
+    code: "unavailable",
+  });
 });

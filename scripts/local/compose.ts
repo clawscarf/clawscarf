@@ -203,10 +203,14 @@ export function composeConfiguration(
     },
   };
 }
-export function compose(directory: string, args: readonly string[]) {
+export function compose(
+  directory: string,
+  args: readonly string[],
+  timeout = 120_000,
+) {
   return run(
     "docker",
     ["compose", "-f", join(directory, "compose.json"), ...args],
-    { timeout: 120_000 },
+    { timeout },
   );
 }

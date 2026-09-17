@@ -1,8 +1,9 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { openPack } from "../packs/source.js";
 import { planPack, applyPack } from "../packs/lifecycle.js";
+import { planSchema } from "../packs/model.js";
 import type { NativeClaws } from "../packs/native.js";
 import { OpenShellClaws } from "../packs/openshell.js";
 import { readState, resourceNames, writePrivate } from "../local/state.js";
@@ -35,8 +36,14 @@ export async function activatePacks(
   const selection = selectionSchema.parse(
     await readJson(join(directory, "packs.json")),
   );
-  if (!selection.packs.length) return [];
-  if (!selection.python) throw Error("Pack operator is missing.");
+  const receipts = join(directory, "pack-operations");
+  await mkdir(receipts, { recursive: true, mode: 0o700 });
+  const files = (await readdir(receipts)).filter(
+    (file) => file.endsWith(".json") && !file.endsWith("-plan.json"),
+  );
+  if (!selection.packs.length && !files.length) return [];
+  if (!selection.python)
+    throw Error("Pack operator is required while removing retained packs.");
   const state = await readState(directory);
   const controller = join(directory, "controller");
   const gateway = resourceNames(state).sandbox;
@@ -56,89 +63,128 @@ export async function activatePacks(
         XDG_DATA_HOME: join(controller, "data"),
       },
     });
-  const receipts = join(directory, "pack-operations");
-  await mkdir(receipts, { recursive: true, mode: 0o700 });
+  const operations = selection.packs.flatMap((pack) =>
+    pack.members.map((member) => ({ pack, member, remove: false })),
+  );
+  const selected = new Set(operations.map((item) => item.member));
+  for (const file of files) {
+    const member = file.slice(0, -5);
+    if (selected.has(member)) continue;
+    const previous = planSchema.parse(
+      await readJson(join(receipts, member + "-plan.json")),
+    );
+    if (previous.member !== member)
+      throw Error("Pack receipt identity changed.");
+    operations.push({
+      member,
+      remove: true,
+      pack: {
+        directory: previous.pack,
+        digest: previous.packDigest,
+        members: [member],
+      },
+    });
+  }
   const outcomes: PackOutcome[] = [];
-  for (const pack of selection.packs) {
-    for (const member of pack.members) {
-      let attempted = false;
+  for (const { pack, member, remove } of operations) {
+    let operation: "add" | "update" | "remove" = remove ? "remove" : "add";
+    let attempted = false;
+    try {
+      const path = join(receipts, member + ".json");
+      const selectionDigest = fingerprint(
+        JSON.stringify({
+          digest: pack.digest,
+          bindingsDigest: pack.bindingsDigest,
+          member,
+        }),
+      );
       try {
-        const path = join(receipts, member + ".json");
-        const selectionDigest = fingerprint(JSON.stringify({ pack, member }));
-        try {
-          const retained = z
-            .strictObject({
-              ownerId: z.literal(state.ownerId),
-              selectionDigest: z.literal(selectionDigest),
-              state: z.enum(["pending", "complete"]),
-            })
-            .parse(await readJson(path));
-          if (retained.state === "complete") {
-            outcomes.push({ member, state: "complete" });
-            continue;
-          }
+        const retained = z
+          .strictObject({
+            ownerId: z.literal(state.ownerId),
+            selectionDigest: z.string(),
+            state: z.enum(["pending", "complete"]),
+          })
+          .parse(await readJson(path));
+        if (
+          retained.state === "complete" &&
+          !remove &&
+          retained.selectionDigest === selectionDigest
+        ) {
+          outcomes.push({ member, state: "complete" });
+          continue;
+        }
+        if (retained.state === "complete") {
+          operation = remove ? "remove" : "update";
+        } else {
           attempted = true;
           throw Error(
             "A pack mutation has an unconfirmed outcome. Inspect native Claws before an explicit change; startup will not repeat it.",
           );
-        } catch (error) {
-          if (!(
-            error instanceof Error &&
-            "code" in error &&
-            error.code === "ENOENT"
-          ))
-            throw error;
         }
-        if (
-          (await openPack(pack.directory)).digest !== pack.digest ||
-          (pack.bindingsFile &&
-            fingerprint(await readFile(pack.bindingsFile)) !==
-              pack.bindingsDigest)
-        )
-          throw Error(
-            "Selected pack inputs changed. Review a new installation plan.",
-          );
-        report(`Installing pack member ${member}…`);
-        const plan = await planPack(
-          {
-            directory: pack.directory,
-            member,
-            operation: "add",
-            workspace: `/home/node/.openclaw/workspace-${member}`,
-            ...(pack.bindingsFile ? { bindingsFile: pack.bindingsFile } : {}),
-          },
-          native,
-        );
-        await writePrivate(
-          join(receipts, member + "-plan.json"),
-          JSON.stringify(plan),
-        );
-        attempted = true;
-        await writePrivate(
-          path,
-          JSON.stringify({
-            ownerId: state.ownerId,
-            selectionDigest,
-            state: "pending",
-          }),
-        );
-        await applyPack(plan, native, pack.bindingsFile);
-        await writePrivate(
-          path,
-          JSON.stringify({
-            ownerId: state.ownerId,
-            selectionDigest,
-            state: "complete",
-          }),
-        );
-        outcomes.push({ member, state: "complete" });
-      } catch {
-        const state = attempted ? "unconfirmed" : "blocked";
-        outcomes.push({ member, state });
-        report(
-          `Pack member ${member}: ${state}. Inspect its native Claws plan and prerequisites; no mutation was replayed. The team server remains available.`,
-        );
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        ))
+          throw error;
       }
+      if (
+        (await openPack(pack.directory)).digest !== pack.digest ||
+        (pack.bindingsFile &&
+          fingerprint(await readFile(pack.bindingsFile)) !==
+            pack.bindingsDigest)
+      )
+        throw Error(
+          "Selected pack inputs changed. Review a new installation plan.",
+        );
+      report(
+        `${operation === "remove" ? "Removing" : operation === "update" ? "Updating" : "Installing"} pack member ${member}…`,
+      );
+      const plan = await planPack(
+        {
+          directory: pack.directory,
+          member,
+          operation,
+          workspace: `/home/node/.openclaw/workspace-${member}`,
+          ...(pack.bindingsFile ? { bindingsFile: pack.bindingsFile } : {}),
+        },
+        native,
+      );
+      await writePrivate(
+        join(receipts, member + "-plan.json"),
+        JSON.stringify(plan),
+      );
+      attempted = true;
+      await writePrivate(
+        path,
+        JSON.stringify({
+          ownerId: state.ownerId,
+          selectionDigest,
+          state: "pending",
+        }),
+      );
+      await applyPack(plan, native, pack.bindingsFile);
+      await writePrivate(
+        path,
+        JSON.stringify({
+          ownerId: state.ownerId,
+          selectionDigest,
+          state: "complete",
+        }),
+      );
+      if (remove) {
+        await rm(path);
+        await rm(join(receipts, member + "-plan.json"));
+      }
+      outcomes.push({ member, state: "complete" });
+    } catch {
+      const state = attempted ? "unconfirmed" : "blocked";
+      outcomes.push({ member, state });
+      report(
+        `Pack member ${member}: ${state}. Inspect its native Claws plan and prerequisites; no mutation was replayed. The team server remains available.`,
+      );
     }
   }
   await writePrivate(

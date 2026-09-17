@@ -46,11 +46,20 @@ export async function composeAccess(
             redirectUri: `${config.origin}/_clawscarf/callback`,
           })
         : null;
+    const native =
+      options.native ??
+      new OpenClawAuthority(
+        config.origin,
+        config.runtime.managementOrigin
+          ? { endpoint: config.runtime.managementOrigin }
+          : {},
+      );
     const service = new SessionService(
       repository,
       provider,
       config.origin,
       options.applicationReturnPath,
+      native,
     );
     const access: AccessRuntimeApi = {
       authenticate: (value) => service.authenticate(value),
@@ -61,14 +70,6 @@ export async function composeAccess(
       withActingSession: (value, work) =>
         service.withActingSession(value, work),
     };
-    const native =
-      options.native ??
-      new OpenClawAuthority(
-        config.origin,
-        config.runtime.managementOrigin
-          ? { endpoint: config.runtime.managementOrigin }
-          : {},
-      );
     const enrollment = new EnrollmentService(
       repository,
       native,

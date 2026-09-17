@@ -1,3 +1,8 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { compose } from "./compose.js";
+import type { LocalState } from "./state.js";
+import { LocalSetupError } from "./process.js";
 import pg from "pg";
 import { runner } from "node-pg-migrate";
 import { fileURLToPath } from "node:url";
@@ -228,5 +233,55 @@ export async function initializeLocalDatabase(input: {
     throw new LocalDatabaseError("database_setup_failed");
   } finally {
     if (connected) await client.end();
+  }
+}
+
+/** Operator-only database preparation; always close its temporary service and pool. */
+export async function withPreparedDatabase<T>(
+  directory: string,
+  state: LocalState,
+  connections: boolean,
+  operation: (pool: pg.Pool, runtimeUrl: string) => Promise<T>,
+): Promise<T> {
+  try {
+    try {
+      await compose(directory, [
+        "up",
+        "-d",
+        "--wait",
+        "--wait-timeout",
+        "90",
+        "postgres",
+      ]);
+    } catch {
+      throw new LocalSetupError(
+        "database_start_failed",
+        "PostgreSQL startup did not confirm success. Check this installation’s Compose logs and Docker network capacity.",
+      );
+    }
+    const adminUrl = new URL(
+      `postgresql://postgres@127.0.0.1:${String(state.input.ports.database)}/clawscarf`,
+    );
+    adminUrl.password = await readFile(
+      join(directory, "private/database-admin-password"),
+      "utf8",
+    );
+    const { runtimeUrl } = await initializeLocalDatabase({
+      adminUrl: adminUrl.toString(),
+      runtimePassword: await readFile(
+        join(directory, "private/database-runtime-password"),
+        "utf8",
+      ),
+      ownerId: state.ownerId,
+      connections,
+    });
+    const pool = new pg.Pool({ connectionString: runtimeUrl });
+    try {
+      return await operation(pool, runtimeUrl);
+    } finally {
+      await pool.end();
+    }
+  } finally {
+    await compose(directory, ["stop", "postgres"]);
   }
 }

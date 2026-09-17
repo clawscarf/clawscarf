@@ -19,12 +19,21 @@ export function installationMenu(
   directory: string,
   browserAvailable: boolean,
   packIssues: string[],
+  modelSummary?: string,
+  existing = false,
 ): Choice[] {
   const location = directory.startsWith(homedir() + "/")
     ? "~" + directory.slice(homedir().length)
     : directory;
   const agents = config.packs.flatMap((pack) => pack.members);
-  return [
+  const choices: Choice[] = [
+    {
+      value: "review",
+      label: existing ? "Review and apply\n" : "Accept settings and continue\n",
+      hint: existing
+        ? "Review before changing the server"
+        : "Credentials come next",
+    },
     row(
       "location",
       "Location",
@@ -42,11 +51,7 @@ export function installationMenu(
       config.access.mode === "local" ? "Local login" : "Company login",
       config.access.mode === "local" ? "Loopback only" : "OIDC",
     ),
-    row(
-      "models",
-      "Models",
-      !config.models ? "Not configured" : config.models.mode,
-    ),
+    row("models", "Models", modelSummary ?? "Choose a model"),
     row(
       "connections",
       "Connections",
@@ -77,6 +82,22 @@ export function installationMenu(
           ),
         ]
       : []),
-    { value: "review", label: "Review and continue" },
+    { value: "advanced-models", label: "Advanced model gateway settings" },
   ];
+  return existing
+    ? [
+        ...choices.filter(({ value }) =>
+          ["review", "models", "connections", "packs"].includes(value),
+        ),
+        { value: "model-credentials", label: "Change LLM API keys" },
+        ...(config.connections.mode === "disabled"
+          ? []
+          : [
+              {
+                value: "connection-credentials",
+                label: "Change Connections backend key",
+              },
+            ]),
+      ]
+    : choices;
 }

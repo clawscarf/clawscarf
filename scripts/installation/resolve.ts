@@ -5,6 +5,7 @@ import { dirname, resolve, join } from "node:path";
 import { loadGatewayConfiguration } from "../local/model-gateway.js";
 import { createServer } from "node:net";
 import { releaseSchema } from "../release/definition.js";
+import { verifyReleasePacks } from "../release/packs.js";
 import { parseLocalInput, type LocalInput } from "../local/configuration.js";
 import { loadInitialModels } from "../local/models.js";
 import {
@@ -84,6 +85,7 @@ export async function resolveInstallation(
   const path = (value: string) => resolve(base, value);
   const releasePath = path(config.releaseFile);
   const release = releaseSchema.parse(await readJson(releasePath));
+  await verifyReleasePacks(release, releasePath);
   if (
     !release.platforms.some(
       (platform) => platform === `${process.platform}-${process.arch}`,
@@ -168,8 +170,12 @@ export async function resolveInstallation(
             issuer: access.issuer,
             clientId: access.clientId,
             clientSecretFile: await inputFile(access.clientSecretFile, true),
-            administratorSubject: access.administratorSubject,
-            administratorEmail: access.administratorEmail,
+            ...(access.administratorSubject
+              ? {
+                  administratorSubject: access.administratorSubject,
+                  administratorEmail: access.administratorEmail,
+                }
+              : {}),
           },
         }
       : {}),

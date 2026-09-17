@@ -23,9 +23,10 @@ export async function openAccessStorage(
           }
         : {
             issuer: mode.issuer,
-            subject: mode.administratorSubject,
-            email: mode.administratorEmail,
-            name: mode.administratorEmail,
+            subject: mode.administratorSubject ?? "urn:clawscarf:unclaimed",
+            email: mode.administratorEmail ?? "",
+            name: mode.administratorEmail ?? "Administrator",
+            claimRequired: !mode.administratorSubject,
           };
     const repository = new PostgresAccessStore(
       pool,

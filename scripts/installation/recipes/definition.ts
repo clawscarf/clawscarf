@@ -16,6 +16,15 @@ export const recipeSchema = z.strictObject({
     browser: installationSchema.shape.browser,
   }),
   models: gatewayRoutesSchema,
+  packs: z
+    .array(
+      z.strictObject({
+        id: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+        members: installationSchema.shape.packs.element.shape.members,
+      }),
+    )
+    .max(32)
+    .default([]),
 });
 export type Recipe = z.infer<typeof recipeSchema>;
 export const recipesSchema = z

@@ -229,7 +229,10 @@ export async function createAccessHttp(
     },
     health: async (_req, reply) => reply.code(200).send({ status: "ok" }),
     startLogin: async (req, reply) => {
-      const result = await service.startLogin(req.query?.returnTo ?? "/");
+      const result = await service.startLogin(
+        req.query?.returnTo ?? "/",
+        req.query?.setup,
+      );
       cookies(reply, "clawscarf_login", result.cookie, 600);
       return reply.redirect(result.url);
     },

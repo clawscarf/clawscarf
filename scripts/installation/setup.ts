@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fileURLToPath } from "node:url";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
   installationSchema,
   externalLiteLlmSchema,
@@ -13,6 +13,7 @@ import { readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { SetupInputs } from "./save.js";
 import { loadRecipes } from "./recipes/load.js";
+import { verifyReleasePacks } from "../release/packs.js";
 
 export type SetupOptions = { release?: string; recipes?: string };
 export async function setupContext(options: SetupOptions) {
@@ -46,6 +47,7 @@ export async function setupContext(options: SetupOptions) {
   const recipes = options.recipes
     ? await loadRecipes(resolve(options.recipes))
     : release.recipes;
+  await verifyReleasePacks(release, releaseFile, recipes);
   return { release, releaseFile, recipes };
 }
 export type SetupContext = Awaited<ReturnType<typeof setupContext>>;
@@ -74,7 +76,10 @@ export function recipeConfiguration(
     },
     browser: { enabled: false },
     connections: { mode: "disabled" },
-    packs: [],
+    packs: (recipe?.packs ?? []).map((pack) => ({
+      directory: resolve(dirname(context.releaseFile), "packs", pack.id),
+      members: [...pack.members],
+    })),
     ...recipe?.defaults,
     ...(recipe
       ? { recipe: { id: recipe.id, release: context.release.version } }

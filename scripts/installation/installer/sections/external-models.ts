@@ -5,11 +5,9 @@ import {
 } from "../../../models/configuration.js";
 import type { InstallationConfiguration } from "../../configuration.js";
 import { InstallationError } from "../../errors.js";
-import { readJson } from "../../files.js";
 import type { SetupInputs } from "../../save.js";
 import { field } from "../inputs.js";
 import type { InstallerPrompts } from "../prompts.js";
-import { secretInput } from "../secrets.js";
 import { optionalCa } from "./certificates.js";
 
 export async function collectExternalModels(
@@ -18,13 +16,9 @@ export async function collectExternalModels(
   file: string,
   current?: InstallationConfiguration["models"],
 ): Promise<InstallationConfiguration["models"]> {
-  const staged = inputs.files.get(file);
-  const source: unknown = staged
-    ? JSON.parse(staged.toString("utf8"))
-    : await readJson(file);
   const catalog = z
     .union([gatewayRoutesSchema, configurationSchema])
-    .parse(source);
+    .parse(await inputs.readJson(file));
   if ("mode" in catalog && catalog.mode === "disabled")
     throw new InstallationError(
       "invalid_configuration",
@@ -45,19 +39,24 @@ export async function collectExternalModels(
       ? { thinkingDefault: catalog.thinkingDefault }
       : {}),
   });
+  const previous =
+    current?.mode === "external"
+      ? configurationSchema.parse(
+          await inputs.readJson(current.configurationFile),
+        )
+      : undefined;
   return {
     mode: "external",
     configurationFile: inputs.set(
       "external-models.json",
       JSON.stringify(config, null, 2),
     ),
-    credentialFile: await secretInput(
-      ui,
-      inputs,
-      "Scoped model gateway key",
-      "model-key",
-      current?.mode === "external" ? current.credentialFile : undefined,
-    ),
+    credentialFile:
+      current?.mode === "external" &&
+      previous?.mode === "external" &&
+      previous.baseUrl === baseUrl
+        ? current.credentialFile
+        : "",
     ...(await optionalCa(
       ui,
       current?.mode === "external" ? current.caFile : undefined,

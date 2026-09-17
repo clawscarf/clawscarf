@@ -34,19 +34,10 @@ async function waitForGroupExit(pid: number, milliseconds: number) {
   return !signalGroup(pid, 0);
 }
 
-/** Foreground ownership is in memory. Detached creates a POSIX group, not a daemon. */
-export async function startProcess(
-  executable: string,
-  args: readonly string[],
-  options: { env?: NodeJS.ProcessEnv; logFile: string },
-): Promise<ManagedProcess> {
-  if (process.platform === "win32")
-    throw new LocalSetupError(
-      "platform_unqualified",
-      "Process supervision requires POSIX process groups.",
-    );
+/** Both OS-owned and child-process supervisors append to the same private log contract. */
+export async function openPrivateLog(path: string) {
   const log = await open(
-    options.logFile,
+    path,
     constants.O_WRONLY |
       constants.O_CREAT |
       constants.O_APPEND |
@@ -64,6 +55,26 @@ export async function startProcess(
         "private_log_required",
         "Use a private log file owned by the current user.",
       );
+    return log;
+  } catch (error) {
+    await log.close();
+    throw error;
+  }
+}
+
+/** Foreground ownership is in memory. Detached creates a POSIX group, not a daemon. */
+export async function startProcess(
+  executable: string,
+  args: readonly string[],
+  options: { env?: NodeJS.ProcessEnv; logFile: string },
+): Promise<ManagedProcess> {
+  if (process.platform === "win32")
+    throw new LocalSetupError(
+      "platform_unqualified",
+      "Process supervision requires POSIX process groups.",
+    );
+  const log = await openPrivateLog(options.logFile);
+  try {
     const child = spawn(executable, Array.from(args), {
       detached: true,
       stdio: ["ignore", log.fd, log.fd],

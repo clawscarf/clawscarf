@@ -32,6 +32,11 @@
 - Managed inference uses bundled or external LiteLLM; no direct-provider recipe bypass.
   Connections is optional and separately owned: when absent, require no provider key,
   schema, calls or unusable UI/tools. Enabled invalid configuration fails visibly.
+- Installation configures services/plugins and establishes the first administrator.
+  Teammate enrollment and external-account linking belong to application management,
+  not the installer. Target People as mandatory native UI and Connections as optional
+  native UI; keep Access and broker enforcement outside OpenClaw. Empty Connections
+  is a valid installed capability, not an unfinished setup step.
 - Connections uses a generic catalog/provider adapter and small search/describe/call tools.
   Preserve exact accounts, agent grants, scoped credentials and explicit outcomes.
   Provider schemas are advisory; validate our envelopes. No connector-specific repairs
@@ -61,12 +66,14 @@
   secrets afterward in the context of the chosen settings. Keep equivalent noninteractive
   operations and advanced details out of normal copy. Esc returns to the parent screen
   and exits at the root; no Back rows. Save accepts section edits; Esc discards unaccepted
-  section edits and new secrets while retaining accepted answers. Ctrl+C exits. The
-  [installation design](docs/installation-interface.md) distinguishes this target from
-  current implementation gaps.
+  section edits and new secrets while retaining accepted answers. Ctrl+C exits. Keep
+  runnable behavior and limits in the [CLI guide](deploy/local/installation.md), and
+  unfinished work only in TODO.md; do not retain a parallel implementation plan.
 - Reuse UI primitives. Keep actions beside data, layouts consistent and copy concise.
   Show loading in affected content, retain data on refresh, and distinguish unavailable
   from empty. Review changed accessible desktop/mobile pending and error states.
+- Clean up disposable test containers and networks after verification. Normal stop preserves
+  an installation for restart; it is not cleanup of a completed test fixture.
 - Review every changed file. Run relevant regressions and documentation checks per slice;
   run `pnpm check` and `pnpm build` before handing off code changes. Test real affected
   boundaries where mocks cannot establish behavior, and state what remains untested.

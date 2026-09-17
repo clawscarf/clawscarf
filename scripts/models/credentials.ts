@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { open, readFile, unlink } from "node:fs/promises";
 import { z } from "zod";
 import { Agent, fetch } from "undici";
@@ -115,4 +117,74 @@ async function managementClient(input: {
       await dispatcher?.close();
     },
   };
+}
+
+/** Change only this existing key's model permissions; never create, renew or unblock it. */
+export async function setRuntimeCredentialModels(input: {
+  origin: string;
+  masterKeyFile: string;
+  keyFile: string;
+  models: string[];
+  caFile?: string;
+}) {
+  const key = (await readFile(input.keyFile, "utf8")).trim();
+  const models = z.array(z.string().min(1)).min(1).parse(input.models).sort();
+  const client = await managementClient(input);
+  try {
+    if (!key.startsWith("sk-") || key === client.masterKey)
+      throw Error("Supply distinct administrator and runtime credentials.");
+    const headers = {
+      Authorization: `Bearer ${client.masterKey}`,
+      "Content-Type": "application/json",
+    };
+    const observe = async () => {
+      const response = await client.request(
+        `/key/info?key=${createHash("sha256").update(key).digest("hex")}`,
+        {
+          headers,
+          redirect: "error",
+          signal: AbortSignal.timeout(30_000),
+        },
+      );
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw Error(
+          "The retained model credential could not be verified. It will not be replaced.",
+        );
+      }
+      const value = z
+        .object({
+          info: z.object({
+            models: z.array(z.string()),
+            blocked: z.boolean().nullable(),
+            expires: z.iso.datetime({ offset: true }).nullable(),
+          }),
+        })
+        .parse(await response.json());
+      return { ...value.info, models: value.info.models.sort() };
+    };
+    const previous = await observe();
+    if (isDeepStrictEqual(previous.models, models)) return;
+    const response = await client.request("/key/update", {
+      method: "POST",
+      headers,
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+      body: JSON.stringify({ key, models }),
+    });
+    await response.body?.cancel();
+    if (!response.ok)
+      throw Error("LiteLLM rejected the model permission change.");
+    const after = await observe();
+    if (
+      !isDeepStrictEqual(after.models, models) ||
+      after.blocked !== previous.blocked ||
+      after.expires !== previous.expires
+    )
+      throw Error(
+        "The model permission change was not confirmed. Observe the key before another explicit apply.",
+      );
+  } finally {
+    await client.close();
+  }
 }

@@ -1,144 +1,239 @@
 import type { InstallationConfiguration } from "../../configuration.js";
 import type { Release } from "../../../release/definition.js";
 import type { InstallerPrompts } from "../prompts.js";
-import { readJson } from "../../files.js";
 import {
   gatewayRoutesSchema,
   configurationSchema,
 } from "../../../models/configuration.js";
+import { secretInput } from "../secrets.js";
 import { inputFile } from "../inputs.js";
 import { InstallationError } from "../../errors.js";
-import { collectExternalModels } from "./external-models.js";
-
 import type { SetupInputs } from "../../save.js";
 
+export async function modelRoutes(file: string, inputs: SetupInputs) {
+  return gatewayRoutesSchema.parse(await inputs.readJson(file));
+}
+export function providerLabel(route: { model: string }) {
+  const name = route.model.split("/")[0] ?? "Provider";
+  return (
+    (
+      {
+        openrouter: "OpenRouter",
+        openai: "OpenAI",
+        anthropic: "Anthropic",
+        gemini: "Google",
+      } as Record<string, string>
+    )[name] ?? name
+  );
+}
+
+/** Settings only. Credentials are collected after the complete installation review. */
 export async function collectModels(
   ui: InstallerPrompts,
   release: Release,
   current: InstallationConfiguration["models"] | undefined,
   inputs: SetupInputs,
   presetFile?: string,
-  required = false,
+  retainModels = false,
 ): Promise<InstallationConfiguration["models"]> {
-  const mode = required
-    ? (current?.mode ?? "litellm")
-    : await ui.select(
-        "Models",
-        [
-          { value: "external", label: "Use existing LiteLLM (advanced)" },
-          ...(release.images.models
-            ? [{ value: "litellm", label: "Bundled LiteLLM" }]
-            : []),
-        ],
-        current?.mode ?? "litellm",
+  if (current?.mode === "external") {
+    const catalog = configurationSchema.parse(
+      await inputs.readJson(current.configurationFile),
+    );
+    if (catalog.mode !== "external")
+      throw new InstallationError(
+        "invalid_configuration",
+        "Import the existing gateway's model catalog under Advanced.",
       );
-  const availableFile =
-    current?.mode === mode ? current.configurationFile : presetFile;
-  const keepCatalog =
-    availableFile &&
-    (required ||
-      (await ui.select(
-        "Model catalog",
-        [
-          { value: "keep", label: "Keep model catalog" },
-          { value: "file", label: "Import model catalog" },
-        ],
-        "keep",
-      )) === "keep");
-  let configurationFile =
-    keepCatalog && availableFile
-      ? availableFile
-      : await inputFile(
-          ui,
-          mode === "external"
-            ? "Existing LiteLLM model configuration file"
-            : "Model configuration file",
-          false,
-        );
-  if (mode === "external")
-    return collectExternalModels(ui, inputs, configurationFile, current);
-  if (mode !== "litellm" || !release.images.models)
-    throw new InstallationError(
-      "invalid_configuration",
-      "This release does not include the selected model service.",
-    );
-  const staged = inputs.files.get(configurationFile);
-  const source: unknown = staged
-    ? JSON.parse(staged.toString("utf8"))
-    : await readJson(configurationFile);
-  const routes = gatewayRoutesSchema.parse(source);
-  const checked = configurationSchema.parse({
-    ...routes,
-    mode: "litellm",
-    baseUrl: "https://host.docker.internal/v1",
-  });
-  if (checked.mode !== "litellm")
-    throw new InstallationError(
-      "invalid_configuration",
-      "Select LiteLLM routes.",
-    );
-  if (!required) {
-    routes.defaultModel = await ui.select(
+    const defaultModel = await ui.select(
       "Default model",
-      routes.models
+      catalog.models
         .filter((model) => model.enabled)
         .map((model) => ({ value: model.id, label: model.name })),
-      routes.defaultModel,
+      catalog.defaultModel ?? undefined,
     );
-    configurationFile = inputs.set(
+    const model = catalog.models.find((model) => model.id === defaultModel);
+    const thinkingDefault = model?.reasoning
+      ? await ui.select(
+          "Reasoning",
+          ["low", "medium", "high"].map((value) => ({ value, label: value })),
+          catalog.thinkingDefault ?? "medium",
+        )
+      : undefined;
+    const { thinkingDefault: _previous, ...base } = catalog;
+    return {
+      ...current,
+      configurationFile: inputs.set(
+        "external-models.json",
+        JSON.stringify({
+          ...base,
+          defaultModel,
+          ...(thinkingDefault ? { thinkingDefault } : {}),
+        }),
+      ),
+    };
+  }
+  const file = current?.configurationFile ?? presetFile;
+  const routes = file ? await modelRoutes(file, inputs) : undefined;
+  const offers = release.modelCatalog ?? [];
+  const choices = new Map([
+    ...offers.map((offer) => [offer.model.id, offer.model.name] as const),
+    ...(routes?.models.map((model) => [model.id, model.name] as const) ?? []),
+  ]);
+  if (!choices.size)
+    throw new InstallationError(
+      "invalid_configuration",
+      "This release contains no model choices. Import a catalog under Advanced.",
+    );
+  const id = await ui.select(
+    "Default model",
+    [...choices].map(([value, label]) => ({ value, label })),
+    routes?.defaultModel,
+  );
+  const existing = routes?.models.find((model) => model.id === id);
+  const matching = offers.filter((offer) => offer.model.id === id);
+  const providerOptions = new Map(
+    matching.map((offer) => [offer.model.route.model, offer]),
+  );
+  if (existing?.route && !providerOptions.has(existing.route.model))
+    providerOptions.set(existing.route.model, {
+      provider: providerLabel(existing.route),
+      model: { ...existing, route: existing.route },
+      reasoningLevels: existing.reasoning ? ["low", "medium", "high"] : [],
+    });
+  if (!providerOptions.size)
+    throw new InstallationError(
+      "invalid_configuration",
+      "This model has no configured provider. Choose another model or import a catalog under Advanced.",
+    );
+  const selectedRoute = await ui.select(
+    "Provider",
+    [...providerOptions].map(([value, offer]) => ({
+      value,
+      label: offer.provider,
+    })),
+    existing?.route?.model,
+  );
+  const offer = providerOptions.get(selectedRoute);
+  if (!offer?.model.route)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Select a supported provider route.",
+    );
+  const thinkingDefault = offer.reasoningLevels.length
+    ? await ui.select(
+        "Reasoning",
+        offer.reasoningLevels.map((value) => ({
+          value,
+          label: value.charAt(0).toUpperCase() + value.slice(1),
+        })),
+        routes?.thinkingDefault &&
+          offer.reasoningLevels.includes(routes.thinkingDefault)
+          ? routes.thinkingDefault
+          : offer.reasoningLevels.includes("medium")
+            ? "medium"
+            : offer.reasoningLevels[0],
+      )
+    : undefined;
+  const selected = gatewayRoutesSchema.parse({
+    models: [
+      ...(routes?.models.filter(
+        (model) =>
+          model.id !== id && (retainModels || model.id !== routes.defaultModel),
+      ) ?? []),
+      { ...offer.model, enabled: true },
+    ],
+    defaultModel: id,
+    ...(thinkingDefault ? { thinkingDefault } : {}),
+  });
+  const sameCredentials =
+    current?.mode === "litellm" &&
+    routes &&
+    selected.models.every((model) =>
+      routes.models.some(
+        (before) =>
+          before.route?.apiKeyEnv === model.route?.apiKeyEnv &&
+          before.route?.model.split("/")[0] ===
+            model.route?.model.split("/")[0],
+      ),
+    );
+  return {
+    mode: "litellm",
+    configurationFile: inputs.set(
       "selected-models.json",
-      JSON.stringify(routes, null, 2),
-    );
-  }
-  const variables = [
-    ...new Set(
-      checked.models
-        .filter((model) => model.enabled)
-        .map((model) => model.route?.apiKeyEnv),
+      JSON.stringify(selected, null, 2),
     ),
-  ];
-  const credentialMode = required
-    ? "paste"
-    : await ui.select(
-        "Provider credentials",
-        [
-          ...(current?.mode === "litellm"
-            ? [{ value: "keep", label: "Keep current credentials" }]
-            : []),
-          { value: "paste", label: "Enter provider keys (hidden)" },
-          { value: "file", label: "Import private environment file" },
-        ],
-        current?.mode === "litellm" ? "keep" : "paste",
+    upstreamEnvironmentFile: sameCredentials
+      ? current.upstreamEnvironmentFile
+      : "",
+  };
+}
+
+export async function collectModelCredentials(
+  ui: InstallerPrompts,
+  current: InstallationConfiguration["models"],
+  inputs: SetupInputs,
+) {
+  if (current.mode === "external")
+    return current.credentialFile
+      ? current
+      : {
+          ...current,
+          credentialFile: await secretInput(
+            ui,
+            inputs,
+            "Model gateway key",
+            "model-key",
+          ),
+        };
+  if (current.upstreamEnvironmentFile) return current;
+  const routes = await modelRoutes(current.configurationFile, inputs);
+  const selected = routes.models.find(
+    (model) => model.id === routes.defaultModel,
+  );
+  ui.note(
+    `${selected?.name ?? routes.defaultModel}${routes.thinkingDefault ? " · " + routes.thinkingDefault : ""}\nProvider: ${selected?.route ? providerLabel(selected.route) : "Custom"}`,
+    "LLM credentials",
+  );
+  const mode = await ui.select(
+    "LLM API keys",
+    [
+      { value: "paste", label: "Enter keys (hidden)" },
+      { value: "file", label: "Import private credentials file" },
+    ],
+    "paste",
+  );
+  if (mode === "file")
+    return {
+      ...current,
+      upstreamEnvironmentFile: await inputFile(
+        ui,
+        "Provider credentials file (.env)",
+        true,
+      ),
+    };
+  const values = new Map<string, string>();
+  for (const model of routes.models.filter((item) => item.enabled)) {
+    const route = model.route;
+    if (!route)
+      throw new InstallationError(
+        "invalid_configuration",
+        "An enabled model has no provider route.",
       );
-  let upstreamEnvironmentFile: string;
-  if (credentialMode === "keep" && current?.mode === "litellm")
-    upstreamEnvironmentFile = current.upstreamEnvironmentFile;
-  else if (credentialMode === "file")
-    upstreamEnvironmentFile = await inputFile(
-      ui,
-      "Provider credentials file (.env)",
-      true,
-    );
-  else {
-    const values: string[] = [];
-    for (const variable of variables) {
-      if (!variable)
-        throw new InstallationError(
-          "invalid_configuration",
-          "Every enabled route requires a credential variable.",
-        );
-      const key = await ui.password(`${variable} key`);
-      if (!key.trim() || /[\r\n'"`]/.test(key))
-        throw new InstallationError(
-          "invalid_configuration",
-          "Use a nonempty single-line provider key without quote characters, or import its environment file.",
-        );
-      values.push(`${variable}='${key}'`);
-    }
-    upstreamEnvironmentFile = inputs.set(
-      "models.env",
-      values.join("\n") + "\n",
-    );
+    if (values.has(route.apiKeyEnv)) continue;
+    const key = await ui.password(`${providerLabel(route)} LLM API key`);
+    if (!key.trim() || /[\r\n'"`]/.test(key))
+      throw new InstallationError(
+        "invalid_configuration",
+        "Use a single-line provider key without quote characters, or import its credentials file.",
+      );
+    values.set(route.apiKeyEnv, key);
   }
-  return { mode, configurationFile, upstreamEnvironmentFile };
+  return {
+    ...current,
+    upstreamEnvironmentFile: inputs.set(
+      "models.env",
+      [...values].map(([name, key]) => `${name}='${key}'`).join("\n") + "\n",
+    ),
+  };
 }

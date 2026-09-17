@@ -60,6 +60,10 @@ export type StartLoginData = {
     path?: never;
     query?: {
         returnTo?: string;
+        /**
+         * Private, one-use first-administrator setup token.
+         */
+        setup?: string;
     };
     url: '/_clawscarf/login';
 };

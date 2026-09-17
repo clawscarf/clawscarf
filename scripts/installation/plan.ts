@@ -11,6 +11,7 @@ import {
 import { fingerprint, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
+import { resolveConfigurationInputs } from "./configure.js";
 import { installationSchema } from "./configuration.js";
 
 export const planSchema = z.strictObject({
@@ -123,6 +124,20 @@ export async function applyInstallation(configFile: string, planFile: string) {
     await ensurePrivateFile(
       join(resolved.stateDirectory, "packs.json"),
       JSON.stringify(resolved.packSelection),
+    );
+    await ensurePrivateFile(
+      join(resolved.stateDirectory, "settings.json"),
+      JSON.stringify(
+        {
+          ...resolveConfigurationInputs(
+            resolved.config,
+            dirname(resolve(configFile)),
+          ),
+          stateDirectory: resolved.stateDirectory,
+        },
+        null,
+        2,
+      ),
     );
     return {
       state: "prepared",

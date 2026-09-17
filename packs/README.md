@@ -5,6 +5,9 @@ A ClawScarf pack groups native OpenClaw Claws. Each member is a normal
 workspace files, skills, plugins, MCP definitions, workflows and ownership records.
 ClawScarf's small group manifest adds compatibility and prerequisite bindings; it
 has no pack database or alternate installer for native resources.
+Recipes can select pack IDs and members from a [release bundle](../release/README.md).
+The bundle carries native files beside its JSON metadata; setup checks their digests
+and collects required operator/account inputs. No separate pack registry is involved.
 
 The [research-team pack](research-team/pack.json) contains a researcher and reviewer
 with workspace-only file tools. It requires the configured default model; it does

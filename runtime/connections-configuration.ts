@@ -37,10 +37,11 @@ const credentialSchema = z.strictObject({
 });
 export const connectionsConfigurationInputSchema = z
   .strictObject({
-    kind: z.enum(["configure", "observe"]),
+    kind: z.enum(["configure", "observe", "disable"]),
     ownerId: z.uuid(),
     serverId: z.uuid(),
     brokerUrl,
+    enable: z.boolean().optional(),
     credential: credentialSchema.optional(),
   })
   .refine(

@@ -92,10 +92,12 @@ export function requireTerminal() {
 
 export async function progress<T>(
   message: string,
-  work: () => Promise<T>,
+  work: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
+  const cancellation = new AbortController();
   const spinner = clack.spinner({
     onCancel: () => {
+      cancellation.abort(new InstallerCancelled());
       clack.log.info(
         "Cancellation requested. Waiting for the current operation to settle; no following step will start.",
       );
@@ -103,12 +105,13 @@ export async function progress<T>(
   });
   spinner.start(message);
   try {
-    const result = await work();
+    const result = await work(cancellation.signal);
     if (spinner.isCancelled) throw new InstallerCancelled();
     spinner.stop(message);
     return result;
   } catch (error) {
-    spinner.error("Could not complete this step.");
+    if (error instanceof InstallerCancelled) spinner.stop("Stopped.");
+    else spinner.error("Could not complete this step.");
     throw error;
   }
 }

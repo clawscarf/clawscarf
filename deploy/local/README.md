@@ -154,14 +154,16 @@ and scoped runtime credential issuance belong to that external broker.
 Both modes retain the endpoint and optional CA privately before resource allocation,
 then add one exact Node HTTPS endpoint to the initial runtime policy. TLS passes
 through OpenShell; Node still verifies the server certificate. Neither preparation
-nor startup rewrites an authored policy. Repeating preparation retains matching
+nor ordinary startup rewrites an authored policy. An explicit installation settings
+change updates only the Connections rule at the next start. Repeating preparation retains matching
 inputs; a changed endpoint, trust certificate, key or catalog requires explicit
-reconfiguration rather than an implicit replacement. Omitting `connections` creates
+[settings application](installation.md#change-an-existing-installation) rather than an implicit replacement. Omitting `connections` on initial preparation creates
 no Connections schema, loads no provider and exposes no account actions.
 
-Preparation does not activate native credentials. Endpoint preparation, configuration
-rejection, private retention and policy tests have passed. Full activation in the
-assembled runtime and the external-account journey remain tracked in [TODO.md](../../TODO.md).
+The unified installer prepares and activates the scoped native credential. These
+component operations also expose explicit credential delivery for operators. Endpoint
+validation, retained configuration and native activation have tests; external-account
+OAuth remains a separate journey.
 
 ### Activate Connections
 
@@ -348,19 +350,21 @@ this block. Its ordinary model-selected routing limitation is documented there.
 
 ### Supervised process
 
-Start the prepared installation with Node directly so terminal signals reach the
-supervising process throughout cleanup:
+For foreground developer diagnostics, start the prepared installation with Node
+directly so terminal signals reach the supervising process throughout cleanup:
 
 ```sh
-node --import tsx scripts/clawscarf.ts start --state .local/my-team
+node --import tsx scripts/clawscarf.ts start --state .local/my-team --foreground
 ```
 
 It runs in the foreground, starts the private controller, creates or resumes its owned
 runtime, establishes standard SSH application/widget forwards and starts the companion.
 It checks native health, then exercises local login and native administrator authorization
-through the generated REST client. It prints the login URL and a fresh five-minute,
-one-use code. The verification session is logged out after its check. In another terminal,
-`pnpm clawscarf login --state .local/my-team` issues a replacement code.
+through the generated REST client. The verification session is logged out after its
+check. In another terminal, `pnpm clawscarf login --state .local/my-team` issues a
+five-minute, one-use code. Foreground logs never contain that credential. Ordinary
+[installation start](installation.md) runs persistently and returns the
+login continuation directly to its caller.
 Initial native team preparation establishes the administrator profile and explicit role
 once. Its pending/completed records prevent an uncertain change from being replayed
 automatically. Later startup verifies access without reapplying those native settings.
@@ -572,9 +576,10 @@ private management TLS use separate keys. Set firewall rules for the intended
 clients; this operator does not configure the host firewall or DNS.
 
 `prepareLocal` initializes the configured OIDC administrator and matching native identity.
-`start` checks service availability through private management TLS, then prints the
-People URL for company sign-in. It does not issue a local login code or claim to have
-verified the administrator through OIDC. Company login, native preparation and
+Foreground startup checks service availability through private management TLS and
+reports the application URL. It does not issue a local login code or claim to have
+verified the administrator through OIDC. The unified installer can instead reserve an
+unclaimed administrator and supply the [private setup link](installation.md#terminal-installer). Company login, native preparation and
 member enrollment use the existing Access service and People page; no RawClaw service
 is involved. TLS transport tests cover trusted/untrusted certificates on both listeners and a
 private management probe whose public routing Host differs from its certificate name.

@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { AccessError } from "../types/errors.js";
 import type { AccessStore, LoginProvider, Session } from "../types/model.js";
+import type { NativeAuthority } from "../types/native.js";
 export const token = () => randomBytes(32).toString("base64url");
 export { hash } from "../types/credential.js";
 import { hash } from "../types/credential.js";
@@ -38,11 +39,12 @@ export class SessionService {
     private readonly origin: string,
     private readonly applicationReturnPath: (path: string) => boolean = () =>
       false,
+    private readonly native?: NativeAuthority,
   ) {}
   validateReturn(value: string): string {
     return safeReturn(value, this.applicationReturnPath);
   }
-  async startLogin(returnTo = "/") {
+  async startLogin(returnTo = "/", setupToken?: string) {
     const next = this.validateReturn(returnTo);
     if (!this.provider)
       return {
@@ -65,6 +67,7 @@ export class SessionService {
       nonce,
       codeVerifier,
       returnTo: next,
+      ...(setupToken ? { setupTokenHash: hash(setupToken) } : {}),
     });
     return { url, cookie };
   }
@@ -86,7 +89,35 @@ export class SessionService {
         "email_unverified",
         "Sign in with a verified email address.",
       );
-    const user = await this.store.admitIdentity(identity);
+    const setupTokenHash = transaction.setupTokenHash;
+    const user = setupTokenHash
+      ? await this.store.withEnrollmentLock(async (store) => {
+          if (!this.native)
+            throw new AccessError(
+              "dependency_unavailable",
+              "Administrator setup is unavailable.",
+            );
+          const credential = token();
+          const person = await store.bindAdministrator(
+            setupTokenHash,
+            identity,
+            hash(credential),
+          );
+          try {
+            const actor = {
+              identity: person.identity,
+              name: person.name,
+              sessionHash: hash(credential),
+            };
+            await this.native.verifyAdministrator(actor, credential);
+            await this.native.prepareTeam(actor, credential);
+            await store.finishAdministratorSetup(setupTokenHash, person.id);
+            return person;
+          } finally {
+            await store.revokeDelegation(hash(credential));
+          }
+        })
+      : await this.store.admitIdentity(identity);
     const session = token();
     await this.store.createSession(user.id, hash(session), token(), logoutUrl);
     return { session, returnTo: this.validateReturn(transaction.returnTo) };

@@ -1,3 +1,4 @@
+import { applyConnectionPolicy } from "./connection-policy.js";
 import { monitorComposeServices } from "./service-monitors.js";
 import type { LocalLogFile } from "./logs.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
@@ -26,7 +27,7 @@ import {
 } from "./runtime.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { LocalSetupError, run } from "./process.js";
-import { localLoginCode, verifyLocalAdministrator } from "./login.js";
+import { verifyLocalAdministrator } from "./login.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import {
   verifyRuntimeBinding,
@@ -41,6 +42,7 @@ export async function launchLocal(
   control: {
     signal?: AbortSignal;
     onReady?: () => void;
+    onStopping?: () => void;
     activate?: () => Promise<void>;
   } = {},
 ) {
@@ -143,6 +145,7 @@ export async function launchLocal(
         { env, timeout: 5000 },
       );
     });
+    await applyConnectionPolicy(directory, state, env);
     if (state.input.modelGateway) {
       report("Starting model gateway…");
       await compose(directory, [
@@ -230,6 +233,7 @@ export async function launchLocal(
       await response.body?.cancel();
     });
     await verifyRuntimeBinding(state, runtime);
+    await applyConnectionPolicy(directory, state, env, true);
     if (state.input.browser) {
       report("Starting native browser node…");
       await startBrowserNode(directory, state, cancellation.signal);
@@ -255,9 +259,7 @@ export async function launchLocal(
         ),
       );
       check();
-      report(`Open ${state.input.team.origin}/_clawscarf/team/
-Sign in as the configured administrator to verify access and enroll your team.
-Press Ctrl+C to stop. Your data will be retained.`);
+      report(`Open ${state.input.team.origin}`);
     } else {
       const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
       await waitFor(async () => {
@@ -278,10 +280,7 @@ Press Ctrl+C to stop. Your data will be retained.`);
         AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
       );
       check();
-      const login = await localLoginCode(directory);
-      report(
-        `Open ${login.url}\nOne-use code (expires in five minutes): ${login.code}\nPress Ctrl+C to stop. Your data will be retained.`,
-      );
+      report(`Open ${origin}`);
     }
     await control.activate?.();
     check();
@@ -304,6 +303,7 @@ Press Ctrl+C to stop. Your data will be retained.`);
             "Local startup could not be verified. Inspect this installation before retrying.",
           );
   } finally {
+    control.onStopping?.();
     report("Stopping local services; retaining data…");
     const errors: unknown[] = [];
     try {

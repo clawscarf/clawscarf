@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { ModelConfigurationError } from "../runtime/model-contract.js";
 import { ZodError } from "zod";
 import { InstallationError } from "./installation/errors.js";

@@ -33,8 +33,9 @@ export class ConnectionsConfigurationError extends Error {
 }
 const packageDirectory = "/app/clawscarf/connections";
 interface NativeRequest {
-  kind: "configure" | "observe";
+  kind: "configure" | "observe" | "disable";
   brokerUrl: string;
+  enable?: boolean;
   packageDirectory: typeof packageDirectory;
   replacePackageDirectories: readonly string[];
 }
@@ -136,6 +137,7 @@ export async function configureRuntimeConnections(
     const request: NativeRequest = {
       kind: input.kind,
       brokerUrl: input.brokerUrl,
+      ...(input.enable !== undefined ? { enable: input.enable } : {}),
       packageDirectory,
       replacePackageDirectories: [],
     };
@@ -155,11 +157,13 @@ export async function configureRuntimeConnections(
         await rm(caPath);
       }
     }
+    if (input.kind === "disable") effectsStarted = true;
     const native = nativeConnectionsConfigurationResultSchema.parse(
       await command(request, stateDirectory),
     );
     // Validate retained material even if observation has no expected credential to compare.
-    await loadConnectionsCredential(stateDirectory);
+    if (input.kind !== "disable")
+      await loadConnectionsCredential(stateDirectory);
     const matches = input.credential
       ? await credentialMatches(stateDirectory, input.credential)
       : undefined;

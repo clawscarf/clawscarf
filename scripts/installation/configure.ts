@@ -17,7 +17,7 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
   base: string,
 ) {
   const config = structuredClone(value);
-  const path = (input: string) => resolve(base, input);
+  const path = (input: string) => (input ? resolve(base, input) : input);
   config.releaseFile = path(config.releaseFile);
   if (config.access.mode === "oidc")
     config.access.clientSecretFile = path(config.access.clientSecretFile);

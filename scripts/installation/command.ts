@@ -11,10 +11,12 @@ import { resolve } from "node:path";
 import { planInstallation, applyInstallation } from "./plan.js";
 import {
   startInstallation,
+  superviseInstallation,
   controlInstallation,
   installationLogs,
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
+import { readState } from "../local/state.js";
 import { localLoginCode } from "../local/login.js";
 import { localLogNames } from "../local/logs.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
@@ -23,6 +25,10 @@ import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
 import { operateConnectionsRuntime } from "../local/connections-runtime.js";
 import { runInstaller } from "./installer/run.js";
+import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
+import { runSettings, readInstallationSettings } from "./installer/settings.js";
+import { InstallationError } from "./errors.js";
+import { administratorSetup } from "./administrator.js";
 
 const output = (value: unknown) => {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -91,16 +97,16 @@ export function installationCommand() {
   program
     .command("release-create")
     .description(
-      "Generate a development release from already-built component inputs",
+      "Bundle a development release from already-built component inputs",
     )
     .requiredOption("--input <file>")
-    .requiredOption("--output <file>")
+    .requiredOption("--output <directory>")
     .action(async (options: { input: string; output: string }) => {
       const release = await createDevelopmentRelease({
         inputFile: options.input,
-        outputFile: options.output,
+        outputDirectory: options.output,
       });
-      output({ version: release.version, file: options.output });
+      output({ version: release.version, directory: options.output });
     });
   program
     .command("validate")
@@ -130,14 +136,104 @@ export function installationCommand() {
     .action(async (options: { config: string; plan: string }) => {
       output(await applyInstallation(options.config, options.plan));
     });
+  const settings = program
+    .command("settings")
+    .description(
+      "View, edit or explicitly reapply this installation's settings",
+    )
+    .option("--state <directory>", "Existing installation state")
+    .option("--json", "Print accepted settings instead of opening the menu")
+    .action(async (options: { state?: string; json?: boolean }) => {
+      if (!options.state)
+        throw new InstallationError(
+          "invalid_configuration",
+          "Use settings --state <directory>, or settings plan/apply --config <file>.",
+        );
+      if (options.json) output(await readInstallationSettings(options.state));
+      else await runSettings(options.state);
+    });
+  settings
+    .command("plan")
+    .requiredOption("--config <file>", "Candidate installation configuration")
+    .action(async ({ config }: { config: string }) => {
+      const plan = await planSettingsChange(config);
+      output({
+        stateDirectory: plan.directory,
+        fingerprint: plan.fingerprint,
+        restartRequired: true,
+        resuming: plan.resuming,
+        changes: plan.changes,
+      });
+    });
+  settings
+    .command("apply")
+    .requiredOption("--config <file>")
+    .requiredOption(
+      "--fingerprint <digest>",
+      "Fingerprint returned by settings plan",
+    )
+    .requiredOption("--yes", "Apply the reviewed settings")
+    .action(
+      async ({
+        config,
+        fingerprint,
+      }: {
+        config: string;
+        fingerprint: string;
+      }) => {
+        output(await reconfigureInstallation(config, fingerprint));
+      },
+    );
   program
     .command("start")
     .requiredOption("--state <directory>")
-    .action(async ({ state }: { state: string }) =>
-      startInstallation(state, (message) => {
-        process.stderr.write(message + "\n");
-      }),
+    .option("--foreground", "Developer: run the supervisor in this terminal")
+    .action(
+      async ({
+        state,
+        foreground,
+      }: {
+        state: string;
+        foreground?: boolean;
+      }) => {
+        const result = await (
+          foreground ? superviseInstallation : startInstallation
+        )(state, (message) => {
+          process.stderr.write(message + "\n");
+        });
+        if (!foreground) {
+          const directory = resolve(state);
+          const input = (await readState(directory)).input;
+          if (input.team) {
+            const administrator = await administratorSetup(directory);
+            output({
+              ...result,
+              ...(!administrator.complete
+                ? {
+                    administratorSetup: administrator.expiresAt
+                      ? {
+                          expiresAt: administrator.expiresAt,
+                          command: `clawscarf administrator --state ${directory} --issue`,
+                        }
+                      : await administratorSetup(directory, true),
+                  }
+                : {}),
+            });
+          } else output({ ...result, login: await localLoginCode(directory) });
+        }
+      },
     );
+  program
+    .command("administrator")
+    .description("Observe or issue the private first-administrator setup link")
+    .requiredOption("--state <directory>")
+    .option(
+      "--issue",
+      "Replace the pending setup link; cannot reclaim an initialized server",
+    )
+    .action(async ({ state, issue }: { state: string; issue?: boolean }) => {
+      output(await administratorSetup(resolve(state), issue));
+    });
   for (const action of ["status", "stop"] as const)
     program
       .command(action)

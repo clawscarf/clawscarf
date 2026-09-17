@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
@@ -13,20 +13,26 @@ import type { NativeAuthority } from "../../services/access/types/native.js";
 import { NativeFailure } from "../../services/access/types/native-errors.js";
 import { createAccessHttp } from "../../services/access/runtime/http.js";
 const url = process.env.CLAWSCARF_TEST_DATABASE_URL;
+async function migrate(pool: pg.Pool) {
+  const directory = new URL(
+    "../../services/access/migrations/",
+    import.meta.url,
+  );
+  for (const file of (await readdir(directory))
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    const sql = await readFile(new URL(file, directory), "utf8");
+    await pool.query(sql.split("-- Down Migration")[0] ?? "");
+  }
+}
+
 await test(
   "real Postgres local login, CSRF, revocation, admission revision and restart identity",
   { skip: !url },
   async () => {
     const pool = new pg.Pool({ connectionString: url });
-    const migration = await readFile(
-      new URL(
-        "../../services/access/migrations/001_access.sql",
-        import.meta.url,
-      ),
-      "utf8",
-    );
     try {
-      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      await migrate(pool);
       const key = randomBytes(32),
         initial = {
           issuer: "urn:clawscarf:local",
@@ -267,14 +273,7 @@ await test(
     const oidc = await oidcFixture(true),
       pool = new pg.Pool({ connectionString: url });
     try {
-      const migration = await readFile(
-        new URL(
-          "../../services/access/migrations/001_access.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      );
-      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      await migrate(pool);
       const repo = new PostgresAccessStore(pool, randomBytes(32), {
         issuer: oidc.origin,
         subject: "alice",
@@ -425,14 +424,7 @@ await test(
     const origin = "http://127.0.0.1:18800";
     let app: Awaited<ReturnType<typeof createAccessHttp>> | undefined;
     try {
-      const migration = await readFile(
-        new URL(
-          "../../services/access/migrations/001_access.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      );
-      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      await migrate(pool);
       const repo = new PostgresAccessStore(pool, randomBytes(32), {
         issuer: oidc.origin,
         subject: "alice",
@@ -655,14 +647,7 @@ await test(
     const pool = new pg.Pool({ connectionString: url });
     let storage: Awaited<ReturnType<typeof openAccessStorage>> | undefined;
     try {
-      const migration = await readFile(
-        new URL(
-          "../../services/access/migrations/001_access.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      );
-      await pool.query(migration.split("-- Down Migration")[0] ?? "");
+      await migrate(pool);
       const encryptionKeyFile = join(directory, "encryption-key");
       await writeFile(encryptionKeyFile, randomBytes(32), { mode: 0o600 });
       storage = await openAccessStorage({
@@ -684,6 +669,200 @@ await test(
       await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
       await pool.end();
       await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+await test(
+  "private administrator setup binds one verified OIDC identity and admits only after native proof",
+  { skip: !url },
+  async () => {
+    const pool = new pg.Pool({ connectionString: url });
+    const { oidcFixture } = await import("./oidc.js");
+    const { DeploymentOidcProvider } =
+      await import("../../services/access/providers/oidc.js");
+    const oidc = await oidcFixture();
+    try {
+      await migrate(pool);
+      const initial = {
+        issuer: oidc.origin,
+        subject: "urn:clawscarf:unclaimed",
+        email: "",
+        name: "Administrator",
+        claimRequired: true,
+      };
+      const key = randomBytes(32),
+        repo = new PostgresAccessStore(pool, key, initial);
+      const identity = await repo.initialize();
+      const alice = {
+        issuer: oidc.origin,
+        subject: "alice",
+        email: "alice@example.test",
+        name: "Alice",
+        emailVerified: true,
+      };
+      await assert.rejects(repo.admitIdentity(alice), { code: "forbidden" });
+      assert.equal((await repo.administratorSetup()).complete, false);
+      await repo.beginAdministratorSetup(hash("expired"));
+      await pool.query(
+        "UPDATE clawscarf_access.server SET setup_expires_at=clock_timestamp()-interval '1 second'",
+      );
+      await assert.rejects(
+        repo.bindAdministrator(hash("expired"), alice, hash("expired-session")),
+        { code: "invalid_authorization" },
+      );
+      await repo.beginAdministratorSetup(hash("setup"));
+      await assert.rejects(
+        repo.bindAdministrator(
+          hash("setup"),
+          { ...alice, emailVerified: false },
+          hash("unverified"),
+        ),
+        { code: "email_unverified" },
+      );
+      // The locked repository still needs a real transaction: a wrong issuer cannot poison the subject binding.
+      await repo.withEnrollmentLock(async (locked) => {
+        await assert.rejects(
+          locked.bindAdministrator(
+            hash("setup"),
+            { ...alice, subject: "wrong", issuer: "https://wrong.example" },
+            hash("wrong"),
+          ),
+          { code: "forbidden" },
+        );
+      });
+      assert.equal(
+        (
+          await pool.query<{ setup_subject: string | null }>(
+            "SELECT setup_subject FROM clawscarf_access.server",
+          )
+        ).rows[0]?.setup_subject,
+        null,
+      );
+      const bound = await repo.bindAdministrator(
+        hash("setup"),
+        alice,
+        hash("temporary"),
+      );
+      assert.equal(bound.id, identity.administrator.id);
+      assert.ok(await repo.authenticateSession(hash("temporary")));
+      await assert.rejects(
+        repo.createSession(bound.id, hash("browser-too-soon"), "csrf", null),
+        { code: "forbidden" },
+      );
+      await assert.rejects(
+        repo.bindAdministrator(
+          hash("setup"),
+          { ...alice, subject: "mallory" },
+          hash("other"),
+        ),
+        { code: "invalid_authorization" },
+      );
+      await repo.beginAdministratorSetup(hash("replacement"));
+      assert.equal(await repo.authenticateSession(hash("temporary")), null);
+      await assert.rejects(
+        repo.bindAdministrator(hash("setup"), alice, hash("old-link")),
+        { code: "invalid_authorization" },
+      );
+      await assert.rejects(
+        repo.bindAdministrator(
+          hash("replacement"),
+          { ...alice, subject: "mallory" },
+          hash("takeover"),
+        ),
+        { code: "invalid_authorization" },
+      );
+
+      const provider = new DeploymentOidcProvider({
+        issuer: oidc.origin,
+        clientId: oidc.clientId,
+        clientSecret: oidc.clientSecret,
+        redirectUri: "http://127.0.0.1:18800/_clawscarf/callback",
+      });
+      let failNative = true;
+      let credential = "";
+      const native: NativeAuthority = {
+        observeTeam: () => Promise.resolve("ready"),
+        verifyAdministrator: async (actor, value) => {
+          credential = value;
+          assert.equal(
+            (await repo.authenticateSession(hash(value)))?.user.identity,
+            actor.identity,
+          );
+          assert.equal(actor.identity, identity.administrator.identity);
+          if (failNative) throw new NativeFailure("access_denied");
+          return { agentIds: ["main"] };
+        },
+        prepareTeam: () => Promise.resolve(),
+        enroll: () => Promise.resolve(),
+        revoke: () => Promise.resolve(),
+      };
+      const service = new SessionService(
+        repo,
+        provider,
+        "http://127.0.0.1:18800",
+        undefined,
+        native,
+      );
+      async function callback(setup?: string) {
+        const login = await service.startLogin("/", setup);
+        const response = await fetch(login.url, { redirect: "manual" });
+        await response.body?.cancel();
+        const target = response.headers.get("location");
+        assert.ok(target);
+        return service.completeLogin(
+          login.cookie,
+          new URL(target).searchParams.get("state") ?? "",
+          target,
+        );
+      }
+      await assert.rejects(callback(), { code: "forbidden" });
+      await assert.rejects(callback("replacement"), {
+        code: "access_denied",
+      });
+      assert.equal(await repo.authenticateSession(hash(credential)), null);
+      assert.equal((await repo.administratorSetup()).complete, false);
+      // A failed admission write must not consume the setup link, even through the locked repository.
+      await pool.query(
+        "ALTER TABLE clawscarf_access.users ADD CONSTRAINT reject_admission CHECK (NOT admitted)",
+      );
+      await repo.withEnrollmentLock(async (locked) => {
+        await assert.rejects(
+          locked.finishAdministratorSetup(hash("replacement"), bound.id),
+          { code: "23514" },
+        );
+      });
+      assert.equal((await repo.administratorSetup()).complete, false);
+      await pool.query(
+        "ALTER TABLE clawscarf_access.users DROP CONSTRAINT reject_admission",
+      );
+      failNative = false;
+      const completed = await callback("replacement");
+      assert.equal(
+        (await service.authenticate(completed.session)).user.id,
+        bound.id,
+      );
+      assert.deepEqual(await repo.administratorSetup(), {
+        complete: true,
+        expiresAt: null,
+      });
+      assert.equal(await repo.authenticateSession(hash(credential)), null);
+      await assert.rejects(callback("replacement"), {
+        code: "invalid_authorization",
+      });
+      await assert.rejects(repo.beginAdministratorSetup(hash("reclaim")), {
+        code: "forbidden",
+      });
+      assert.equal((await callback()).returnTo, "/");
+      assert.equal(
+        (await new PostgresAccessStore(pool, key, initial).initialize())
+          .administrator.id,
+        bound.id,
+      );
+    } finally {
+      await pool.query("DROP SCHEMA IF EXISTS clawscarf_access CASCADE");
+      await pool.end();
+      await oidc.close();
     }
   },
 );

@@ -26,8 +26,13 @@ const connectorTools = [
 ] as const;
 const requestSchema = Type.Object(
   {
-    kind: Type.Union([Type.Literal("configure"), Type.Literal("observe")]),
+    kind: Type.Union([
+      Type.Literal("configure"),
+      Type.Literal("observe"),
+      Type.Literal("disable"),
+    ]),
     brokerUrl: Type.String({ maxLength: 2048 }),
+    enable: Type.Optional(Type.Boolean()),
     packageDirectory: Type.String({ minLength: 1, maxLength: 4096 }),
     replacePackageDirectories: Type.Array(
       Type.String({ minLength: 1, maxLength: 4096 }),
@@ -52,7 +57,7 @@ function managedProvider(value: unknown): boolean {
 export async function configureConnections(request: ConfigurationRequest) {
   const brokerUrl = brokerEndpoint(request.brokerUrl);
   const snapshot =
-    request.kind === "configure"
+    request.kind !== "observe"
       ? (await readConfigFileSnapshotForWrite()).snapshot
       : await readConfigFileSnapshot({
           observe: false,
@@ -61,7 +66,7 @@ export async function configureConnections(request: ConfigurationRequest) {
         });
   if (!snapshot.valid || !snapshot.exists || !snapshot.hash)
     throw new Error("A valid installation configuration is required.");
-  if (request.kind === "configure") {
+  if (request.kind !== "observe") {
     await mutateConfigFile({
       base: "source",
       baseHash: snapshot.hash,
@@ -71,6 +76,15 @@ export async function configureConnections(request: ConfigurationRequest) {
       },
       writeOptions: { skipOutputLogs: true },
       mutate: (draft) => {
+        if (request.kind === "disable") {
+          draft.plugins ??= {};
+          draft.plugins.entries ??= {};
+          draft.plugins.entries[PLUGIN_ID] = {
+            ...draft.plugins.entries[PLUGIN_ID],
+            enabled: false,
+          };
+          return;
+        }
         const currentProvider = draft.secrets?.providers?.[PLUGIN_ID];
         if (currentProvider !== undefined && !managedProvider(currentProvider))
           throw new Error(
@@ -95,6 +109,7 @@ export async function configureConnections(request: ConfigurationRequest) {
         const entry = draft.plugins.entries[PLUGIN_ID] ?? {};
         draft.plugins.entries[PLUGIN_ID] = {
           ...entry,
+          ...(request.enable === undefined ? {} : { enabled: request.enable }),
           config: { ...entry.config, brokerUrl, credential },
         };
         draft.tools ??= {};

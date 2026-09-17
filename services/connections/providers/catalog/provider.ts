@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { copyFile, mkdir } from "node:fs/promises";
 import { CommonError } from "../../shared/errors.js";
 import type { Page } from "../../shared/pagination.js";
 import type {
@@ -17,6 +18,26 @@ import {
 } from "./artifact.js";
 import { readCatalogDetail, readCatalogIndex } from "./validation.js";
 import { readCatalogFile } from "./files.js";
+
+/** Package only catalog payloads, never adjacent importer credentials or state. */
+export async function copyConnectorCatalog(
+  source: string,
+  destination: string,
+) {
+  const index = readCatalogIndex(
+    await readCatalogFile(join(source, "index.json"), 64 * 1024 * 1024),
+  );
+  await mkdir(destination);
+  for (const name of [
+    "index",
+    ...index.connectors.map((entry) => entry.metadata.id),
+  ])
+    await copyFile(
+      join(source, `${name}.json`),
+      join(destination, `${name}.json`),
+    );
+  await openConnectorCatalog(destination, { verifyDetails: true });
+}
 
 export async function openConnectorCatalog(
   directory: string,

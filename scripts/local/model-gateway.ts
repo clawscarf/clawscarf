@@ -9,7 +9,7 @@ import {
   liteLlmConfiguration,
 } from "../models/configuration.js";
 import { issueRuntimeCredential } from "../models/credentials.js";
-import { ensurePrivateFile, type LocalState } from "./state.js";
+import { ensurePrivateFile, writePrivate, type LocalState } from "./state.js";
 import { LocalSetupError } from "./process.js";
 import { compose } from "./compose.js";
 
@@ -61,8 +61,12 @@ export async function loadGatewayConfiguration(
 export async function prepareModelGateway(
   directory: string,
   state: LocalState,
+  options: { replaceConfiguration?: boolean } = {},
 ) {
   const input = state.input.modelGateway;
+  const publish = options.replaceConfiguration
+    ? writePrivate
+    : ensurePrivateFile;
   if (!input) return;
   const loaded = await loadGatewayConfiguration(
     input.configurationFile,
@@ -100,17 +104,17 @@ export async function prepareModelGateway(
     STORE_MODEL_IN_DB: "False",
     LITELLM_LOG: "ERROR",
   };
-  await ensurePrivateFile(
+  await publish(
     join(root, "gateway.env"),
     Object.entries(environment)
       .map(([k, v]) => `${k}=${v}`)
       .join("\n") + "\n",
   );
-  await ensurePrivateFile(
+  await publish(
     join(root, "models.json"),
     JSON.stringify(liteLlmConfiguration(loaded.configuration)),
   );
-  await ensurePrivateFile(
+  await publish(
     join(root, "native.json"),
     JSON.stringify({
       ...loaded.configuration,

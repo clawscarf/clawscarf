@@ -12,6 +12,7 @@ export const monitoredServices = [
 ] as const;
 export type MonitoredService = (typeof monitoredServices)[number];
 export const localLogNames = [
+  "supervisor",
   "controller",
   "execution",
   "application",

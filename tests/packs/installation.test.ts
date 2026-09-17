@@ -4,7 +4,10 @@ import { cp, mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { NativeClaws } from "../../scripts/packs/native.js";
-import { activatePacks } from "../../scripts/installation/packs.js";
+import {
+  activatePacks,
+  selectionSchema,
+} from "../../scripts/installation/packs.js";
 import { openPack } from "../../scripts/packs/source.js";
 import { initializeState } from "../../scripts/local/state.js";
 import { parseLocalInput } from "../../scripts/local/configuration.js";
@@ -27,7 +30,12 @@ class Fixture extends NativeClaws {
     }
     return Promise.resolve({
       stability: "experimental",
-      schemaVersion: "openclaw.clawAddPlan.v1",
+      schemaVersion:
+        args[1] === "remove"
+          ? "openclaw.clawRemovePlan.v1"
+          : args[1] === "update"
+            ? "openclaw.clawUpdatePlan.v1"
+            : "openclaw.clawAddPlan.v1",
       planIntegrity: "sha256:" + "a".repeat(64),
       summary: { blockedActions: 0 },
     });
@@ -82,6 +90,42 @@ for (const uncertain of [false, true])
       { member: "researcher", state: uncertain ? "unconfirmed" : "complete" },
     ]);
     assert.equal(native.mutations, 1);
+    assert.deepEqual(
+      await activatePacks(directory, () => undefined, native),
+      first,
+    );
+    assert.equal(native.mutations, 1);
+    if (!uncertain) {
+      const selection = selectionSchema.parse(
+        JSON.parse(await readFile(join(directory, "packs.json"), "utf8")),
+      );
+      // A new source revision invokes the native update operator once.
+      await writeFile(join(pack, "README.md"), "Reviewed pack revision\n");
+      const selected = selection.packs[0];
+      assert.ok(selected);
+      selected.digest = (await openPack(pack)).digest;
+      await writeFile(join(directory, "packs.json"), JSON.stringify(selection));
+      assert.deepEqual(
+        await activatePacks(directory, () => undefined, native),
+        first,
+      );
+      assert.equal(native.mutations, 2);
+      await writeFile(
+        join(directory, "packs.json"),
+        JSON.stringify({ python: "/unused", packs: [] }),
+      );
+      assert.deepEqual(
+        await activatePacks(directory, () => undefined, native),
+        first,
+      );
+      assert.equal(native.mutations, 3);
+      assert.deepEqual(
+        await activatePacks(directory, () => undefined, native),
+        [],
+      );
+      assert.equal(native.mutations, 3);
+      return;
+    }
     // Normal restart neither requires the original source nor restores deleted/edited native agents.
     await rm(pack, { recursive: true });
     const again = await activatePacks(directory, () => undefined, native);

@@ -6,43 +6,45 @@ is macOS arm64 with Docker Desktop. Published downloads remain unfinished. The
 terminal installer covers initial setup. Required LiteLLM, optional Connections and pack selections
 are wired into initial preparation and startup.
 
-A fresh local installation passed preparation, native browser administrator login,
-worker SSH execution as UID 1000, stop, repeated preparation and restart. Native
-appearance settings and worker files survived; the worker had no Gateway configuration.
-These are component checks; they do not qualify the current recipe installer or a published release. Interrupted preparation resumed after Docker network capacity
-was restored without replacing its recorded installation identity.
+A fresh team installation passed normal Docker network allocation, persistent startup,
+private first-administrator setup through local Dex, native browser login and a GPT-6
+Astra response through the configured model gateway. Closing the initiating command
+left the server running. Earlier retained-state checks also preserved native appearance,
+worker files and revoked credentials across stop/start.
 
-The optional assembly also passed local preparation and startup with bundled LiteLLM,
-a fixture Connections catalog and both research-pack agents. Private-TLS inference
-passed against a controlled upstream; invalid keys, unauthorized models and runtime-key
-administration were denied. Repeated preparation and restart retained a native UI edit,
-pack receipts and revoked model/Connections credentials. This workstation had exhausted
-Docker's default network pool, so that run resumed using explicitly addressed, owned
-test networks. It does not qualify default network allocation on an exhausted host,
-external account OAuth, or paid provider inference for this assembly.
+These are local macOS arm64 checks, not a published-release or public deployment test.
+Other provider routes and real Connections account OAuth remain unverified. Connections
+activation has only used a fixture catalog; that fixture is not a distributable catalog.
 
 ## Development release
 
 Build components using their [image recipes](../images/README.md). Generate a
-release file from explicit built-component inputs:
+portable release directory from explicit built-component inputs:
 
 ```sh
 pnpm clawscarf release-create --input /absolute/built-components.json \
-  --output /absolute/clawscarf-release.json
+  --output /absolute/release-bundle
 ```
 
 The input follows the [release contract](../../scripts/release/definition.ts):
 `schemaVersion`, `version`, `sourceRevision`, `platforms`, `images`, `recipes` and `tools`.
+`packs` optionally lists source pack directories; recipes select their IDs and members.
+`modelCatalog` supplies selectable model/provider routes and reasoning levels; when
+omitted, the builder uses [the bundled catalog](../models/catalog.json).
+`connectorCatalogDirectory`, when provided, references the packaged catalog payload
+relative to the release input; the builder copies and validates its runtime files.
 Use exact image digests, the pinned PostgreSQL/LiteLLM images, and recipe objects from
 [deploy/recipes](../recipes/README.md). Under `tools.openshell`, provide `version` and
 `cli`/`gateway` as executable file paths relative to the input file; the builder computes
-checksums and writes absolute paths. No administrator, secrets, ports or installation
-state are release inputs. Output creation refuses to overwrite an existing release.
+checksums and copies tools into the output. No administrator, secrets, ports or installation
+state are release inputs. Output creation refuses to overwrite an existing directory.
 
 The release file pins images, executable checksums and supported platforms. Tool
 file paths resolve relative to the release file. It contains no installation secrets.
-The current generator refers to local executable files; it does not publish/download
-release tools or qualify a release. Local image IDs work for development only.
+Payload paths are relative to the generated **clawscarf-release.json**, so the directory
+can move as a unit. It does not publish/download components or verify their runtime
+behavior. Local image IDs work for development only. The
+[release guide](../../release/README.md) owns bundle layout, versioning and publication design.
 
 ## Configure and run
 
@@ -51,7 +53,7 @@ release tools or qualify a release. Local image IDs work for development only.
 From the checkout, with an already prepared release:
 
 ```sh
-pnpm clawscarf install --release /absolute/clawscarf-release.json --directory ./team
+pnpm clawscarf install --release /absolute/release-bundle/clawscarf-release.json --directory ./team
 ```
 
 Without `--release`, the operator looks for **clawscarf-release.json** in its
@@ -63,58 +65,38 @@ The directory must be new and its parent must exist. The installer requires an i
 terminal and the release's exact local images/OpenShell executables; it does not build
 or download missing components.
 
-Choose a recipe: it supplies the initial model catalog and other defaults. Enter only
-missing provider keys, then review the summary. **Customize** opens Name and administrator,
-Access, Models, Connections, Packs, Resources and (when packaged) Browser.
-**Custom** starts in that detailed menu and requires a model catalog.
-Connections defaults to off. Security foundations and LiteLLM are required.
+Choose a recipe, then review its editable settings. **Accept settings and continue**
+is the first menu action. The Models section selects the default model, provider and
+reasoning level from the release catalog; the summary shows those choices before asking
+for an **LLM API key**. Advanced settings can import a model catalog or use an existing
+LiteLLM gateway. Connections defaults to off; when enabled, select its backend. A local
+backend uses the release's packaged catalog, never a catalog-directory question.
+Account linking and teammate enrollment remain separate, deferred application work.
 
-**Esc** returns to the parent screen throughout setup; there are no Back menu rows.
-Within a section it discards unsaved edits and new secrets, returning to Customize.
-Customize returns to review; review returns to recipes. At the starting-point menu,
-Esc stays there. **Save section changes** accepts edits; accepted answers survive
-back navigation. **Ctrl+C** exits. Final save/action choices also support Esc;
-files are written only after those choices are accepted.
+**Esc** discards unsaved section edits and returns to its parent. At the recipe picker,
+Esc exits. **Save section changes** accepts edits; accepted answers survive navigation.
+**Ctrl+C** exits. Secrets are requested after the settings review and only for enabled
+services with missing credentials. Supplied CLI settings skip answered questions.
+Secrets stay in memory until the final install confirmation, then referenced credentials
+are copied to private files; they never appear in summaries or ordinary configuration.
 
-This describes the implemented menu. The [next installation design](../../docs/installation-interface.md#the-installation-experience)
-puts the settings menu before secrets and makes Esc exit at the first screen; those
-changes are not implemented yet.
+After **Install**, the CLI checks prerequisites and applies the same preview used by
+noninteractive commands. **Start now?** is the final choice. Declining leaves a prepared,
+stopped installation. Starting registers a macOS user service that continues after the
+terminal closes. It is not configured to restart after logout or reboot.
+
+For OIDC, configure DNS/TLS, issuer and client credentials. The installer shows the
+actual callback URLs and issues a private, 15-minute, one-use setup link after startup.
+Sign in through your provider; Access binds the verified identity and verifies native
+administrator authority before completing setup. Ordinary sign-in cannot claim the server.
+Expired links can be replaced with `administrator --issue`; completed setup cannot be
+reclaimed. Explicit subject/email bootstrap remains available for unattended configuration.
+Local evaluation uses a one-use login code instead.
 
 The illustrative **Team documents** recipe supplies GPT-6 Astra through OpenRouter,
-with medium thinking. It does not supply a document assistant, ingestion or a
-qualified document workflow. Its live provider journey remains unverified.
-
-OIDC currently requires DNS/TLS, a registered client and the known administrator's
-subject/email. The private one-use authenticated owner-claim flow is selected future
-work, not implemented by this menu. Local mode retains its one-use login code.
-The Access section shows the actual login and post-logout callback URLs.
-
-Advanced model catalog imports, connector catalogues and pack sources retain their existing file
-formats; this menu does not create external accounts or conduct account OAuth.
-Secret prompts offer masked entry or private-file import. LiteLLM can collect each
-provider key required by the selected route file, or import its private environment file.
-TLS private keys and pack binding documents use file import. Entered secrets stay
-in memory until confirmation; only secrets referenced by the final configuration are
-saved. Files go into a private `secrets/` directory (0700), with credentials and
-configuration/preview at 0600. Ordinary configuration and notes contain no secret values.
-Recipe/generated model catalogs are copied to models.json. Other input paths remain absolute
-references; keep those files available.
-
-After confirming file creation, it validates inputs and saves the normal CLI preview.
-Choose **Save preview and exit**, **Prepare installation**, or **Prepare and start**.
-Save-only does not call Docker or provision resources. Preparation first runs `doctor`
-and applies that exact preview. Start uses the ordinary foreground supervisor and its
-readiness/login output; Ctrl+C stops it and retains data. Cancellation during a long
-preparation step waits for that operation to settle and prevents the next step from
-starting. Failures retain saved files and show CLI resumption instructions; mutations
-are never automatically retried.
-
-The installer refuses existing directories, including empty ones or symlinks. Resume
-through the CLI below; unified retained-install capability changes are still unfinished.
-The wizard's save-only path is exercised in a real terminal. Automated tests cover
-revisiting sections, recipe/CLI equivalence, optional feature removal, private files,
-preview integrity and delegation/order for prepare/start;
-they do not constitute a new full runtime or OIDC qualification.
+with medium thinking. It does not include document ingestion or a document workflow.
+See [retained settings](#change-an-existing-installation) for supported changes and
+[TODO.md](../../TODO.md) for unfinished release and native application work.
 
 ### Configure without prompts
 
@@ -201,8 +183,9 @@ a preview is not a reservation. Apply rejects changed inputs/state. After an int
 apply, create a fresh preview to resume; existing resource receipts govern resumption.
 A successful apply means prepared, not a verified running application.
 
-Start remains in the foreground, prints progress and a one-use local login code,
-and stops on Ctrl+C. In another terminal:
+Start registers a macOS user service and returns when startup finishes. Closing the
+terminal leaves the server running. `start --foreground` remains a developer option.
+Use the same CLI for operation:
 
 ```sh
 pnpm clawscarf status --state ./state
@@ -213,14 +196,19 @@ pnpm clawscarf login --state ./state
 
 The local control socket is private to the operator and never listens on TCP.
 `stop` requests orderly shutdown; poll `status` to observe supervisor exit. An absent
-supervisor is not proof that every container stopped after a crash. `logs` prints
+supervisor is not proof that every container stopped after a crash. Current `status`
+reports supervisor state, administrator setup state, a `ready` flag and pack outcomes.
+Ready requires completed startup and administrator setup. It does not prove fresh model
+inference or continuous health of every upstream provider. `logs` prints
 the last 100 lines of an allowlisted private operator log; treat logs as private.
 `logs --help` lists controller/forward and all Compose exit-monitor log names.
 Service application output remains available through Compose logs.
 `login` creates a new local login code; company deployments use their configured IdP.
 
-Company HTTPS/OIDC uses the existing explicit administrator subject/email bootstrap;
-new enrollment UX is undecided. Browser use retains the documented upstream limitation.
+Company HTTPS/OIDC supports the private administrator claim or explicit subject/email bootstrap;
+copyable invitation links and native People management are planned, with explicit
+removal through People rather than automatic directory offboarding. Browser use retains
+the documented upstream limitation.
 Optional modes are described below. External platform access and directory-backed
 storage remain unsupported.
 
@@ -234,7 +222,7 @@ creates no Connections database schema and exposes no connector tools.
 
 - `{"mode":"external","configurationFile":"models.json","credentialFile":"secrets/model-key"}`
   uses an existing HTTPS LiteLLM gateway; optional `caFile` supplies private trust.
-  Under Customize, the installer asks for the LiteLLM API URL and its scoped key;
+  Under Advanced model gateway settings, the installer asks for the LiteLLM API URL and its scoped key;
   it can reuse the recipe model catalog or import the gateway's actual model IDs. The model
   file uses the existing [model configuration](../models/README.md). Supply a scoped
   inference credential, never the gateway administrator key.
@@ -331,7 +319,9 @@ continuous observation of native agents. A blocked optional pack leaves the serv
 available. An uncertain mutation is retained and never automatically replayed.
 Successful receipts prevent normal restarts from recreating deleted agents or
 replacing native edits. The original source is unnecessary for a completed member's
-restart. Native pack update/removal remains an explicit [pack operation](../../packs/README.md).
+restart. Explicit settings changes use the same native [pack operations](../../packs/README.md) for updates and removals. Removing a selection invokes native Claws removal, which can trash its workspace,
+agent state and sessions as well as remove pack-managed files. Native ownership checks
+can retain or block resources. Review removals before applying.
 
 Changing retained configuration is not silently applied by `prepare` or `start`.
 The `upgrade` subcommand exposes the existing explicit Gateway-only upgrade; it does
@@ -341,3 +331,63 @@ is rejected, not reinitialized. Keep both the state directory and owned data vol
 Apply, start, upgrade and Connections operations share one exclusive lock beside the
 state directory. It covers initial creation and the full foreground lifetime; competing
 operations return `operation_busy`. Internal preparation and launch do not reacquire it.
+
+### Change an existing installation
+
+```sh
+pnpm clawscarf settings --state ./team/state
+```
+
+The editor reads the accepted configuration from the state directory, including
+references to private input files. It reuses the installer sections for
+Models, Connections and Packs. Save accepts a section; Esc discards that section;
+Esc at the main menu exits without changing the server. Credentials are never shown.
+Review and confirm, then the editor stops a running installation, applies the change,
+and offers to start it again. There is no separate restart or reconfigure command.
+
+Automation uses the same planner and apply operation:
+
+```sh
+pnpm clawscarf settings --state ./team/state --json > candidate.json
+# Edit candidate.json and its referenced model/credential files.
+pnpm clawscarf settings plan --config ./candidate.json
+pnpm clawscarf stop --state ./team/state # if running; wait for status to report stopped
+pnpm clawscarf settings apply --config ./candidate.json --fingerprint <value> --yes
+pnpm clawscarf start --state ./team/state
+```
+
+Keep the candidate's referenced files private and available afterward. Successful
+application updates that accepted document; ordinary start does not reapply settings.
+The menu saves its inputs privately beneath the state directory and removes the
+preceding menu draft only after the replacement is accepted.
+
+Supported changes:
+
+- Model catalog, enabled model IDs, default, reasoning, provider routes and keys.
+  Bundled LiteLLM keeps the existing scoped key and changes its model permissions
+  without unblocking it or extending expiry. Missing keys are not recreated.
+  Individual native agent overrides and unrelated OpenClaw settings are preserved.
+- Connections enable/disable and credentials for the same broker/project. Disabled
+  stops the backend capability and native plugin; accounts, grants and credentials
+  remain stored. Re-enabling does not reactivate revoked credentials. The selected
+  broker network rule is applied on start without replacing other OpenShell rules.
+- Pack selections: unchanged successful members are left alone; additions, updates
+  and removals run through native Claws at the next start. `status` reports blocked
+  or unconfirmed pack operations. An uncertain pack mutation is never replayed.
+
+Release, identity, addresses, access, resources and execution protection stay fixed.
+Changing gateway ownership or moving accounts to another broker/project is a separate
+migration. A settings fingerprint includes accepted state and candidate inputs, so a
+stale preview cannot apply. If a change is interrupted, startup remains blocked;
+inspect the reported stage, then explicitly review and apply the same candidate.
+Matching model settings and key permissions are observed before another write.
+
+Verification: a real stopped macOS arm64 installation accepted a new model ID/default
+and reasoning setting while retaining its existing LiteLLM key. Native Connections
+enable/disable and pack add/update/remove have regression coverage. Connections
+enable/disable/re-enable and pack installation also passed with the protected Gateway
+and worker running. Native removal of that pack was correctly blocked by an attached
+`skill-collection-review` job: the CLI could not authenticate to the serving Gateway
+to establish ownership. Pack removal in this trusted-proxy setup therefore remains
+a live limitation; the operator leaves the agent intact and reports `blocked`. These
+checks do not establish external-account OAuth or Linux/WSL support.

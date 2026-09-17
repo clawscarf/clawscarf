@@ -5,6 +5,10 @@ Recipes supply release-owned configuration defaults. They are data validated by 
 values, user identities or deployment paths belong here. The release generator embeds
 these definitions in its output. There is no independent recipe version or live
 inheritance: a saved installation records provenance and owns its complete settings.
+Recipes select bundled packs with `packs: [{ id, members }]`; the release carries
+their native file trees and digests. Setup rejects missing packs or members. The
+Packs menu lists release packs, while explicit installation JSON may select a local
+pack directory for development. See [release contents](../../release/README.md).
 
 [Team documents](team-documents.json) is an illustrative starting point. Its model catalog
 selects GPT-6 Astra through OpenRouter with medium thinking; setup asks for the provider

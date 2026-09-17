@@ -26,7 +26,12 @@ import {
   type LocalInput,
 } from "./configuration.js";
 import { LocalSetupError } from "./process.js";
-import { ensurePrivateFile, readState } from "./state.js";
+import {
+  ensurePrivateFile,
+  readState,
+  writePrivate,
+  type LocalState,
+} from "./state.js";
 
 interface InitialLocalConnections {
   mode: "local";
@@ -213,9 +218,10 @@ export async function loadInitialConnections(
 export async function prepareInitialConnections(
   directory: string,
   loaded: InitialConnections | undefined,
+  replacement?: { state: LocalState; apply: boolean },
 ): Promise<InitialConnectionsEndpoint | undefined> {
   if (!loaded) return;
-  const state = await readState(directory);
+  const state = replacement?.state ?? (await readState(directory));
   const input = state.input.connections;
   if (input?.mode !== loaded.mode) changed();
   if (
@@ -275,9 +281,15 @@ export async function prepareInitialConnections(
     const retained = await tree(target, true);
     if (
       retained.size !== expected.size ||
-      [...expected].some(([path, bytes]) => !retained.get(path)?.equals(bytes))
+      [...expected].some(
+        ([path, bytes]) =>
+          !(replacement && path === "api-key") &&
+          !retained.get(path)?.equals(bytes),
+      )
     )
       changed();
+    if (replacement?.apply && loaded.mode === "local")
+      await writePrivate(join(target, "api-key"), loaded.apiKey);
     return runtime;
   } catch (error) {
     if (!(
@@ -289,6 +301,7 @@ export async function prepareInitialConnections(
     ))
       changed();
   }
+  if (replacement && !replacement.apply) return runtime;
   const staging = await mkdtemp(join(directory, "private/.connections-"));
   try {
     await writeFiles(staging, expected);

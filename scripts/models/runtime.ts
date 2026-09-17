@@ -21,36 +21,90 @@ export async function configureRuntimeModels(options: {
   if (!token || token.length > 65536)
     throw new ModelConfigurationError("invalid_input");
   const ca = options.caFile ? await readFile(options.caFile, "utf8") : null;
-  const input = JSON.stringify({
-    assignments,
-    token,
-    ca,
-    apply: options.apply,
-  });
-  return await new Promise<ModelState>((resolve, reject) => {
+  return runModelHelper(
+    options.openshell,
+    [
+      "sandbox",
+      "exec",
+      "--name",
+      options.sandbox,
+      "--gateway",
+      options.gateway,
+      "--no-tty",
+      "--timeout",
+      "45",
+      "--",
+      "node",
+      "/app/clawscarf/models-main.js",
+    ],
+    { assignments, token, ca, apply: options.apply },
+  );
+}
+
+/** Use the same packaged native helper while its owned home volume is stopped. */
+export async function configureStoppedRuntimeModels(options: {
+  image: string;
+  volume: string;
+  configuration: ModelConfiguration;
+  credential: { token: string; ca?: string };
+  apply: boolean;
+}) {
+  return runModelHelper(
+    "docker",
+    [
+      "run",
+      "--rm",
+      "-i",
+      "--pull",
+      "never",
+      "--network",
+      "none",
+      "--read-only",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges:true",
+      "--user",
+      "1000:1000",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev,size=64m",
+      "--mount",
+      `type=volume,source=${options.volume},target=/home/node,volume-nocopy`,
+      "--entrypoint",
+      "node",
+      options.image,
+      "/app/clawscarf/models-main.js",
+    ],
+    {
+      assignments: nativeAssignments(options.configuration),
+      ...options.credential,
+      ca: options.credential.ca ?? null,
+      apply: options.apply,
+    },
+  );
+}
+
+/** Both transports use one bounded protocol and the same failure semantics. */
+function runModelHelper(
+  executable: string,
+  args: string[],
+  input: {
+    assignments: ReturnType<typeof nativeAssignments>;
+    token: string;
+    ca: string | null;
+    apply: boolean;
+  },
+) {
+  return new Promise<ModelState>((resolve, reject) => {
     let output = "";
-    const child = spawn(
-      options.openshell,
-      [
-        "sandbox",
-        "exec",
-        "--name",
-        options.sandbox,
-        "--gateway",
-        options.gateway,
-        "--no-tty",
-        "--timeout",
-        "45",
-        "--",
-        "node",
-        "/app/clawscarf/models-main.js",
-      ],
-      { stdio: ["pipe", "pipe", "ignore"], timeout: 60000 },
-    );
+    const child = spawn(executable, args, {
+      stdio: ["pipe", "pipe", "ignore"],
+      signal: AbortSignal.timeout(60_000),
+    });
     let spawned = false;
     const transportFailure = () =>
       new ModelConfigurationError(
-        options.apply && spawned ? "outcome_unknown" : "unavailable",
+        input.apply && spawned ? "outcome_unknown" : "unavailable",
       );
     child.once("spawn", () => {
       spawned = true;
@@ -58,7 +112,7 @@ export async function configureRuntimeModels(options: {
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
       output += chunk;
-      if (output.length > 1024) {
+      if (output.length > 4096) {
         child.kill();
         reject(transportFailure());
       }
@@ -90,6 +144,6 @@ export async function configureRuntimeModels(options: {
         reject(transportFailure());
       }
     });
-    child.stdin.end(input);
+    child.stdin.end(JSON.stringify(input));
   });
 }

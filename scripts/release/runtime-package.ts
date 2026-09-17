@@ -9,7 +9,11 @@ export async function writeRuntimePackage(
   root: string,
   stage: string,
   entrypoints: readonly string[],
-  metadata: { name: string; scripts?: Record<string, string> },
+  metadata: {
+    name: string;
+    scripts?: Record<string, string>;
+    bin?: Record<string, string>;
+  },
 ) {
   const source = z
     .object({

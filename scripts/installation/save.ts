@@ -11,6 +11,10 @@ import {
 export class SetupInputs {
   readonly files = new Map<string, Buffer>();
   constructor(readonly directory: string) {}
+  async readJson(path: string): Promise<unknown> {
+    const bytes = this.files.get(path) ?? (await readInputFile(path));
+    return JSON.parse(bytes.toString("utf8"));
+  }
   set(name: string, value: string) {
     const path = resolve(this.directory, "secrets", name);
     this.files.set(path, Buffer.from(value));
@@ -23,6 +27,7 @@ export async function saveConfiguration(
   directory: string,
   value: InstallationConfiguration,
   inputs?: SetupInputs,
+  retained = false,
 ) {
   const config = installationSchema.parse(value);
   if (
@@ -43,17 +48,17 @@ export async function saveConfiguration(
     );
     return `./${path}`;
   }
-  const modelConfiguration = inputs?.files.get(config.models.configurationFile);
-  if (modelConfiguration) {
-    files.set("models.json", modelConfiguration);
-    config.models.configurationFile = "./models.json";
-  }
-  if (config.access.mode === "oidc")
+  const modelConfiguration =
+    inputs?.files.get(config.models.configurationFile) ??
+    (await readInputFile(config.models.configurationFile));
+  files.set("models.json", modelConfiguration);
+  config.models.configurationFile = "./models.json";
+  if (!retained && config.access.mode === "oidc")
     config.access.clientSecretFile = await secret(
       config.access.clientSecretFile,
       "oidc-client-secret",
     );
-  if (config.exposure.mode === "https")
+  if (!retained && config.exposure.mode === "https")
     config.exposure.keyFile = await secret(
       config.exposure.keyFile,
       "tls-key.pem",

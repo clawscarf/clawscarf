@@ -4,8 +4,11 @@ import { promisify } from "node:util";
 import { test, type TestContext } from "node:test";
 import {
   chmod,
+  cp,
   lstat,
   mkdtemp,
+  mkdir,
+  readdir,
   readFile,
   rm,
   symlink,
@@ -84,7 +87,8 @@ class Answers implements InstallerPrompts {
     const value =
       message === "Review installation"
         ? (this.values[message] ?? initial)
-        : message.endsWith("— configure installation")
+        : message.endsWith("— configure installation") ||
+            message.endsWith("— settings")
           ? (this.menu.shift() ?? "review")
           : (this.values[message] ?? initial);
     assert.ok(
@@ -176,28 +180,47 @@ async function fixture(t: TestContext) {
   const answers = {
     "Starting point": "custom",
     Access: "local",
-    Models: "litellm",
+    "Default model": "team",
+    Provider: "openai/test",
     "Model catalog": "file",
-    "Model configuration file": models,
-    "secret:PROVIDER_KEY key": "test-key",
-    "secret:OPENROUTER_API_KEY key": "test-key",
-    Connections: "disabled",
-    Continue: "save",
-    [`Save configuration and private credential copies in ${directory}?`]: true,
+    "Model catalog file": models,
+    "secret:OpenAI LLM API key": "test-key",
+    "secret:OpenRouter LLM API key": "test-key",
+    Connections: "off",
+    "Start now?": false,
+    [`Install in ${directory}?`]: true,
   };
   return { parent, release, directory, settings, answers };
+}
+async function savePreview(
+  options: Parameters<typeof collectInstallation>[1],
+  ui: InstallerPrompts,
+) {
+  const draft = await collectInstallation(ui, options);
+  const configFile = await saveConfiguration(
+    draft.directory,
+    draft.config,
+    draft.inputs,
+  );
+  const planFile = join(draft.directory, "preview.json");
+  await writeFile(
+    planFile,
+    JSON.stringify(await planInstallation(configFile)),
+    { mode: 0o600 },
+  );
+  return { state: "saved", configFile, planFile };
 }
 const local = {
   skip: process.platform !== "darwin" || process.arch !== "arm64",
 };
 
 await test(
-  "wizard save-only uses the real planner, creates private files and never invokes Docker or apply",
+  "collected settings use the real planner and save private files without applying",
   local,
   async (t) => {
     const f = await fixture(t);
     const ui = new Answers(f.answers);
-    const result = await installFromAnswers(f, ui);
+    const result = await savePreview(f, ui);
     assert.equal(result.state, "saved");
     const config = installationSchema.parse(
       await readJson(join(f.directory, "installation.json")),
@@ -219,7 +242,7 @@ await test(
     await assert.rejects(lstat(join(f.directory, "state")), { code: "ENOENT" });
     assert.ok(!ui.questions.some((question) => question.includes("key file")));
     const before = await readFile(join(f.directory, "installation.json"));
-    await assert.rejects(installFromAnswers(f, new Answers(f.answers)), {
+    await assert.rejects(savePreview(f, new Answers(f.answers)), {
       code: "change_unsupported",
     });
     assert.deepEqual(
@@ -236,7 +259,7 @@ await test(
     const f = await fixture(t);
     const ui = new Answers({
       ...f.answers,
-      [`Save configuration and private credential copies in ${f.directory}?`]: false,
+      [`Install in ${f.directory}?`]: false,
     });
     assert.deepEqual(await installFromAnswers(f, ui), { state: "cancelled" });
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
@@ -263,8 +286,6 @@ await test(
         "OIDC client ID": "team",
         "OIDC client secret": "file",
         "OIDC client secret file": key,
-        "Administrator OIDC subject ID": "owner-subject",
-        "Administrator email": "owner@example.test",
       },
       ["access"],
     );
@@ -320,22 +341,24 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        Models: "litellm",
-        Connections: "external",
-        "Model configuration file": modelFile,
-        "Provider credentials": "file",
+        "Default model": "team",
+        Provider: "openai/test",
+        Connections: "on",
+        "Connections backend": "external",
+        "Model catalog file": modelFile,
+        "LLM API keys": "file",
         "Provider credentials file (.env)": key,
         "Connections broker URL": "https://broker.example.test",
-        "Scoped broker key": "file",
-        "Scoped broker key file": key,
+        "Connections broker key": "file",
+        "Connections broker key file": key,
         "Install a pack? (experimental native Claws)": true,
         "Pack directory": resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
         "Python executable with the pinned OpenShell SDK": "/usr/bin/python3",
       },
-      ["models", "connections", "packs"],
+      ["advanced-models", "connections", "packs"],
     );
-    const result = await installFromAnswers(f, ui);
+    const result = await savePreview(f, ui);
     assert.equal(result.state, "saved");
     const configFile = join(f.directory, "installation.json"),
       planFile = join(f.directory, "preview.json");
@@ -390,7 +413,7 @@ await test(
     for (const fail of [false, true, "cancel"] as const) {
       const f = await fixture(t);
       const calls: string[] = [];
-      const ui = new Answers({ ...f.answers, Continue: "start" });
+      const ui = new Answers({ ...f.answers, "Start now?": true });
       const work = installFromAnswers(f, ui, {
         plan: planInstallation,
         doctor: () => {
@@ -418,11 +441,23 @@ await test(
         start: (state) => {
           calls.push("start");
           assert.equal(state, join(f.directory, "state"));
-          return Promise.resolve();
+          return Promise.resolve({
+            supervisor: "running" as const,
+            ready: true,
+            packs: [],
+            administrator: "ready" as const,
+          });
         },
+        administrator: () =>
+          Promise.resolve({ complete: true, expiresAt: null }),
+        login: () =>
+          Promise.resolve({
+            url: "http://127.0.0.1:18800/_clawscarf/local-sign-in",
+            code: "one-use-fixture",
+          }),
       });
       if (fail) await assert.rejects(work);
-      else assert.equal((await work).state, "stopped");
+      else assert.equal((await work).state, "running");
       assert.deepEqual(
         calls,
         fail ? ["doctor", "apply"] : ["doctor", "apply", "start"],
@@ -467,10 +502,11 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        Connections: "external",
+        Connections: "on",
+        "Connections backend": "external",
         "Connections broker URL": "https://broker.example.test",
-        "Scoped broker key": "paste",
-        "secret:Scoped broker key": "masked-test-secret",
+        "Connections broker key": "paste",
+        "secret:Connections broker key": "masked-test-secret",
       },
       ["connections"],
     );
@@ -505,17 +541,18 @@ await test(
       private visits = 0;
       override select(message: string, choices: Choice[], initial?: string) {
         if (message === "Connections")
-          return Promise.resolve(this.visits++ ? "disabled" : "external");
+          return Promise.resolve(this.visits++ ? "off" : "on");
         return super.select(message, choices, initial);
       }
     }
     const ui = new DisableConnections(
       {
         ...f.answers,
-        Connections: "external",
+        Connections: "on",
+        "Connections backend": "external",
         "Connections broker URL": "https://broker.example.test",
-        "Scoped broker key": "paste",
-        "secret:Scoped broker key": "unused-secret",
+        "Connections broker key": "paste",
+        "secret:Connections broker key": "unused-secret",
       },
       ["connections", "connections"],
     );
@@ -604,6 +641,51 @@ await test(
   },
 );
 
+await test(
+  "recipe packs are selected from the release and collect prerequisites after review",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const { loadRecipes } = await import("./installation/recipes/load.js");
+    const { releaseSchema } = await import("./release/definition.js");
+    const { openPack } = await import("./packs/source.js");
+    const source = await openPack(resolve("packs/research-team"));
+    await cp(source.root, join(f.parent, "packs/research-team"), {
+      recursive: true,
+    });
+    const recipes = await loadRecipes(resolve("deploy/recipes"));
+    assert.ok(recipes[0]);
+    recipes[0].packs = [{ id: "research-team", members: ["researcher"] }];
+    const release = releaseSchema.parse(await readJson(f.release));
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...release,
+        recipes,
+        packs: [{ id: "research-team", digest: source.digest }],
+      }),
+    );
+    const ui = new Answers({
+      ...f.answers,
+      "Python executable with the pinned OpenShell SDK": join(f.parent, "tool"),
+    });
+    const draft = await collectInstallation(ui, {
+      ...f,
+      recipe: "team-documents",
+    });
+    assert.equal(
+      draft.config.packs[0]?.directory,
+      join(f.parent, "packs/research-team"),
+    );
+    assert.deepEqual(draft.config.packs[0].members, ["researcher"]);
+    assert.equal(
+      draft.config.packOperator?.pythonExecutable,
+      join(f.parent, "tool"),
+    );
+    assert.ok(!ui.questions.includes("Pack directory"));
+  },
+);
+
 await test("recipes refuse scripts, personal configuration, duplicate IDs and protection switches", async () => {
   const { loadRecipes } = await import("./installation/recipes/load.js");
   const { recipesSchema } =
@@ -656,12 +738,13 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        Models: "litellm",
-        "Model configuration file": models,
-        "Provider credentials": "paste",
-        "secret:PROVIDER_KEY key": "private-$key#value",
+        "Default model": "team",
+        Provider: "openai/test",
+        "Model catalog file": models,
+        "LLM API keys": "paste",
+        "secret:OpenAI LLM API key": "private-$key#value",
       },
-      ["models"],
+      ["advanced-models"],
     );
     const draft = await collectInstallation(ui, f);
     const path = await saveConfiguration(
@@ -682,7 +765,7 @@ await test(
 );
 
 await test(
-  "recipe fast path asks only for missing keys; CLI settings skip those questions",
+  "recipe reviews defaults before asking for missing credentials; CLI settings skip credential questions",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -702,12 +785,12 @@ await test(
       directory: f.directory,
       recipe: "team-documents",
     });
-    assert.ok(ui.questions.includes("secret:OPENROUTER_API_KEY key"));
+    assert.ok(ui.questions.includes("secret:OpenRouter LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
     assert.ok(
-      !ui.questions.some((question) =>
+      ui.questions.findIndex((question) =>
         question.endsWith("— configure installation"),
-      ),
+      ) < ui.questions.indexOf("secret:OpenRouter LLM API key"),
     );
     assert.ok(!ui.questions.includes("Connections"));
     const file = await saveConfiguration(
@@ -765,10 +848,11 @@ await test(
     const ui = new CancelSection(
       {
         ...f.answers,
-        Connections: "external",
+        Connections: "on",
+        "Connections backend": "external",
         "Connections broker URL": "https://broker.example.test",
-        "Scoped broker key": "paste",
-        "secret:Scoped broker key": "discard-me",
+        "Connections broker key": "paste",
+        "secret:Connections broker key": "discard-me",
         "Installation name": "accepted-team",
       },
       ["identity", "connections"],
@@ -827,16 +911,13 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        Models: "external",
-        "Existing LiteLLM model configuration file": join(
-          f.parent,
-          "initial-models.json",
-        ),
+        "Model gateway": "external",
+        "Model catalog file": join(f.parent, "initial-models.json"),
         "LiteLLM API URL (ending in /v1)": "https://models.example.test/v1",
-        "Scoped model gateway key": "paste",
-        "secret:Scoped model gateway key": "scoped-test-model-runtime-key",
+        "Model gateway key": "paste",
+        "secret:Model gateway key": "scoped-test-model-runtime-key",
       },
-      ["models"],
+      ["advanced-models"],
     );
     const draft = await collectInstallation(ui, f);
     assert.equal(draft.config.models.mode, "external");
@@ -861,105 +942,359 @@ await test(
 );
 
 await test(
-  "Esc goes to parent menus, stays at the root and retains accepted answers",
+  "Esc at the first menu exits without creating files",
   local,
   async (t) => {
     const f = await fixture(t);
-    class Navigate extends Answers {
-      roots = 0;
-      directories = 0;
-      menus = 0;
-      reviews = 0;
-      override async select(
-        message: string,
-        choices: Choice[],
-        initial?: string,
-      ) {
-        if (message === "Starting point" && ++this.roots === 1)
-          throw new SectionCancelled();
-        if (message.endsWith("— configure installation") && ++this.menus === 2)
-          throw new SectionCancelled();
-        if (message === "Review installation" && ++this.reviews === 1)
-          throw new SectionCancelled();
-        return super.select(message, choices, initial);
-      }
-      override async text(
-        message: string,
-        initial?: string,
-        validate?: Parameters<InstallerPrompts["text"]>[2],
-      ) {
-        if (
-          message === "New installation directory" &&
-          ++this.directories === 1
-        )
-          throw new SectionCancelled();
-        return super.text(message, initial, validate);
+    class EscapeRoot extends Answers {
+      override select(): Promise<string> {
+        return Promise.reject(new SectionCancelled());
       }
     }
-    const ui = new Navigate(
-      {
-        ...f.answers,
-        "New installation directory": f.directory,
-        "Installation name": "keep-me",
-      },
-      ["identity"],
+    await assert.rejects(
+      collectInstallation(new EscapeRoot(f.answers), f),
+      InstallerCancelled,
     );
-    const draft = await collectInstallation(ui, {
-      release: f.release,
-      settings: f.settings,
-    });
-    assert.equal(draft.config.name, "keep-me");
-    assert.equal(ui.roots, 4);
-    assert.equal(ui.directories, 2);
-    assert.equal(ui.menus, 2);
-    assert.equal(ui.reviews, 2);
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
 );
 
 await test(
-  "Esc at final choices returns to review without writing files or losing answers",
+  "returning to settings retains accepted answers without prompting secrets again",
   local,
   async (t) => {
     const f = await fixture(t);
-    class Navigate extends Answers {
-      saves = 0;
-      actions = 0;
-      override async confirm(message: string) {
-        if (message.startsWith("Save configuration")) {
-          await assert.rejects(lstat(f.directory), { code: "ENOENT" });
-          if (++this.saves === 1) throw new SectionCancelled();
-        }
-        return super.confirm(message);
-      }
-      override async select(
+    const first = await collectInstallation(
+      new Answers({ ...f.answers, "Installation name": "keep-final" }, [
+        "identity",
+      ]),
+      f,
+    );
+    const ui = new Answers(f.answers);
+    const second = await collectInstallation(ui, f, first);
+    assert.equal(second.config.name, "keep-final");
+    assert.ok(!ui.questions.some((question) => question.startsWith("secret:")));
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "changing the default model replaces the recipe provider and asks only for the selected provider key",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const { releaseSchema } = await import("./release/definition.js");
+    const { gatewayRoutesSchema } = await import("./models/configuration.js");
+    const release = releaseSchema.parse(await readJson(f.release));
+    const model = gatewayRoutesSchema.parse(
+      await readJson(join(f.parent, "initial-models.json")),
+    ).models[0];
+    assert.ok(model);
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...release,
+        modelCatalog: [
+          {
+            provider: "Anthropic",
+            model: {
+              ...model,
+              id: "selected",
+              name: "Selected",
+              reasoning: true,
+              route: {
+                model: "anthropic/selected",
+                apiKeyEnv: "ANTHROPIC_API_KEY",
+              },
+            },
+            reasoningLevels: ["high"],
+          },
+        ],
+      }),
+    );
+    const ui = new Answers(
+      {
+        ...f.answers,
+        "Default model": "selected",
+        Provider: "anthropic/selected",
+        "secret:Anthropic LLM API key": "selected-secret",
+      },
+      ["models"],
+    );
+    const draft = await collectInstallation(ui, f);
+    assert.equal(draft.config.models.mode, "litellm");
+    const staged = draft.inputs.files.get(
+      draft.config.models.configurationFile,
+    );
+    assert.ok(staged);
+    const routes = gatewayRoutesSchema.parse(
+      JSON.parse(staged.toString("utf8")),
+    );
+    assert.deepEqual(
+      routes.models.map((entry) => entry.id),
+      ["selected"],
+    );
+    assert.equal(routes.thinkingDefault, "high");
+    assert.ok(ui.questions.includes("secret:Anthropic LLM API key"));
+    assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
+  },
+);
+
+await test(
+  "programming errors escape the installer instead of becoming a repeated input question",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const failure = new TypeError("fixture programming error");
+    class BrokenPrompt extends Answers {
+      override select(
         message: string,
         choices: Choice[],
         initial?: string,
-      ) {
-        if (message === "Continue") {
-          await assert.rejects(lstat(f.directory), { code: "ENOENT" });
-          if (++this.actions === 1) throw new SectionCancelled();
-        }
+      ): Promise<string> {
+        if (message === "Connections") return Promise.reject(failure);
         return super.select(message, choices, initial);
       }
     }
-    const ui = new Navigate(
-      { ...f.answers, "Installation name": "keep-final" },
-      ["identity"],
+    await assert.rejects(
+      collectInstallation(new BrokenPrompt(f.answers, ["connections"]), f),
+      (error) => error === failure,
     );
-    const result = await installFromAnswers(f, ui);
-    assert.equal(result.state, "saved");
-    assert.equal(ui.saves, 3);
-    assert.equal(ui.actions, 2);
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "revisiting OIDC settings retains explicit bootstrap identity and collects TLS secrets only after acceptance",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const key = join(f.parent, "key");
+    await writeFile(key, "private-test-secret", { mode: 0o600 });
+    const values = {
+      ...f.answers,
+      Access: "oidc",
+      "Application HTTPS origin": "https://team.example.test:8443",
+      "Widgets HTTPS origin (separate listener port)":
+        "https://widgets.example.test:8445",
+      "TLS certificate file": key,
+      "TLS private key file": key,
+      "OIDC issuer": "https://identity.example.test",
+      "OIDC client ID": "team",
+      "OIDC client secret": "file",
+      "OIDC client secret file": key,
+    };
+    const ui = new Answers(values, ["access"]);
+    const first = await collectInstallation(ui, f);
+    assert.ok(
+      ui.questions.indexOf("Save section changes?") <
+        ui.questions.indexOf("TLS private key file"),
+    );
+    assert.equal(first.config.access.mode, "oidc");
+    first.config.access.administratorSubject = "provided-subject";
+    first.config.access.administratorEmail = "owner@example.test";
+    const second = await collectInstallation(
+      new Answers(values, ["access"]),
+      f,
+      first,
+    );
+    assert.equal(second.config.access.mode, "oidc");
+    assert.equal(second.config.access.administratorSubject, "provided-subject");
+    assert.equal(second.config.access.administratorEmail, "owner@example.test");
+  },
+);
+
+await test(
+  "changing the external model gateway does not reuse the previous gateway credential",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const first = await collectInstallation(
+      new Answers(
+        {
+          ...f.answers,
+          "Model gateway": "external",
+          "LiteLLM API URL (ending in /v1)": "https://first.example.test/v1",
+          "Model gateway key": "paste",
+          "secret:Model gateway key": "first-gateway-secret",
+        },
+        ["advanced-models"],
+      ),
+      f,
+    );
+    const ui = new Answers(
+      {
+        ...f.answers,
+        "Model gateway": "external",
+        "LiteLLM API URL (ending in /v1)": "https://second.example.test/v1",
+        "Model gateway key": "paste",
+        "secret:Model gateway key": "second-gateway-secret",
+      },
+      ["advanced-models"],
+    );
+    const second = await collectInstallation(ui, f, first);
+    assert.equal(second.config.models.mode, "external");
+    assert.ok(ui.questions.includes("secret:Model gateway key"));
     assert.equal(
-      ui.questions.filter((question) => question === "Installation name")
-        .length,
-      1,
+      second.inputs.files
+        .get(second.config.models.credentialFile)
+        ?.toString("utf8"),
+      "second-gateway-secret",
     );
-    const saved = installationSchema.parse(
-      await readJson(join(f.directory, "installation.json")),
+  },
+);
+
+await test("cancelling read-only progress aborts polling promptly", async () => {
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      `
+    import assert from 'node:assert/strict';
+    import { setTimeout as delay } from 'node:timers/promises';
+    import { progress, InstallerCancelled } from './scripts/installation/installer/prompts.ts';
+    const started = Date.now();
+    await assert.rejects(progress('Waiting for sign-in', async signal => {
+      process.emit('SIGINT');
+      signal.throwIfAborted();
+      await delay(60_000, undefined, {signal});
+    }), InstallerCancelled);
+    assert.ok(Date.now() - started < 1000);
+    console.log('Read-only wait cancelled');
+  `,
+    ],
+    { timeout: 5000 },
+  );
+  assert.match(stdout, /Read-only wait cancelled/);
+});
+
+await test(
+  "retained settings discard a changed key on Esc and preserve accepted inputs",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const original = structuredClone(first.config);
+    const inputs = new Map(first.inputs.files);
+    class DiscardKey extends Answers {
+      override confirm(message: string): Promise<boolean> {
+        if (message === "Save section changes?")
+          return Promise.reject(new SectionCancelled());
+        return super.confirm(message);
+      }
+      override select(message: string, choices: Choice[], initial?: string) {
+        if (message.endsWith("— settings"))
+          assert.deepEqual(
+            choices.map((choice) => choice.value),
+            ["review", "models", "connections", "packs", "model-credentials"],
+          );
+        return super.select(message, choices, initial);
+      }
+    }
+    const result = await collectInstallation(
+      new DiscardKey(
+        { ...f.answers, "secret:OpenAI LLM API key": "discard-me" },
+        ["model-credentials"],
+      ),
+      { release: f.release, existing: true },
+      first,
     );
-    assert.equal(saved.name, "keep-final");
+    assert.deepEqual(result.config, original);
+    assert.deepEqual(result.inputs.files, inputs);
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "retained settings main-menu Esc exits without creating drafts or stopping the installation",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const state = join(f.parent, "state");
+    await mkdir(state, { mode: 0o700 });
+    const accepted = JSON.stringify({ ...first.config, stateDirectory: state });
+    await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
+    class Exit extends Answers {
+      override select(
+        message: string,
+        choices: Choice[],
+        initial?: string,
+      ): Promise<string> {
+        if (message.endsWith("— settings"))
+          return Promise.reject(new SectionCancelled());
+        return super.select(message, choices, initial);
+      }
+    }
+    const { editInstallationSettings } =
+      await import("./installation/installer/settings.js");
+    await assert.rejects(
+      editInstallationSettings(state, new Exit(f.answers)),
+      InstallerCancelled,
+    );
+    assert.equal(
+      await readFile(join(state, "settings.json"), "utf8"),
+      accepted,
+    );
+    assert.deepEqual(await readdir(state), ["settings.json"]);
+  },
+);
+
+await test(
+  "retained default changes preserve previously configured model routes for native overrides",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const { releaseSchema } = await import("./release/definition.js");
+    const { gatewayRoutesSchema } = await import("./models/configuration.js");
+    const release = releaseSchema.parse(await readJson(f.release));
+    const routes = gatewayRoutesSchema.parse(
+      await readJson(first.config.models.configurationFile),
+    );
+    const model = routes.models[0];
+    assert.ok(model);
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...release,
+        modelCatalog: [
+          {
+            provider: "OpenAI",
+            model: { ...model, id: "second", name: "Second" },
+            reasoningLevels: [],
+          },
+        ],
+      }),
+    );
+    const result = await collectInstallation(
+      new Answers({ ...f.answers, "Default model": "second" }, ["models"]),
+      { release: f.release, existing: true },
+      first,
+    );
+    const changed = gatewayRoutesSchema.parse(
+      await result.inputs.readJson(result.config.models.configurationFile),
+    );
+    assert.deepEqual(
+      changed.models.map((model) => model.id),
+      ["team", "second"],
+    );
+    assert.equal(changed.defaultModel, "second");
+    const saved = await saveConfiguration(
+      f.directory,
+      result.config,
+      result.inputs,
+      true,
+    );
+    assert.ok(saved);
+    assert.deepEqual(
+      gatewayRoutesSchema.parse(
+        await readJson(join(f.directory, "models.json")),
+      ),
+      changed,
+    );
   },
 );

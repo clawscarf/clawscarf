@@ -9,19 +9,17 @@ export async function collectPacks(
   models: InstallationConfiguration["models"] | undefined,
   connections: InstallationConfiguration["connections"],
   current: Pick<InstallationConfiguration, "packs" | "packOperator">,
+  available: readonly { id: string; directory: string }[] = [],
 ) {
   const packs = structuredClone(current.packs);
+  let keep = false;
   if (packs.length) {
     const action = await ui.select("Existing packs", [
       { value: "keep", label: "Keep selections" },
       { value: "add", label: "Add a pack" },
       { value: "remove", label: "Remove selected packs" },
     ]);
-    if (action === "keep")
-      return {
-        packs,
-        ...(current.packOperator ? { packOperator: current.packOperator } : {}),
-      };
+    keep = action === "keep";
     if (action === "remove") {
       const removed = await ui.multiselect(
         "Remove packs",
@@ -45,6 +43,7 @@ export async function collectPacks(
   }
   const selected = new Set(packs.flatMap((pack) => pack.members));
   while (
+    !keep &&
     packs.length < 32 &&
     (await ui.confirm(
       packs.length
@@ -52,7 +51,12 @@ export async function collectPacks(
         : "Install a pack? (experimental native Claws)",
     ))
   ) {
-    const directory = absolute(await ui.text("Pack directory"));
+    const directory = available.length
+      ? await ui.select(
+          "Pack",
+          available.map((pack) => ({ value: pack.directory, label: pack.id })),
+        )
+      : absolute(await ui.text("Pack directory"));
     const pack = await openPack(directory);
     const eligible = pack.manifest.members.filter(
       (member) =>
@@ -91,13 +95,39 @@ export async function collectPacks(
     });
     members.forEach((member) => selected.add(member));
   }
+  return collectPackInputs(ui, { ...current, packs });
+}
+
+export async function collectPackInputs(
+  ui: InstallerPrompts,
+  current: Pick<InstallationConfiguration, "packs" | "packOperator">,
+) {
+  const packs = structuredClone(current.packs);
   if (!packs.length) return { packs };
-  const pythonExecutable = absolute(
-    await ui.text(
-      "Python executable with the pinned OpenShell SDK",
-      current.packOperator?.pythonExecutable,
-    ),
-  );
+  for (const selection of packs) {
+    const pack = await openPack(selection.directory);
+    if (
+      !selection.bindingsFile &&
+      pack.manifest.members.some(
+        (member) =>
+          selection.members.includes(member.id) &&
+          member.requirements.connections.length,
+      )
+    )
+      selection.bindingsFile = await inputFile(
+        ui,
+        "Connected-account bindings file",
+        true,
+      );
+  }
+  const pythonExecutable =
+    current.packOperator?.pythonExecutable ??
+    absolute(
+      await ui.text(
+        "Python executable with the pinned OpenShell SDK",
+        current.packOperator?.pythonExecutable,
+      ),
+    );
   return {
     packs,
     packOperator: { pythonExecutable, experimentalClaws: true as const },

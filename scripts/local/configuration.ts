@@ -117,9 +117,14 @@ const teamInput = z
     }, "Use an HTTPS OIDC issuer without credentials, query or fragment."),
     clientId: z.string().min(1),
     clientSecretFile: absolutePath,
-    administratorSubject: z.string().min(1),
-    administratorEmail: z.email(),
+    administratorSubject: z.string().min(1).optional(),
+    administratorEmail: z.email().optional(),
   })
+  .refine(
+    (value) =>
+      Boolean(value.administratorSubject) === Boolean(value.administratorEmail),
+    "Provide both administrator subject and email, or neither for a setup link.",
+  )
   .refine(
     (value) => value.origin !== value.widgetOrigin,
     "Widgets need a separate origin.",
@@ -349,17 +354,21 @@ export function generateLocalConfiguration(options: {
   return {
     access,
     native,
-    companion: {
-      accessConfigurationFile: "/run/clawscarf/access.json",
-      ...(input.connections?.mode === "local"
-        ? {
-            connections: {
-              projectId: input.connections.projectId,
-              apiKeyFile: "/run/clawscarf/connections/api-key",
-              catalogDirectory: "/run/clawscarf/connections/catalog",
-            },
-          }
-        : {}),
-    },
+    companion: companionConfiguration(input),
+  };
+}
+
+export function companionConfiguration(input: LocalInput) {
+  return {
+    accessConfigurationFile: "/run/clawscarf/access.json",
+    ...(input.connections?.mode === "local"
+      ? {
+          connections: {
+            projectId: input.connections.projectId,
+            apiKeyFile: "/run/clawscarf/connections/api-key",
+            catalogDirectory: "/run/clawscarf/connections/catalog",
+          },
+        }
+      : {}),
   };
 }

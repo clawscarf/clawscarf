@@ -10,9 +10,5 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": [
-    "scripts/packs.ts",
-    "scripts/packs/**/*.ts",
-    "services/connections/generated/**/*.ts"
-  ]
+  "include": ["scripts/packs.ts", "scripts/packs/**/*.ts"]
 }

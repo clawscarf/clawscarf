@@ -68,6 +68,8 @@ config validation/reload owns runtime activation. Check the effective model in
 OpenClaw before using it. Repeating the confirmed command deliberately reapplies
 those same selected settings; there is no background configuration controller.
 The runtime helper validates a strict request and returns structured outcomes.
+Running OpenShell and stopped-volume commands share the same bounded subprocess
+protocol; only their invocation differs.
 Invalid input/state, unavailable execution and rejected validation are distinct
 from an uncertain apply. Lost or malformed execution responses remain uncertain
 after dispatch; the controller never retries a mutation automatically.
@@ -233,3 +235,25 @@ The unified installer requires bundled or existing LiteLLM. Its recipe/review fl
 documented in the [installation guide](../local/installation.md#terminal-installer).
 Component operators may still use disabled-model fixtures for isolated tests; those
 are not supported product installation modes.
+
+## Installer choices
+
+[The release catalog](catalog.json) contains model/provider choices for initial setup.
+Release creation embeds it by default; a release input can supply its own `modelCatalog`.
+Recipes choose defaults from those offerings. Model limits are explicit data, not
+a discovery call made during installation. The current catalog conservatively enables
+text input; it does not claim tested image handling or every upstream model capability.
+
+Provider route prefixes use LiteLLM's documented
+[OpenAI](https://docs.litellm.ai/docs/providers/openai),
+[Anthropic](https://docs.litellm.ai/docs/providers/anthropic),
+[Google](https://docs.litellm.ai/docs/providers/gemini) and
+[OpenRouter](https://docs.litellm.ai/docs/providers/openrouter) adapters. These are selectable
+configuration routes, not a claim that each account/model combination has passed live
+inference. The installer asks for keys only after reviewing the selected settings.
+
+The installation [settings editor](../local/installation.md#change-an-existing-installation)
+can update routes, defaults and provider keys. Changing enabled models updates only
+the existing runtime key’s model permissions through LiteLLM; it does not regenerate
+the key, unblock it or extend its expiry. Explicit recovery first observes matching
+permissions and native managed fields instead of repeating a confirmed mutation.

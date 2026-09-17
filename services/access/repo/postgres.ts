@@ -29,6 +29,7 @@ const loginSchema = z
     nonce: z.string(),
     codeVerifier: z.string(),
     returnTo: z.string(),
+    setupTokenHash: z.string().optional(),
   })
   .strict();
 const user = (row: UserRow): User => ({
@@ -42,6 +43,7 @@ export interface InitialAdministrator {
   subject: string;
   email: string;
   name: string;
+  claimRequired?: boolean;
 }
 /** Durable sessions and enrollment for one team server. */
 export class PostgresAccessStore implements AccessStore {
@@ -59,8 +61,7 @@ export class PostgresAccessStore implements AccessStore {
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
   ): Promise<T> {
-    if (this.client) return work(this.client);
-    const client = await this.pool.connect();
+    const client = this.client ?? (await this.pool.connect());
     try {
       await client.query("BEGIN");
       const result = await work(client);
@@ -70,7 +71,7 @@ export class PostgresAccessStore implements AccessStore {
       await client.query("ROLLBACK");
       throw error;
     } finally {
-      client.release();
+      if (!this.client) client.release();
     }
   }
   async withEnrollmentLock<T>(
@@ -135,7 +136,8 @@ export class PostgresAccessStore implements AccessStore {
       if (row) {
         if (
           row.issuer !== this.administrator.issuer ||
-          row.subject !== this.administrator.subject
+          (!this.administrator.claimRequired &&
+            row.subject !== this.administrator.subject)
         )
           throw Error(
             "Configured initial identity differs from this server database.",
@@ -146,14 +148,14 @@ export class PostgresAccessStore implements AccessStore {
         serverId = randomUUID(),
         a = this.administrator;
       const inserted = await client.query<UserRow>(
-        "INSERT INTO clawscarf_access.users(id,issuer,subject,email,name,admitted) VALUES($1,$2,$3,$4,$5,true) RETURNING *",
-        [id, a.issuer, a.subject, a.email, a.name],
+        "INSERT INTO clawscarf_access.users(id,issuer,subject,email,name,admitted) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
+        [id, a.issuer, a.subject, a.email, a.name, !a.claimRequired],
       );
       const created = inserted.rows[0];
       if (!created) throw Error("Administrator initialization failed.");
       await client.query(
-        "INSERT INTO clawscarf_access.server(id,administrator_id) VALUES($1,$2)",
-        [serverId, id],
+        "INSERT INTO clawscarf_access.server(id,administrator_id,setup_complete) VALUES($1,$2,$3)",
+        [serverId, id, !a.claimRequired],
       );
       return { serverId, administrator: user(created) };
     });
@@ -251,7 +253,7 @@ export class PostgresAccessStore implements AccessStore {
     const result = await (this.client ?? this.pool).query<
       UserRow & { csrf: string }
     >(
-      "SELECT u.*,s.csrf FROM clawscarf_access.browser_sessions s JOIN clawscarf_access.users u ON u.id=s.user_id WHERE s.hash=$1 AND s.expires_at>clock_timestamp() AND (u.admitted OR s.purpose='enrollment') AND s.admission_revision=u.revision AND (s.parent_hash IS NULL OR EXISTS(SELECT 1 FROM clawscarf_access.browser_sessions parent JOIN clawscarf_access.users parent_user ON parent_user.id=parent.user_id WHERE parent.hash=s.parent_hash AND parent.parent_hash IS NULL AND parent.expires_at>clock_timestamp() AND parent_user.admitted AND parent_user.revision=parent.admission_revision))",
+      "SELECT u.*,s.csrf FROM clawscarf_access.browser_sessions s JOIN clawscarf_access.users u ON u.id=s.user_id WHERE s.hash=$1 AND s.expires_at>clock_timestamp() AND (u.admitted OR s.purpose='enrollment' OR (s.purpose='setup' AND EXISTS(SELECT 1 FROM clawscarf_access.server initial WHERE initial.administrator_id=u.id AND NOT initial.setup_complete AND initial.setup_expires_at>clock_timestamp()))) AND s.admission_revision=u.revision AND (s.parent_hash IS NULL OR EXISTS(SELECT 1 FROM clawscarf_access.browser_sessions parent JOIN clawscarf_access.users parent_user ON parent_user.id=parent.user_id WHERE parent.hash=s.parent_hash AND parent.parent_hash IS NULL AND parent.expires_at>clock_timestamp() AND parent_user.admitted AND parent_user.revision=parent.admission_revision))",
       [digest],
     );
     return result.rows[0]
@@ -324,7 +326,7 @@ export class PostgresAccessStore implements AccessStore {
   }
   async revokeDelegation(digest: string) {
     await (this.client ?? this.pool).query(
-      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 AND parent_hash IS NOT NULL",
+      "DELETE FROM clawscarf_access.browser_sessions WHERE hash=$1 AND (parent_hash IS NOT NULL OR purpose='setup')",
       [digest],
     );
   }
@@ -348,6 +350,105 @@ export class PostgresAccessStore implements AccessStore {
       await client.query(
         "INSERT INTO clawscarf_access.local_tokens(hash) VALUES($1)",
         [digest],
+      );
+    });
+  }
+  async administratorSetup() {
+    const result = await (this.client ?? this.pool).query<{
+      setup_complete: boolean;
+      setup_expires_at: Date | null;
+    }>("SELECT setup_complete,setup_expires_at FROM clawscarf_access.server");
+    const row = result.rows[0];
+    if (!row)
+      throw new AccessError(
+        "dependency_unavailable",
+        "Server identity is unavailable.",
+      );
+    return {
+      complete: row.setup_complete,
+      expiresAt: row.setup_expires_at?.toISOString() ?? null,
+    };
+  }
+  async beginAdministratorSetup(digest: string) {
+    await this.transaction(async (client) => {
+      const result = await client.query(
+        "UPDATE clawscarf_access.server SET setup_token_hash=$1,setup_expires_at=clock_timestamp()+interval '15 minutes' WHERE NOT setup_complete",
+        [digest],
+      );
+      if (result.rowCount !== 1)
+        throw new AccessError(
+          "forbidden",
+          "Administrator setup is already complete.",
+        );
+      await client.query(
+        "DELETE FROM clawscarf_access.browser_sessions WHERE purpose='setup'",
+      );
+    });
+  }
+  async bindAdministrator(
+    digest: string,
+    identity: Identity,
+    sessionHash: string,
+  ) {
+    if (!identity.emailVerified)
+      throw new AccessError(
+        "email_unverified",
+        "Use a verified email address.",
+      );
+    return this.transaction(async (client) => {
+      const claim = await client.query<{ administrator_id: string }>(
+        `UPDATE clawscarf_access.server SET setup_subject=$2
+         WHERE NOT setup_complete AND setup_token_hash=$1 AND setup_expires_at>clock_timestamp()
+         AND (setup_subject IS NULL OR setup_subject=$2) RETURNING administrator_id`,
+        [digest, identity.subject],
+      );
+      const id = claim.rows[0]?.administrator_id;
+      if (!id)
+        throw new AccessError(
+          "invalid_authorization",
+          "Setup expired, was already used, or belongs to another account.",
+        );
+      const result = await client.query<UserRow>(
+        "UPDATE clawscarf_access.users SET subject=$2,email=$3,name=$4 WHERE id=$1 AND issuer=$5 AND NOT admitted RETURNING *",
+        [
+          id,
+          identity.subject,
+          identity.email.toLowerCase(),
+          identity.name,
+          identity.issuer,
+        ],
+      );
+      const person = result.rows[0];
+      if (!person)
+        throw new AccessError(
+          "forbidden",
+          "This identity cannot claim the server.",
+        );
+      await client.query(
+        "INSERT INTO clawscarf_access.browser_sessions(hash,purpose,user_id,admission_revision,csrf,expires_at) SELECT $1,'setup',id,revision,'',clock_timestamp()+interval '3 minutes' FROM clawscarf_access.users WHERE id=$2",
+        [sessionHash, id],
+      );
+      return user(person);
+    });
+  }
+  async finishAdministratorSetup(digest: string, userId: string) {
+    await this.transaction(async (client) => {
+      const claimed = await client.query(
+        "UPDATE clawscarf_access.server SET setup_complete=true,setup_token_hash=NULL,setup_expires_at=NULL WHERE NOT setup_complete AND setup_token_hash=$1 AND administrator_id=$2 AND setup_subject IS NOT NULL AND setup_expires_at>clock_timestamp() RETURNING id",
+        [digest, userId],
+      );
+      if (claimed.rowCount !== 1)
+        throw new AccessError(
+          "invalid_authorization",
+          "Setup expired or was already used.",
+        );
+      await client.query(
+        "UPDATE clawscarf_access.users SET admitted=true,revision=revision+1 WHERE id=$1",
+        [userId],
+      );
+      await client.query(
+        "DELETE FROM clawscarf_access.browser_sessions WHERE purpose='setup' AND user_id=$1",
+        [userId],
       );
     });
   }

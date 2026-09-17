@@ -14,6 +14,9 @@ pnpm check
 The root build compiles repository tooling, companion TypeScript and the Connections
 and Access plugins and both standalone browser surfaces; it does not produce an OpenClaw runtime image.
 Plugin packages own their separate SDK dependency, build and acceptance commands.
+Connections configuration tests use private copies of plugin metadata and source entry files,
+so they do not depend on compiled plugin output being present during a build. Compiled
+plugin loading is exercised by the plugin’s native tests.
 The operator build also copies its [Python SDK transport](packs/transport.py) and
 locked dependency inputs beside the compiled pack CLI through
 [build-operator.ts](build-operator.ts). These files belong to the operator artifact,
@@ -138,3 +141,8 @@ excluded from formatting; source OpenAPI contracts remain formatted and generate
 clients are checked for drift.
 
 Shared frontend primitives and theme live in `ui/`; they cannot import service or operator code. Both browser builds consume those same sources. Operator internals cannot import CLI entrypoints or installation menus, and service access is restricted to named composition/configuration/storage boundaries. Import regressions cover permitted and forbidden directions.
+
+Retained installation editing uses `clawscarf settings --state <directory>`; its
+noninteractive plan/apply commands share the same operations. See the
+[installation guide](../deploy/local/installation.md#change-an-existing-installation)
+for supported changes, persistence and failure handling.

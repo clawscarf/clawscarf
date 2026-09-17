@@ -37,13 +37,24 @@ The [People interface](web/README.md) observes native enrollment readiness on it
 existing list read; it does not store a second readiness flag or change native
 configuration during refresh. REST and CLI list responses include `enrollment`.
 
-Team identity uses `mode: "oidc"`, `issuer`, `clientId`, `clientSecretFile`,
-`administratorSubject` and `administratorEmail`. Team mode requires an HTTPS origin.
-The provider callback is `<origin>/_clawscarf/callback`; its post-logout callback is
-`<origin>/_clawscarf/signed-out`. Explicit issuer/subject enrollment is required;
-a successful company login does not itself admit a user. The initial administrator
-is initialized once with a stable UUID. Native initial configuration must use the
-same `clawscarf:<UUID>` identity. `runtime.managementOrigin` optionally selects
+Team identity uses `mode: "oidc"`, `issuer`, `clientId` and `clientSecretFile`.
+Team mode requires an HTTPS origin. The provider callback is
+`<origin>/_clawscarf/callback`; its post-logout callback is `<origin>/_clawscarf/signed-out`.
+The initial administrator has a stable UUID reserved before native configuration.
+Native initial configuration must use the same `clawscarf:<UUID>` identity.
+
+Without an explicit administrator identity, the local operator issues a private setup
+link using [the setup command](runtime/setup.ts) with `--issue`. The link expires after
+15 minutes. Its holder authenticates through the configured OIDC provider with a verified
+email; Access binds that exact issuer/subject, verifies native administrator authority,
+prepares native team access and only then admits the user and creates their browser
+session. A temporary server-side credential permits this verification before admission.
+Replacing the link invalidates outstanding setup credentials; a failed native check can
+be retried only by the bound identity. Completion consumes the link permanently, including
+across restarts. The command without `--issue` reports setup status without issuing a link.
+
+Unattended configuration can instead supply both `administratorSubject` and
+`administratorEmail`. Ordinary company sign-in never enrolls another identity. `runtime.managementOrigin` optionally selects
 a reachable ingress endpoint from inside Compose; the public Host/Origin remain
 unchanged and ingress records the actual network peer.
 

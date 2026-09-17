@@ -16,6 +16,7 @@ export interface LoginTransaction {
   nonce: string;
   codeVerifier: string;
   returnTo: string;
+  setupTokenHash?: string | undefined;
 }
 export interface Session {
   hash: string;
@@ -67,4 +68,15 @@ export interface AccessStore {
   removeEnrollment(id: string): Promise<void>;
   createLocalToken(hash: string): Promise<void>;
   consumeLocalToken(hash: string): Promise<User | null>;
+  administratorSetup(): Promise<{
+    complete: boolean;
+    expiresAt: string | null;
+  }>;
+  beginAdministratorSetup(hash: string): Promise<void>;
+  bindAdministrator(
+    hash: string,
+    identity: Identity,
+    sessionHash: string,
+  ): Promise<User>;
+  finishAdministratorSetup(hash: string, userId: string): Promise<void>;
 }

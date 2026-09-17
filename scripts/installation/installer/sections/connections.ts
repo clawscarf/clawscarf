@@ -1,72 +1,103 @@
 import type { InstallationConfiguration } from "../../configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
-import { absolute, field } from "../inputs.js";
+import { field } from "../inputs.js";
 import { connectionsBrokerUrlSchema } from "../../../local/configuration.js";
 import { InstallationError } from "../../errors.js";
 import { optionalCa } from "./certificates.js";
-
 import type { SetupInputs } from "../../save.js";
 import { secretInput } from "../secrets.js";
 
 export async function collectConnections(
   ui: InstallerPrompts,
   current: InstallationConfiguration["connections"],
-  inputs: SetupInputs,
+  catalogDirectory?: string,
 ): Promise<InstallationConfiguration["connections"]> {
-  const mode = await ui.select(
+  const enabled = await ui.select(
     "Connections",
     [
-      { value: "disabled", label: "Do not enable Connections" },
-      { value: "external", label: "Use an existing Connections broker" },
-      { value: "local", label: "Run Connections with a Composio project" },
+      { value: "off", label: "Off" },
+      { value: "on", label: "On" },
     ],
-    current.mode,
+    current.mode === "disabled" ? "off" : "on",
   );
-  if (mode === "disabled") return { mode };
-  if (mode === "external")
+  if (enabled === "off") return { mode: "disabled" };
+  const mode = await ui.select(
+    "Connections backend",
+    [
+      { value: "local", label: "Composio project" },
+      { value: "external", label: "Existing Connections broker" },
+    ],
+    current.mode === "disabled" ? "local" : current.mode,
+  );
+  if (mode === "external") {
+    const brokerUrl = await field(
+      ui,
+      "Connections broker URL",
+      connectionsBrokerUrlSchema,
+      current.mode === "external" ? current.brokerUrl : undefined,
+    );
     return {
       mode,
-      brokerUrl: await field(
-        ui,
-        "Connections broker URL",
-        connectionsBrokerUrlSchema,
-        current.mode === "external" ? current.brokerUrl : undefined,
-      ),
-      credentialFile: await secretInput(
-        ui,
-        inputs,
-        "Scoped broker key",
-        "broker-key",
-        current.mode === "external" ? current.credentialFile : undefined,
-      ),
+      brokerUrl,
+      credentialFile:
+        current.mode === "external" && current.brokerUrl === brokerUrl
+          ? current.credentialFile
+          : "",
       ...(await optionalCa(
         ui,
         current.mode === "external" ? current.caFile : undefined,
       )),
     };
-  if (mode !== "local")
+  }
+  if (!catalogDirectory && current.mode !== "local")
     throw new InstallationError(
-      "invalid_configuration",
-      "Select a supported Connections mode.",
+      "unavailable",
+      "This release does not include the Connections catalog. Choose a release with Connections, or use an existing broker.",
     );
+  const projectId = await ui.text(
+    "Composio project ID",
+    current.mode === "local" ? current.projectId : undefined,
+  );
   return {
-    mode,
-    projectId: await ui.text(
-      "Composio project ID",
-      current.mode === "local" ? current.projectId : undefined,
-    ),
-    apiKeyFile: await secretInput(
-      ui,
-      inputs,
-      "Composio project key",
-      "connections-key",
-      current.mode === "local" ? current.apiKeyFile : undefined,
-    ),
-    catalogDirectory: absolute(
-      await ui.text(
-        "Prepared connector catalog directory",
-        current.mode === "local" ? current.catalogDirectory : undefined,
-      ),
-    ),
+    mode: "local",
+    projectId,
+    apiKeyFile:
+      current.mode === "local" && current.projectId === projectId
+        ? current.apiKeyFile
+        : "",
+    catalogDirectory:
+      catalogDirectory ??
+      (current.mode === "local" ? current.catalogDirectory : ""),
   };
+}
+
+export async function collectConnectionCredentials(
+  ui: InstallerPrompts,
+  current: InstallationConfiguration["connections"],
+  inputs: SetupInputs,
+) {
+  if (current.mode === "disabled") return current;
+  if (current.mode === "local")
+    return current.apiKeyFile
+      ? current
+      : {
+          ...current,
+          apiKeyFile: await secretInput(
+            ui,
+            inputs,
+            `Composio project key (${current.projectId})`,
+            "connections-key",
+          ),
+        };
+  return current.credentialFile
+    ? current
+    : {
+        ...current,
+        credentialFile: await secretInput(
+          ui,
+          inputs,
+          "Connections broker key",
+          "broker-key",
+        ),
+      };
 }

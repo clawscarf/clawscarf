@@ -1,7 +1,7 @@
 import { lstat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import type { z } from "zod";
+import { ZodError, type z } from "zod";
 import type { InstallerPrompts } from "./prompts.js";
 import { readInputFile } from "../files.js";
 import { InstallationError } from "../errors.js";
@@ -31,13 +31,8 @@ export async function field(
   initial?: string,
 ) {
   const value = await ui.text(message, initial, (input) => {
-    try {
-      const result = schema.safeParse(input);
-      return result.success ? undefined : result.error.issues[0]?.message;
-    } catch {
-      // Some existing refinements parse URLs; invalid input must stay in the prompt.
-      return "Enter a valid value.";
-    }
+    const result = schema.safeParse(input);
+    return result.success ? undefined : result.error.issues[0]?.message;
   });
   return schema.parse(value);
 }
@@ -51,7 +46,8 @@ export async function inputFile(
     if (!input.trim()) return "Enter a file path.";
     try {
       await readInputFile(absolute(input), secret);
-    } catch {
+    } catch (error) {
+      if (!inputErrorMessage(error)) throw error;
       return secret
         ? "Use a private regular file owned by you (chmod 600)."
         : "Use an existing regular file (up to 8 MiB).";
@@ -60,4 +56,21 @@ export async function inputFile(
   const path = absolute(value);
   await readInputFile(path, secret);
   return path;
+}
+
+/** Recover only invalid input and file access failures; programming errors must escape. */
+export function inputErrorMessage(error: unknown): string | undefined {
+  if (error instanceof InstallationError) return error.message;
+  if (error instanceof ZodError)
+    return "Check the selected configuration fields and their supported values.";
+  if (
+    error instanceof SyntaxError ||
+    (error instanceof Error &&
+      "code" in error &&
+      ["ENOENT", "EACCES", "EPERM", "ENOTDIR", "EISDIR", "ELOOP"].includes(
+        String(error.code),
+      ))
+  )
+    return "Could not read the selected inputs. Check their paths, contents and permissions.";
+  return undefined;
 }

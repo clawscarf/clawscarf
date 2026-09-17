@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import {
   chmod,
+  cp,
   link,
   mkdir,
   mkdtemp,
@@ -62,6 +63,30 @@ async function fixture() {
     uid,
     gid,
   );
+  // Configuration validation needs the real manifest and an entry file, not mutable
+  // build output. Compiled tool loading is covered by the plugin's native tests.
+  const plugin = join(home, "connection-plugin");
+  await mkdir(plugin);
+  await cp(
+    join(packageDirectory, "openclaw.plugin.json"),
+    join(plugin, "openclaw.plugin.json"),
+  );
+  await cp(join(packageDirectory, "src/index.ts"), join(plugin, "index.ts"));
+  const metadata = z
+    .object({ openclaw: z.looseObject({}) })
+    .loose()
+    .parse(
+      JSON.parse(
+        await readFile(join(packageDirectory, "package.json"), "utf8"),
+      ),
+    );
+  await writeFile(
+    join(plugin, "package.json"),
+    JSON.stringify({
+      ...metadata,
+      openclaw: { ...metadata.openclaw, extensions: ["./index.ts"] },
+    }),
+  );
   return home;
 }
 const nativeCommand: NonNullable<
@@ -87,8 +112,13 @@ const nativeCommand: NonNullable<
       maxBuffer: 64 * 1024,
     },
   );
-  // Run the actual pinned SDK helper, relocating only its installed package path for this fixture.
-  child.child.stdin?.end(JSON.stringify({ ...request, packageDirectory }));
+  // Run the real helper and pinned SDK against this test's stable plugin metadata.
+  child.child.stdin?.end(
+    JSON.stringify({
+      ...request,
+      packageDirectory: join(state, "..", "connection-plugin"),
+    }),
+  );
   const answer = await child;
   return JSON.parse(answer.stdout) as unknown;
 };
@@ -436,4 +466,43 @@ await test("runtime command validates stdin and emits only generic structured fa
     assert.equal(error.stderr, "");
     return true;
   });
+});
+
+await test("explicit capability disable and enable retain scoped credentials and unrelated native policy", async (t) => {
+  const home = await fixture();
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const configured = await configureRuntimeConnections(
+    home,
+    { ...input, kind: "configure", enable: true, credential: { token } },
+    nativeCommand,
+  );
+  assert.ok(configured.state === "configured" && configured.enabled);
+  const credential = await loadConnectionsCredential(join(home, ".openclaw"));
+  const disabled = await configureRuntimeConnections(
+    home,
+    { ...input, kind: "disable" },
+    nativeCommand,
+  );
+  assert.ok(disabled.state !== "not_installed" && !disabled.enabled);
+  assert.deepEqual(
+    await loadConnectionsCredential(join(home, ".openclaw")),
+    credential,
+  );
+  const restored = await configureRuntimeConnections(
+    home,
+    { ...input, kind: "configure", enable: true, credential: { token } },
+    nativeCommand,
+  );
+  assert.ok(
+    restored.state === "configured" &&
+      restored.enabled &&
+      restored.credentialMatches,
+  );
+  const native = z
+    .object({ browser: z.unknown(), tools: z.unknown() })
+    .parse(
+      JSON.parse(await readFile(join(home, ".openclaw/openclaw.json"), "utf8")),
+    );
+  assert.deepEqual(native.browser, nativeInitial.browser);
+  assert.deepEqual(native.tools, nativeInitial.tools);
 });

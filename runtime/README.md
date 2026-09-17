@@ -81,7 +81,9 @@ file is replaced atomically; the file changes and native mutation are not one
 transaction. A failure after delivery begins reports an incomplete outcome and
 retains material for explicit inspection or reapplication. Successful configuration
 requires matching native settings and reread credential bytes, while preserving
-explicit plugin disablement. Observation requires a read-only home mount and never
+explicit plugin disablement unless the installation editor explicitly enables it.
+The same helper can disable the plugin while retaining its credentials and unrelated
+configuration. Observation requires a read-only home mount and never
 repairs retained material. The [runtime regression](../tests/runtime/configure-connections.test.ts)
 uses the actual pinned SDK and verifies configured observation without SQLite
 sidecars or filesystem changes, source-file hashes, retained disablement and refusal

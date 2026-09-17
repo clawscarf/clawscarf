@@ -1,6 +1,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -8,6 +16,8 @@ import { writeRuntimePackage } from "./runtime-package.js";
 
 const execute = promisify(execFile);
 const assets = [
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.md",
   "generated/http/LICENSE.md",
   "scripts/local/upgrade-rpc.py",
   "scripts/packs/transport.py",
@@ -16,7 +26,9 @@ const assets = [
   "services/access/migrations",
   "services/connections/migrations",
   "release/components.json",
+  "release/README.md",
   "deploy/recipes",
+  "deploy/models/catalog.json",
   "deploy/openshell/policy.yaml",
   "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",
@@ -41,6 +53,7 @@ const payload = [
   "scripts/installation",
   "scripts/release/create.js",
   "scripts/release/definition.js",
+  "scripts/release/packs.js",
   "scripts/controller.js",
   "scripts/local",
   "scripts/models",
@@ -95,7 +108,8 @@ export async function packageOperator(root: string, destination: string) {
         "services/connections/credential-command.js",
       ],
       {
-        name: "clawscarf-operator",
+        name: "@clawscarf/cli",
+        bin: { clawscarf: "scripts/clawscarf.js" },
         scripts: {
           clawscarf: "node scripts/clawscarf.js",
           controller: "node scripts/controller.js",
@@ -104,8 +118,7 @@ export async function packageOperator(root: string, destination: string) {
         },
       },
     );
-    for (const path of ["LICENSE", "THIRD_PARTY_NOTICES.md"])
-      await cp(join(root, path), join(stage, path));
+    await chmod(join(stage, "scripts/clawscarf.js"), 0o755);
     await cp(
       join(root, "release/operator.md"),
       join(stage, "release/operator.md"),

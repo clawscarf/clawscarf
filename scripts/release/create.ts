@@ -1,12 +1,25 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import {
+  copyFile,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { releaseSchema } from "./definition.js";
+import { releaseSchema, type Release } from "./definition.js";
+import { openPack } from "../packs/source.js";
+import { verifyReleasePacks } from "./packs.js";
+import { copyConnectorCatalog } from "../../services/connections/providers/catalog/provider.js";
 
 // Build inputs use the release contract, replacing tool digests with source paths.
 const inputSchema = releaseSchema.extend({
+  packs: z.array(z.string().min(1)).max(32).default([]),
   tools: z.strictObject({
     openshell: releaseSchema.shape.tools.shape.openshell.extend({
       cli: z.string().min(1),
@@ -15,37 +28,94 @@ const inputSchema = releaseSchema.extend({
   }),
 });
 
-async function tool(file: string) {
+async function tool(source: string, destination: string, file: string) {
+  const stat = await lstat(source);
+  if (!stat.isFile() || !(stat.mode & 0o111))
+    throw Error("Release tools must be regular executable files.");
+  await copyFile(source, destination);
   const hash = createHash("sha256");
-  for await (const bytes of createReadStream(file)) {
+  for await (const bytes of createReadStream(destination)) {
     if (!Buffer.isBuffer(bytes)) throw Error("Invalid file stream");
     hash.update(bytes);
   }
   return { file, sha256: hash.digest("hex") };
 }
 
-/** Build release metadata from explicit, already-built component inputs. */
+/** Assemble portable payloads from explicit, already-built inputs. Never mutate sources. */
 export async function createDevelopmentRelease(options: {
   inputFile: string;
-  outputFile: string;
+  outputDirectory: string;
 }) {
   const input = inputSchema.parse(
     JSON.parse(await readFile(options.inputFile, "utf8")),
   );
   const directory = dirname(resolve(options.inputFile));
-  const release = releaseSchema.parse({
-    ...input,
-    tools: {
-      openshell: {
-        ...input.tools.openshell,
-        cli: await tool(resolve(directory, input.tools.openshell.cli)),
-        gateway: await tool(resolve(directory, input.tools.openshell.gateway)),
+  const bundledCatalog: unknown = JSON.parse(
+    await readFile(
+      fileURLToPath(
+        new URL("../../deploy/models/catalog.json", import.meta.url),
+      ),
+      "utf8",
+    ),
+  );
+  const output = resolve(options.outputDirectory);
+  await mkdir(output); // Refuse to merge with an existing bundle.
+  try {
+    for (const name of ["LICENSE", "THIRD_PARTY_NOTICES.md"])
+      await copyFile(
+        fileURLToPath(new URL(`../../${name}`, import.meta.url)),
+        join(output, name),
+      );
+    await mkdir(join(output, "tools"));
+    const packs: Release["packs"] = [];
+    for (const source of input.packs) {
+      const pack = await openPack(resolve(directory, source));
+      if (packs.some((entry) => entry.id === pack.manifest.id))
+        throw Error(`Duplicate release pack: ${pack.manifest.id}`);
+      await cp(pack.root, join(output, "packs", pack.manifest.id), {
+        recursive: true,
+      });
+      packs.push({ id: pack.manifest.id, digest: pack.digest });
+    }
+    if (input.connectorCatalogDirectory)
+      await copyConnectorCatalog(
+        resolve(directory, input.connectorCatalogDirectory),
+        join(output, "connectors"),
+      );
+    const release = releaseSchema.parse({
+      ...input,
+      packs,
+      modelCatalog: input.modelCatalog ?? bundledCatalog,
+      ...(input.connectorCatalogDirectory
+        ? {
+            connectorCatalogDirectory: "connectors",
+          }
+        : {}),
+      tools: {
+        openshell: {
+          ...input.tools.openshell,
+          cli: await tool(
+            resolve(directory, input.tools.openshell.cli),
+            join(output, "tools/openshell"),
+            "tools/openshell",
+          ),
+          gateway: await tool(
+            resolve(directory, input.tools.openshell.gateway),
+            join(output, "tools/openshell-gateway"),
+            "tools/openshell-gateway",
+          ),
+        },
       },
-    },
-  });
-  await writeFile(options.outputFile, JSON.stringify(release, null, 2) + "\n", {
-    flag: "wx",
-    mode: 0o600,
-  });
-  return release;
+    });
+    const releaseFile = join(output, "clawscarf-release.json");
+    await verifyReleasePacks(release, releaseFile);
+    await writeFile(releaseFile, JSON.stringify(release, null, 2) + "\n", {
+      flag: "wx",
+      mode: 0o600,
+    });
+    return release;
+  } catch (error) {
+    await rm(output, { recursive: true, force: true });
+    throw error;
+  }
 }

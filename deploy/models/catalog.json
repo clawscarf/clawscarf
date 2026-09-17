@@ -1,0 +1,272 @@
+[
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-astra",
+      "name": "OpenAI: GPT-6 Astra",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/openai/gpt-6-astra",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenAI",
+    "model": {
+      "id": "gpt-6-astra",
+      "name": "OpenAI: GPT-6 Astra",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openai/gpt-6-astra",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-terra",
+      "name": "OpenAI: GPT-5.6 Terra",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-terra",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenAI",
+    "model": {
+      "id": "gpt-5.6-terra",
+      "name": "OpenAI: GPT-5.6 Terra",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openai/gpt-5.6-terra",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-luna",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenAI",
+    "model": {
+      "id": "gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "enabled": true,
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openai/gpt-5.6-luna",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-fable-5.1",
+      "name": "Anthropic: Claude Fable 5.1",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/anthropic/claude-fable-5.1",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "Anthropic",
+    "model": {
+      "id": "claude-fable-5.1",
+      "name": "Anthropic: Claude Fable 5.1",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "anthropic/claude-fable-5.1",
+        "apiKeyEnv": "ANTHROPIC_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-5",
+      "name": "Claude Opus 5",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "Anthropic",
+    "model": {
+      "id": "claude-opus-5",
+      "name": "Claude Opus 5",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "anthropic/claude-opus-5",
+        "apiKeyEnv": "ANTHROPIC_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-sonnet-5",
+      "name": "Anthropic: Claude Sonnet 5",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/anthropic/claude-sonnet-5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "Anthropic",
+    "model": {
+      "id": "claude-sonnet-5",
+      "name": "Anthropic: Claude Sonnet 5",
+      "enabled": true,
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "anthropic/claude-sonnet-5",
+        "apiKeyEnv": "ANTHROPIC_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gemini-3.8-flash",
+      "name": "Google: Gemini 3.8 Flash",
+      "enabled": true,
+      "contextWindow": 1048576,
+      "maxTokens": 65536,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/google/gemini-3.8-flash",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "Google AI Studio",
+    "model": {
+      "id": "gemini-3.8-flash",
+      "name": "Google: Gemini 3.8 Flash",
+      "enabled": true,
+      "contextWindow": 1048576,
+      "maxTokens": 65536,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "gemini/gemini-3.8-flash",
+        "apiKeyEnv": "GEMINI_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "kimi-k3",
+      "name": "MoonshotAI: Kimi K3",
+      "enabled": true,
+      "contextWindow": 1048576,
+      "maxTokens": 943718,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "route": {
+        "model": "openrouter/moonshotai/kimi-k3",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "high"]
+  }
+]

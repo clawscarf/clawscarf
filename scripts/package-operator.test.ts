@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { packageOperator } from "./release/operator.js";
+import { postgresImage } from "./local/images.js";
 
 const execute = promisify(execFile);
 await test(
@@ -74,6 +75,12 @@ await test(
       manifest && typeof manifest === "object" && "dependencies" in manifest,
     );
     assert.ok(!("devDependencies" in manifest));
+    assert.ok("bin" in manifest);
+    assert.deepEqual(manifest.bin, { clawscarf: "scripts/clawscarf.js" });
+    assert.match(
+      await readFile(join(cwd, "scripts/clawscarf.js"), "utf8"),
+      /^#!\/usr\/bin\/env node\n/,
+    );
     assert.ok(!JSON.stringify(manifest).includes('"react"'));
     assert.ok(!JSON.stringify(manifest).includes('"typescript"'));
     for (const path of [
@@ -105,6 +112,51 @@ await test(
       );
       assert.match(stdout, /Usage:/);
     }
+    const { stdout: executableHelp } = await execute(
+      "./scripts/clawscarf.js",
+      ["--help"],
+      { cwd },
+    );
+    assert.match(executableHelp, /Usage:/);
+    const buildInput = join(directory, "components.json");
+    const fixtureTool = join(directory, "tool");
+    await writeFile(fixtureTool, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    await writeFile(
+      buildInput,
+      JSON.stringify({
+        schemaVersion: 1,
+        version: "0.1.0-dev",
+        sourceRevision: "a".repeat(40),
+        platforms: ["darwin-arm64"],
+        recipes: [],
+        images: {
+          postgres: postgresImage,
+          ...Object.fromEntries(
+            ["gateway", "worker", "companion", "relay"].map((name) => [
+              name,
+              "sha256:" + "a".repeat(64),
+            ]),
+          ),
+        },
+        tools: {
+          openshell: {
+            version: "0.0.116",
+            cli: fixtureTool,
+            gateway: fixtureTool,
+          },
+        },
+      }),
+    );
+    const bundle = join(directory, "release");
+    await execute(
+      "./scripts/clawscarf.js",
+      ["release-create", "--input", buildInput, "--output", bundle],
+      { cwd },
+    );
+    assert.match(
+      await readFile(join(bundle, "clawscarf-release.json"), "utf8"),
+      /tools\/openshell/,
+    );
     for (const args of [
       ["scripts/clawscarf.js", "install", "--help"],
       ["scripts/clawscarf.js", "packs", "--help"],

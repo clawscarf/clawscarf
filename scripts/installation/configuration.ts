@@ -52,8 +52,8 @@ export const installationSchema = z
         issuer: z.url(),
         clientId: z.string().min(1),
         clientSecretFile: path,
-        administratorSubject: z.string().min(1),
-        administratorEmail: z.email(),
+        administratorSubject: z.string().min(1).optional(),
+        administratorEmail: z.email().optional(),
       }),
     ]),
     resources: z.strictObject({ gateway: resources, worker: resources }),
@@ -94,11 +94,21 @@ export const installationSchema = z
       .max(32),
   })
   .superRefine((value, context) => {
-    if (Boolean(value.packOperator) !== value.packs.length > 0)
+    if (
+      value.access.mode === "oidc" &&
+      Boolean(value.access.administratorSubject) !==
+        Boolean(value.access.administratorEmail)
+    )
       context.addIssue({
         code: "custom",
         message:
-          "Selected packs require a Python OpenShell SDK and explicit experimental Claws acknowledgement; omit packOperator when none are selected.",
+          "Supply both administrator subject and email, or omit both to claim the server after login.",
+      });
+    if (value.packs.length > 0 && !value.packOperator)
+      context.addIssue({
+        code: "custom",
+        message:
+          "Selected packs require a Python OpenShell SDK and explicit experimental Claws acknowledgement.",
       });
     if ((value.access.mode === "local") !== (value.exposure.mode === "local"))
       context.addIssue({

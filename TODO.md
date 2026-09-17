@@ -1,8 +1,29 @@
-# Remaining work
+# TODO
 
-Select one slice at a time. This checklist does not authorize automatic continuation.
-Current configuration and limits are in
-[README.md](README.md#installation-management-direction).
+Open work only. Select a task before implementing; this list does not authorize continuation.
+
+## Installer and releases
+
+- [ ] Fix native pack removal when an attached automation requires Gateway authentication
+      under trusted-proxy login; verify removal on a retained installation without bypassing ownership checks.
+- [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
+      a distributable connector catalog and platform archives with checksums/license notices.
+      Keep recipes and packs together as defined in the [release guide](release/README.md).
+- [ ] Download and verify the CLI's matching release bundle; retain it and the operator
+      outside npm's temporary cache. Pin installations; never resolve latest during startup.
+- [ ] Test a complete release on a clean supported machine through administrator login
+      and a real model response, then publish the matching npm CLI, GitHub assets and GHCR images.
+
+## Native application management — separate from installation
+
+- [ ] Build People using OpenClaw's native plugin UI: copyable invitations (no SMTP),
+      admission, native role assignment, administrator handover and explicit removal.
+      Include authenticated CLI operations and two-person login/open-session revocation tests;
+      ordinary OIDC login grants no admission, and removal must leave team files/automations intact.
+- [ ] Build optional Connections using OpenClaw's native plugin UI and authenticated CLI:
+      account linking, callbacks, reconnect/disconnect and agent grants. Verify real account OAuth
+      and a tool call; disabled installations expose no Connections UI/tools. Keep enforcement
+      in the external backend; do not add account linking to the installer.
 
 ## Upgrade decision
 
@@ -24,46 +45,22 @@ Current configuration and limits are in
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
-## Installation backlog — select before implementation
-
-- [ ] **Finish retained-install capability changes.** Initial models, Connections
-      and pack selections are wired. Add reviewed capability change/reapply operations
-      to the unified installation CLI: model routes/keys, broker settings/keys,
-      enable/disable and pack selection changes. Reuse the existing component operators;
-      preserve native edits, revoked credentials and uncertain outcomes. Current
-      preparation rejects changed inputs rather than silently applying them.
-- [ ] Finish the development build-to-release command and published release selection
-      (latest stable by default, explicit version override); no test-directory inputs
-      or developer-source selection in the interactive menu.
-- [ ] **Verify and publish the supported release.** Build exact images and operator;
-      generate the release file, verify it on a fresh installation, then publish downloads,
-      checksums/notices to GitHub Releases and images to GHCR. Report qualified platforms
-      and capability limits; the owner-managed browser issue is not an automatic task.
-      Published artifacts must not claim unverified Linux/WSL or team journeys.
-- [ ] Implement the selected private, expiring, one-use first-administrator setup link
-      for OIDC: authenticate its holder, atomically bind the identity and verify native
-      authority. Preserve explicit subject bootstrap for unattended configuration.
-- [ ] Develop and qualify the illustrative Team documents recipe separately. Intended
-      default route: OpenRouter GPT-6 Astra / medium; verify live inference and decide packs and
-      whether Connections belongs in it. Do not turn the example into an automatic task.
-
-## Separate decisions and integrations
+## Bugs to investigate
 
 - [ ] Investigate the intermittent POSIX [process-group cleanup test](tests/local/supervisor.test.ts)
       failure under the parallel suite; isolated tests pass.
       Preserve structured signal failure diagnostics before changing cleanup timing.
-- [ ] Decide ongoing People enrollment UX (admission requests or invite links); qualify
-      two-person login and revocation. Connections account OAuth guidance through the
-      installer is separate future work; Connections currently defaults to disabled.
-- [ ] Define and qualify generic external ingress and directory-backed storage for hosting
-      consumers. Consumer implementation belongs in its own repository.
 
 ## Future decisions
 
-- [ ] Select Lobster, Codex and additional packs individually; preserve vanilla
-      ClawHub discovery until curation is explicitly selected and supported upstream.
+- [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
+      choose packs/Connections explicitly rather than treating the example as a finished product.
+- [ ] Select Lobster, Codex or other optional packs individually. Preserve vanilla ClawHub
+      discovery unless a supported curation approach is explicitly selected.
 - [ ] Decide independent Connections deployment/authentication/storage if needed;
       the current optional service shares the Access companion process and public ports.
+- [ ] Make ClawScarf easier to embed into a hosting product: define and qualify generic external
+      ingress and directory-backed storage for hosting products built on top.
 - [ ] Qualify Linux/WSL, changed-upstream-version upgrades and external hosting
       adoption, including persistent mounts, UID mapping, external identity/model/broker
       ownership, source-bound authorization and revocation.

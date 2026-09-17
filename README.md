@@ -3,7 +3,7 @@
 **OpenClaw for your team. On your terms.**
 
 ClawScarf packages vanilla [OpenClaw](https://github.com/openclaw/openclaw) with
-protected team login, isolated execution, LiteLLM models and optional Connections, and
+protected team login, isolated execution, LiteLLM models, optional Connections and
 reusable agent packs. Run it on infrastructure you control.
 
 > **Developer preview.** Local login, model/tool use and retained-state restart
@@ -51,6 +51,8 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 - Local administrator model responses and file tools passed. Native administrator
   and member execution passed through the separate worker, including administrative
   denial and forbidden network targets.
+- Fresh installer setup passed normal Docker networking, persistent startup, private
+  administrator claim through Dex and a real GPT-6 Astra browser response.
 - The assembled team profile passed local Dex browser login, enrollment, handover,
   revocation, bookmarks, widgets and hooks. Public deployment and release-artifact
   acceptance remain unqualified.
@@ -70,17 +72,22 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 [TODO.md](TODO.md) contains only open work and future decisions. Lobster and other
 optional capabilities are not release requirements. Vanilla ClawHub discovery stays.
 
-## Installation management direction
+## Installation management
 
 The [installation CLI](deploy/local/installation.md) is the public configuration and
 lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
 defaults for that document. The [component guide](deploy/local/README.md) covers internal
 developer operations; it is not a second supported installation format.
-[Installation and management design](docs/installation-interface.md) describes the
-recipe/settings menu, credentials, administrator and account browser setup, later CLI
-management, release packaging and implementation order. It distinguishes agreed direction,
-open decisions and current gaps. [TODO.md](TODO.md) owns task selection; the design does
-not authorize more work.
+The menu reviews settings before credentials, starts persistently on macOS when selected, and provides
+the private OIDC administrator claim. The `settings` editor and matching plan/apply
+commands change retained models, Connections and pack selections; the installation
+guide records the native pack-removal limitation. [Release bundles](release/README.md)
+copy tools, catalogs and recipe-selected packs into a movable directory. npm/GitHub/GHCR
+publication and automatic download remain unfinished.
+People management belongs to a mandatory OpenClaw UI plugin; account
+linking belongs to the optional Connections plugin, backed by the external companion
+services. Those native management pages are planned; current navigation opens companion
+pages. [TODO.md](TODO.md) is the only task checklist, including that deferred work.
 
 The unified product design fixes OpenShell Gateway protection, a separate protected
 shared worker and authenticated entry/admission/revocation. Recipes vary deployment
@@ -91,7 +98,6 @@ access remains a proposed verified delegation, never anonymous entry.
 OpenClaw retains its mutable application state. Applying selected installation
 settings must preserve unrelated native edits. External hosting must supply its own
 entry/admission, models and broker without a second login or fleet database.
-[TODO.md](TODO.md) owns unfinished work; the design does not authorize later slices.
 
 ## Code tour
 

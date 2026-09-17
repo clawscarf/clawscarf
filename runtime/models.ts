@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { isDeepStrictEqual } from "node:util";
 import { randomUUID } from "node:crypto";
 import {
   mkdir,
@@ -8,7 +9,8 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { privateDirectory, readPrivateFile } from "./private-files.js";
 import {
   modelInputSchema,
   ModelConfigurationError,
@@ -19,6 +21,62 @@ const execute = promisify(execFile);
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+function at(value: unknown, path: string): unknown {
+  for (const part of path.split("."))
+    value = record(value) ? value[part] : undefined;
+  return value;
+}
+async function alreadyConfigured(input: ModelInput, stateDirectory: string) {
+  const native: unknown = JSON.parse(
+    await readFile(join(stateDirectory, "openclaw.json"), "utf8"),
+  );
+  const source = at(native, "secrets.providers.clawscarf-models");
+  if (
+    !record(source) ||
+    source.source !== "file" ||
+    source.mode !== "json" ||
+    typeof source.path !== "string" ||
+    dirname(source.path) !== join(stateDirectory, "clawscarf-models")
+  )
+    return false;
+  let credential: unknown;
+  let ca: string | null = null;
+  await privateDirectory(join(stateDirectory, "clawscarf-models"));
+  try {
+    credential = JSON.parse(
+      (await readPrivateFile(source.path)).toString("utf8"),
+    );
+    ca = (
+      await readPrivateFile(join(stateDirectory, "clawscarf-models/ca.pem"))
+    ).toString("utf8");
+  } catch (error) {
+    if (!record(error) || error.code !== "ENOENT") throw error;
+  }
+  if (
+    !record(credential) ||
+    credential.token !== input.token ||
+    (credential.ca ?? null) !== input.ca ||
+    ca !== input.ca
+  )
+    return false;
+  return input.assignments.every((assignment) => {
+    if (assignment.path === "secrets.providers.clawscarf-models") return true;
+    const expected =
+      assignment.path === "models.providers.clawscarf"
+        ? {
+            ...assignment.value,
+            apiKey: {
+              source: "file",
+              provider: "clawscarf-models",
+              id: "/token",
+            },
+          }
+        : assignment.value;
+    return isDeepStrictEqual(at(native, assignment.path), expected);
+  });
+}
+
 export function parseInput(value: unknown): ModelInput {
   const result = modelInputSchema.safeParse(value);
   if (!result.success) throw new ModelConfigurationError("invalid_input");
@@ -33,6 +91,8 @@ export async function configure(
   let dispatched = false;
   let invoked = false;
   try {
+    if (await alreadyConfigured(input, options.stateDirectory))
+      return input.apply ? "configured" : "validated";
     const directory = join(options.stateDirectory, "clawscarf-models");
     await mkdir(directory, { recursive: true, mode: 0o700 });
     const stat = await lstat(directory);
