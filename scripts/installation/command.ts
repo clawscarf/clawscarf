@@ -1,3 +1,4 @@
+import { connectionCommands } from "../connections.js";
 import { peopleCommand } from "../people.js";
 import { confirmDeletion, deleteInstallation } from "./delete.js";
 import { writeResult } from "../output.js";
@@ -327,6 +328,7 @@ export function installationCommand() {
     .description(
       "Observe or explicitly configure the stopped native Connections integration",
     );
+  connectionCommands(connections, program);
   withLocation(connections.command("observe")).action(
     async (options: LocationOptions) => {
       output(

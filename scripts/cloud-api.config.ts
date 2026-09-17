@@ -1,8 +1,8 @@
 import { defineConfig } from "@hey-api/openapi-ts";
 export default defineConfig({
-  input: "scripts/cloud/openapi.json",
+  input: "services/cloud/openapi.json",
   output: {
-    path: "scripts/cloud/generated",
+    path: "services/cloud/generated",
     postProcess: ["prettier"],
     module: {
       resolve: (path) =>

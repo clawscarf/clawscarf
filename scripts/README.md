@@ -147,7 +147,7 @@ noninteractive plan/apply commands share the same operations. See the
 [installation guide](../deploy/deployment/installation.md#change-an-existing-installation)
 for supported changes, persistence and failure handling.
 
-The [cloud API snapshot](cloud/openapi.json) comes from clawscarf-cloud’s API contract
+The [cloud API snapshot](../services/cloud/openapi.json) comes from clawscarf-cloud’s API contract
 at commit `154387c`.
 After an upstream contract change, replace the snapshot and run `pnpm cloud:generate`;
 `codegen:check` verifies the generated consumer. It shares the existing HTTP transport.

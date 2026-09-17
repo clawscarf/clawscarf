@@ -92,3 +92,10 @@ The OpenShell forwarding image packages Alpine Linux, OpenSSH and lsof through A
 package manager, plus the checksum-verified upstream OpenShell 0.0.116 Linux CLI.
 Package license metadata is retained in the image. OpenShell is Apache-2.0;
 see [upstream license](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/LICENSE).
+
+## Connector logos
+
+The Connections UI includes logos from the catalog’s `logos.composio.dev` URLs,
+packaged as image assets. These identify the respective services; their trademarks
+remain owned by their respective owners. The refresh script retains each source URL
+in the [packaged icons](plugins/connections/assets/icons.json).

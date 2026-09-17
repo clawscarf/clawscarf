@@ -1,10 +1,10 @@
-# Generated from services/connections/openapi.json; do not edit.
+# Generated from services/cloud/openapi.json; do not edit.
 openapi: 3.1.0
 info:
   title: ClawScarf Connections broker runtime API
-  version: 0.1.0
+  version: 0.0.0
 paths:
-  /v1/connector-runtime/search:
+  /connector-runtime/search:
     post:
       operationId: searchConnectorRuntime
       summary: Connector search
@@ -15,7 +15,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       parameters: []
       requestBody:
         required: true
@@ -52,7 +52,7 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/Unavailable"
-  /v1/connector-runtime/describe:
+  /connector-runtime/describe:
     post:
       operationId: describeConnectorRuntime
       summary: Connector describe
@@ -63,7 +63,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       parameters: []
       requestBody:
         required: true
@@ -100,7 +100,7 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/Unavailable"
-  /v1/connector-runtime/call:
+  /connector-runtime/call:
     post:
       operationId: callConnectorRuntime
       summary: Connector call
@@ -116,7 +116,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       parameters: []
       requestBody:
         required: true
@@ -153,7 +153,7 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/Unavailable"
-  /v1/connector-runtime/invocations/{invocationId}:
+  /connector-runtime/invocations/{invocationId}:
     get:
       operationId: getConnectorRuntimeInvocation
       summary: Recover an invocation result
@@ -165,7 +165,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       parameters:
         - name: agentId
           in: query
@@ -205,7 +205,7 @@ paths:
           $ref: "#/components/responses/Unavailable"
     parameters:
       - $ref: "#/components/parameters/ConnectionInvocationId"
-  /v1/connector-runtime/invocations/{invocationId}/result:
+  /connector-runtime/invocations/{invocationId}/result:
     get:
       operationId: getConnectorRuntimeResultPage
       summary: Read a bounded page of retained result JSON
@@ -217,7 +217,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       parameters:
         - name: agentId
           in: query
@@ -264,7 +264,7 @@ paths:
           $ref: "#/components/responses/Unavailable"
     parameters:
       - $ref: "#/components/parameters/ConnectionInvocationId"
-  /v1/connector-runtime/invocations/lookup:
+  /connector-runtime/invocations/lookup:
     post:
       operationId: lookupConnectorRuntimeInvocation
       summary: Find a receipt from its original native call identity
@@ -276,7 +276,7 @@ paths:
       tags:
         - Connector runtime
       security:
-        - ConnectorRuntime: []
+        - InstallationRuntime: []
       requestBody:
         required: true
         content:
@@ -314,9 +314,10 @@ paths:
           $ref: "#/components/responses/Unavailable"
 components:
   securitySchemes:
-    ConnectorRuntime:
+    InstallationRuntime:
       type: http
       scheme: bearer
+      description: Revocable runtime credential scoped to one installation.
   schemas:
     ConnectorRuntimeSearch:
       type: object
@@ -478,13 +479,8 @@ components:
           type: string
           enum:
             - no_usable_connections
-        connectionsUrl:
-          type: string
-          format: uri
-          maxLength: 2048
       required:
         - code
-        - connectionsUrl
     Problem:
       type: object
       additionalProperties: false
@@ -493,26 +489,49 @@ components:
         - title
         - status
         - code
-        - detail
+        - requestId
       properties:
         type:
           type: string
-          const: about:blank
         title:
           type: string
         status:
           type: integer
-          minimum: 400
-          maximum: 599
         code:
           type: string
-          description: Stable machine-readable code; clients tolerate additional codes.
-        detail:
-          type: string
-          description: Safe explanation without raw provider diagnostics or secrets.
         requestId:
           type: string
-          description: Request correlation ID for operator diagnostics.
+        quota:
+          type: object
+          additionalProperties: false
+          properties:
+            scope:
+              type: string
+              enum:
+                - account
+                - installation
+                - backend
+            unit:
+              type: string
+              enum:
+                - executions
+                - requests
+                - installations
+            limit:
+              type: integer
+              minimum: 0
+            resetsAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+          required:
+            - scope
+            - unit
+            - limit
+            - resetsAt
+        detail:
+          type: string
         retry:
           $ref: "#/components/schemas/RetryGuidance"
     RetryGuidance:

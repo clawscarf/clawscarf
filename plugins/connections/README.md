@@ -1,7 +1,26 @@
 # Connections for ClawScarf
 
 A native OpenClaw plugin for accounts managed by a compatible Connections broker.
-It exposes only `connections_search`, `connections_describe` and `connections_call`.
+It exposes `connections_search`, `connections_describe` and `connections_call`,
+and a native **Connections** page for OpenClaw administrators. The page uses the
+installation's Access session through a small management adapter; provider keys,
+account records and quota enforcement stay in the cloud broker. Members have no
+management navigation, and the backend independently checks native authority.
+
+The page supports catalog search, linking/reconnecting, cancellation, editing names
+and agent grants, disconnecting/removing inactive entries, and usage. It retains
+visible data during refresh and shows loading and errors in the affected content.
+Catalog icons are packaged as data images to respect OpenClaw's content security
+policy; the browser never contacts a logo provider. Refresh these release assets with
+`node plugins/connections/scripts/refresh-icons.mjs` after changing the catalog.
+Connectors added independently by a broker remain usable without a packaged icon.
+The same operations are available through `clawscarf connections`; see the
+[CLI guide](../../deploy/deployment/installation.md#connections).
+
+The installer still uses its previous broker choices. Wiring the cloud adapter
+into recipes and removing the previous local page/broker is tracked separately
+in [TODO](../../TODO.md). Actual external-account consent and execution remain
+unverified; native-page packaging and authorization are tested independently.
 The bundled [skill](skills/connections/SKILL.md) explains exact account selection,
 advisory provider schemas, saved results and uncertain outcomes.
 
@@ -19,7 +38,7 @@ flow, then configure `plugins.entries.clawscarf-connections`:
 {
   "enabled": true,
   "config": {
-    "brokerUrl": "https://connections.example.com",
+    "brokerUrl": "https://connections.example.com/api/connections",
     "credential": {
       "source": "env",
       "provider": "default",
@@ -32,7 +51,7 @@ flow, then configure `plugins.entries.clawscarf-connections`:
 Supply that limited server credential to the runtime through its secret environment;
 never bake it into an image. The native SecretRef resolver supplies the string to
 the plugin. `brokerUrl` preserves an optional path prefix, such as
-`https://host.example/_clawscarf/connections`; query strings, fragments and URL
+`https://host.example/_clawscarf/connections/v1`; query strings, fragments and URL
 credentials are rejected. HTTPS is required except for loopback development endpoints. The
 OpenShell deployment must explicitly permit the selected broker destination.
 
@@ -71,7 +90,7 @@ npm run artifact
 ```
 
 OpenClaw **2026.9.4** is the exact development and peer SDK candidate. The generated
-client uses Hey API. [The service contract](../../services/connections/openapi.json)
+client uses Hey API. [The cloud contract](../../services/cloud/openapi.json)
 is the source: `npm run api:generate` derives [the portable contract](openapi/broker.yaml) from its runtime
 security declarations and referenced components, then generates `generated/`.
 Run generation from this source checkout and commit both artifacts. Building and
@@ -100,7 +119,7 @@ Source, skill, configuration helper and tests are extracted from RawClaw
 [`f37a6e786fdd88857c21bd32140567874e281a8c`](https://github.com/raw-labs/rawclaw/tree/f37a6e786fdd88857c21bd32140567874e281a8c/plugins/connections).
 The original broker contract was extracted from that revision's
 [control-plane contract](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/openapi/control-plane.yaml).
-The current artifact is derived from ClawScarf's service contract. REST paths, account generations,
+The current artifact is derived from ClawScarf Cloud's contract. REST paths, account generations,
 receipt semantics and native context are retained. Package/plugin identifiers and
 the default credential environment variable use ClawScarf names.
 

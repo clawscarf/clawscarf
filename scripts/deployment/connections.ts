@@ -239,7 +239,7 @@ export async function prepareInitialConnections(
     loaded.mode === "external"
       ? loaded.endpoint
       : endpoint(
-          managementOrigin(state.input),
+          `${managementOrigin(state.input)}/_clawscarf/connections/v1`,
           (
             await readRegular(
               join(directory, "private/management-ca.pem"),
@@ -386,7 +386,7 @@ export async function readInitialConnectionsEndpoint(
       input.mode === "external"
         ? endpoint(input.brokerUrl, retained.ca)
         : endpoint(
-            managementOrigin(state.input),
+            `${managementOrigin(state.input)}/_clawscarf/connections/v1`,
             (
               await readRegular(
                 join(directory, "private/management-ca.pem"),

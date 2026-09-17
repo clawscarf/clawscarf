@@ -51,7 +51,20 @@ function responseFailure(
   status: number | undefined,
   executing: boolean,
   receipt = false,
+  problem?: unknown,
 ): ConnectorFailure {
+  if (problem && typeof problem === "object" && "code" in problem) {
+    if (problem.code === "quota_exhausted")
+      return new ConnectorFailure(
+        "quota_exhausted",
+        "Connection allowance exhausted. An administrator can check Usage on the Connections page.",
+      );
+    if (problem.code === "service_disabled")
+      return new ConnectorFailure(
+        "service_disabled",
+        "Connections are disabled for this installation's allowance.",
+      );
+  }
   if (status === 401 || status === 403)
     return new ConnectorFailure(
       "access_denied",
@@ -107,7 +120,13 @@ export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
           body: requestBody(parameters, context),
           signal: requestSignal(context.signal),
         });
-        if (!result.data) throw responseFailure(result.response?.status, false);
+        if (!result.data)
+          throw responseFailure(
+            result.response?.status,
+            false,
+            false,
+            result.error,
+          );
         return result.data;
       } catch (error: unknown) {
         if (error instanceof ConnectorFailure) throw error;
@@ -124,7 +143,13 @@ export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
           body: requestBody(parameters, context),
           signal: requestSignal(context.signal),
         });
-        if (!result.data) throw responseFailure(result.response?.status, false);
+        if (!result.data)
+          throw responseFailure(
+            result.response?.status,
+            false,
+            false,
+            result.error,
+          );
         return result.data;
       } catch (error: unknown) {
         if (error instanceof ConnectorFailure) throw error;
@@ -147,7 +172,12 @@ export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
             signal: requestSignal(context.signal),
           });
           if (!result.data)
-            throw responseFailure(result.response?.status, false, true);
+            throw responseFailure(
+              result.response?.status,
+              false,
+              true,
+              result.error,
+            );
           return result.data;
         }
         if (parameters.mode === "lookup") {
@@ -160,7 +190,12 @@ export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
             signal: requestSignal(context.signal),
           });
           if (!result.data)
-            throw responseFailure(result.response?.status, false, true);
+            throw responseFailure(
+              result.response?.status,
+              false,
+              true,
+              result.error,
+            );
           return result.data;
         }
         const {
@@ -182,7 +217,13 @@ export function createRestBroker(config: ConnectorConfig): ConnectorBroker {
           body: requestBody(argumentsValue, context),
           signal: requestSignal(context.signal, 40_000),
         });
-        if (!result.data) throw responseFailure(result.response?.status, true);
+        if (!result.data)
+          throw responseFailure(
+            result.response?.status,
+            true,
+            false,
+            result.error,
+          );
         return result.data;
       } catch (error: unknown) {
         if (error instanceof ConnectorFailure) throw error;

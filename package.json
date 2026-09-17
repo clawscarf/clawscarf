@@ -37,7 +37,8 @@
     "companion:start": "node --import tsx apps/companion/entry.ts",
     "clawscarf": "node --import tsx scripts/clawscarf.ts",
     "http:generate": "node --import tsx scripts/generate-http.ts",
-    "cloud:generate": "openapi-ts -f scripts/cloud-api.config.ts"
+    "cloud:generate": "openapi-ts -f scripts/cloud-api.config.ts",
+    "connections:management:generate": "openapi-ts -f scripts/connection-management-api.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

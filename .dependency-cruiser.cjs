@@ -7,7 +7,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(access/(runtime/(composition|config)|types/(native|native-errors))|connections/(composition|runtime/http|providers/catalog/provider|shared/errors|types/(provider|errors)))\\.ts$",
+          "^services/(access/(runtime/(composition|config)|types/(native|native-errors))|connections/(composition|cloud/http|runtime/http|providers/catalog/provider|shared/errors|types/(provider|errors)))\\.ts$",
       },
     },
     {
@@ -27,7 +27,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "^(apps|services|scripts|runtime|plugins)/",
-        pathNot: "^services/[^/]+/web/",
+        pathNot: "^services/[^/]+/web/|^plugins/(access|connections)/src/",
       },
       to: { path: "^ui/" },
     },
@@ -54,7 +54,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/(generated/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
+          "^services/(cloud/generated/|access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/(cloud/generated/|generated/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
       },
     },
     ...["access", "connections"].flatMap((domain) => {
@@ -108,7 +108,7 @@ module.exports = {
       from: { path: "^services/connections/" },
       to: {
         path: "^services/access/",
-        pathNot: "^services/access/(types/native\\.ts$|generated/)",
+        pathNot: "^services/access/(types/(native|errors)\\.ts$|generated/)",
       },
     },
     {
@@ -141,7 +141,8 @@ module.exports = {
       from: { path: "^plugins/" },
       to: {
         path: "^(services|scripts)/",
-        pathNot: "^services/access/generated/",
+        pathNot:
+          "^services/(access/generated/|cloud/generated/|connections/cloud/generated/)",
       },
     },
     {

@@ -32,6 +32,9 @@ export function deriveBrokerContract(source: unknown) {
     prefix.endsWith("/")
   )
     throw new Error("The service contract must declare its broker base path.");
+  const security = contract["x-clawscarf-runtime-security"];
+  if (typeof security !== "string")
+    throw Error("Runtime security scheme is missing.");
   const components = object(contract.components);
   const paths: Record<string, ObjectValue> = {};
   for (const [path, entry] of Object.entries(object(contract.paths))) {
@@ -43,7 +46,7 @@ export function deriveBrokerContract(source: unknown) {
       if (
         !Array.isArray(operation.security) ||
         !operation.security.some((requirement: unknown) =>
-          Object.hasOwn(object(requirement), "ConnectorRuntime"),
+          Object.hasOwn(object(requirement), security),
         )
       )
         continue;
@@ -61,7 +64,7 @@ export function deriveBrokerContract(source: unknown) {
     throw new Error("The service contract has no runtime operations.");
   const selectedComponents: Record<string, ObjectValue> = {
     securitySchemes: {
-      ConnectorRuntime: object(components.securitySchemes).ConnectorRuntime,
+      [security]: object(components.securitySchemes)[security],
     },
   };
   const visited = new Set<string>();
@@ -106,13 +109,13 @@ if (
 ) {
   const source: unknown = JSON.parse(
     await readFile(
-      new URL("../../../services/connections/openapi.json", import.meta.url),
+      new URL("../../../services/cloud/openapi.json", import.meta.url),
       "utf8",
     ),
   );
   await writeFile(
     new URL("../openapi/broker.yaml", import.meta.url),
-    "# Generated from services/connections/openapi.json; do not edit.\n" +
+    "# Generated from services/cloud/openapi.json; do not edit.\n" +
       stringify(deriveBrokerContract(source)),
   );
   execFileSync(

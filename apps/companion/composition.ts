@@ -1,3 +1,4 @@
+import { registerCloudConnections } from "../../services/connections/cloud/http.js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
@@ -30,6 +31,15 @@ export async function composeCompanion(
     const app = await composeAccess(
       config.access,
       async (http, access, native, identity) => {
+        if (config.cloudConnections) {
+          await registerCloudConnections(http, {
+            ...config.cloudConnections,
+            origin: config.access.origin,
+            access,
+            native,
+          });
+          return;
+        }
         if (config.connections) {
           pool = new pg.Pool({
             connectionString: config.access.databaseUrl,

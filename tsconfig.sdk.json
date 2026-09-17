@@ -13,7 +13,8 @@
     "services/access/generated/**/*.ts",
     "services/connections/generated/**/*.ts",
     "generated/http/**/*.ts",
-    "scripts/cloud/generated/**/*.ts"
+    "services/cloud/generated/**/*.ts",
+    "services/connections/cloud/generated/**/*.ts"
   ],
   "exclude": [],
   "references": []

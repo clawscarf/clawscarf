@@ -211,8 +211,6 @@ await test("native search gives authorized setup guidance only when no connectio
     nextCursor: null,
     guidance: {
       code: "no_usable_connections",
-      connectionsUrl:
-        "https://portal.example.test/app/organizations/org/installations/install/connections",
     },
   };
   const tool = createConnectorTool({
@@ -232,9 +230,7 @@ await test("native search gives authorized setup guidance only when no connectio
         "No connections are available to this agent. An installation administrator can connect an account or grant access on the Connections page.",
     },
   });
-  assert.ok(
-    JSON.stringify(empty.content).includes(search.guidance!.connectionsUrl),
-  );
+  assert.match(JSON.stringify(empty.content), /Connections page/);
   search = { items: [], nextCursor: null, guidance: null };
   const filtered = await tool.execute("search", { query: "missing" });
   assert.deepEqual(filtered.details, {

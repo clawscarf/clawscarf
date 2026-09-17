@@ -1,7 +1,7 @@
 import * as oidc from "openid-client";
 import { z } from "zod";
 import { createClient } from "../../generated/http/client/index.js";
-import { getCliIdentity } from "./generated/sdk.gen.js";
+import { getCliIdentity } from "../../services/cloud/generated/sdk.gen.js";
 import { cloudUrlSchema } from "./url.js";
 import { InstallationError } from "../installation/errors.js";
 

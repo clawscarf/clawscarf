@@ -14,7 +14,7 @@ The selected [hosted login and Connections design](docs/cloud-services.md) repla
 token-only evaluation login with convenient cloud authentication, while retaining
 customer OIDC. Connections remains independently optional. The installer now defaults to hosted login, with custom OIDC as an override. The cloud
 service has not been deployed; development releases need an explicit cloud URL.
-Connections cloud integration remains unfinished.
+Native Connections UI/CLI and its cloud management adapter are implemented; real external-account consent/tool execution and installer selection remain unfinished.
 
 ## What it contains
 

@@ -46,6 +46,8 @@ export type ConnectorFailureCode =
   | "request_rejected"
   | "receipt_not_found"
   | "rate_limited"
+  | "quota_exhausted"
+  | "service_disabled"
   | "native_context_unavailable"
   | "invalid_arguments"
   | "invalid_result"

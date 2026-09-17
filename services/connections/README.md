@@ -1,16 +1,23 @@
 # Connections companion
 
-This describes the current local implementation. The selected
-[cloud-service design](../../docs/cloud-services.md) moves broker ownership to a
-separate repository and replaces this companion's web page with native OpenClaw UI.
-The runtime tools and reviewed broker behavior are reused, not rewritten wholesale.
+The cloud broker lives in [clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud).
+The [native plugin](../../plugins/connections/README.md) owns its OpenClaw page and tools.
+The installation's [cloud adapter](cloud/http.ts) authenticates its Access session,
+checks current native administrator authority, and sends an installation-scoped proof
+to the cloud. Browser-supplied proofs are ignored. Runtime credentials cannot manage
+accounts; the management credential stays in the companion. HTTP errors and quota
+retry information are preserved. Browser and CLI share the
+[local management contract](cloud/openapi.json).
+
+Configure `cloudConnections: { url, managementKeyFile }` in the
+[companion](../../apps/companion/README.md); it cannot coexist with local `connections`.
+The rest of this document describes the local broker still used by the installer.
+Its replacement/removal belongs to M7 in [TODO](../../TODO.md).
 
 Optional same-origin account management and tool broker for one ClawScarf server.
 The [OpenClaw plugin](../../plugins/connections/README.md) exposes search, describe
 and call tools; accounts, provider credentials, grants and receipts stay here.
-[OpenAPI](openapi.json) owns the browser, CLI and plugin contract. The plugin's
-portable broker contract is generated from its bearer-authenticated runtime routes
-and their referenced components; it is not a second authored contract. Regenerate
+[OpenAPI](openapi.json) owns the browser, CLI and plugin contract. The plugin's portable runtime contract now comes from the [cloud contract](../cloud/openapi.json). The local management adapter has its own same-origin API contract. Regenerate
 service clients with `pnpm connections:generate` and the portable contract/client
 with `npm --prefix plugins/connections run api:generate`. `pnpm codegen:check`
 checks both clients and the portable contract for drift.

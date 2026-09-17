@@ -125,7 +125,10 @@ await test("verified Connections snapshot is copied privately once and does not 
   await writeFile(f.input.apiKeyFile, "changed-source-key");
   await prepareInitialConnections(f.directory, loaded);
   const endpoint = await readInitialConnectionsEndpoint(f.directory);
-  assert.equal(endpoint?.brokerUrl, "https://host.docker.internal:17214");
+  assert.equal(
+    endpoint?.brokerUrl,
+    "https://host.docker.internal:17214/_clawscarf/connections/v1",
+  );
   assert.equal(
     endpoint?.ca,
     await readFile(join(f.directory, "private/management-ca.pem"), "utf8"),

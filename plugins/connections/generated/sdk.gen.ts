@@ -26,7 +26,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  */
 export const searchConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<SearchConnectorRuntimeData, ThrowOnError>): RequestResult<SearchConnectorRuntimeResponses, SearchConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<SearchConnectorRuntimeResponses, SearchConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/search',
+    url: '/connector-runtime/search',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ export const searchConnectorRuntime = <ThrowOnError extends boolean = false>(opt
  */
 export const describeConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<DescribeConnectorRuntimeData, ThrowOnError>): RequestResult<DescribeConnectorRuntimeResponses, DescribeConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<DescribeConnectorRuntimeResponses, DescribeConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/describe',
+    url: '/connector-runtime/describe',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ export const describeConnectorRuntime = <ThrowOnError extends boolean = false>(o
  */
 export const callConnectorRuntime = <ThrowOnError extends boolean = false>(options: Options<CallConnectorRuntimeData, ThrowOnError>): RequestResult<CallConnectorRuntimeResponses, CallConnectorRuntimeErrors, ThrowOnError> => (options.client ?? client).post<CallConnectorRuntimeResponses, CallConnectorRuntimeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/call',
+    url: '/connector-runtime/call',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export const callConnectorRuntime = <ThrowOnError extends boolean = false>(optio
  */
 export const getConnectorRuntimeInvocation = <ThrowOnError extends boolean = false>(options: Options<GetConnectorRuntimeInvocationData, ThrowOnError>): RequestResult<GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeInvocationErrors, ThrowOnError> => (options.client ?? client).get<GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeInvocationErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/invocations/{invocationId}',
+    url: '/connector-runtime/invocations/{invocationId}',
     ...options
 });
 
@@ -82,7 +82,7 @@ export const getConnectorRuntimeInvocation = <ThrowOnError extends boolean = fal
  */
 export const getConnectorRuntimeResultPage = <ThrowOnError extends boolean = false>(options: Options<GetConnectorRuntimeResultPageData, ThrowOnError>): RequestResult<GetConnectorRuntimeResultPageResponses, GetConnectorRuntimeResultPageErrors, ThrowOnError> => (options.client ?? client).get<GetConnectorRuntimeResultPageResponses, GetConnectorRuntimeResultPageErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/invocations/{invocationId}/result',
+    url: '/connector-runtime/invocations/{invocationId}/result',
     ...options
 });
 
@@ -93,7 +93,7 @@ export const getConnectorRuntimeResultPage = <ThrowOnError extends boolean = fal
  */
 export const lookupConnectorRuntimeInvocation = <ThrowOnError extends boolean = false>(options: Options<LookupConnectorRuntimeInvocationData, ThrowOnError>): RequestResult<LookupConnectorRuntimeInvocationResponses, LookupConnectorRuntimeInvocationErrors, ThrowOnError> => (options.client ?? client).post<LookupConnectorRuntimeInvocationResponses, LookupConnectorRuntimeInvocationErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/connector-runtime/invocations/lookup',
+    url: '/connector-runtime/invocations/lookup',
     ...options,
     headers: {
         'Content-Type': 'application/json',

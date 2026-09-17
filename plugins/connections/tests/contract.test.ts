@@ -7,7 +7,7 @@ import { deriveBrokerContract } from "../scripts/derive-contract.ts";
 await test("the portable broker contract is derived from the service, with no management authority", async () => {
   const source: unknown = JSON.parse(
     await readFile(
-      new URL("../../../services/connections/openapi.json", import.meta.url),
+      new URL("../../../services/cloud/openapi.json", import.meta.url),
       "utf8",
     ),
   );
@@ -18,11 +18,11 @@ await test("the portable broker contract is derived from the service, with no ma
   assert.deepEqual(published, derived);
   assert.ok(
     Object.keys(derived.paths).every((path) =>
-      path.startsWith("/v1/connector-runtime/"),
+      path.startsWith("/connector-runtime/"),
     ),
   );
   assert.deepEqual(Object.keys(derived.components.securitySchemes ?? {}), [
-    "ConnectorRuntime",
+    "InstallationRuntime",
   ]);
   assert.equal(derived.components.schemas?.Connection, undefined);
 });
@@ -32,6 +32,7 @@ await test("contract derivation follows transitive references and rejects dangli
     openapi: "3.1.0",
     info: { version: "1" },
     "x-clawscarf-broker-base-path": "/broker",
+    "x-clawscarf-runtime-security": "ConnectorRuntime",
     paths: {
       "/broker/call": {
         post: {

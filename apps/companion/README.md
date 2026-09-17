@@ -53,7 +53,24 @@ and exposes disabled capabilities without account actions. The native People pag
 login return destinations for its landing page and account-return pages; API and
 verification endpoints are never return destinations.
 
-To enable Connections, add the optional block:
+For the cloud broker, configure the management adapter instead:
+
+```json
+{
+  "accessConfigurationFile": "/run/clawscarf/access.json",
+  "cloudConnections": {
+    "url": "https://cloud.example.com",
+    "managementKeyFile": "/run/clawscarf/connections-management-key"
+  }
+}
+```
+
+This mode needs no local Connections schema, catalog, provider key or maintenance
+loop. The native plugin's runtime URL is that origin plus `/api/connections`, with
+its separate runtime credential. Both credentials are scoped to one cloud installation.
+Installer selection is still pending; the adapter is currently configured explicitly.
+
+To enable the existing local broker, add this optional block instead:
 
 The [local assembly](../../deploy/deployment/README.md#optional-connections)
 can generate this configuration and prepare its private catalog/database inputs.

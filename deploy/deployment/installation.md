@@ -340,6 +340,29 @@ state directory and the models database volume.
 
 ### Connections
 
+Native cloud account management uses the same Access session as OpenClaw:
+
+```sh
+clawscarf connections --origin https://team.example.com --session-file /private/session list
+clawscarf connections --origin https://team.example.com --session-file /private/session catalog
+clawscarf connections --origin https://team.example.com --session-file /private/session add outlook
+clawscarf connections --origin https://team.example.com --session-file /private/session connect CONNECTION_ID
+clawscarf connections --origin https://team.example.com --session-file /private/session usage
+```
+
+The private session file contains a currently signed-in administrator's session
+credential. No cloud owner token can substitute for native administrator permission.
+`connect` prints a link to continue in that signed-in browser; it also resumes existing
+setup. `complete` accepts the OAuth receipt in a private file for noninteractive use.
+`edit` changes name/grants; `agents`, `refresh`, `cancel` and `disconnect` cover the
+remaining account operations. `disconnect` also removes inactive entries. Lists
+support `--cursor`, and `list --all` includes disconnected history. Use `--json` for
+machine-readable results. Account linking is application management, not installation.
+These commands require the companion's cloud adapter; installer broker selection
+and removal of the previous local broker remain in M7.
+
+The existing runtime configuration commands below are separate from account management.
+
 - `{"mode":"disabled"}` omits the broker and native tool configuration.
 - `{"mode":"external","brokerUrl":"https://broker.example.com","credentialFile":"secrets/connections-key"}`
   initializes the plugin against an existing broker; optional `caFile` supplies trust.

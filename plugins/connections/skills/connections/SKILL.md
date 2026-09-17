@@ -7,9 +7,9 @@ Use `connections_search` to discover available accounts and operations. Select t
 exact connection ID; when more than one account fits and the intended account is
 unclear, ask the user. Never substitute another account after a failure.
 
-When search returns `no_usable_connections` guidance, give the user its
-`connectionsUrl` so an installation administrator can connect an account or grant
-this agent access. The link does not grant permissions. An empty search without
+When search returns `no_usable_connections` guidance, ask an installation
+administrator to open the native Connections page to connect an account or grant
+this agent access. An empty search without
 that guidance means no operations matched the filters; try another search instead
 of claiming that the installation has no connections. Never invent a setup URL or
 infer other agents' accounts from an empty result.

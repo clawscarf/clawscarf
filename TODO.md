@@ -10,7 +10,9 @@ Hosted login and automatic installer registration are verified locally through n
 administrator access and a real model response. M3 is complete. M4 cloud broker/API and
 database tests are implemented. The dedicated provider project/key and real setup allocation work.
 Real account consent, execution and CLI acceptance remain pending. M5 quotas passed real
-PostgreSQL/HTTP regressions. M6 native UI/CLI is in progress.
+PostgreSQL/HTTP regressions. M6 native UI/CLI and its administrator-checking adapter
+are implemented. Native catalog, edit/removal, loading, CLI management and protected
+runtime-to-cloud search have passed locally; real OAuth/tool execution remains pending.
 No cloud deployment yet. Development releases must supply or override the cloud URL.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
@@ -20,9 +22,10 @@ native Connections replacement is part of this same batch, not a separate future
       regressions; replace local-session coupling with installation scope. Link a real account and
       execute one tool through API/CLI, proving scoped management denial and runtime revocation.
       Adapt scheduled cleanup and provider deadlines using Kora's cloud deployment as the reference.
-- [ ] **M6 — Deliver native Connections.** Replace the external page with native OpenClaw UI
-      and matching CLI for linking, reconnect/disconnect, inactive-entry removal, grants and usage.
-      Verify a real native-page OAuth/tool journey, member denial and useful loading/error states.
+- [ ] **M6 — Finish native Connections acceptance.** Choose/authorize the real external test
+      account, then verify native-page OAuth, reconnect/disconnect and one real tool execution.
+      Native UI/CLI, administrator/member/CSRF/revocation enforcement and packaging are implemented
+      and tested. Removing the previous installer/local broker paths remains M7.
 - [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
       through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
       disabled/empty Connections, and remove superseded token-login and local broker/UI paths.

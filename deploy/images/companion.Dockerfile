@@ -31,6 +31,7 @@ COPY --from=build /app/services/connections/dist/web ./services/connections/dist
 COPY services/access/openapi.json ./services/access/openapi.json
 COPY services/access/migrations ./services/access/migrations
 COPY services/connections/openapi.json ./services/connections/openapi.json
+COPY services/connections/cloud/openapi.json ./services/connections/cloud/openapi.json
 COPY services/connections/migrations ./services/connections/migrations
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/
 COPY ui/shadcn/LICENSE.md /usr/share/licenses/clawscarf/shadcn-MIT.txt

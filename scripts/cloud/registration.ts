@@ -8,7 +8,7 @@ import {
   registerInstallation,
   getInstallationIdentity,
   getAccount,
-} from "./generated/sdk.gen.js";
+} from "../../services/cloud/generated/sdk.gen.js";
 import { cloudUrlSchema } from "./url.js";
 import { installationSchema } from "../installation/configuration.js";
 import { readInputFile, readJson } from "../installation/files.js";

@@ -17,7 +17,8 @@ const capture = async () =>
   JSON.stringify(
     await Promise.all([
       snapshot("generated/http"),
-      snapshot("scripts/cloud/generated"),
+      snapshot("services/cloud/generated"),
+      snapshot("services/connections/cloud/generated"),
       snapshot("services/access/generated"),
       snapshot("services/connections/generated"),
       snapshot("plugins/connections/generated"),
@@ -25,6 +26,7 @@ const capture = async () =>
     ]),
   );
 const before = await capture();
+execFileSync("pnpm", ["connections:management:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["cloud:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["http:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["connections:generate"], { stdio: "inherit" });

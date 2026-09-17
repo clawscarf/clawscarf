@@ -58,25 +58,21 @@ export type ConnectorActionSummary = {
 
 export type ConnectorRuntimeSearchGuidance = {
     code: 'no_usable_connections';
-    connectionsUrl: string;
 };
 
 export type Problem = {
-    type: 'about:blank';
+    type: string;
     title: string;
     status: number;
-    /**
-     * Stable machine-readable code; clients tolerate additional codes.
-     */
     code: string;
-    /**
-     * Safe explanation without raw provider diagnostics or secrets.
-     */
-    detail: string;
-    /**
-     * Request correlation ID for operator diagnostics.
-     */
-    requestId?: string;
+    requestId: string;
+    quota?: {
+        scope: 'account' | 'installation' | 'backend';
+        unit: 'executions' | 'requests' | 'installations';
+        limit: number;
+        resetsAt: string | null;
+    };
+    detail?: string;
     retry?: RetryGuidance;
 };
 
@@ -219,7 +215,7 @@ export type SearchConnectorRuntimeData = {
     body: ConnectorRuntimeSearch;
     path?: never;
     query?: never;
-    url: '/v1/connector-runtime/search';
+    url: '/connector-runtime/search';
 };
 
 export type SearchConnectorRuntimeErrors = {
@@ -284,7 +280,7 @@ export type DescribeConnectorRuntimeData = {
     body: ConnectorRuntimeDescribe;
     path?: never;
     query?: never;
-    url: '/v1/connector-runtime/describe';
+    url: '/connector-runtime/describe';
 };
 
 export type DescribeConnectorRuntimeErrors = {
@@ -349,7 +345,7 @@ export type CallConnectorRuntimeData = {
     body: ConnectorRuntimeCall;
     path?: never;
     query?: never;
-    url: '/v1/connector-runtime/call';
+    url: '/connector-runtime/call';
 };
 
 export type CallConnectorRuntimeErrors = {
@@ -418,7 +414,7 @@ export type GetConnectorRuntimeInvocationData = {
     query: {
         agentId: string;
     };
-    url: '/v1/connector-runtime/invocations/{invocationId}';
+    url: '/connector-runtime/invocations/{invocationId}';
 };
 
 export type GetConnectorRuntimeInvocationErrors = {
@@ -488,7 +484,7 @@ export type GetConnectorRuntimeResultPageData = {
         agentId: string;
         cursor?: string;
     };
-    url: '/v1/connector-runtime/invocations/{invocationId}/result';
+    url: '/connector-runtime/invocations/{invocationId}/result';
 };
 
 export type GetConnectorRuntimeResultPageErrors = {
@@ -553,7 +549,7 @@ export type LookupConnectorRuntimeInvocationData = {
     body: ConnectorRuntimeInvocationLookup;
     path?: never;
     query?: never;
-    url: '/v1/connector-runtime/invocations/lookup';
+    url: '/connector-runtime/invocations/lookup';
 };
 
 export type LookupConnectorRuntimeInvocationErrors = {

@@ -63,12 +63,10 @@ await test(
     const configPath = join(directory, "openclaw.json");
     const port = await freePort();
     const brokerPort = await freePort();
-    const connectionsUrl =
-      "https://portal.example.test/app/organizations/11111111-1111-4111-8111-111111111111/installations/22222222-2222-4222-8222-222222222222/connections";
     const noConnections: ConnectorRuntimeSearchResult = {
       items: [],
       nextCursor: null,
-      guidance: { code: "no_usable_connections", connectionsUrl },
+      guidance: { code: "no_usable_connections" },
     };
     const noMatches: ConnectorRuntimeSearchResult = {
       items: [],
@@ -151,15 +149,15 @@ await test(
           response.end(JSON.stringify(value));
         };
         const url = new URL(request.url ?? "/", "http://127.0.0.1");
-        if (url.pathname === "/v1/connector-runtime/search") {
+        if (url.pathname === "/connector-runtime/search") {
           send(brokerResult);
           return;
         }
-        if (url.pathname === "/v1/connector-runtime/describe") {
+        if (url.pathname === "/connector-runtime/describe") {
           send(description);
           return;
         }
-        if (url.pathname === "/v1/connector-runtime/call") {
+        if (url.pathname === "/connector-runtime/call") {
           executions++;
           executionContext = nativeContext(parsed);
           assert.equal(executionContext.agentId, "main");
@@ -167,7 +165,7 @@ await test(
           return;
         }
         assert.ok(executionContext);
-        if (url.pathname === "/v1/connector-runtime/invocations/lookup") {
+        if (url.pathname === "/connector-runtime/invocations/lookup") {
           const context = nativeContext(parsed);
           assert.equal(context.agentId, executionContext.agentId);
           assert.equal(context.sessionId, executionContext.sessionId);
@@ -184,7 +182,7 @@ await test(
         }
         assert.equal(
           url.pathname,
-          `/v1/connector-runtime/invocations/${invocationId}/result`,
+          `/connector-runtime/invocations/${invocationId}/result`,
         );
         assert.equal(request.method, "GET");
         assert.equal(url.searchParams.get("agentId"), "main");
@@ -342,7 +340,7 @@ await test(
             : "No operations matched this search. Try a different search or remove filters.",
         },
       });
-      if (expected.guidance) assert.ok(response.body.includes(connectionsUrl));
+      if (expected.guidance) assert.match(response.body, /Connections page/);
       else assert.doesNotMatch(response.body, /connectionsUrl|administrator/u);
     };
     try {
@@ -530,13 +528,13 @@ await test(
       assert.equal(executions, 1);
       assert.ok(brokerRequests.every((request) => request.authenticated));
       const searches = brokerRequests.filter(
-        (request) => request.path === "/v1/connector-runtime/search",
+        (request) => request.path === "/connector-runtime/search",
       );
       assert.equal(searches.length, 4);
       const callIds = new Set<string>();
       for (const [index, request] of searches.entries()) {
         assert.equal(request.method, "POST");
-        assert.equal(request.path, "/v1/connector-runtime/search");
+        assert.equal(request.path, "/connector-runtime/search");
         assert.equal(request.authenticated, true);
         assert.ok(
           request.body &&

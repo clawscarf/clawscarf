@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024", "DOM"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -13,7 +13,13 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "rewriteRelativeImportExtensions": true
+    "rewriteRelativeImportExtensions": true,
+    "disableSourceOfProjectReferenceRedirect": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/derive-contract.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/derive-contract.ts"],
+  "references": [
+    {
+      "path": "../../tsconfig.sdk.json"
+    }
+  ]
 }

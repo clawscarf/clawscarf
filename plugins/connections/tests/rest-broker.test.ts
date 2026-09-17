@@ -28,7 +28,7 @@ await test("tool execution receives a slow result and still honors native cancel
   const secondRequest = Promise.withResolvers<void>();
   const server = createServer((request, response) => {
     assert.equal(request.method, "POST");
-    assert.equal(request.url, "/v1/connector-runtime/call");
+    assert.equal(request.url, "/connector-runtime/call");
     request.resume();
     requests++;
     if (requests === 2) secondRequest.resolve();
@@ -90,7 +90,7 @@ await test("generated broker client sends only scoped credentials and native con
       request.headers.authorization,
       "Bearer scoped-installation-token",
     );
-    assert.equal(request.url, "/v1/connector-runtime/call");
+    assert.equal(request.url, "/connector-runtime/call");
     let body = "";
     request.setEncoding("utf8").on("data", (chunk: string) => {
       body += chunk;
@@ -255,7 +255,7 @@ await test("generated result paging and session lookup never replay execution, i
         response.writeHead(200, { "Content-Type": "application/json" });
         response.end(JSON.stringify(value));
       };
-      if (url.pathname === "/v1/connector-runtime/call") {
+      if (url.pathname === "/connector-runtime/call") {
         assert.equal(request.method, "POST");
         assert.ok(parsed && typeof parsed === "object" && "context" in parsed);
         assert.ok(!("mode" in parsed));
@@ -300,7 +300,7 @@ await test("generated result paging and session lookup never replay execution, i
         else send(receipt);
         return;
       }
-      if (url.pathname === "/v1/connector-runtime/invocations/lookup") {
+      if (url.pathname === "/connector-runtime/invocations/lookup") {
         assert.equal(request.method, "POST");
         assert.ok(parsed && typeof parsed === "object" && "context" in parsed);
         assert.deepEqual(parsed.context, {
@@ -323,7 +323,7 @@ await test("generated result paging and session lookup never replay execution, i
       assert.equal(request.method, "GET");
       assert.equal(
         url.pathname,
-        "/v1/connector-runtime/invocations/invocation-1/result",
+        "/connector-runtime/invocations/invocation-1/result",
       );
       assert.equal(url.searchParams.get("agentId"), "agent-1");
       assert.equal(parsed, null);
