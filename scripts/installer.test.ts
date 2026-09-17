@@ -106,9 +106,10 @@ class Answers implements InstallerPrompts {
     );
     return Promise.resolve(value);
   }
-  confirm(message: string) {
+  confirm(message: string, initial = false) {
     this.questions.push(message);
-    const value = this.values[message] ?? message === "Save section changes?";
+    const value =
+      this.values[message] ?? (message === "Save section changes?" || initial);
     assert.equal(typeof value, "boolean");
     return Promise.resolve(value === true);
   }
@@ -412,7 +413,11 @@ await test(
     for (const fail of [false, true, "cancel"] as const) {
       const f = await fixture(t);
       const calls: string[] = [];
-      const ui = new Answers({ ...f.answers, "Start now?": true });
+      const answers: Record<string, string | string[] | boolean> = {
+        ...f.answers,
+      };
+      delete answers["Start now?"];
+      const ui = new Answers(answers);
       const work = installFromAnswers(f, ui, {
         plan: planInstallation,
         doctor: () => {

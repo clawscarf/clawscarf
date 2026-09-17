@@ -65,7 +65,7 @@ export async function installFromAnswers(
       operator.apply(configFile, planFile),
     );
     const files = { configFile, planFile, stateDirectory };
-    if (!(await ui.confirm("Start now?"))) {
+    if (!(await ui.confirm("Start now?", true))) {
       ui.note(
         `pnpm clawscarf start --directory ${quote(directory)}`,
         "Start later",

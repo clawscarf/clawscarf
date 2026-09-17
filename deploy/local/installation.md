@@ -81,7 +81,8 @@ Secrets stay in memory until the final install confirmation, then referenced cre
 are copied to private files; they never appear in summaries or ordinary configuration.
 
 After **Install**, the CLI checks prerequisites and applies the same preview used by
-noninteractive commands. **Start now?** is the final choice. Declining leaves a prepared,
+noninteractive commands. **Start now?** is the final choice, with **Yes** selected by
+default, including after applying settings changes. Declining leaves a prepared,
 stopped installation. Starting registers a macOS user service that continues after the
 terminal closes. It is not configured to restart after logout or reboot.
 

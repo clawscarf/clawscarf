@@ -98,7 +98,7 @@ The server must stop. Pack changes finish at the next start.`,
       )
     )
       await rm(previousInputs, { recursive: true });
-    if (await ui.confirm("Start with these settings?"))
+    if (await ui.confirm("Start with these settings?", true))
       await progress("Starting ClawScarf", (_signal, report) =>
         startInstallation(directory, report),
       );

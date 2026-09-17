@@ -16,7 +16,7 @@ export interface InstallerPrompts {
   password(message: string): Promise<string>;
   select(message: string, choices: Choice[], initial?: string): Promise<string>;
   multiselect(message: string, choices: Choice[]): Promise<string[]>;
-  confirm(message: string): Promise<boolean>;
+  confirm(message: string, initial?: boolean): Promise<boolean>;
   note(message: string, title: string): void;
 }
 
@@ -74,10 +74,8 @@ export const terminalPrompts: InstallerPrompts = {
       clack.multiselect({ message, options, required: true }),
     );
   },
-  async confirm(message) {
-    return answer<boolean>(() =>
-      clack.confirm({ message, initialValue: false }),
-    );
+  async confirm(message, initialValue = false) {
+    return answer<boolean>(() => clack.confirm({ message, initialValue }));
   },
   note: clack.note,
 };
