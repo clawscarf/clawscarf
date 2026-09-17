@@ -6,8 +6,10 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-Current milestone: **M1**. Cloud service implementation is starting; real owner-login
-verification awaits the owner signing back into the WorkOS dashboard.
+Current milestone: **M1**. Cloud owner-login routes, generated API contract and
+local HTTP/SDK checks are implemented; check/build pass. Real owner-login verification
+awaits the owner signing back into WorkOS to configure the dedicated project.
+No cloud deployment or M2 registration work has started.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
 native Connections replacement is part of this same batch, not a separate future task.
