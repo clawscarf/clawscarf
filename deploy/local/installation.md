@@ -132,8 +132,13 @@ settings resolve against that file; generated state remains relative to the new
 installation. The saved configuration records recipe ID/release as provenance only:
 subsequent startup does not reload or inherit changing recipe definitions.
 Continue with `validate`, `doctor`, `plan`, `apply` and `start` below. These remain
-the authority for actual file, runtime and dependency verification. All CLI configuration
-and operation results are JSON; interactive presentation is separate.
+the authority for actual file, runtime and dependency verification. Commands show human-readable results by default. Add `--json` for structured results
+on stdout; progress and errors go to stderr. For example,
+`node --import tsx scripts/clawscarf.ts status --state ./state --json`. When using
+pnpm, add its `--silent` option to suppress its own command banner. `settings --json` exports
+the accepted configuration instead of opening its menu; `logs --json` returns the log
+text in a structured result. Interactive `install` has no JSON mode; use `configure`
+for unattended setup.
 
 ### Author the configuration directly
 
@@ -184,7 +189,9 @@ apply, create a fresh preview to resume; existing resource receipts govern resum
 A successful apply means prepared, not a verified running application.
 
 Start registers a macOS user service and returns when startup finishes. Closing the
-terminal leaves the server running. `start --foreground` remains a developer option.
+terminal leaves the server running. Start reports server readiness without generating
+a login credential. Use `login` for local sign-in, or `administrator --issue` for a
+pending OIDC administrator setup. `start --foreground` remains a developer option.
 Use the same CLI for operation:
 
 ```sh

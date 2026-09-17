@@ -1,3 +1,4 @@
+import { writeResult } from "../output.js";
 import { configureRuntimeModels } from "./runtime.js";
 import { Command } from "commander";
 import { writeFile } from "node:fs/promises";
@@ -22,7 +23,11 @@ export function modelsCommand() {
         `${JSON.stringify(liteLlmConfiguration(config), null, 2)}\n`,
         { flag: "wx", mode: 0o600 },
       );
-      process.stdout.write("Gateway configuration written.\n");
+      writeResult(
+        program,
+        { state: "created", file: options.output },
+        "Gateway configuration written.",
+      );
     });
   program
     .command("configure")
@@ -39,7 +44,7 @@ export function modelsCommand() {
           await loadConfiguration(options.config),
           options.yes === true,
         );
-        process.stdout.write(`${result.state}\n`);
+        writeResult(program, result);
       },
     );
   program
@@ -69,10 +74,12 @@ export function modelsCommand() {
           configuration: await loadConfiguration(options.config),
           apply: options.yes === true,
         });
-        process.stdout.write(
+        writeResult(
+          program,
+          { state },
           state === "configured_restart_required"
-            ? "Configured. Restart the Gateway to load the changed CA trust.\n"
-            : `${state}\n`,
+            ? "Configured. Restart the Gateway to load the changed CA trust."
+            : state,
         );
       },
     );
@@ -101,8 +108,10 @@ export function modelsCommand() {
           ...options,
           configuration: await loadConfiguration(options.config),
         });
-        process.stdout.write(
-          "Runtime key written to the private output file.\n",
+        writeResult(
+          program,
+          { state: "created", file: options.output },
+          "Runtime key written to the private output file.",
         );
       },
     );
@@ -126,7 +135,7 @@ export function modelsCommand() {
       }) => {
         if (!options.yes) throw Error("Explicit --yes is required.");
         await revokeRuntimeCredential(options);
-        process.stdout.write("Runtime key revoked.\n");
+        writeResult(program, { state: "revoked" }, "Runtime key revoked.");
       },
     );
   return program;

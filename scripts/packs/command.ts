@@ -1,3 +1,4 @@
+import { writeResult } from "../output.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { Command, Option } from "commander";
 import { OpenShellClaws } from "./openshell.js";
@@ -48,8 +49,9 @@ export function packsCommand() {
       process.env.CLAWSCARF_PACK_RUNTIME !== "1",
     );
   };
-  const print = (value: unknown) =>
-    process.stdout.write(JSON.stringify(value, null, 2) + "\n");
+  const print = (value: unknown) => {
+    writeResult(program, value);
+  };
   program.command("inspect <directory>").action(async (directory: string) => {
     print(await inspectPack(directory, native()));
   });

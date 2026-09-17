@@ -153,7 +153,12 @@ export class OpenShellClaws extends NativeClaws {
       .object({ digest: z.string() })
       .parse(
         JSON.parse(
-          await this.exec(["/app/clawscarf/bin/packs", "inspect", targetRoot]),
+          await this.exec([
+            "/app/clawscarf/bin/packs",
+            "inspect",
+            targetRoot,
+            "--json",
+          ]),
         ),
       );
     if (observed.digest !== digest)

@@ -1,3 +1,4 @@
+import { writeResult } from "../output.js";
 import { modelsCommand } from "../models/command.js";
 import { packsCommand } from "../packs/command.js";
 import {
@@ -16,7 +17,6 @@ import {
   installationLogs,
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
-import { readState } from "../local/state.js";
 import { localLoginCode } from "../local/login.js";
 import { localLogNames } from "../local/logs.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
@@ -30,13 +30,16 @@ import { runSettings, readInstallationSettings } from "./installer/settings.js";
 import { InstallationError } from "./errors.js";
 import { administratorSetup } from "./administrator.js";
 
-const output = (value: unknown) => {
-  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
-};
 export function installationCommand() {
-  const program = new Command("clawscarf").description(
-    "Install and operate a protected OpenClaw team server.",
-  );
+  const program = new Command("clawscarf")
+    .description("Install and operate a protected OpenClaw team server.")
+    .option(
+      "--json",
+      "Print machine-readable results; diagnostics go to stderr",
+    );
+  const output = (value: unknown, human?: string) => {
+    writeResult(program, value, human);
+  };
   program
     .command("install")
     .description(
@@ -56,10 +59,17 @@ export function installationCommand() {
       "--settings <file>",
       "JSON overrides; skip questions already answered here",
     )
-    .action(runInstaller);
+    .action(async (options: Parameters<typeof runInstaller>[0]) => {
+      if (program.opts<{ json?: boolean }>().json)
+        throw new InstallationError(
+          "invalid_configuration",
+          "Use configure for noninteractive setup; install requires a terminal.",
+        );
+      await runInstaller(options);
+    });
   program
     .command("recipes")
-    .description("List the release's recipe defaults as JSON")
+    .description("List the release's recipe defaults")
     .option("--release <file>")
     .option("--recipes <directory>")
     .action(async (options: SetupOptions) => {
@@ -142,14 +152,14 @@ export function installationCommand() {
       "View, edit or explicitly reapply this installation's settings",
     )
     .option("--state <directory>", "Existing installation state")
-    .option("--json", "Print accepted settings instead of opening the menu")
     .action(async (options: { state?: string; json?: boolean }) => {
       if (!options.state)
         throw new InstallationError(
           "invalid_configuration",
           "Use settings --state <directory>, or settings plan/apply --config <file>.",
         );
-      if (options.json) output(await readInstallationSettings(options.state));
+      if (settings.optsWithGlobals<{ json?: boolean }>().json)
+        writeResult(settings, await readInstallationSettings(options.state));
       else await runSettings(options.state);
     });
   settings
@@ -201,26 +211,7 @@ export function installationCommand() {
         )(state, (message) => {
           process.stderr.write(message + "\n");
         });
-        if (!foreground) {
-          const directory = resolve(state);
-          const input = (await readState(directory)).input;
-          if (input.team) {
-            const administrator = await administratorSetup(directory);
-            output({
-              ...result,
-              ...(!administrator.complete
-                ? {
-                    administratorSetup: administrator.expiresAt
-                      ? {
-                          expiresAt: administrator.expiresAt,
-                          command: `clawscarf administrator --state ${directory} --issue`,
-                        }
-                      : await administratorSetup(directory, true),
-                  }
-                : {}),
-            });
-          } else output({ ...result, login: await localLoginCode(directory) });
-        }
+        if (result) output(result, statusText(result));
       },
     );
   program
@@ -239,14 +230,17 @@ export function installationCommand() {
       .command(action)
       .requiredOption("--state <directory>")
       .action(async ({ state }: { state: string }) => {
-        output(await controlInstallation(state, action));
+        const result = await controlInstallation(state, action);
+        output(result, statusText(result));
       });
   program
     .command("logs")
     .requiredOption("--state <directory>")
     .requiredOption("--service <name>", localLogNames.join(", "))
     .action(async ({ state, service }: { state: string; service: string }) => {
-      process.stdout.write(await installationLogs(state, service));
+      const text = await installationLogs(state, service);
+      if (program.opts<{ json?: boolean }>().json) output({ service, text });
+      else process.stdout.write(text);
     });
   program
     .command("doctor")
@@ -271,15 +265,17 @@ export function installationCommand() {
         state: string;
         runtimeImage: string;
         python: string;
-      }) =>
-        upgradeLocal(
+      }) => {
+        await upgradeLocal(
           options.state,
           options.runtimeImage,
           options.python,
           (message) => {
             process.stderr.write(message + "\n");
           },
-        ),
+        );
+        output({ state: "upgraded" }, "Upgrade completed.");
+      },
     );
   const connections = program
     .command("connections")
@@ -340,4 +336,21 @@ export function installationCommand() {
       output({ state: "created", file: options.output });
     });
   return program;
+}
+
+function statusText(status: Awaited<ReturnType<typeof controlInstallation>>) {
+  const lines = [
+    `Server: ${status.supervisor === "not_running" ? "Stopped" : status.supervisor}`,
+    `Ready: ${status.ready ? "Yes" : "No"}`,
+  ];
+  if ("administrator" in status) {
+    lines.push(`Administrator: ${status.administrator}`);
+    if (status.administrator === "pending")
+      lines.push(
+        "Complete administrator setup with clawscarf administrator --issue and your installation directory.",
+      );
+    for (const pack of status.packs)
+      lines.push(`Pack ${pack.member}: ${pack.state}`);
+  }
+  return lines.join("\n");
 }

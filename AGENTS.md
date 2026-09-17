@@ -69,6 +69,9 @@
   section edits and new secrets while retaining accepted answers. Ctrl+C exits. Keep
   runnable behavior and limits in the [CLI guide](deploy/local/installation.md), and
   unfinished work only in TODO.md; do not retain a parallel implementation plan.
+- CLI output is for people by default; `--json` emits machine-readable results on stdout.
+  Keep progress and diagnostics on stderr, never mix them into JSON, and issue login
+  credentials only during explicit login/administrator setup or the installer.
 - Reuse UI primitives. Keep actions beside data, layouts consistent and copy concise.
   Show loading in affected content, retain data on refresh, and distinguish unavailable
   from empty. Review changed accessible desktop/mobile pending and error states.
