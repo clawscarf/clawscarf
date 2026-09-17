@@ -11,8 +11,9 @@ provider-wide session. Installer registration now defaults to hosted login and p
 and credentials for retry. Custom OIDC bypasses registration. A fresh automatic installer
 journey passed device approval, registration, administrator sign-in, native People and a
 real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
-the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections
-and deployment are pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections broker/API and quota enforcement are implemented and tested locally
+with PostgreSQL and a controlled provider; real account consent/tool execution, native
+Connections and deployment remain pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).
 

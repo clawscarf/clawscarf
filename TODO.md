@@ -9,7 +9,8 @@ payment integration and privately operated broker packaging come later.
 Hosted login and automatic installer registration are verified locally through native
 administrator access and a real model response. M3 is complete. M4 cloud broker/API and
 database tests are implemented. The dedicated provider project/key and real setup allocation work.
-Real account consent, execution and CLI acceptance remain pending. M5/M6 have not started.
+Real account consent, execution and CLI acceptance remain pending. M5 quotas passed real
+PostgreSQL/HTTP regressions. M6 native UI/CLI is in progress.
 No cloud deployment yet. Development releases must supply or override the cloud URL.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
@@ -19,9 +20,6 @@ native Connections replacement is part of this same batch, not a separate future
       regressions; replace local-session coupling with installation scope. Link a real account and
       execute one tool through API/CLI, proving scoped management denial and runtime revocation.
       Adapt scheduled cleanup and provider deadlines using Kora's cloud deployment as the reference.
-- [ ] **M5 — Enforce quotas.** Add total, per-installation and per-backend execution quotas and
-      separate upstream budgets. Prove concurrent limits, duplicate requests and uncertain outcomes
-      cannot bypass/double-charge allowance. Set finite free limits; exhausted users can still log in.
 - [ ] **M6 — Deliver native Connections.** Replace the external page with native OpenClaw UI
       and matching CLI for linking, reconnect/disconnect, inactive-entry removal, grants and usage.
       Verify a real native-page OAuth/tool journey, member denial and useful loading/error states.
