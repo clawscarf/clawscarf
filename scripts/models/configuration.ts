@@ -110,6 +110,8 @@ export function nativeModelProvider(config: EnabledModelConfiguration) {
         compat: {
           supportsTools: model.tools,
           supportsUsageInStreaming: true,
+          // Permit explicit strict:false on compatible routes; preserve optional tool arguments.
+          supportsStrictMode: true,
         },
       })),
   };

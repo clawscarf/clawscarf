@@ -28,7 +28,9 @@ are recorded in lockfiles; upstream source is not vendored here.
 The terminal installer uses MIT-licensed `@clack/prompts` 1.8.1. It is installed
 from the operator lockfile and retains its upstream license with the dependency;
 the installer does not vendor or modify the prompt library.
-OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/LICENSE)
+The Gateway uses unmodified upstream commit `7bc487d39dc9e059bb9b19ea08152883022f83fe`;
+the [image build instructions](deploy/images/README.md) own source packaging.
+OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/LICENSE)
 is MIT. NVIDIA NemoClaw's [license](https://github.com/NVIDIA/NemoClaw/blob/main/LICENSE)
 is Apache-2.0. Referencing their architecture is not incorporating their code.
 OpenShell 0.0.116 is also [Apache-2.0 licensed](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/LICENSE).
@@ -50,7 +52,7 @@ their notices are retained beside the recipe and inside its image.
 
 The runtime image retains pinned [OpenClaw license](release/licenses/openclaw-MIT.txt)
 and [third-party notices](release/licenses/openclaw-THIRD_PARTY_NOTICES.txt), plus
-the upstream image's bundled Codex CLI 0.153.4 [license](release/licenses/codex-Apache-2.0.txt) and
+the upstream image's bundled Codex CLI 0.154.0 [license](release/licenses/codex-Apache-2.0.txt) and
 [notice](release/licenses/codex-NOTICE.txt), under `/usr/share/licenses/clawscarf`.
 These are copied verbatim from their exact upstream revisions, not generated
 qualification reports. Debian package copyright files remain under `/usr/share/doc`.

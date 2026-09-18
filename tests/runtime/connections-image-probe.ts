@@ -23,7 +23,7 @@ const broker = createServer(
       return;
     }
     assert.equal(request.method, "POST");
-    assert.equal(request.url, "/team/v1/connector-runtime/search");
+    assert.equal(request.url, "/team/connector-runtime/search");
     requests++;
     let input = "";
     request.setEncoding("utf8").on("data", (chunk: string) => {

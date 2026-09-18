@@ -1,4 +1,5 @@
-FROM ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101 AS upstream
+ARG OPENCLAW_IMAGE=clawscarf-openclaw:7bc487d39dc9e059bb9b19ea08152883022f83fe
+FROM ${OPENCLAW_IMAGE} AS upstream
 
 FROM upstream AS network-tools
 USER root

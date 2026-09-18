@@ -1,8 +1,8 @@
 {
   "openclaw": {
     "version": "2026.9.4",
-    "sourceRevision": "3a9d69db306cd7f081e06254cb89c4bcc14a7107",
-    "image": "ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101"
+    "sourceRevision": "7bc487d39dc9e059bb9b19ea08152883022f83fe",
+    "image": "clawscarf-openclaw:7bc487d39dc9e059bb9b19ea08152883022f83fe"
   },
   "openshell": {
     "version": "0.0.116",

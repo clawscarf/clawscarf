@@ -6,6 +6,7 @@ import {
   nativeAssignments,
   nativeModelProvider,
 } from "../../scripts/models/configuration.js";
+import { modelInputSchema } from "../../runtime/model-contract.js";
 const input = {
   mode: "litellm",
   baseUrl: "http://127.0.0.1:14000/v1",
@@ -110,5 +111,14 @@ await test("per-model protocols preserve Responses reasoning/tools alongside Cha
   assert.equal(provider.models[1]?.api, "openai-responses");
   assert.equal(provider.models[1]?.reasoning, true);
   assert.equal(provider.models[1]?.compat.supportsTools, true);
+  assert.equal(provider.models[1]?.compat.supportsStrictMode, true);
+  assert.ok(
+    modelInputSchema.safeParse({
+      assignments: nativeAssignments(config),
+      token: "test-scoped-token",
+      ca: null,
+      apply: true,
+    }).success,
+  );
   assert.equal(config.thinkingDefault, "medium");
 });

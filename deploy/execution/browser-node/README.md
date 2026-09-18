@@ -19,8 +19,8 @@ CLAWSCARF_TEST_BROWSER_NODE_IMAGE=clawscarf-browser-node:local \
   node --import tsx --test tests/runtime/browser-node*.test.ts
 ```
 
-The recipe derives from the same digest-pinned vanilla OpenClaw 2026.9.4 image as
-the Gateway. It adds only configuration validation and a small native CLI launcher;
+The recipe retains the digest-pinned published OpenClaw 2026.9.4 image for
+the browser node. It adds only configuration validation and a small native CLI launcher;
 it installs no plugins, browser binary or package dependencies.
 
 The composition uses [browserNodeConfiguration](configuration.ts) to generate

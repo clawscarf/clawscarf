@@ -6,6 +6,48 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import lobster from "/app/clawscarf/native-plugins/node_modules/@openclaw/lobster/dist/index.js";
+import { createOpenAIResponsesTransportStreamFn } from "/app/node_modules/@openclaw/ai/dist/transports.mjs";
+
+// Inspect the real request builder, aborting before any network or credentials are used.
+const parameters = {
+  type: "object",
+  properties: { query: { type: "string" }, accountId: { type: "string" } },
+  required: ["query"],
+  additionalProperties: false,
+};
+let requestTools;
+const stream = createOpenAIResponsesTransportStreamFn()(
+  {
+    id: "gpt-6-astra",
+    name: "GPT-6 Astra",
+    provider: "clawscarf",
+    api: "openai-responses",
+    baseUrl: "https://gateway.invalid/v1",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 1000000,
+    maxTokens: 4096,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    compat: { supportsStrictMode: true },
+  },
+  {
+    messages: [{ role: "user", content: "Synthetic discovery", timestamp: 0 }],
+    tools: [{ name: "search", description: "Synthetic search", parameters }],
+  },
+  {
+    apiKey: "synthetic-not-a-key",
+    onPayload(payload) {
+      requestTools = payload.tools;
+      throw new Error("Diagnostic stop before HTTP");
+    },
+  },
+);
+for await (const event of stream) {
+  if (event.type === "error" && !requestTools)
+    throw new Error(event.error.errorMessage);
+}
+assert.equal(requestTools?.[0]?.strict, false);
+assert.deepEqual(requestTools[0].parameters, parameters);
 let factory;
 lobster.register({
   registerTool(value) {
@@ -28,7 +70,7 @@ const codex = spawnSync(
   { encoding: "utf8" },
 );
 assert.equal(codex.status, 0);
-assert.equal(codex.stdout.trim(), "codex-cli 0.153.4");
+assert.equal(codex.stdout.trim(), "codex-cli 0.154.0");
 const directory = await mkdtemp(join(tmpdir(), "clawscarf-capabilities-"));
 const file = join(directory, "openclaw.json");
 function nativeCommand(...args) {

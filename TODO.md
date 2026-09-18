@@ -23,10 +23,10 @@ native Connections replacement is part of this same batch, not a separate future
       execute one tool through API/CLI, proving scoped management denial and runtime revocation.
       Adapt scheduled cleanup and provider deadlines using Kora's cloud deployment as the reference.
 - [ ] **M6 — Finish native Connections acceptance.** Real Outlook consent is verified.
-      Resolve optional tool arguments on the direct-OpenAI Responses route: OpenClaw
-      omits `strict`, ignores the configured compatibility flag on this path, and the
-      model invents optional search IDs/cursors. Explicit `strict: false` passed the
-      isolated LiteLLM request; native chat still fails. Keep OpenClaw vanilla.
+      Native GPT-6 Astra search/describe passed through LiteLLM using the pinned upstream
+      Responses fix. Fix delivery of the Connections skill into the worker workspace:
+      native `read` could not find the advertised skill file, although both discovery
+      tools completed successfully.
       Verify reconnect/disconnect and one real tool execution.
       Native UI/CLI, administrator/member/CSRF/revocation enforcement and packaging are implemented
       and tested. Removing the previous installer/local broker paths remains M7.

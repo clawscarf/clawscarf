@@ -32,6 +32,7 @@ const assignmentSchema = z.discriminatedUnion("path", [
             compat: z.strictObject({
               supportsTools: z.boolean(),
               supportsUsageInStreaming: z.literal(true),
+              supportsStrictMode: z.literal(true),
             }),
           }),
         )

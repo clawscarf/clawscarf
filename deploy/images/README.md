@@ -1,15 +1,42 @@
 # Native runtime image
 
-[Dockerfile](Dockerfile) extends the exact vanilla OpenClaw 2026.9.4 image with
+[Dockerfile](Dockerfile) extends an unmodified upstream OpenClaw source build at
+[`7bc487d39dc9e059bb9b19ea08152883022f83fe`](https://github.com/openclaw/openclaw/commit/7bc487d39dc9e059bb9b19ea08152883022f83fe) with
 immutable runtime dependencies. Customer configuration, identities, model keys,
 connection credentials and writable state are initialized separately.
+This commit fixes optional tool arguments on custom Responses routes. Its package
+version is still 2026.9.4; the source revision distinguishes it from the published image.
+Plugin build SDKs remain pinned to the published 2026.9.4 API. The optional browser
+node and worker network-build base retain their published image pins.
 OpenShell owns the runtime container. Its outer Docker health check is disabled;
 use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.
 
 ```sh
-docker build -f deploy/images/Dockerfile -t clawscarf-runtime:local .
+revision=7bc487d39dc9e059bb9b19ea08152883022f83fe
+mkdir -p .local/openclaw-source
+curl -fL "https://codeload.github.com/openclaw/openclaw/tar.gz/$revision" -o .local/openclaw-source.tar.gz
+tar -xzf .local/openclaw-source.tar.gz --strip-components=1 -C .local/openclaw-source
+docker build --build-arg GIT_COMMIT="$revision" \
+  --build-arg OPENCLAW_BUILD_TIMESTAMP=2026-09-18T06:44:18Z \
+  --build-arg OPENCLAW_EXTENSIONS=codex \
+  -t "clawscarf-openclaw:$revision" .local/openclaw-source
+docker build --build-arg OPENCLAW_IMAGE="clawscarf-openclaw:$revision" \
+  -f deploy/images/Dockerfile -t clawscarf-runtime:local .
 ```
+
+Use a fresh source directory. The upstream Dockerfile builds Gateway, native UI and
+its dependencies; no upstream source edits are applied. Release manifests use the
+resulting exact runtime image ID/digest, never the mutable local build tag. This
+source pin is reproducible input selection, not a promise of bit-identical output:
+the upstream Dockerfile also resolves system packages at build time.
+
+Retained installations need upstream database migration when moving from the published
+2026.9.4 image to this revision. Stop the installation, preserve a private copy of its
+home volume, and run the new image's `openclaw doctor --fix --non-interactive` against
+that stopped volume before resuming. Review its configuration changes; Doctor also
+changes skill selections when dependencies are absent. The development upgrade
+preserved the previous selections. Replacing the image alone does not migrate sessions.
 
 The image includes:
 
@@ -47,7 +74,7 @@ The image includes:
   runtime's one OpenClaw installation; only the compiled tool and production
   dependency closure ship.
 - Upstream's bundled Codex plugin at `/app/dist/extensions/codex`, with Codex CLI
-  0.153.4 and its native platform payload already supplied by the pinned image.
+  0.154.0 and its native platform payload already supplied by the pinned source build.
   Its command is `node /app/dist/extensions/codex/node_modules/@openai/codex/bin/codex.js`.
 - The official Lobster plugin at
   `/app/clawscarf/native-plugins/node_modules/@openclaw/lobster`.
@@ -108,11 +135,13 @@ launching it inside OpenShell; see the limits below.
 The image built on Linux arm64. On the current pinned OpenShell Docker driver and
 [policy](../openshell/policy.yaml), native plugin discovery loads both exact
 versions. The capability probe checks bundled Codex provenance, successful
-runtime harness registration with no diagnostics, Codex CLI 0.153.4, and a
+runtime harness registration with no diagnostics, the pinned Codex CLI, and a
 Lobster deterministic pipeline returning its expected JSON. These checks use
 temporary configuration with no model calls and are reproduced by
 [the capability probe](../../tests/runtime/capabilities.mjs).
-The probe also checks plugin disable/enable and skill eligibility using native CLI
+The probe captures the actual Responses request builder before HTTP and verifies that
+optional tool arguments retain `strict: false` on our custom model route. It also
+checks plugin disable/enable and skill eligibility using native CLI
 commands against a temporary configuration. Run that image-only check with an exact
 locally built image ID:
 
