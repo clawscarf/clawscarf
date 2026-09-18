@@ -157,3 +157,16 @@ export async function installationLogs(directory: string, service: string) {
   const name = z.enum(localLogNames).parse(service);
   return compose(directory, ["logs", "--no-color", "--tail", "100", name]);
 }
+
+/** Administrator verification completes setup; it cannot make failed services or packs ready. */
+export function withVerifiedAdministrator(
+  status: Awaited<ReturnType<typeof startInstallation>>,
+) {
+  return {
+    ...status,
+    administrator: "ready" as const,
+    ready:
+      status.state === "running" &&
+      status.packs.every((pack) => pack.state === "complete"),
+  };
+}

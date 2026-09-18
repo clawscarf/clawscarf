@@ -26,7 +26,7 @@ import {
 import { saveConfiguration } from "../save.js";
 import { planInstallation, applyInstallation } from "../plan.js";
 import { doctorInstallation } from "../doctor.js";
-import { startInstallation } from "../lifecycle.js";
+import { startInstallation, withVerifiedAdministrator } from "../lifecycle.js";
 import { administratorSetup } from "../administrator.js";
 import { InstallationError } from "../errors.js";
 
@@ -57,7 +57,7 @@ export async function installFromAnswers(
     if (options.nonInteractive) break;
     try {
       if (await ui.confirm(`Install in ${draft.directory}?`, true)) break;
-      return { state: "cancelled" };
+      return { state: "cancelled" as const };
     } catch (error) {
       if (!(error instanceof SectionCancelled)) throw error;
     }
@@ -108,9 +108,9 @@ export async function installFromAnswers(
       (options.nonInteractive ? true : await ui.confirm("Start now?", true))
     )) {
       ui.note(`clawscarf start --directory ${quote(directory)}`, "Start later");
-      return { state: "prepared", directory };
+      return { state: "prepared" as const, directory };
     }
-    await task("Starting ClawScarf", (_signal, report) =>
+    const started = await task("Starting ClawScarf", (_signal, report) =>
       operator.start(stateDirectory, report),
     );
     const administrator = await finishAdministrator(
@@ -123,7 +123,7 @@ export async function installFromAnswers(
     );
     if (administrator)
       return {
-        state: "action_required",
+        state: "action_required" as const,
         ready: false,
         ...administrator,
         directory,
@@ -138,11 +138,11 @@ export async function installFromAnswers(
       `Status: clawscarf status --directory ${quote(directory)}\nStop: clawscarf stop --directory ${quote(directory)}`,
       "Commands",
     );
-    return { state: "running", directory };
+    return { ...withVerifiedAdministrator(started), directory };
   } catch (error) {
     if (error instanceof CloudAuthorizationRequired)
       return {
-        state: "action_required",
+        state: "action_required" as const,
         action: "cloud_authorization",
         ...error.action,
         directory,
@@ -258,13 +258,13 @@ export async function runConfiguration(options: InstallOptions) {
           throw error;
       }
     }
-    const result =
+    let result =
       existing && state
         ? await editInstallationSettings(state, ui, options)
         : await installFromAnswers(options, ui, operations, (message, work) =>
             progress(message, work, options),
           );
-    if (existing && state && result.state === "running") {
+    if (existing && state && "services" in result) {
       const administrator = await finishAdministrator(
         state,
         options,
@@ -273,19 +273,22 @@ export async function runConfiguration(options: InstallOptions) {
       );
       if (administrator)
         return {
-          state: "action_required",
+          state: "action_required" as const,
           ready: false,
           ...administrator,
           directory: options.directory,
           resume: `clawscarf status --directory ${quote(resolve(options.directory ?? "."))} --json`,
         };
+      result = withVerifiedAdministrator(result);
     }
     if (!options.nonInteractive) {
       if (result.state === "cancelled") clack.cancel("Cancelled.");
       else
         clack.outro(
-          result.state === "running"
-            ? "ClawScarf is running."
+          "ready" in result
+            ? result.ready
+              ? "ClawScarf is ready."
+              : "ClawScarf needs attention. Check status for details."
             : "Configuration saved. Server stopped.",
         );
     }
@@ -293,7 +296,7 @@ export async function runConfiguration(options: InstallOptions) {
   } catch (error) {
     if (error instanceof CloudAuthorizationRequired)
       return {
-        state: "action_required",
+        state: "action_required" as const,
         action: "cloud_authorization",
         ...error.action,
         directory: options.directory,
@@ -309,6 +312,6 @@ export async function runConfiguration(options: InstallOptions) {
         "Exited. Saved files and any running installation are retained.",
       );
     process.exitCode = 130;
-    return { state: "cancelled" };
+    return { state: "cancelled" as const };
   }
 }

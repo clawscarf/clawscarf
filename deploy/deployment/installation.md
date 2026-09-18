@@ -114,7 +114,8 @@ An existing short-lived owner token or provisioning credential can instead be su
 with `--cloud-credential-file`. Provisioning credentials have no personal identity:
 initial hosted setup also requires `--administrator-subject` and `--administrator-email`.
 Company OIDC without explicit bootstrap returns its private administrator URL and
-`ready: false`; this is not completed setup.
+`ready: false`; this is not completed setup. Configuration also reports service and pack
+readiness after startup; blocked packs or degraded services never count as ready.
 
 Precedence is recipe defaults, explicit options, then accepted menu edits. Omitted options
 preserve defaults (or current choices); `--no-connections`, for example, explicitly turns

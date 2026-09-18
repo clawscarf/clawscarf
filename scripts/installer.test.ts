@@ -405,7 +405,7 @@ await test(
   local,
   async (t) => {
     for (const nonInteractive of [false, true])
-      for (const fail of [false, true, "cancel"] as const) {
+      for (const fail of [false, true, "cancel", "pack"] as const) {
         const f = await fixture(t);
         const calls: string[] = [];
         let links = 0;
@@ -443,7 +443,7 @@ await test(
               assert.equal(plan, join(f.directory, "preview.json"));
               await readJson(plan);
               if (fail === "cancel") throw new InstallerCancelled();
-              if (fail) throw Error("Fixture failure");
+              if (fail === true) throw Error("Fixture failure");
               return {
                 state: "prepared",
                 directory: f.directory,
@@ -456,7 +456,10 @@ await test(
               return Promise.resolve({
                 state: "running" as const,
                 ready: true,
-                packs: [],
+                packs:
+                  fail === "pack"
+                    ? [{ member: "example", state: "blocked" as const }]
+                    : [],
                 administrator: "ready" as const,
                 services: [],
               });
@@ -485,13 +488,15 @@ await test(
             },
           },
         );
-        if (fail) await assert.rejects(work);
+        if (fail === true || fail === "cancel") await assert.rejects(work);
         else {
           const result = await work;
           assert.equal(
             result.state,
             nonInteractive ? "action_required" : "running",
           );
+          if (!nonInteractive && "ready" in result)
+            assert.equal(result.ready, fail !== "pack");
           if (nonInteractive)
             assert.partialDeepStrictEqual(result, {
               ready: false,
@@ -501,7 +506,7 @@ await test(
         }
         assert.deepEqual(
           calls,
-          fail
+          fail === true || fail === "cancel"
             ? ["doctor", "apply"]
             : nonInteractive
               ? ["doctor", "apply", "start"]

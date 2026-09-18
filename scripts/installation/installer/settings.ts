@@ -122,7 +122,7 @@ export async function editInstallationSettings(
           retained = false;
         }
       });
-      return { state: "cancelled" };
+      return { state: "cancelled" as const };
     }
     authorizing = candidate;
     if (options.nonInteractive)
@@ -142,7 +142,7 @@ The server must stop. Pack changes finish at the next start.`,
       !options.nonInteractive &&
       !(await ui.confirm("Apply these settings?"))
     )
-      return { state: "cancelled" };
+      return { state: "cancelled" as const };
     attempted = true;
     const current = await controlInstallation(directory, "status");
     if (current.state !== "stopped") {
@@ -180,16 +180,15 @@ The server must stop. Pack changes finish at the next start.`,
         ? true
         : await ui.confirm("Start with these settings?", true))
     ) {
-      await task("Starting ClawScarf", (_signal, report) =>
+      return task("Starting ClawScarf", (_signal, report) =>
         startInstallation(directory, report),
       );
-      return { state: "running" };
     }
     ui.note(
       `clawscarf start --directory '${resolve(options.directory ?? dirname(directory)).replaceAll("'", "'\\''")}'`,
       "Start later",
     );
-    return { state: "prepared" };
+    return { state: "prepared" as const };
   } catch (error) {
     if (authorizing && !pending) {
       const candidate = authorizing;
