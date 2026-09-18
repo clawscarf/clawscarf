@@ -96,6 +96,34 @@ export async function editInstallationSettings(
         inputs,
         true,
       ));
+    if (
+      pending &&
+      !options.nonInteractive &&
+      !(await ui.confirm("Resume this interrupted change?"))
+    ) {
+      await withInstallationLock(directory, async () => {
+        const prepared = z
+          .object({
+            ownerId: z.string(),
+            settingsCandidate: z.string().optional(),
+            settingsPending: z.string().optional(),
+          })
+          .parse(await readJson(join(directory, "prepared.json")));
+        if (prepared.settingsCandidate !== pending)
+          throw new InstallationError(
+            "stale_plan",
+            "The pending change has changed. Reopen configure.",
+          );
+        if (!prepared.settingsPending) {
+          await writePrivate(
+            join(directory, "prepared.json"),
+            JSON.stringify({ ownerId: prepared.ownerId }),
+          );
+          retained = false;
+        }
+      });
+      return { state: "cancelled" };
+    }
     authorizing = candidate;
     if (options.nonInteractive)
       await registerUnattended(candidate, options.cloudCredentialFile);
@@ -110,10 +138,9 @@ The server must stop. Pack changes finish at the next start.`,
       "Review change",
     );
     if (
+      !pending &&
       !options.nonInteractive &&
-      !(await ui.confirm(
-        pending ? "Resume this interrupted change?" : "Apply these settings?",
-      ))
+      !(await ui.confirm("Apply these settings?"))
     )
       return { state: "cancelled" };
     attempted = true;

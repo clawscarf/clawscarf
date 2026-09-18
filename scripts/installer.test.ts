@@ -1465,7 +1465,14 @@ await test(
       first.inputs,
     );
     const state = join(f.directory, "state");
-    await mkdir(state, { mode: 0o700 });
+    const { resolveInstallation } = await import("./installation/resolve.js");
+    const { initializeState } = await import("./deployment/state.js");
+    const { launchLocal } = await import("./deployment/launch.js");
+    const resolved = await resolveInstallation(
+      configFile,
+      [29001, 29002, 29003, 29004, 29005, 29006, 29007],
+    );
+    const installation = await initializeState(state, resolved.input);
     const config = resolveConfigurationInputs(
       installationSchema.parse(await readJson(configFile)),
       first.directory,
@@ -1474,7 +1481,7 @@ await test(
     await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
     await writeFile(
       join(state, "prepared.json"),
-      JSON.stringify({ ownerId: "test" }),
+      JSON.stringify({ ownerId: installation.ownerId }),
     );
     const app = Fastify();
     t.after(() => app.close());
@@ -1510,6 +1517,33 @@ await test(
       (await readdir(state)).filter((name) => name.startsWith(".settings-"))
         .length,
       1,
+    );
+    // Reach the next startup guard: authorization alone must not invalidate preparation.
+    process.env.OPENSHELL_REVIEW_TEST = "1";
+    try {
+      await assert.rejects(
+        launchLocal(state, () => {}),
+        { code: "configuration_changed" },
+      );
+    } finally {
+      delete process.env.OPENSHELL_REVIEW_TEST;
+    }
+    class Discard extends Answers {
+      override confirm() {
+        return Promise.resolve(false);
+      }
+    }
+    assert.equal(
+      (await editInstallationSettings(state, new Discard(f.answers))).state,
+      "cancelled",
+    );
+    assert.deepEqual(await readJson(join(state, "prepared.json")), {
+      ownerId: installation.ownerId,
+    });
+    assert.equal(
+      (await readdir(state)).filter((name) => name.startsWith(".settings-"))
+        .length,
+      0,
     );
   },
 );

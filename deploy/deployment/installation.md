@@ -188,7 +188,7 @@ Disabling Connections preserves its cloud accounts and grants. Re-enabling does 
 revoked credentials. Pack changes use native ownership checks at the next start; uncertain
 pack mutations are never automatically replayed.
 
-If applying a change is interrupted, startup remains blocked. Rerun `configure --directory`
+An interrupted cloud authorization retains the proposed settings without blocking startup of the accepted configuration. In the menu, decline resuming to discard an authorization-only draft. If applying a change is interrupted, startup remains blocked. Rerun `configure --directory`
 without new selections to review and explicitly resume the saved change. Stale previews
 are rejected internally. You do not pass a candidate file or fingerprint.
 

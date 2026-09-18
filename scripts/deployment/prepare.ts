@@ -82,7 +82,10 @@ export async function prepareLocal(
   await verifyRuntimeImage(input.runtimeImage);
   const state = await initializeState(directory, input);
   try {
-    z.strictObject({ ownerId: z.literal(state.ownerId) }).parse(
+    z.strictObject({
+      ownerId: z.literal(state.ownerId),
+      settingsCandidate: z.string().optional(),
+    }).parse(
       JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
     );
   } catch (error) {

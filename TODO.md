@@ -2,6 +2,17 @@
 
 Open work only. Select a task before implementing; this list does not authorize continuation.
 
+## CLI cleanup — selected
+
+- [ ] Preserve startup readiness and pack failures in installer results.
+- [ ] Preserve start/stop intent when resuming authorization.
+- [ ] Remove competing public configuration commands; retain shared component operators.
+- [ ] Apply only changed capabilities; unchanged configuration must not restart services.
+- [ ] Return actionable, sanitized CLI errors.
+- [ ] Share authenticated HTTP handling between People and Connections.
+- [ ] Resolve recipe models from the release catalog instead of duplicating definitions.
+- [ ] Correct stale CLI documentation and deletion guidance.
+
 ## Installer and releases
 
 - [ ] Verify first-time production signup through email verification and installer resume.

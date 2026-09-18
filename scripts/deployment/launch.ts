@@ -33,7 +33,10 @@ export async function launchLocal(
 ) {
   const directory = resolve(directoryInput);
   const state = await readState(directory);
-  z.strictObject({ ownerId: z.literal(state.ownerId) }).parse(
+  z.strictObject({
+    ownerId: z.literal(state.ownerId),
+    settingsCandidate: z.string().optional(),
+  }).parse(
     JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
   );
   if (Object.keys(process.env).some((key) => key.startsWith("OPENSHELL_")))
