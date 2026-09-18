@@ -265,3 +265,7 @@ CLI failures identify deliberate configuration errors and file paths without ech
 file contents, provider responses or subprocess output. `--json` keeps the same
 error code and detail on stderr. Unknown failures remain sanitized; mutations are
 never retried automatically.
+
+People and Connections commands share session validation, CSRF acquisition and a
+90-second operation deadline. Session files must be private. Management requests
+require HTTPS (or loopback HTTP), reject redirects and never retry mutations.

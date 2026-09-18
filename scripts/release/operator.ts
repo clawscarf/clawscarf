@@ -51,6 +51,7 @@ const payload = [
   "scripts/clawscarf.js",
   "scripts/output.js",
   "scripts/errors.js",
+  "scripts/session.js",
   "scripts/people.js",
   "scripts/connections.js",
   "scripts/cloud",

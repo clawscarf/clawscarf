@@ -1,10 +1,9 @@
-import { type Command } from "commander";
 import { readFile } from "node:fs/promises";
+import { type Command } from "commander";
 import { randomUUID } from "node:crypto";
-import { session } from "../services/access/generated/sdk.gen.js";
+import { sessionRequest } from "./session.js";
 import * as api from "../services/connections/cloud/generated/sdk.gen.js";
 import type { ConnectorAgentGrant } from "../services/connections/cloud/generated/types.gen.js";
-import { cloudUrlSchema } from "./cloud/url.js";
 import { InstallationError } from "./installation/errors.js";
 import { writeResult } from "./output.js";
 
@@ -17,32 +16,13 @@ export function connectionCommands(command: Command, program: Command) {
     writeResult(program, value, text);
   };
   async function request(revision?: number) {
-    const opts = command.opts<{ origin?: string; sessionFile?: string }>();
-    if (!opts.origin || !opts.sessionFile)
-      throw new InstallationError(
-        "invalid_configuration",
-        "Use --origin and --session-file for connection management.",
-      );
-    const origin = cloudUrlSchema.parse(opts.origin);
-    const token = (await readFile(opts.sessionFile, "utf8")).trim();
-    if (!/^[A-Za-z0-9_-]{43,128}$/.test(token))
-      throw new InstallationError(
-        "invalid_configuration",
-        "Invalid session credential.",
-      );
-    const base = {
-      baseUrl: origin,
-      redirect: "error",
-      signal: AbortSignal.timeout(90_000),
-      throwOnError: true,
-      headers: { cookie: `clawscarf_session=${token}`, origin },
-    } as const;
-    const current = (await session(base)).data;
+    const base = await sessionRequest(
+      command.opts<{ origin?: string; sessionFile?: string }>(),
+    );
     return {
       ...base,
       headers: {
         ...base.headers,
-        "x-csrf-token": current.csrfToken,
         "idempotency-key": randomUUID(),
         "if-match": `"${String(revision ?? 0)}"`,
       },

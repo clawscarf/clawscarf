@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { readFile } from "node:fs/promises";
+import { sessionRequest } from "./session.js";
 import * as api from "../services/access/generated/sdk.gen.js";
 import { writeResult } from "./output.js";
 
@@ -11,23 +11,8 @@ export function peopleCommand(program: Command) {
       "--session-file <path>",
       "Private file containing your session credential",
     );
-  async function request() {
-    const options = command.opts<{ origin: string; sessionFile: string }>();
-    const credential = (await readFile(options.sessionFile, "utf8")).trim();
-    const base = {
-      baseUrl: options.origin,
-      throwOnError: true,
-      headers: {
-        cookie: `clawscarf_session=${credential}`,
-        origin: options.origin,
-      },
-    } as const;
-    const current = (await api.session(base)).data;
-    return {
-      ...base,
-      headers: { ...base.headers, "x-csrf-token": current.csrfToken },
-    };
-  }
+  const request = () =>
+    sessionRequest(command.opts<{ origin: string; sessionFile: string }>());
   command.command("list").action(async () => {
     const result = (await api.listPeople(await request())).data;
     writeResult(
