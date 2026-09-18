@@ -13,7 +13,8 @@ journey passed device approval, registration, administrator sign-in, native Peop
 real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
 the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections broker/API and quota enforcement are implemented and tested locally
 with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
-administrator-checking adapter are implemented. Real Outlook consent passed; reconnect/external execution,
+administrator-checking adapter are implemented. Real Outlook consent, reconnect, read-only
+execution and disconnect/revocation passed locally. The native remote skill-path issue,
 installer selection and cloud deployment remain pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [configured-development runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
 are owned by that repository; the implementation sequence is owned only by
@@ -167,8 +168,8 @@ replacements. Test exact callbacks, logout and the supported localhost/private/p
 addresses while implementing this flow. Do not work around a provider limitation with a
 custom token issuer, unsafe redirect policy or weaker login.
 
-Login becomes usable before broker migration; broker execution works through API/CLI before
-native UI; quota enforcement passes before shared cloud access. Final verification joins
+Login becomes usable before broker migration; broker execution works through its API
+and management through the CLI before native UI; quota enforcement passes before shared cloud access. Final verification joins
 already working pieces rather than discovering their first integration. A restricted test
 deployment may precede quota enforcement; an openly usable service may not.
 

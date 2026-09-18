@@ -6,30 +6,19 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-Hosted login and automatic installer registration are verified locally through native
-administrator access and a real model response. M3 is complete. M4 cloud broker/API and
-database tests are implemented. The dedicated provider project/key and real setup allocation work.
-Real Outlook consent passed; external execution and CLI acceptance remain pending. M5 quotas passed real
-PostgreSQL/HTTP regressions. M6 native UI/CLI and its administrator-checking adapter
-are implemented. Native catalog, edit/removal, loading, CLI management and protected
-runtime-to-cloud search have passed locally; real consent passed, while reconnect and external tool execution remain pending.
-No cloud deployment yet. Development releases must supply or override the cloud URL.
+M3 hosted login/administrator setup, M4 cloud broker and M5 quotas are implemented
+and verified locally. M6 native UI/CLI, real Outlook linking, reconnect, read-only
+execution and disconnect/revocation passed. The remaining native skill-path bug is
+below. No cloud deployment yet; development releases supply or override the cloud URL.
 
-Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout;
-native Connections replacement is part of this same batch, not a separate future task.
+Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout.
 
-- [ ] **M4 — Run Connections in the cloud.** Move reviewed broker/catalog/provider code and
-      regressions; replace local-session coupling with installation scope. Link a real account and
-      execute one tool through API/CLI, proving scoped management denial and runtime revocation.
-      Adapt scheduled cleanup and provider deadlines using Kora's cloud deployment as the reference.
-- [ ] **M6 — Finish native Connections acceptance.** Real Outlook consent is verified.
-      Native GPT-6 Astra search/describe passed through LiteLLM using the pinned upstream
-      Responses fix. Fix delivery of the Connections skill into the worker workspace:
-      native `read` could not find the advertised skill file, although both discovery
-      tools completed successfully.
-      Verify reconnect/disconnect and one real tool execution.
-      Native UI/CLI, administrator/member/CSRF/revocation enforcement and packaging are implemented
-      and tested. Removing the previous installer/local broker paths remains M7.
+- [ ] **M6 — Resolve the native remote skill-path bug.** The Connections skill remains
+      installed and readable after `clawscarf stop` / `start`. Pinned OpenClaw
+      `7bc487d` advertises a `~/sandboxes/…/SKILL.md` path that its remote read bridge
+      treats as workspace-relative. Absolute and workspace-relative paths succeed;
+      the advertised tilde path fails. Resolve upstream without a plugin-specific
+      workaround, then verify the advertised path in a fresh native session.
 - [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
       through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
       disabled/empty Connections, and remove superseded token-login and local broker/UI paths.

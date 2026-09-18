@@ -19,8 +19,11 @@ The same operations are available through `clawscarf connections`; see the
 
 The installer still uses its previous broker choices. Wiring the cloud adapter
 into recipes and removing the previous local page/broker is tracked separately
-in [TODO](../../TODO.md). Real Outlook consent passed; reconnect and external execution remain
-unverified; native-page packaging and authorization are tested independently.
+in [TODO](../../TODO.md). Real Outlook consent, reconnect, read-only execution and
+disconnect/revocation passed locally; native-page packaging and authorization are tested.
+The skill survives normal stop/start, but pinned OpenClaw’s remote read tool fails on
+the advertised `~/…` skill path; absolute and workspace-relative paths work. This
+upstream path-resolution issue remains in TODO.
 The bundled [skill](skills/connections/SKILL.md) explains exact account selection,
 advisory provider schemas, saved results and uncertain outcomes.
 
