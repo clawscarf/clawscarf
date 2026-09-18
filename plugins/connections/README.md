@@ -19,7 +19,7 @@ The same operations are available through `clawscarf connections`; see the
 
 The installer still uses its previous broker choices. Wiring the cloud adapter
 into recipes and removing the previous local page/broker is tracked separately
-in [TODO](../../TODO.md). Actual external-account consent and execution remain
+in [TODO](../../TODO.md). Real Outlook consent passed; reconnect and external execution remain
 unverified; native-page packaging and authorization are tested independently.
 The bundled [skill](skills/connections/SKILL.md) explains exact account selection,
 advisory provider schemas, saved results and uncertain outcomes.

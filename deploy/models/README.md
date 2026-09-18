@@ -165,6 +165,12 @@ tests required no paid provider credentials.
 A fresh installation from rebuilt development images passed direct OpenAI GPT-6 Astra
 with medium reasoning and a native `session_status` tool call from the browser through
 LiteLLM Responses. The previous universal Chat Completions setting failed this combination.
+Connections discovery exposed a separate Responses limitation: optional search fields
+are treated as required when OpenClaw omits the tool's `strict` setting. An isolated
+LiteLLM request with `strict: false` preserved optional fields, but the installed
+OpenClaw Responses builder does not pass the model's `supportsStrictMode` setting
+through. Native Connections discovery on this route remains blocked; the successful
+`session_status` check did not exercise this case.
 
 The fresh local assembly passed integrated initial model/credential/policy setup
 and a native administrator browser conversation through the rebuilt runtime,

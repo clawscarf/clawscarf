@@ -13,7 +13,7 @@ journey passed device approval, registration, administrator sign-in, native Peop
 real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
 the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections broker/API and quota enforcement are implemented and tested locally
 with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
-administrator-checking adapter are implemented. Real account consent/execution,
+administrator-checking adapter are implemented. Real Outlook consent passed; reconnect/external execution,
 installer selection and cloud deployment remain pending. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [configured-development runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
 are owned by that repository; the implementation sequence is owned only by

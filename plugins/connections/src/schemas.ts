@@ -29,11 +29,38 @@ export const configSchema = Type.Object(
 
 export const searchParameters = Type.Object(
   {
-    query: Type.Optional(Type.String({ maxLength: 500 })),
-    connectionId: Type.Optional(identity),
-    connectorId: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
+    query: Type.Optional(
+      Type.String({
+        maxLength: 500,
+        description:
+          "Words describing the service or operation to find. Start with only this field; other filters are optional.",
+      }),
+    ),
+    connectionId: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 256,
+        description:
+          "Exact connection.id returned by an earlier search, never an account name. Omit on the first search.",
+      }),
+    ),
+    connectorId: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 100,
+        description:
+          "Exact connectorId returned by discovery. Omit unless already known.",
+      }),
+    ),
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 25 })),
-    cursor: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
+    cursor: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 2000,
+        description:
+          "Opaque nextCursor from a previous search. Omit for the first page; never invent a cursor or use a page number.",
+      }),
+    ),
   },
   { additionalProperties: false },
 );
