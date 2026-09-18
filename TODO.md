@@ -6,19 +6,10 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-M3 hosted login/administrator setup, M4 cloud broker and M5 quotas are implemented
-and verified locally. M6 native UI/CLI, real Outlook linking, reconnect, read-only
-execution and disconnect/revocation passed. The remaining native skill-path bug is
-below. No cloud deployment yet; development releases supply or override the cloud URL.
+No cloud deployment yet; development releases supply or override the cloud URL.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout.
 
-- [ ] **M6 — Resolve the native remote skill-path bug.** The Connections skill remains
-      installed and readable after `clawscarf stop` / `start`. Pinned OpenClaw
-      `7bc487d` advertises a `~/sandboxes/…/SKILL.md` path that its remote read bridge
-      treats as workspace-relative. Absolute and workspace-relative paths succeed;
-      the advertised tilde path fails. Resolve upstream without a plugin-specific
-      workaround, then verify the advertised path in a fresh native session.
 - [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
       through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
       disabled/empty Connections, and remove superseded token-login and local broker/UI paths.
@@ -59,6 +50,13 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
 ## Bugs to investigate
+
+- [ ] **Resolve the native remote skill-path bug.** The Connections skill remains
+      installed and readable after `clawscarf stop` / `start`. Pinned OpenClaw
+      `7bc487d` advertises a `~/sandboxes/…/SKILL.md` path that its remote read bridge
+      treats as workspace-relative. Absolute and workspace-relative paths succeed;
+      the advertised tilde path fails. Resolve upstream without a plugin-specific
+      workaround, then verify the advertised path in a fresh native session.
 
 ## Future decisions
 
