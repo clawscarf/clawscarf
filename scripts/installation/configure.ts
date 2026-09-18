@@ -1,16 +1,16 @@
-import { registerCloudServices } from "../cloud/registration.js";
-import { packRequirements } from "./requirements.js";
-import { InstallationError } from "./errors.js";
-import { dirname, resolve } from "node:path";
-import {
-  setupContext,
-  setupDraft,
-  assertReleaseCapabilities,
-  type SetupOptions,
-} from "./setup.js";
-import { readJson, readInputFile } from "./files.js";
-import { saveConfiguration, SetupInputs } from "./save.js";
+import { resolve } from "node:path";
+import { setupContext, assertReleaseCapabilities } from "./setup.js";
+import { readJson } from "./files.js";
+import { SetupInputs } from "./save.js";
 import { installationSchema, type InstallationDraft } from "./configuration.js";
+import { InstallationError } from "./errors.js";
+import {
+  selectedDraft,
+  selectionSchema,
+  type ConfigureOptions,
+} from "./options.js";
+import { packRequirements } from "./requirements.js";
+import { newDirectory } from "./installer/inputs.js";
 
 /** Resolve input references against the settings document; state stays relative to the output. */
 export function resolveConfigurationInputs<T extends InstallationDraft>(
@@ -53,103 +53,88 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
   return config;
 }
 
-export async function configureInstallation(
-  options: SetupOptions & {
-    recipe?: string;
-    directory: string;
-    settings?: string;
-    cloudCredentialFile?: string;
-  },
-) {
-  const authorize = async () => {
-    if (!options.cloudCredentialFile)
-      throw new InstallationError(
-        "invalid_configuration",
-        "Hosted registration requires --cloud-credential-file for unattended setup. Use install for browser sign-in.",
-      );
-    return (await readInputFile(options.cloudCredentialFile, true))
-      .toString("utf8")
-      .trim();
-  };
-  const saved = await savedSetup(options);
-  if (saved) {
-    await registerCloudServices(saved.configFile, authorize);
-    return { state: "configured", configFile: saved.configFile };
-  }
-  if (!options.recipe)
+/** Collect the same choices as the menu without prompting or writing any files. */
+export async function prepareConfiguration(options: ConfigureOptions) {
+  if (!options.directory || !options.recipe)
     throw new InstallationError(
       "invalid_configuration",
-      "Choose --recipe for a new installation.",
+      "Unattended new configuration requires --directory and --recipe (or custom).",
     );
+  const directory = resolve(options.directory);
+  await newDirectory(directory);
   const context = await setupContext(options);
-  const settings = options.settings ? await readJson(options.settings) : {};
-  const inputs = new SetupInputs(resolve(options.directory));
-  const draft = resolveConfigurationInputs(
-    setupDraft(context, options.recipe, settings, inputs),
-    options.settings ? dirname(resolve(options.settings)) : process.cwd(),
-  );
-  if (draft.access.mode === "hosted")
-    draft.access.registrationFile = resolve(
-      options.directory,
-      "secrets/hosted-login.json",
-    );
-  draft.connections.registrationFile = resolve(
-    options.directory,
-    "secrets/connections-registration.json",
-  );
+  const inputs = new SetupInputs(directory);
+  const draft = await selectedDraft(context, options.recipe, options, inputs);
+  const config = await validateSelections(context, draft);
+  return { directory, config, inputs };
+}
+
+export async function validateSelections(
+  context: Awaited<ReturnType<typeof setupContext>>,
+  draft: InstallationDraft,
+) {
   if (!draft.models)
     throw new InstallationError(
       "invalid_configuration",
-      "Models require LiteLLM configuration and provider credentials. Supply models in --settings.",
+      "Choose --model or a recipe with a default model.",
+    );
+  if (draft.models.mode === "litellm" && !draft.models.upstreamEnvironmentFile)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Supply --llm-key-file or --provider-env-file for the selected model provider.",
+    );
+  if (draft.models.mode === "external" && !draft.models.credentialFile)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Supply --model-gateway-key-file.",
+    );
+  if (draft.access.mode === "oidc" && !draft.access.clientSecretFile)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Supply --oidc-secret-file.",
+    );
+  if (draft.exposure.mode === "https" && !draft.exposure.keyFile)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Supply --tls-key-file.",
+    );
+  if (draft.packs.length && !draft.packOperator)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Selected experimental packs require --pack-python.",
     );
   const config = installationSchema.parse(draft);
   assertReleaseCapabilities(context, config);
   const issues = await packRequirements(config);
   if (issues.length)
     throw new InstallationError("invalid_configuration", issues.join(" "));
-  const configFile = await saveConfiguration(
-    resolve(options.directory),
-    config,
-    inputs,
-  );
-  await registerCloudServices(configFile, authorize);
-  return {
-    state: "configured",
-    configFile,
-    release: context.release.version,
-    recipe: options.recipe,
-  };
+  return config;
 }
 
-/** Only install/configure without new selections can resume saved setup. */
-export async function savedSetup(options: {
-  directory?: string;
-  recipe?: string;
-  settings?: string;
-  release?: string;
-  recipes?: string;
-  cloudUrl?: string;
-}) {
+export async function savedSetup(options: ConfigureOptions) {
   if (!options.directory) return undefined;
   const configFile = resolve(options.directory, "installation.json");
-  let config: ReturnType<typeof installationSchema.parse>;
   try {
-    config = installationSchema.parse(await readJson(configFile));
+    const config = installationSchema.parse(await readJson(configFile));
+    return { configFile, config };
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT")
       return undefined;
     throw error;
   }
+}
+
+export function rejectNewSelections(options: ConfigureOptions) {
   if (
     options.recipe ||
-    options.settings ||
     options.release ||
-    options.recipes ||
-    options.cloudUrl
+    options.cloudUrl ||
+    Object.values(selectionSchema.parse(options)).some(
+      (value) => value !== undefined,
+    )
   )
     throw new InstallationError(
       "change_unsupported",
-      "To resume saved setup, pass only --directory (and a cloud credential file for unattended registration). Use settings for changes to an installed server.",
+      "Setup is unfinished. Resume with configure --directory before changing selections.",
     );
-  return { configFile, config };
 }

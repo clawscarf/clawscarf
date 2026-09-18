@@ -41,21 +41,23 @@ The companion fetch SDKs are compiled separately by [tsconfig.sdk.json](../tscon
 because its generator does not support exact optional property checking. The main
 project retains that check and consumes their generated declarations.
 
-The [deployment operators](../deploy/deployment/README.md) in `deployment/` use the public CLI’s `apply`,
-`start` and `administrator` for private state, container lifecycle and administrator entry. It
-has local acceptance evidence in that guide; clean-machine release qualification remains separate.
+The public CLI uses [deployment operators](../deploy/deployment/README.md) in `deployment/`
+for private state, container lifecycle and administrator entry. Local verification is
+described there; clean-machine release verification remains separate.
 The build clears its compiled output first so removed source files cannot survive in an archive.
 The compiled operator includes the Access and Connections migrations, component pins and sandbox
 policy consumed by setup; the companion never runs setup migrations on startup.
 
 The [unified installation CLI](../deploy/deployment/installation.md) is in `installation/`.
-[Setup](installation/setup.ts) owns recipe defaults and section replacement;
+[Setup](installation/setup.ts) owns recipe defaults; [options](installation/options.ts)
+validates explicit command-line selections;
 [configuration writing](installation/save.ts) owns private files. The `installer/sections/`
 modules collect feature-specific answers; shared prompts render the revisitable menu.
-`configure` uses the same defaults/writer without terminal prompts; `install` calls the
-same plan/doctor/apply/start functions. Neither has a separate provisioning engine.
+`configure` handles both new and existing installations, interactively or with explicit
+noninteractive flags. It calls the shared validation, preparation and change operators;
+there is no separate provisioning engine.
 Recipes are bundled release data from [deploy/recipes](../deploy/recipes/README.md).
-Run `clawscarf install --release /absolute/clawscarf-release.json` after linking the
+Run `clawscarf configure --release /absolute/clawscarf-release.json` after linking the
 development command below.
 
 ## Development command
@@ -169,8 +171,8 @@ clients are checked for drift.
 
 Shared frontend primitives and theme live in `ui/`; they cannot import service or operator code. Both browser builds consume those same sources. Operator internals cannot import CLI entrypoints or installation menus, and service access is restricted to named composition/configuration/storage boundaries. Import regressions cover permitted and forbidden directions.
 
-Retained installation editing uses `clawscarf settings --state <directory>`; its
-noninteractive plan/apply commands share the same operations. See the
+Retained installation editing uses `clawscarf configure --directory <installation>`; its
+noninteractive flags share the same operations. Validation and preview/apply stay internal. See the
 [installation guide](../deploy/deployment/installation.md#change-an-existing-installation)
 for supported changes, persistence and failure handling.
 

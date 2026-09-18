@@ -11,11 +11,10 @@ import {
 import { createDevelopmentRelease } from "../release/create.js";
 import { Command } from "commander";
 import { z } from "zod";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { installationSchema } from "./configuration.js";
 import { readJson } from "./files.js";
-import { planInstallation, applyInstallation } from "./plan.js";
 import {
   startInstallation,
   controlInstallation,
@@ -23,15 +22,12 @@ import {
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
 import { localLogNames } from "../deployment/logs.js";
-import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../deployment/upgrade.js";
-import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
 import { operateConnectionsRuntime } from "../deployment/connections-runtime.js";
 import { progress } from "./installer/prompts.js";
-import { runInstaller } from "./installer/run.js";
-import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
-import { runSettings, readInstallationSettings } from "./installer/settings.js";
+import { runConfiguration } from "./installer/run.js";
+import { installationOptions, type ConfigureOptions } from "./options.js";
 import { InstallationError } from "./errors.js";
 import { administratorSetup } from "./administrator.js";
 
@@ -46,77 +42,49 @@ export function installationCommand() {
   const output = (value: unknown, human?: string) => {
     writeResult(program, value, human);
   };
-  program
-    .command("install")
+  installationOptions(program.command("configure"))
     .description(
-      "Interactively configure and optionally start a new installation",
+      "Create or change an installation; prompts unless --non-interactive",
     )
+    .option("--directory <path>", "Installation directory")
+    .option("--recipe <id>", "New installation: release recipe ID, or custom")
     .option(
       "--release <file>",
-      "Developer override: local ClawScarf release file",
-    )
-    .option(
-      "--recipes <directory>",
-      "Developer override: local recipe catalogue",
+      "Development override: local software release bundle",
     )
     .option("--cloud-url <url>", "Development override: ClawScarf Cloud origin")
-    .option("--recipe <id>", "Starting recipe, or custom")
-    .option("--directory <path>", "New private installation directory")
     .option(
-      "--settings <file>",
-      "JSON overrides; skip questions already answered here",
+      "--cloud-credential-file <file>",
+      "Private cloud credential for unattended registration",
     )
-    .action(async (options: Parameters<typeof runInstaller>[0]) => {
-      if (program.opts<{ json?: boolean }>().json)
-        throw new InstallationError(
-          "invalid_configuration",
-          "Use configure for noninteractive setup; install requires a terminal.",
-        );
-      await runInstaller(options);
+    .option("--non-interactive", "Use explicit options without prompting")
+    .option(
+      "--yes",
+      "Approve changes to an existing installation, including a restart",
+    )
+    .option("--start", "Start after configuration")
+    .option("--no-start", "Leave the installation stopped")
+    .action(async (options: ConfigureOptions) => {
+      const result = await runConfiguration({
+        ...options,
+        ...program.opts<{ json?: boolean }>(),
+      });
+      if (options.nonInteractive) output(result);
     });
   program
     .command("recipes")
     .description("List the release's recipe defaults")
     .option("--release <file>")
-    .option("--recipes <directory>")
     .action(async (options: SetupOptions) => {
       const context = await setupContext(options);
       output({
         release: context.release.version,
         recipes: context.recipes,
+        models: context.release.modelCatalog,
+        packs: context.release.packs,
         custom: true,
       });
     });
-  program
-    .command("configure")
-    .description(
-      "Configure a new installation and register hosted login, or resume saved setup",
-    )
-    .option("--release <file>")
-    .option("--recipes <directory>")
-    .option("--recipe <id>", "Recipe ID, or custom (new installations)")
-    .option("--cloud-url <url>", "Development override: ClawScarf Cloud origin")
-    .option(
-      "--cloud-credential-file <file>",
-      "Private cloud owner/provisioner credential for unattended setup",
-    )
-    .requiredOption("--directory <path>", "New private installation directory")
-    .option(
-      "--settings <file>",
-      "JSON section overrides; input paths are relative to this file",
-    )
-    .action(
-      async (
-        options: SetupOptions & {
-          recipe?: string;
-          cloudCredentialFile?: string;
-          directory: string;
-          settings?: string;
-        },
-      ) => {
-        output(await configureInstallation(options));
-      },
-    );
   program
     .command("release-create")
     .description(
@@ -131,76 +99,6 @@ export function installationCommand() {
       });
       output({ version: release.version, directory: options.output });
     });
-  program
-    .command("validate")
-    .requiredOption("--config <file>")
-    .action(async ({ config }: { config: string }) => {
-      const result = await resolveInstallation(config, await allocatePorts());
-      output({ valid: true, release: result.release.version });
-    });
-  program
-    .command("plan")
-    .requiredOption("--config <file>")
-    .option("--output <file>", "Write a new private preview for apply")
-    .action(async (options: { config: string; output?: string }) => {
-      const plan = await planInstallation(options.config);
-      if (options.output)
-        await writeFile(options.output, JSON.stringify(plan, null, 2) + "\n", {
-          flag: "wx",
-          mode: 0o600,
-        });
-      output(plan);
-    });
-  program
-    .command("apply")
-    .requiredOption("--config <file>")
-    .requiredOption("--plan <file>")
-    .requiredOption("--yes", "Apply this exact preview")
-    .action(async (options: { config: string; plan: string }) => {
-      output(await applyInstallation(options.config, options.plan));
-    });
-  const settings = withLocation(program.command("settings"))
-    .description(
-      "View, edit or explicitly reapply this installation's settings",
-    )
-    .action(async (options: LocationOptions) => {
-      const state = await resolveLocation(options);
-      if (settings.optsWithGlobals<{ json?: boolean }>().json)
-        writeResult(settings, await readInstallationSettings(state));
-      else await runSettings(state);
-    });
-  settings
-    .command("plan")
-    .requiredOption("--config <file>", "Candidate installation configuration")
-    .action(async ({ config }: { config: string }) => {
-      const plan = await planSettingsChange(config);
-      output({
-        stateDirectory: plan.directory,
-        fingerprint: plan.fingerprint,
-        restartRequired: true,
-        resuming: plan.resuming,
-        changes: plan.changes,
-      });
-    });
-  settings
-    .command("apply")
-    .requiredOption("--config <file>")
-    .requiredOption(
-      "--fingerprint <digest>",
-      "Fingerprint returned by settings plan",
-    )
-    .requiredOption("--yes", "Apply the reviewed settings")
-    .action(
-      async ({
-        config,
-        fingerprint,
-      }: {
-        config: string;
-        fingerprint: string;
-      }) => {
-        output(await reconfigureInstallation(config, fingerprint));
-      },
-    );
   withLocation(program.command("start")).action(
     async (options: LocationOptions) => {
       const state = await resolveLocation(options);
@@ -232,8 +130,8 @@ export function installationCommand() {
           "Permanently delete this installation's Docker resources and data",
         )
         .option(
-          "--confirm-delete <state-directory>",
-          "Unattended deletion: confirm the exact absolute state directory",
+          "--confirm-delete <directory>",
+          "Unattended deletion: confirm the exact absolute installation directory",
         )
         .option(
           "--accept-data-loss",
@@ -247,12 +145,12 @@ export function installationCommand() {
           acceptDataLoss?: boolean;
         },
       ) => {
-        const directory = await resolveLocation(options);
         if (options.delete) {
-          await confirmDeletion(directory, {
+          await confirmDeletion(resolve(options.directory), {
             ...options,
             ...program.opts<{ json?: boolean }>(),
           });
+          const directory = await resolveLocation(options);
           const result = await progress(
             "Deleting installation",
             (signal) => deleteInstallation(directory, signal),
@@ -269,7 +167,10 @@ export function installationCommand() {
             "invalid_configuration",
             "Deletion confirmations require --delete.",
           );
-        const result = await controlInstallation(directory, action);
+        const result = await controlInstallation(
+          await resolveLocation(options),
+          action,
+        );
         output(result, statusText(result));
       },
     );
@@ -285,12 +186,27 @@ export function installationCommand() {
       if (program.opts<{ json?: boolean }>().json) output({ service, text });
       else process.stdout.write(text);
     });
-  program
-    .command("doctor")
-    .requiredOption("--config <file>")
-    .action(async ({ config }: { config: string }) => {
+  withLocation(program.command("doctor")).action(
+    async ({ directory }: LocationOptions) => {
+      const accepted = join(
+        await resolveLocation({ directory }),
+        "settings.json",
+      );
+      let config = accepted;
+      try {
+        await access(accepted);
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        ))
+          throw error;
+        config = join(resolve(directory), "installation.json");
+      }
       output(await doctorInstallation(config));
-    });
+    },
+  );
   withLocation(program.command("upgrade"))
     .requiredOption("--runtime-image <digest>")
     .requiredOption("--python <executable>")
@@ -385,28 +301,18 @@ function statusText(status: Awaited<ReturnType<typeof controlInstallation>>) {
   return lines.join("\n");
 }
 
-type LocationOptions = { directory?: string; state?: string };
+type LocationOptions = { directory: string };
 function withLocation(command: Command) {
-  return command
-    .option(
-      "--directory <path>",
-      "Installation directory selected during install",
-    )
-    .option("--state <path>", "Use the private state directory directly");
+  return command.requiredOption(
+    "--directory <path>",
+    "Installation directory selected during configure",
+  );
 }
 
-/** Lifecycle operators receive state, whichever public location option was used. */
-async function resolveLocation({ directory, state }: LocationOptions) {
-  if ((!directory && !state) || (directory && state))
-    throw new InstallationError(
-      "invalid_configuration",
-      "Supply either --directory <installation> or --state <state-folder>.",
-    );
-  if (directory) {
-    const config = z
-      .object({ stateDirectory: installationSchema.shape.stateDirectory })
-      .parse(await readJson(join(resolve(directory), "installation.json")));
-    return resolve(directory, config.stateDirectory);
-  }
-  return resolve(state ?? "");
+/** Read only the location contract so stop/delete still work with invalid startup settings. */
+async function resolveLocation({ directory }: LocationOptions) {
+  const config = z
+    .object({ stateDirectory: installationSchema.shape.stateDirectory })
+    .parse(await readJson(join(resolve(directory), "installation.json")));
+  return resolve(directory, config.stateDirectory);
 }

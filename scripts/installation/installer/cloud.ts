@@ -1,3 +1,5 @@
+import { readInputFile } from "../files.js";
+import { InstallationError } from "../errors.js";
 import { styleText } from "node:util";
 import { registerCloudServices } from "../../cloud/registration.js";
 import { authorizeCloud } from "../../cloud/login.js";
@@ -30,4 +32,19 @@ export function registerWithBrowser(
       ),
     ),
   );
+}
+
+export async function registerUnattended(
+  configFile: string,
+  credentialFile: string | undefined,
+  register = registerCloudServices,
+) {
+  await register(configFile, async () => {
+    if (!credentialFile)
+      throw new InstallationError(
+        "invalid_configuration",
+        "Hosted registration requires --cloud-credential-file in noninteractive mode. Omit --non-interactive to sign in through the browser.",
+      );
+    return (await readInputFile(credentialFile, true)).toString("utf8").trim();
+  });
 }

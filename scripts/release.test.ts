@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { releaseSchema } from "./release/definition.js";
 import { createDevelopmentRelease } from "./release/create.js";
-import { loadRecipes } from "./installation/recipes/load.js";
+import { loadRecipes } from "../tests/recipe-fixture.js";
 import { setupContext, recipeConfiguration } from "./installation/setup.js";
 import { verifyReleasePacks } from "./release/packs.js";
 import { liteLlmImage, postgresImage } from "./deployment/images.js";

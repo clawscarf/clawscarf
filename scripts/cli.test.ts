@@ -119,7 +119,7 @@ else process.exit(1);
   t.after(() => {
     commandEnvironment = undefined;
   });
-  const human = await cli("status", "--state", directory);
+  const human = await cli("status", "--directory", root);
   assert.match(
     human.stdout,
     /Server: running\nReady: Yes\nAdministrator: ready/,
@@ -138,7 +138,7 @@ else process.exit(1);
     ["status"],
     ["stop"],
     ["administrator"],
-    ["settings"],
+    ["configure"],
     ["logs", "--service", "controller"],
     ["upgrade", "--runtime-image", "unused", "--python", "unused", "--yes"],
     ["connections", "observe"],
@@ -153,30 +153,15 @@ else process.exit(1);
             typeof error.stderr === "string",
         );
         assert.partialDeepStrictEqual(JSON.parse(error.stderr), {
-          code: "invalid_configuration",
+          code: "invalid_arguments",
         });
-        assert.match(error.stderr, /Supply either/);
+        assert.match(error.stderr, /unknown option/);
         return true;
       },
     );
   }
-  const candidate = join(root, "invalid.json");
-  await writeFile(candidate, "{}");
-  await assert.rejects(
-    cli("settings", "plan", "--config", candidate, "--json"),
-    (error: unknown) => {
-      assert.ok(
-        error instanceof Error &&
-          "stderr" in error &&
-          typeof error.stderr === "string",
-      );
-      assert.match(error.stderr, /Invalid or missing fields/);
-      assert.doesNotMatch(error.stderr, /Supply either/);
-      return true;
-    },
-  );
   await writeFile(fixture, JSON.stringify({ running: true, complete: false }));
-  const pending = await cli("status", "--state", directory);
+  const pending = await cli("status", "--directory", root);
   assert.match(pending.stdout, /Ready: No/);
   assert.match(pending.stdout, /administrator --issue/);
 });
@@ -203,7 +188,7 @@ await test("CLI JSON covers nested commands and errors; file outputs remain JSON
     else assert.equal(result.stdout, "Gateway configuration written.\n");
     assert.ok(JSON.parse(await readFile(output, "utf8")));
     await assert.rejects(
-      cli("validate", ...(json ? ["--json"] : [])),
+      cli("status", ...(json ? ["--json"] : [])),
       (error: unknown) => {
         assert.ok(
           error instanceof Error &&
@@ -214,7 +199,7 @@ await test("CLI JSON covers nested commands and errors; file outputs remain JSON
           assert.partialDeepStrictEqual(JSON.parse(error.stderr), {
             code: "invalid_arguments",
           });
-        else assert.match(error.stderr, /^Error: .*--config/);
+        else assert.match(error.stderr, /^Error: .*--directory/);
         return true;
       },
     );
@@ -228,7 +213,7 @@ await test("CLI deletion refuses missing confirmations without touching an insta
     ["--accept-data-loss"],
   ]) {
     await assert.rejects(
-      cli("stop", "--state", "/tmp/not-an-installation", "--json", ...args),
+      cli("stop", "--directory", "/tmp/not-an-installation", "--json", ...args),
       (error: unknown) => {
         assert.ok(
           error instanceof Error &&
@@ -241,4 +226,32 @@ await test("CLI deletion refuses missing confirmations without touching an insta
       },
     );
   }
+});
+
+await test("one configure entry point; removed commands and input aliases fail visibly", async () => {
+  for (const name of ["install", "settings", "validate", "plan", "apply"]) {
+    await assert.rejects(cli(name), /unknown command/);
+  }
+  for (const flag of ["--settings", "--recipes", "--state"]) {
+    await assert.rejects(cli("configure", flag, "unused"), /unknown option/);
+  }
+  const { installationCommand } = await import("./installation/command.js");
+  const command = installationCommand().commands.find(
+    (item) => item.name() === "configure",
+  );
+  assert.ok(command);
+  command.action(() => {});
+  await command.parseAsync([
+    "node",
+    "configure",
+    "--directory",
+    "/tmp/team",
+    "--no-connections",
+    "--no-start",
+  ]);
+  assert.equal(command.opts().connections, false);
+  assert.equal(command.opts().start, false);
+  assert.equal(command.opts().browser, undefined);
+  const { selectionSchema } = await import("./installation/options.js");
+  assert.equal(selectionSchema.parse(command.opts()).packs, undefined);
 });

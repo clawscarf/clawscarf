@@ -1,10 +1,6 @@
-import { z } from "zod";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
-  installationSchema,
-  externalLiteLlmSchema,
-  bundledLiteLlmSchema,
   type InstallationConfiguration,
   type InstallationDraft,
 } from "./configuration.js";
@@ -12,12 +8,10 @@ import { releaseSchema } from "../release/definition.js";
 import { readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { SetupInputs } from "./save.js";
-import { loadRecipes } from "./recipes/load.js";
 import { verifyReleasePacks } from "../release/packs.js";
 
 export type SetupOptions = {
   release?: string;
-  recipes?: string;
   cloudUrl?: string;
 };
 export async function setupContext(options: SetupOptions) {
@@ -48,9 +42,7 @@ export async function setupContext(options: SetupOptions) {
       "unsupported_platform",
       "This release does not support this host platform. No fallback protection mode is available.",
     );
-  const recipes = options.recipes
-    ? await loadRecipes(resolve(options.recipes))
-    : release.recipes;
+  const recipes = release.recipes;
   await verifyReleasePacks(release, releaseFile, recipes);
   return {
     release,
@@ -61,7 +53,7 @@ export async function setupContext(options: SetupOptions) {
 }
 export type SetupContext = Awaited<ReturnType<typeof setupContext>>;
 
-/** Both the menu and noninteractive configure command start from these exact defaults. */
+/** Both the menu and noninteractive configuration start from these exact defaults. */
 export function recipeConfiguration(
   context: SetupContext,
   recipeId: string,
@@ -109,84 +101,6 @@ export function recipeConfiguration(
   };
 }
 
-/** Mode-specific sections replace defaults; Connections retains the selected cloud service. */
-export const setupSettingsSchema = z
-  .strictObject(installationSchema.shape)
-  .omit({ schemaVersion: true, releaseFile: true, recipe: true })
-  .partial()
-  .extend({
-    connections: installationSchema.shape.connections
-      .extend({
-        cloudUrl: installationSchema.shape.connections.shape.cloudUrl
-          .unwrap()
-          .optional(),
-        registrationFile:
-          installationSchema.shape.connections.shape.registrationFile
-            .unwrap()
-            .optional(),
-      })
-      .optional(),
-    models: z
-      .discriminatedUnion("mode", [
-        externalLiteLlmSchema,
-        bundledLiteLlmSchema.partial({
-          configurationFile: true,
-        }),
-      ])
-      .optional(),
-  });
-export function configureRecipe(
-  context: SetupContext,
-  recipeId: string,
-  settings: unknown,
-) {
-  const config = installationSchema.parse(
-    setupDraft(context, recipeId, settings),
-  );
-  assertReleaseCapabilities(context, config);
-  return config;
-}
-
-/** Required runtime fields are validated only after interactive collection or CLI overrides. */
-export function setupDraft(
-  context: SetupContext,
-  recipeId: string,
-  settings: unknown,
-  inputs?: SetupInputs,
-): InstallationDraft {
-  const overrides = setupSettingsSchema.parse(settings);
-  const { models, connections, ...rest } = overrides;
-  const defaults = recipeConfiguration(context, recipeId);
-  const base = z
-    .strictObject(installationSchema.shape)
-    .omit({ models: true })
-    .parse({
-      ...defaults,
-      ...rest,
-      connections: { ...defaults.connections, ...connections },
-    });
-  if (models?.mode === "litellm" && !models.configurationFile) {
-    const recipe = context.recipes.find((entry) => entry.id === recipeId);
-    if (!recipe?.models || !inputs)
-      throw new InstallationError(
-        "invalid_configuration",
-        "Supply model configuration, or select a recipe with model defaults.",
-      );
-    return {
-      ...base,
-      models: {
-        ...models,
-        configurationFile: recipeModelFile(recipe.models, inputs),
-      },
-    };
-  }
-  return {
-    ...base,
-    ...(models
-      ? { models: installationSchema.shape.models.parse(models) }
-      : {}),
-  };
-}
 export function recipeModelFile(models: unknown, inputs: SetupInputs) {
   return inputs.set(
     "recipe-models.json",

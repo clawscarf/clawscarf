@@ -1,18 +1,14 @@
-import { registerWithBrowser } from "./cloud.js";
-import * as clack from "@clack/prompts";
+import { z } from "zod";
+import { selectedDraft, type ConfigureOptions } from "../options.js";
+import { setupContext } from "../setup.js";
+import { validateSelections } from "../configure.js";
+import { registerWithBrowser, registerUnattended } from "./cloud.js";
 import { randomUUID } from "node:crypto";
 import { rm, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { collectInstallation } from "./collect.js";
-import {
-  InstallerCancelled,
-  SectionCancelled,
-  progress,
-  requireTerminal,
-  terminalPrompts,
-  type InstallerPrompts,
-} from "./prompts.js";
+import { progress, type InstallerPrompts } from "./prompts.js";
 import { SetupInputs, saveConfiguration } from "../save.js";
 import { readJson } from "../files.js";
 import { installationSchema } from "../configuration.js";
@@ -20,46 +16,86 @@ import { planSettingsChange, reconfigureInstallation } from "../reconfigure.js";
 import { controlInstallation, startInstallation } from "../lifecycle.js";
 import { InstallationError } from "../errors.js";
 
-export async function readInstallationSettings(directory: string) {
-  return installationSchema.parse(
-    await readJson(join(resolve(directory), "settings.json")),
-  );
-}
-
 /** The menu only gathers answers; the same plan/apply operations serve unattended callers. */
 export async function editInstallationSettings(
   directory: string,
   ui: InstallerPrompts,
+  options: ConfigureOptions = {},
 ) {
   directory = resolve(directory);
+  if (options.recipe || options.release || options.cloudUrl)
+    throw new InstallationError(
+      "change_unsupported",
+      "Existing installations keep their recipe, software release and login service. Change models, keys, Connections or packs instead.",
+    );
+  if (options.nonInteractive && !options.yes)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Changing an existing installation noninteractively requires --yes. The server may restart and deselected packs may be removed.",
+    );
+  const task: typeof progress = (message, work) =>
+    progress(message, work, options);
   const settingsFile = join(directory, "settings.json");
   const before = await readFile(settingsFile, "utf8");
   const config = installationSchema.parse(JSON.parse(before));
-  const staging = join(directory, `.settings-${randomUUID()}`);
+  const pending = z
+    .object({ settingsCandidate: z.string().optional() })
+    .parse(await readJson(join(directory, "prepared.json"))).settingsCandidate;
+  if (
+    pending &&
+    (dirname(dirname(pending)) !== directory ||
+      !/^\.settings-[a-f0-9-]+$/u.test(
+        dirname(pending).slice(directory.length + 1),
+      ))
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "The pending configuration does not belong to this installation.",
+    );
+  const staging = pending
+    ? dirname(pending)
+    : join(directory, `.settings-${randomUUID()}`);
   const inputs = new SetupInputs(staging);
   let attempted = false;
   try {
-    const draft = await collectInstallation(
-      ui,
-      { release: config.releaseFile, existing: true },
-      {
-        directory: staging,
-        config,
-        inputs,
-      },
+    const context = await setupContext({ release: config.releaseFile });
+    const selected = await selectedDraft(
+      context,
+      config.recipe?.id ?? "custom",
+      options,
+      inputs,
+      config,
     );
+    if (pending && JSON.stringify(selected) !== JSON.stringify(config))
+      throw new InstallationError(
+        "change_unsupported",
+        "Resume the interrupted configuration without new selections first.",
+      );
+    const draft = pending
+      ? undefined
+      : options.nonInteractive
+        ? { config: await validateSelections(context, selected) }
+        : await collectInstallation(
+            ui,
+            { release: config.releaseFile, existing: true },
+            { directory: staging, config: selected, inputs },
+          );
     if ((await readFile(settingsFile, "utf8")) !== before)
       throw new InstallationError(
         "stale_plan",
         "Settings changed while this menu was open. Reopen it before applying.",
       );
-    const candidate = await saveConfiguration(
-      staging,
-      installationSchema.parse(draft.config),
-      inputs,
-      true,
-    );
-    await registerWithBrowser(candidate, ui, progress);
+    const candidate =
+      pending ??
+      (await saveConfiguration(
+        staging,
+        installationSchema.parse(draft?.config),
+        inputs,
+        true,
+      ));
+    if (options.nonInteractive)
+      await registerUnattended(candidate, options.cloudCredentialFile);
+    else await registerWithBrowser(candidate, ui, task);
     const plan = await planSettingsChange(candidate);
     ui.note(
       `Reapply models and selected Connections settings. Keep individual model overrides and unrelated native settings.
@@ -68,11 +104,17 @@ Packs: ${plan.changes.packs.selected.join(", ") || "none"}${plan.changes.packs.r
 The server must stop. Pack changes finish at the next start.`,
       "Review change",
     );
-    if (!(await ui.confirm("Apply these settings?"))) return;
+    if (
+      !options.nonInteractive &&
+      !(await ui.confirm(
+        pending ? "Resume this interrupted change?" : "Apply these settings?",
+      ))
+    )
+      return { state: "cancelled" };
     attempted = true;
     const current = await controlInstallation(directory, "status");
     if (current.state !== "stopped") {
-      await progress("Stopping ClawScarf", async (signal) => {
+      await task("Stopping ClawScarf", async (signal) => {
         await controlInstallation(directory, "stop");
         const deadline = Date.now() + 120_000;
         while (
@@ -87,53 +129,44 @@ The server must stop. Pack changes finish at the next start.`,
         }
       });
     }
-    await progress("Applying settings", () =>
+    await task("Applying settings", () =>
       reconfigureInstallation(candidate, plan.fingerprint),
     );
     // Only our preceding accepted menu draft is retired. Never remove user-supplied inputs.
     const previousInputs = dirname(config.models.configurationFile);
     if (
+      previousInputs !== staging &&
       dirname(previousInputs) === directory &&
       /^\.settings-[a-f0-9-]+$/u.test(
         previousInputs.slice(directory.length + 1),
       )
     )
       await rm(previousInputs, { recursive: true });
-    if (await ui.confirm("Start with these settings?", true))
-      await progress("Starting ClawScarf", (_signal, report) =>
+    if (
+      options.start ??
+      (options.nonInteractive
+        ? true
+        : await ui.confirm("Start with these settings?", true))
+    ) {
+      await task("Starting ClawScarf", (_signal, report) =>
         startInstallation(directory, report),
       );
-    else
-      ui.note(
-        `clawscarf start --state '${directory.replaceAll("'", "'\\''")}'`,
-        "Start later",
-      );
+      return { state: "running" };
+    }
+    ui.note(
+      `clawscarf start --directory '${resolve(options.directory ?? dirname(directory)).replaceAll("'", "'\\''")}'`,
+      "Start later",
+    );
+    return { state: "prepared" };
   } catch (error) {
     if (attempted)
       ui.note(
-        `Candidate: ${join(staging, "installation.json")}\nCheck status. If application was interrupted, review this same candidate with settings plan before an explicit settings apply.`,
+        "Check status, then run configure --directory again to review and resume the interrupted change.",
         "Retained settings",
       );
     throw error;
   } finally {
-    if (!attempted) await rm(staging, { recursive: true, force: true });
-  }
-}
-
-export async function runSettings(directory: string) {
-  requireTerminal();
-  clack.intro("ClawScarf — installation settings");
-  try {
-    await editInstallationSettings(directory, terminalPrompts);
-    clack.outro("Done.");
-  } catch (error) {
-    if (
-      !(error instanceof InstallerCancelled) &&
-      !(error instanceof SectionCancelled)
-    )
-      throw error;
-    clack.cancel(
-      "Exited. The installation and accepted settings are retained.",
-    );
+    if (!attempted && !pending)
+      await rm(staging, { recursive: true, force: true });
   }
 }

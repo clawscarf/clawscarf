@@ -1,10 +1,15 @@
+import { editInstallationSettings } from "./settings.js";
 import { registerCloudServices } from "../../cloud/registration.js";
-import { registerWithBrowser } from "./cloud.js";
-import { savedSetup } from "../configure.js";
+import { registerWithBrowser, registerUnattended } from "./cloud.js";
+import {
+  savedSetup,
+  prepareConfiguration,
+  rejectNewSelections,
+} from "../configure.js";
 import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
-import { writeFile } from "node:fs/promises";
+import { writeFile, access } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
 import { collectInstallation, type InstallOptions } from "./collect.js";
 import {
@@ -13,6 +18,7 @@ import {
   progress,
   requireTerminal,
   terminalPrompts,
+  unattendedPrompts,
   terminalLink,
   type InstallerPrompts,
 } from "./prompts.js";
@@ -41,9 +47,13 @@ export async function installFromAnswers(
     }),
 ) {
   const saved = await savedSetup(options);
+  if (saved) rejectNewSelections(options);
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
   while (!saved) {
-    draft = await collectInstallation(ui, options, draft);
+    draft = options.nonInteractive
+      ? await prepareConfiguration(options)
+      : await collectInstallation(ui, options, draft);
+    if (options.nonInteractive) break;
     try {
       if (await ui.confirm(`Install in ${draft.directory}?`, true)) break;
       return { state: "cancelled" };
@@ -73,7 +83,13 @@ export async function installFromAnswers(
   const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
   try {
-    await registerWithBrowser(configFile, ui, task, operator.register);
+    if (options.nonInteractive)
+      await registerUnattended(
+        configFile,
+        options.cloudCredentialFile,
+        operator.register,
+      );
+    else await registerWithBrowser(configFile, ui, task, operator.register);
     const plan = await task("Checking installation settings", () =>
       operator.plan(configFile),
     );
@@ -86,23 +102,25 @@ export async function installFromAnswers(
     await task("Installing ClawScarf", () =>
       operator.apply(configFile, planFile),
     );
-    const files = { configFile, planFile, stateDirectory };
-    if (!(await ui.confirm("Start now?", true))) {
+    if (!(
+      options.start ??
+      (options.nonInteractive ? true : await ui.confirm("Start now?", true))
+    )) {
       ui.note(`clawscarf start --directory ${quote(directory)}`, "Start later");
-      return { state: "prepared", ...files };
+      return { state: "prepared", directory };
     }
     await task("Starting ClawScarf", (_signal, report) =>
       operator.start(stateDirectory, report),
     );
-    const current = await operator.administrator(stateDirectory);
-    if (!current.complete) {
-      await browserSignIn(
-        ui,
-        task,
-        () => operator.administrator(stateDirectory, true),
-        () => operator.administrator(stateDirectory),
-      );
-    }
+    const administrator = await finishAdministrator(
+      stateDirectory,
+      options,
+      ui,
+      task,
+      operator.administrator,
+    );
+    if (administrator)
+      return { state: "running", ready: false, administrator, directory };
     const origin =
       config.exposure.mode === "https"
         ? config.exposure.applicationOrigin
@@ -112,7 +130,7 @@ export async function installFromAnswers(
       `Status: clawscarf status --directory ${quote(directory)}\nStop: clawscarf stop --directory ${quote(directory)}`,
       "Commands",
     );
-    return { state: "running", ...files };
+    return { state: "running", directory };
   } catch (error) {
     if (
       error instanceof InstallerCancelled ||
@@ -120,11 +138,29 @@ export async function installFromAnswers(
     )
       throw error;
     ui.note(
-      `Resume: clawscarf install --directory ${quote(directory)}\nConfiguration: ${configFile}\nStatus: clawscarf status --directory ${quote(directory)}\nLogs: clawscarf logs --directory ${quote(directory)} --service controller\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
+      `Resume: clawscarf configure --directory ${quote(directory)}\nStatus: clawscarf status --directory ${quote(directory)}\nLogs: clawscarf logs --directory ${quote(directory)} --service controller\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
       "Installation needs attention",
     );
     throw error;
   }
+}
+async function finishAdministrator(
+  state: string,
+  options: InstallOptions,
+  ui: InstallerPrompts,
+  task: typeof progress,
+  administrator = administratorSetup,
+) {
+  const current = await administrator(state);
+  if (current.complete) return undefined;
+  if (options.nonInteractive) return administrator(state, true);
+  await browserSignIn(
+    ui,
+    task,
+    () => administrator(state, true),
+    () => administrator(state),
+  );
+  return undefined;
 }
 async function browserSignIn(
   ui: InstallerPrompts,
@@ -168,32 +204,73 @@ function quote(value: string) {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-export async function runInstaller(options: InstallOptions) {
-  requireTerminal();
-  clack.intro("ClawScarf — protected OpenClaw for your team");
-  try {
-    const result = await installFromAnswers(
-      options,
-      terminalPrompts,
-      operations,
-      progress,
+/** The command selects the workflow; users never manipulate preparation files. */
+export async function runConfiguration(options: InstallOptions) {
+  if (options.json && !options.nonInteractive)
+    throw new InstallationError(
+      "invalid_configuration",
+      "Use --non-interactive with --json.",
     );
-    if (result.state === "cancelled") clack.cancel("Cancelled.");
-    else
-      clack.outro(
-        result.state === "prepared"
-          ? "Installed. Not running."
-          : "ClawScarf is running.",
+  if (!options.nonInteractive) {
+    requireTerminal();
+    clack.intro("ClawScarf — protected OpenClaw for your team");
+  }
+  const ui = options.nonInteractive ? unattendedPrompts : terminalPrompts;
+  try {
+    const saved = await savedSetup(options);
+    const state = saved
+      ? resolve(dirname(saved.configFile), saved.config.stateDirectory)
+      : undefined;
+    let existing = false;
+    if (state) {
+      try {
+        await access(join(state, "settings.json"));
+        existing = true;
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        ))
+          throw error;
+      }
+    }
+    const result =
+      existing && state
+        ? await editInstallationSettings(state, ui, options)
+        : await installFromAnswers(options, ui, operations, (message, work) =>
+            progress(message, work, options),
+          );
+    if (existing && state && result.state === "running") {
+      const administrator = await finishAdministrator(
+        state,
+        options,
+        ui,
+        (message, work) => progress(message, work, options),
       );
+      if (administrator) return { ...result, ready: false, administrator };
+    }
+    if (!options.nonInteractive) {
+      if (result.state === "cancelled") clack.cancel("Cancelled.");
+      else
+        clack.outro(
+          result.state === "running"
+            ? "ClawScarf is running."
+            : "Configuration saved. Server stopped.",
+        );
+    }
+    return result;
   } catch (error) {
     if (
       !(error instanceof InstallerCancelled) &&
       !(error instanceof SectionCancelled)
     )
       throw error;
-    clack.cancel(
-      "Exited. Saved files and any running installation are retained.",
-    );
+    if (!options.nonInteractive)
+      clack.cancel(
+        "Exited. Saved files and any running installation are retained.",
+      );
     process.exitCode = 130;
+    return { state: "cancelled" };
   }
 }

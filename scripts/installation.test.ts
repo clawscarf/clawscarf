@@ -217,6 +217,66 @@ await test(
       JSON.stringify({ ownerId: retained.ownerId }),
     );
     const changedSettings = await planSettingsChange(path);
+    // The public command must recover its private candidate without requiring a file argument.
+    const { saveConfiguration } = await import("./installation/save.js");
+    const { resolveConfigurationInputs } =
+      await import("./installation/configure.js");
+    const { editInstallationSettings } =
+      await import("./installation/installer/settings.js");
+    const { unattendedPrompts } =
+      await import("./installation/installer/prompts.js");
+    const stateDirectory = join(directory, "state");
+    const accepted = {
+      ...resolveConfigurationInputs(
+        installationSchema.parse(configuration),
+        directory,
+      ),
+      stateDirectory,
+    };
+    await writeFile(
+      join(stateDirectory, "settings.json"),
+      JSON.stringify(accepted),
+    );
+    const candidate = await saveConfiguration(
+      join(stateDirectory, `.settings-${randomUUID()}`),
+      accepted,
+      undefined,
+      true,
+    );
+    const interrupted = await planSettingsChange(candidate);
+    await writeFile(
+      join(stateDirectory, "prepared.json"),
+      JSON.stringify({
+        ownerId: retained.ownerId,
+        settingsPending: interrupted.desired.fingerprint,
+        settingsCandidate: candidate,
+      }),
+    );
+    const prompts: string[] = [];
+    const result = await editInstallationSettings(stateDirectory, {
+      ...unattendedPrompts,
+      note() {},
+      confirm(message) {
+        prompts.push(message);
+        return Promise.resolve(false);
+      },
+    });
+    assert.equal(result.state, "cancelled");
+    assert.deepEqual(prompts, ["Resume this interrupted change?"]);
+    assert.ok(await readFile(candidate));
+    await assert.rejects(
+      editInstallationSettings(stateDirectory, unattendedPrompts, {
+        nonInteractive: true,
+        yes: true,
+        connections: true,
+      }),
+      { code: "change_unsupported" },
+    );
+    assert.ok(await readFile(candidate));
+    await writeFile(
+      join(stateDirectory, "prepared.json"),
+      JSON.stringify({ ownerId: retained.ownerId }),
+    );
     await withInstallationLock(changedSettings.directory, () =>
       assert.rejects(
         reconfigureInstallation(path, changedSettings.fingerprint),

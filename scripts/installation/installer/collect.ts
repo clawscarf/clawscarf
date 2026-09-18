@@ -12,10 +12,8 @@ import { InstallerCancelled, SectionCancelled } from "./prompts.js";
 import { SetupInputs } from "../save.js";
 import {
   assertReleaseCapabilities,
-  setupDraft,
   recipeModelFile,
   setupContext,
-  type SetupOptions,
 } from "../setup.js";
 import type { InstallerPrompts } from "./prompts.js";
 import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
@@ -23,20 +21,14 @@ import { collectAccess, collectExposure } from "./sections/access.js";
 import { collectConnections } from "./sections/connections.js";
 import { collectModels, collectModelCredentials } from "./sections/models.js";
 import { collectPacks, collectPackInputs } from "./sections/packs.js";
-import { readJson } from "../files.js";
-import { resolveConfigurationInputs } from "../configure.js";
+import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { installationSummary, modelSummary } from "./summary.js";
 import { secretInput } from "./secrets.js";
 import { collectExternalModels } from "./sections/external-models.js";
 import { inputFile } from "./inputs.js";
 import { collectResources } from "./sections/resources.js";
 
-export type InstallOptions = SetupOptions & {
-  directory?: string;
-  recipe?: string;
-  settings?: string;
-  existing?: boolean;
-};
+export type InstallOptions = ConfigureOptions & { existing?: boolean };
 interface InstallationDraftState {
   directory: string;
   config: InstallationDraft;
@@ -102,13 +94,9 @@ export async function collectInstallation(
     if (retained && (retained.config.recipe?.id ?? "custom") !== recipeId)
       retained = undefined;
     const inputs = retained?.inputs ?? new SetupInputs(directory);
-    const settings = options.settings ? await readJson(options.settings) : {};
     let config =
       retained?.config ??
-      resolveConfigurationInputs(
-        setupDraft(context, recipeId, settings, inputs),
-        options.settings ? dirname(resolve(options.settings)) : process.cwd(),
-      );
+      (await selectedDraft(context, recipeId, options, inputs));
     if (!options.existing && config.access.mode === "hosted")
       config.access.registrationFile = resolve(
         directory,

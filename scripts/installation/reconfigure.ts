@@ -118,6 +118,7 @@ export async function planSettingsChange(configFile: string) {
     .strictObject({
       ownerId: z.literal(state.ownerId),
       settingsPending: z.string().optional(),
+      settingsCandidate: z.string().optional(),
     })
     .parse(await readJson(join(directory, "prepared.json")));
   if (
@@ -258,6 +259,7 @@ export async function reconfigureInstallation(
       JSON.stringify({
         ownerId: state.ownerId,
         settingsPending: desired.fingerprint,
+        settingsCandidate: resolve(configFile),
       }),
     );
     let stage = "model gateway configuration";
@@ -339,7 +341,7 @@ export async function reconfigureInstallation(
     } catch (error) {
       throw new InstallationError(
         "unavailable",
-        `Settings were not confirmed during ${stage}; the installation remains stopped. Review the same candidate with settings plan, then explicitly settings apply again. The gateway key is observed first and matching native settings are not repeated.${error instanceof ModelConfigurationError ? ` Native result: ${error.code}.` : ""}`,
+        `Settings were not confirmed during ${stage}; the installation remains stopped. Run configure --directory again to review and explicitly resume the same change. The gateway key is observed first and matching native settings are not repeated.${error instanceof ModelConfigurationError ? ` Native result: ${error.code}.` : ""}`,
       );
     }
   });

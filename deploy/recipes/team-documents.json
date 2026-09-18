@@ -12,6 +12,9 @@
     },
     "browser": {
       "enabled": false
+    },
+    "connections": {
+      "enabled": true
     }
   },
   "models": {

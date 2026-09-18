@@ -90,7 +90,7 @@ export function requireTerminal() {
   if (!process.stdin.isTTY || !process.stdout.isTTY)
     throw new InstallationError(
       "invalid_configuration",
-      "The installer needs an interactive terminal. For unattended setup use validate, plan, apply and start with an installation document.",
+      "Use configure --non-interactive with explicit options when no terminal is available.",
     );
 }
 
@@ -132,4 +132,24 @@ export async function progress<T>(
   } finally {
     process.off("SIGINT", cancel);
   }
+}
+
+/** No unattended operation may fall through into an interactive question. */
+export const unattendedPrompts: InstallerPrompts = {
+  text: missing,
+  password: missing,
+  select: missing,
+  multiselect: missing,
+  confirm: missing,
+  note(message, title) {
+    process.stderr.write(`${title}: ${message}\n`);
+  },
+};
+function missing(message: string): Promise<never> {
+  return Promise.reject(
+    new InstallationError(
+      "invalid_configuration",
+      `Missing unattended input: ${message}`,
+    ),
+  );
 }

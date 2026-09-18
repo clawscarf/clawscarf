@@ -69,7 +69,10 @@
   Define REST in OpenAPI, generate clients/handler types and validate real routes. Browser
   and CLI share clients. Use parameterized SQL, explicit transactions and separate
   node-pg-migrate execution/credentials; never migrate on API startup.
-- CLI operations own configuration/effects; installer menus only collect and present.
+- `configure --directory` owns new and retained configuration, with the same choices
+  available as explicit flags in noninteractive mode. Keep validation and preview/apply
+  internal; do not expose parallel commands, settings-file inputs or state-path aliases.
+  CLI operations own configuration/effects; installer menus only collect and present.
   Recipes are validated defaults, not scripts or another deployment engine. Present the
   recipe-filled settings menu first, with Accept and continue at the top; request missing
   secrets afterward in the context of the chosen settings. Keep equivalent noninteractive

@@ -17,7 +17,7 @@ pnpm 10.33.0. In the extracted `package` directory:
 ```sh
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
-node scripts/clawscarf.js install --release /absolute/clawscarf-release.json --directory /absolute/new-team
+node scripts/clawscarf.js configure --release /absolute/clawscarf-release.json --directory /absolute/new-team
 node scripts/clawscarf.js models --help
 node scripts/clawscarf.js packs --help
 node scripts/clawscarf.js connections --help
@@ -33,10 +33,10 @@ The installer reviews recipe settings before credentials, prepares the installat
 and offers **Start now**. It starts Docker services and protected OpenShell containers, then exits; closing
 the terminal leaves them running. Administrator setup supplies a private sign-in link and waits for successful
 browser setup, with replacement links offered on expiry. The same public
-operations are available through `configure`, `validate`, `plan`, `apply`, `start`,
-`status`, `stop`, `login` and `administrator`. See the source installation guide for
-current retained-settings limitations. The interactive installer still creates new
-directories; it does not yet edit every capability on an existing installation.
+operations use `configure` for new or existing installations, with `--non-interactive`
+for automation. `start`, `stop`, `status` and `logs` operate the selected `--directory`.
+Validation and preview/apply are internal. See the source installation guide for
+supported retained changes and administrator setup.
 
 Without `--release`, the operator expects **clawscarf-release.json** in its **release**
 directory. Release publication/discovery remains unfinished. The example recipe supplies
@@ -44,8 +44,8 @@ defaults, not a document workflow. Keep the generated release bundle available; 
 tools and pack files move together. No original build checkout is needed.
 
 Keep installation data outside this extracted package. Stop retains state; replacing
-an operator archive is not a runtime upgrade or backup. User-service startup survives
-terminal exit, but is not configured for automatic restart after logout/reboot.
+an operator archive is not a runtime upgrade or backup. Docker services keep running after
+terminal exit; Docker must remain available. No host service is installed.
 The pack operator additionally needs the pinned Python environment from
 `scripts/packs/requirements.txt`. Models require an external LiteLLM gateway or the unified configuration’s pinned local
 LiteLLM service. This archive contains no model/provider credentials. Unified preparation

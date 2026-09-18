@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { z } from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { test, type TestContext } from "node:test";
@@ -168,24 +167,6 @@ async function fixture(t: TestContext) {
   );
   const env = join(parent, "initial-models.env");
   await writeFile(env, "PROVIDER_KEY=test-key\n", { mode: 0o600 });
-  const settings = join(parent, "initial-settings.json");
-  await writeFile(
-    settings,
-    JSON.stringify({
-      access: {
-        mode: "oidc",
-        administratorName: "Administrator",
-        issuer: "https://issuer.example.test",
-        clientId: "fixture",
-        clientSecretFile: env,
-      },
-      models: {
-        mode: "litellm",
-        configurationFile: models,
-        upstreamEnvironmentFile: env,
-      },
-    }),
-  );
   const answers = {
     "Starting point": "custom",
     Access: "local",
@@ -198,7 +179,17 @@ async function fixture(t: TestContext) {
     "Start now?": false,
     [`Install in ${directory}?`]: true,
   };
-  return { parent, release, directory, settings, answers };
+  return {
+    parent,
+    release,
+    directory,
+    answers,
+    oidcIssuer: "https://issuer.example.test",
+    oidcClientId: "fixture",
+    oidcSecretFile: env,
+    modelCatalog: models,
+    providerEnvFile: env,
+  };
 }
 async function savePreview(
   options: Parameters<typeof collectInstallation>[1],
@@ -413,96 +404,120 @@ await test(
   "prepare/start uses the shared operators in order and never starts after failed or cancelled apply",
   local,
   async (t) => {
-    for (const fail of [false, true, "cancel"] as const) {
-      const f = await fixture(t);
-      const calls: string[] = [];
-      let links = 0;
-      const answers: Record<string, string | string[] | boolean> = {
-        ...f.answers,
-      };
-      delete answers["Start now?"];
-      const ui = new Answers(answers);
-      const work = installFromAnswers(f, ui, {
-        plan: planInstallation,
-        doctor: () => {
-          calls.push("doctor");
-          return Promise.resolve({
-            state: "prerequisites_available",
-            platform: "darwin-arm64",
-            release: "0.1.0-dev",
-            images: 5,
-          });
-        },
-        apply: async (config, plan) => {
-          calls.push("apply");
-          assert.equal(config, join(f.directory, "installation.json"));
-          assert.equal(plan, join(f.directory, "preview.json"));
-          await readJson(plan);
-          if (fail === "cancel") throw new InstallerCancelled();
-          if (fail) throw Error("Fixture failure");
-          return {
-            state: "prepared",
-            directory: f.directory,
-            release: "0.1.0-dev",
-          };
-        },
-        start: (state) => {
-          calls.push("start");
-          assert.equal(state, join(f.directory, "state"));
-          return Promise.resolve({
-            state: "running" as const,
-            ready: true,
-            packs: [],
-            administrator: "ready" as const,
-            services: [],
-          });
-        },
-        register: async () => {},
-        administrator: (_state, issue) => {
-          if (issue) {
-            links++;
-            return Promise.resolve({
-              url: "http://127.0.0.1:18800/_clawscarf/login?setup=fixture",
-              complete: false,
-              expiresAt: new Date(Date.now() + 300_000).toISOString(),
-            });
-          }
-          if (links === 0)
-            return Promise.resolve({ complete: false, expiresAt: null });
-          if (links === 1) {
-            calls.push("login-expired");
-            return Promise.resolve({
-              complete: false,
-              expiresAt: new Date(0).toISOString(),
-            });
-          }
-          calls.push("login-complete");
-          return Promise.resolve({ complete: true, expiresAt: null });
-        },
-      });
-      if (fail) await assert.rejects(work);
-      else assert.equal((await work).state, "running");
-      assert.deepEqual(
-        calls,
-        fail
-          ? ["doctor", "apply"]
-          : ["doctor", "apply", "start", "login-expired", "login-complete"],
-      );
-      if (!fail) {
-        assert.equal(links, 2);
-        assert.ok(
-          ui.notes.some((note) =>
-            note.includes("/_clawscarf/login?setup=fixture"),
-          ),
+    for (const nonInteractive of [false, true])
+      for (const fail of [false, true, "cancel"] as const) {
+        const f = await fixture(t);
+        const calls: string[] = [];
+        let links = 0;
+        const answers: Record<string, string | string[] | boolean> = {
+          ...f.answers,
+        };
+        delete answers["Start now?"];
+        const ui = new Answers(answers);
+        const { unattendedPrompts } =
+          await import("./installation/installer/prompts.js");
+        const work = installFromAnswers(
+          nonInteractive ? { ...f, recipe: "custom", nonInteractive: true } : f,
+          nonInteractive
+            ? {
+                ...unattendedPrompts,
+                note: (message, title) => {
+                  ui.note(message, title);
+                },
+              }
+            : ui,
+          {
+            plan: planInstallation,
+            doctor: () => {
+              calls.push("doctor");
+              return Promise.resolve({
+                state: "prerequisites_available",
+                platform: "darwin-arm64",
+                release: "0.1.0-dev",
+                images: 5,
+              });
+            },
+            apply: async (config, plan) => {
+              calls.push("apply");
+              assert.equal(config, join(f.directory, "installation.json"));
+              assert.equal(plan, join(f.directory, "preview.json"));
+              await readJson(plan);
+              if (fail === "cancel") throw new InstallerCancelled();
+              if (fail) throw Error("Fixture failure");
+              return {
+                state: "prepared",
+                directory: f.directory,
+                release: "0.1.0-dev",
+              };
+            },
+            start: (state) => {
+              calls.push("start");
+              assert.equal(state, join(f.directory, "state"));
+              return Promise.resolve({
+                state: "running" as const,
+                ready: true,
+                packs: [],
+                administrator: "ready" as const,
+                services: [],
+              });
+            },
+            register: async () => {},
+            administrator: (_state, issue) => {
+              if (issue) {
+                links++;
+                return Promise.resolve({
+                  url: "http://127.0.0.1:18800/_clawscarf/login?setup=fixture",
+                  complete: false,
+                  expiresAt: new Date(Date.now() + 300_000).toISOString(),
+                });
+              }
+              if (links === 0)
+                return Promise.resolve({ complete: false, expiresAt: null });
+              if (links === 1) {
+                calls.push("login-expired");
+                return Promise.resolve({
+                  complete: false,
+                  expiresAt: new Date(0).toISOString(),
+                });
+              }
+              calls.push("login-complete");
+              return Promise.resolve({ complete: true, expiresAt: null });
+            },
+          },
         );
-        assert.ok(!ui.notes.some((note) => note.includes("One-use code:")));
+        if (fail) await assert.rejects(work);
+        else {
+          const result = await work;
+          assert.equal(result.state, "running");
+          if (nonInteractive)
+            assert.partialDeepStrictEqual(result, {
+              ready: false,
+              administrator: { complete: false },
+            });
+        }
+        assert.deepEqual(
+          calls,
+          fail
+            ? ["doctor", "apply"]
+            : nonInteractive
+              ? ["doctor", "apply", "start"]
+              : ["doctor", "apply", "start", "login-expired", "login-complete"],
+        );
+        if (!fail && !nonInteractive) {
+          assert.equal(links, 2);
+          assert.ok(
+            ui.notes.some((note) =>
+              note.includes("/_clawscarf/login?setup=fixture"),
+            ),
+          );
+          assert.ok(!ui.notes.some((note) => note.includes("One-use code:")));
+        }
+        assert.ok(
+          !(
+            await readFile(join(f.directory, "installation.json"), "utf8")
+          ).includes("private-test-secret"),
+        );
       }
-      assert.ok(
-        !(
-          await readFile(join(f.directory, "installation.json"), "utf8")
-        ).includes("private-test-secret"),
-      );
-    }
   },
 );
 
@@ -565,114 +580,76 @@ await test(
 );
 
 await test(
-  "recipe configuration is shared by terminal and CLI; settings replace entire sections",
+  "recipe defaults and explicit flags are shared by interactive and unattended configuration",
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("./installation/recipes/load.js");
-    const { setupContext, configureRecipe } =
-      await import("./installation/setup.js");
-    const { configureInstallation } =
+    const { loadRecipes } = await import("../tests/recipe-fixture.js");
+    const { setupContext } = await import("./installation/setup.js");
+    const { prepareConfiguration } =
       await import("./installation/configure.js");
-    const recipes = await loadRecipes(resolve("deploy/recipes"));
+    const { selectedDraft } = await import("./installation/options.js");
+    const { SetupInputs } = await import("./installation/save.js");
     const { releaseSchema } = await import("./release/definition.js");
     const release = releaseSchema.parse(await readJson(f.release));
-    await writeFile(f.release, JSON.stringify({ ...release, recipes }));
-    const draft = await collectInstallation(new Answers(f.answers), {
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...release,
+        recipes: await loadRecipes(resolve("deploy/recipes")),
+      }),
+    );
+    const options = {
       ...f,
       recipe: "team-documents",
-    });
-    const context = await setupContext({ release: f.release });
-    const staging = await setupContext({
+      name: "chosen-name",
+      port: 19800,
+      widgetPort: 19802,
+    };
+    const terminal = await collectInstallation(new Answers(f.answers), options);
+    const unattended = await prepareConfiguration(options);
+    assert.deepEqual(unattended.config, terminal.config);
+    assert.equal(unattended.config.connections.mode, "hosted");
+    assert.equal(unattended.config.name, "chosen-name");
+    const context = await setupContext({
       release: f.release,
       cloudUrl: "https://staging.example.test",
     });
-    for (const mode of ["disabled", "hosted"] as const) {
-      assert.equal(
-        configureRecipe(staging, "team-documents", {
-          models: draft.config.models,
-          connections: { mode },
-        }).connections.cloudUrl,
-        staging.cloudUrl,
+    for (const connections of [false, true]) {
+      const draft = await selectedDraft(
+        context,
+        "team-documents",
+        { connections },
+        new SetupInputs(f.directory),
       );
+      assert.equal(draft.connections.mode, connections ? "hosted" : "disabled");
+      assert.equal(draft.connections.cloudUrl, context.cloudUrl);
     }
-    assert.equal(
-      configureRecipe(staging, "team-documents", {
-        models: draft.config.models,
-        connections: {
-          mode: "hosted",
-          cloudUrl: "https://chosen.example.test",
-        },
-      }).connections.cloudUrl,
-      "https://chosen.example.test",
-    );
-    assert.deepEqual(
-      {
-        ...configureRecipe(
-          context,
-          "team-documents",
-          await readJson(f.settings),
-        ),
-        connections: {
-          mode: "disabled",
-          cloudUrl: "https://cloud.example.test",
-          registrationFile: join(
-            f.directory,
-            "secrets/connections-registration.json",
-          ),
-        },
-      },
+    const draft = await prepareConfiguration({
+      ...options,
+      connections: false,
+    });
+    const path = await saveConfiguration(
+      draft.directory,
       draft.config,
+      draft.inputs,
     );
-    assert.equal(draft.config.recipe?.id, "team-documents");
-    assert.equal(draft.config.connections.mode, "disabled");
-    const key = join(f.parent, "key");
-    await writeFile(key, "cli-private-key", { mode: 0o600 });
-    const settings = join(f.parent, "settings.json");
-    await writeFile(
-      settings,
-      JSON.stringify({
-        models: {
-          mode: "litellm",
-          upstreamEnvironmentFile: "initial-models.env",
-        },
-        access: {
-          mode: "oidc",
-          administratorName: "Administrator",
-          issuer: "https://issuer.example.test",
-          clientId: "fixture",
-          clientSecretFile: "initial-models.env",
-        },
-        name: "configured-team",
-        connections: { mode: "disabled" },
-      }),
+    assert.equal(
+      installationSchema.parse(await readJson(path)).connections.mode,
+      "disabled",
     );
-    const result = await configureInstallation({
-      ...f,
-      recipe: "team-documents",
-      settings,
-    });
-    const saved = installationSchema.parse(await readJson(result.configFile));
-    assert.equal(saved.name, "configured-team");
-    assert.equal(saved.connections.mode, "disabled");
-    assert.throws(() => configureRecipe(context, "missing", {}), {
-      code: "invalid_configuration",
-    });
-    assert.throws(() =>
-      configureRecipe(context, "custom", {
-        connections: { mode: "disabled", apiKeyFile: "obsolete" },
-      }),
+    await assert.rejects(
+      selectedDraft(context, "missing", {}, new SetupInputs(f.directory)),
+      { code: "invalid_configuration" },
     );
-    assert.throws(() =>
-      configureRecipe(context, "custom", {
-        models: draft.config.models,
-        browser: { enabled: true },
-      }),
-    );
-    assert.throws(() =>
-      configureRecipe(context, "custom", {
-        resources: { worker: { cpu: "2", memory: "2Gi" } },
-      }),
+    await assert.rejects(
+      selectedDraft(
+        context,
+        "custom",
+        { port: 19800, widgetPort: 19800 },
+        new SetupInputs(f.directory),
+      ),
+      { code: "invalid_configuration" },
     );
   },
 );
@@ -682,7 +659,7 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("./installation/recipes/load.js");
+    const { loadRecipes } = await import("../tests/recipe-fixture.js");
     const { releaseSchema } = await import("./release/definition.js");
     const { openPack } = await import("./packs/source.js");
     const source = await openPack(resolve("packs/research-team"));
@@ -723,7 +700,7 @@ await test(
 );
 
 await test("recipes refuse scripts, personal configuration, duplicate IDs and protection switches", async () => {
-  const { loadRecipes } = await import("./installation/recipes/load.js");
+  const { loadRecipes } = await import("../tests/recipe-fixture.js");
   const { recipesSchema } =
     await import("./installation/recipes/definition.js");
   const [recipe] = await loadRecipes(resolve("deploy/recipes"));
@@ -805,7 +782,7 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("./installation/recipes/load.js");
+    const { loadRecipes } = await import("../tests/recipe-fixture.js");
     const { releaseSchema } = await import("./release/definition.js");
     const release = releaseSchema.parse(await readJson(f.release));
     await writeFile(
@@ -912,24 +889,22 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { configureInstallation } =
+    const { prepareConfiguration } =
       await import("./installation/configure.js");
     await assert.rejects(
-      configureInstallation({
+      prepareConfiguration({
         release: f.release,
         directory: f.directory,
         recipe: "custom",
       }),
       { code: "invalid_configuration" },
     );
-    const settings = join(f.parent, "disabled.json");
-    await writeFile(settings, JSON.stringify({ models: { mode: "disabled" } }));
     await assert.rejects(
-      configureInstallation({
+      prepareConfiguration({
         release: f.release,
         directory: f.directory,
         recipe: "custom",
-        settings,
+        model: "unknown-model",
       }),
     );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
@@ -1247,6 +1222,10 @@ await test(
     await mkdir(state, { mode: 0o700 });
     const accepted = JSON.stringify({ ...first.config, stateDirectory: state });
     await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
+    await writeFile(
+      join(state, "prepared.json"),
+      JSON.stringify({ ownerId: "test" }),
+    );
     class Exit extends Answers {
       override select(
         message: string,
@@ -1268,7 +1247,7 @@ await test(
       await readFile(join(state, "settings.json"), "utf8"),
       accepted,
     );
-    assert.deepEqual(await readdir(state), ["settings.json"]);
+    assert.deepEqual(await readdir(state), ["prepared.json", "settings.json"]);
   },
 );
 
@@ -1334,14 +1313,10 @@ await test(
   async (t) => {
     const { default: Fastify } = await import("fastify");
     const { randomUUID } = await import("node:crypto");
-    const { configureInstallation } =
+    const { prepareConfiguration } =
       await import("./installation/configure.js");
     const { resolveInstallation } = await import("./installation/resolve.js");
     const f = await fixture(t);
-    const models = z
-      .object({ models: installationSchema.shape.models })
-      .parse(await readJson(f.settings));
-    await writeFile(f.settings, JSON.stringify(models));
     const app = Fastify();
     t.after(() => app.close());
     const id = randomUUID();
@@ -1358,28 +1333,91 @@ await test(
       clientSecret: "private-client-secret",
     }));
     const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
-    const result = await configureInstallation({
-      ...f,
+    const draft = await prepareConfiguration({
+      release: f.release,
+      directory: f.directory,
+      modelCatalog: f.modelCatalog,
+      providerEnvFile: f.providerEnvFile,
       recipe: "custom",
       cloudUrl,
-      cloudCredentialFile: credential,
     });
-    const plan = await planInstallation(result.configFile);
-    const resolved = await resolveInstallation(
-      result.configFile,
-      plan.internalPorts,
+    const configFile = await saveConfiguration(
+      draft.directory,
+      draft.config,
+      draft.inputs,
     );
+    const { registerUnattended } =
+      await import("./installation/installer/cloud.js");
+    await registerUnattended(configFile, credential);
+    const plan = await planInstallation(configFile);
+    const resolved = await resolveInstallation(configFile, plan.internalPorts);
     assert.equal(resolved.config.access.mode, "hosted");
     assert.equal(resolved.input.team.clientId, "registered-client");
     assert.equal(resolved.input.team.administratorSubject, undefined);
     await app.close();
-    await configureInstallation({ directory: f.directory });
-    await assert.rejects(
-      configureInstallation({
-        directory: f.directory,
-        cloudUrl: "https://different.example",
-      }),
-      { code: "change_unsupported" },
+    await registerUnattended(configFile, undefined);
+  },
+);
+
+await test(
+  "configuration flags reject unsafe combinations and preserve accepted model routes",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const { setupContext } = await import("./installation/setup.js");
+    const { selectedDraft } = await import("./installation/options.js");
+    const { SetupInputs } = await import("./installation/save.js");
+    const { gatewayRoutesSchema } = await import("./models/configuration.js");
+    const context = await setupContext(f);
+    const first = await selectedDraft(
+      context,
+      "custom",
+      f,
+      new SetupInputs(f.directory),
     );
+    const key = join(f.parent, "new-key");
+    await writeFile(key, "rotated-key", { mode: 0o600 });
+    const inputs = new SetupInputs(f.directory);
+    const updated = await selectedDraft(
+      context,
+      "custom",
+      { model: "team", provider: "openai", llmKeyFile: key },
+      inputs,
+      first,
+    );
+    assert.equal(updated.models?.mode, "litellm");
+    assert.ok(updated.models);
+    const routes = gatewayRoutesSchema.parse(
+      await inputs.readJson(updated.models.configurationFile),
+    );
+    assert.equal(routes.defaultModel, "team");
+    assert.ok(!JSON.stringify(updated).includes("rotated-key"));
+    for (const options of [
+      { reasoning: "high" as const },
+      { provider: "unknown" },
+      { name: "changed" },
+      { oidcIssuer: "https://other.example" },
+      { llmKeyFile: key, providerEnvFile: f.providerEnvFile },
+    ])
+      await assert.rejects(
+        selectedDraft(
+          context,
+          "custom",
+          options,
+          new SetupInputs(f.directory),
+          first,
+        ),
+        { code: "invalid_configuration" },
+      );
+    await assert.rejects(
+      selectedDraft(
+        context,
+        "custom",
+        { access: "hosted", oidcIssuer: f.oidcIssuer },
+        inputs,
+      ),
+      { code: "invalid_configuration" },
+    );
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
 );

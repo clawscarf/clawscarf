@@ -1,9 +1,9 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { readJson } from "../files.js";
-import { recipesSchema } from "./definition.js";
+import { readJson } from "../scripts/installation/files.js";
+import { recipesSchema } from "../scripts/installation/recipes/definition.js";
 
-/** A developer override replaces the release catalogue; it never merges stale entries. */
+/** Load maintained recipe sources for release and configuration regressions. */
 export async function loadRecipes(directory: string) {
   const files = (await readdir(directory))
     .filter((file) => file.endsWith(".json"))

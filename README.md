@@ -104,11 +104,11 @@ are a separate selected direction; this execution-model change does not implemen
 
 The [installation CLI](deploy/deployment/installation.md) is the public configuration and
 lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
-defaults for that document. The [component guide](deploy/deployment/README.md) covers internal
+defaults for initial configuration. The [component guide](deploy/deployment/README.md) covers internal
 developer operations; it is not a second supported installation format.
 The menu reviews settings before credentials, starts persistently on macOS when selected, and provides
-the private OIDC administrator claim. The `settings` editor and matching plan/apply
-commands change retained models, Connections and pack selections; the installation
+the private OIDC administrator claim. The same `configure` command changes
+retained models, Connections and pack selections, interactively or with explicit flags; the installation
 guide records the native pack-removal limitation. [Release bundles](release/README.md)
 copy tools and recipe-selected packs into a movable directory. npm/GitHub/GHCR
 publication and automatic download remain unfinished.

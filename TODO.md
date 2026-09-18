@@ -46,7 +46,7 @@ Open work only. Select a task before implementing; this list does not authorize 
 ## Future decisions
 
 - [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
-      choose packs/Connections explicitly rather than treating the example as a finished product.
+      choose its packs rather than treating the example as a finished product.
 - [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
       Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
       Native Lobster is required.

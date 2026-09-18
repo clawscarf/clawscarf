@@ -144,12 +144,13 @@ Stop the installation, then start only its private controller:
 docker compose -f .local/my-team/compose.json up -d controller
 ```
 
-Then apply the scoped credential and prepared broker endpoint:
+For an installation created through `configure`, apply the scoped credential and
+prepared broker endpoint using its installation directory (not the private state folder):
 
 ```sh
-pnpm clawscarf connections configure --state .local/my-team \
+pnpm clawscarf connections configure --directory /absolute/my-team \
   --credential-file /private/connections-token --yes
-pnpm clawscarf connections observe --state .local/my-team
+pnpm clawscarf connections observe --directory /absolute/my-team
 ```
 
 Configuration requires stopped, verified compute and exclusive access to its owned
@@ -332,10 +333,11 @@ Stop the installation, then start only its private controller:
 docker compose -f .local/my-team/compose.json up -d controller
 ```
 
-Then run the explicit replacement:
+For an installation created through `configure`, run the explicit replacement with
+its installation directory (not the private state folder):
 
 ```sh
-pnpm clawscarf upgrade --state .local/my-team \
+pnpm clawscarf upgrade --directory /absolute/my-team \
   --runtime-image sha256:REPLACE_WITH_EXACT_IMAGE_ID \
   --python /absolute/operator-python/bin/python --yes
 ```

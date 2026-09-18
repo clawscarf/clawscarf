@@ -1,3 +1,4 @@
+import { selectModel } from "../../models.js";
 import type { InstallationConfiguration } from "../../configuration.js";
 import type { Release } from "../../../release/definition.js";
 import type { InstallerPrompts } from "../prompts.js";
@@ -135,38 +136,14 @@ export async function collectModels(
             : offer.reasoningLevels[0],
       )
     : undefined;
-  const selected = gatewayRoutesSchema.parse({
-    models: [
-      ...(routes?.models.filter(
-        (model) =>
-          model.id !== id && (retainModels || model.id !== routes.defaultModel),
-      ) ?? []),
-      { ...offer.model, enabled: true },
-    ],
-    defaultModel: id,
-    ...(thinkingDefault ? { thinkingDefault } : {}),
-  });
-  const sameCredentials =
-    current?.mode === "litellm" &&
-    routes &&
-    selected.models.every((model) =>
-      routes.models.some(
-        (before) =>
-          before.route?.apiKeyEnv === model.route?.apiKeyEnv &&
-          before.route?.model.split("/")[0] ===
-            model.route?.model.split("/")[0],
-      ),
-    );
-  return {
-    mode: "litellm",
-    configurationFile: inputs.set(
-      "selected-models.json",
-      JSON.stringify(selected, null, 2),
-    ),
-    upstreamEnvironmentFile: sameCredentials
-      ? current.upstreamEnvironmentFile
-      : "",
-  };
+  return selectModel(
+    current,
+    routes,
+    offer,
+    thinkingDefault,
+    inputs,
+    retainModels,
+  );
 }
 
 export async function collectModelCredentials(

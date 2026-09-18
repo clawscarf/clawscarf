@@ -17,7 +17,7 @@ The publication design is:
 | GitHub Releases: `vX.Y.Z` | Matching platform payload archives, release metadata, checksums and required license/source notices.    |
 | GHCR                      | Application, companion and forwarding images referenced by registry digest in the release metadata.     |
 
-The intended first command is `npx @clawscarf/cli@latest install`. npm chooses the
+The intended first command is `npx @clawscarf/cli@latest configure`. npm chooses the
 CLI version; that CLI downloads its **exact matching** platform bundle, verifies it,
 and retains the operator and payloads outside npm's temporary cache. An explicit npm
 version selects an older release. Ordinary startup never resolves `latest` again.
@@ -37,7 +37,7 @@ From already-built components, run:
 ```sh
 pnpm clawscarf release-create --input /absolute/built-components.json \
   --output /absolute/release-bundle
-pnpm clawscarf install --release /absolute/release-bundle/clawscarf-release.json \
+pnpm clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
   --directory /absolute/new-team
 ```
 
@@ -77,7 +77,7 @@ relative to the input file. The builder
 embeds recipe objects supplied in `recipes`; the default model catalog comes from
 [deploy/models/catalog.json](../deploy/models/catalog.json). An optional
 `cloudUrl` supplies the hosted login service origin; development can override it with
-`install --cloud-url`. Production is the default; staging is available for development.
+`configure --cloud-url`. Production is the default; staging is available for development.
 The cloud service owns connector catalogs; no provider catalog or secret is bundled
 with an installation release.
 

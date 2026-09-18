@@ -21,7 +21,7 @@ export async function newDirectory(path: string) {
   }
   throw new InstallationError(
     "change_unsupported",
-    "Choose a new installation directory. This installer does not overwrite or reconfigure existing installations; use the existing CLI to resume them.",
+    "This directory already exists and is not a recognized installation. Choose a new directory; configure never overwrites unrelated files.",
   );
 }
 export async function field(
