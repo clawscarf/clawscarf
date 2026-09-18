@@ -6,7 +6,10 @@ import { type LocalState, resourceNames } from "./state.js";
 import { LocalSetupError, run } from "./process.js";
 
 /** A bind probe detects current conflicts; it does not reserve a port for startup. */
-async function available(port: number, host: string): Promise<boolean> {
+export async function portAvailable(
+  port: number,
+  host: string,
+): Promise<boolean> {
   const server = createServer((socket) => {
     socket.destroy();
   });
@@ -131,7 +134,7 @@ export async function verifyLocalPorts(
       ["application", "widgets"].includes(name)
         ? "0.0.0.0"
         : "127.0.0.1";
-    if (await available(port, host)) continue;
+    if (await portAvailable(port, host)) continue;
     if (await ownedListener(state, name, port, host, command)) continue;
     throw new LocalSetupError(
       "port_in_use",

@@ -1,3 +1,4 @@
+import { checkHost, checkInstallationPrerequisites } from "../prerequisites.js";
 import { z } from "zod";
 import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { setupContext } from "../setup.js";
@@ -26,6 +27,7 @@ export async function editInstallationSettings(
   directory: string,
   ui: InstallerPrompts,
   options: ConfigureOptions = {},
+  prerequisites = { host: checkHost, check: checkInstallationPrerequisites },
 ) {
   directory = resolve(directory);
   if (options.recipe || options.release || options.cloudUrl)
@@ -157,6 +159,14 @@ export async function editInstallationSettings(
       ).some(Boolean)
     )
       return { state: "unchanged" as const };
+    await task("Checking this machine", () => prerequisites.host());
+    await task("Preparing required software", (signal, report) =>
+      prerequisites.check(candidate, {
+        acquire: true,
+        signal,
+        report,
+      }),
+    );
     authorizing = candidate;
     if (options.nonInteractive)
       await registerUnattended(candidate, options.cloudCredentialFile);
@@ -167,7 +177,7 @@ export async function editInstallationSettings(
       [
         ...(plan.scopes.models && plan.changes.models
           ? [
-              `Model: ${plan.changes.models.default} · ${plan.changes.models.reasoning}`,
+              `Model: ${plan.changes.models.default ?? "None"} · ${plan.changes.models.reasoning}`,
             ]
           : []),
         ...(plan.scopes.connections
@@ -230,8 +240,8 @@ export async function editInstallationSettings(
         ? true
         : await ui.confirm("Start with these settings?", true))
     ) {
-      return await task("Starting ClawScarf", (_signal, report) =>
-        startInstallation(directory, report),
+      return await task("Starting ClawScarf", (signal, report) =>
+        startInstallation(directory, report, signal),
       );
     }
     ui.note(

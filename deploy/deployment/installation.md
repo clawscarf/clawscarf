@@ -8,7 +8,17 @@ run separate validation, preview and apply commands.
 This is a developer preview for macOS arm64 with Docker Desktop. Published downloads
 remain unfinished. [Link the development command](../../scripts/README.md#development-command)
 and prepare a [release bundle](../../release/README.md) before configuring a server.
-The CLI does not yet build or download missing images or tools.
+For a new installation, the CLI checks macOS/architecture, Docker and Compose before
+asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
+then checked again during preparation and startup.
+
+OpenShell tools come in the release bundle and are checked against its checksums.
+Missing registry images are downloaded by their pinned digest before sign-in, with an
+image list and layer progress on stderr; the first setup can take several minutes.
+Already-cached images are reused. Local development image IDs cannot be downloaded:
+build those images and regenerate the development release if they are missing.
+`start` also fetches missing registry images; `doctor` only reports missing prerequisites.
+The CLI does not install Docker or download an incomplete release bundle's missing tools.
 
 ## Terminal installer
 
@@ -103,8 +113,9 @@ Use model IDs returned by `recipes` for the selected release. Private key files 
 only the secret and must be regular files owned by you, with mode 600. A provider `.env`
 file is also supported for multiple routes. Secrets never go in command-line values.
 
-Noninteractive configuration validates required selections, saves configuration, registers
-selected cloud services, checks prerequisites, prepares and starts the server. It does
+Noninteractive configuration checks the machine, validates required selections and ports,
+saves configuration, checks bundled tools and downloads missing registry images, then
+registers selected cloud services, prepares and starts the server. It does
 not prompt. If sign-in is needed, it returns `state: "action_required"`, a browser URL,
 expiry, polling delay and exact resume command. Complete the browser step, then run
 that command; accepted selections and the pending registration are retained. The resume

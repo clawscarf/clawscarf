@@ -262,7 +262,29 @@ await test(
       ...f.answers,
       [`Install in ${f.directory}?`]: false,
     });
-    assert.deepEqual(await installFromAnswers(f, ui), { state: "cancelled" });
+    assert.deepEqual(
+      await installFromAnswers(f, ui, {
+        host: () => Promise.resolve(),
+        ports: () => Promise.resolve(),
+        prerequisites: () => {
+          throw Error("Unexpected prerequisite acquisition");
+        },
+        plan: planInstallation,
+        apply: () => {
+          throw Error("Unexpected apply");
+        },
+        start: () => {
+          throw Error("Unexpected start");
+        },
+        administrator: () => {
+          throw Error("Unexpected administrator setup");
+        },
+        register: () => {
+          throw Error("Unexpected registration");
+        },
+      }),
+      { state: "cancelled" },
+    );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
 );
@@ -430,8 +452,16 @@ await test(
             : ui,
           {
             plan: planInstallation,
-            doctor: () => {
-              calls.push("doctor");
+            host: () => {
+              calls.push("host");
+              return Promise.resolve();
+            },
+            ports: () => {
+              calls.push("ports");
+              return Promise.resolve();
+            },
+            prerequisites: () => {
+              calls.push("prerequisites");
               return Promise.resolve({
                 state: "prerequisites_available",
                 platform: "darwin-arm64",
@@ -466,7 +496,10 @@ await test(
                 services: [],
               });
             },
-            register: async () => {},
+            register: () => {
+              calls.push("register");
+              return Promise.resolve();
+            },
             administrator: (_state, issue) => {
               if (issue) {
                 links++;
@@ -509,10 +542,19 @@ await test(
         assert.deepEqual(
           calls,
           fail === true || fail === "cancel"
-            ? ["doctor", "apply"]
+            ? ["host", "ports", "prerequisites", "register", "apply"]
             : nonInteractive
-              ? ["doctor", "apply", "start"]
-              : ["doctor", "apply", "start", "login-expired", "login-complete"],
+              ? ["host", "ports", "prerequisites", "register", "apply", "start"]
+              : [
+                  "host",
+                  "ports",
+                  "prerequisites",
+                  "register",
+                  "apply",
+                  "start",
+                  "login-expired",
+                  "login-complete",
+                ],
         );
         if (!fail && !nonInteractive) {
           assert.equal(links, 2);
@@ -1464,6 +1506,16 @@ await test(
       await import("./installation/configure.js");
     const { unattendedPrompts } =
       await import("./installation/installer/prompts.js");
+    const prerequisites = {
+      host: () => Promise.resolve(),
+      check: () =>
+        Promise.resolve({
+          state: "prerequisites_available",
+          platform: "darwin-arm64",
+          release: "0.1.0-dev",
+          images: 0,
+        }),
+    };
     const f = await fixture(t);
     const first = await collectInstallation(new Answers(f.answers), f);
     const configFile = await saveConfiguration(
@@ -1498,12 +1550,17 @@ await test(
     const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
     await assert.rejects(
       () =>
-        editInstallationSettings(state, unattendedPrompts, {
-          nonInteractive: true,
-          yes: true,
-          connections: true,
-          connectionsCloudUrl: cloudUrl,
-        }),
+        editInstallationSettings(
+          state,
+          unattendedPrompts,
+          {
+            nonInteractive: true,
+            yes: true,
+            connections: true,
+            connectionsCloudUrl: cloudUrl,
+          },
+          prerequisites,
+        ),
       { code: "unavailable" },
     );
     const before = await readJson(join(state, "prepared.json"));
@@ -1513,10 +1570,15 @@ await test(
     );
     await assert.rejects(
       () =>
-        editInstallationSettings(state, unattendedPrompts, {
-          nonInteractive: true,
-          yes: true,
-        }),
+        editInstallationSettings(
+          state,
+          unattendedPrompts,
+          {
+            nonInteractive: true,
+            yes: true,
+          },
+          prerequisites,
+        ),
       { code: "unavailable" },
     );
     assert.deepEqual(await readJson(join(state, "prepared.json")), before);
@@ -1575,7 +1637,9 @@ await test(
         return Promise.resolve();
       },
       plan: planInstallation,
-      doctor: () =>
+      host: () => Promise.resolve(),
+      ports: () => Promise.resolve(),
+      prerequisites: () =>
         Promise.resolve({
           state: "prerequisites_available",
           platform: "darwin-arm64",
@@ -1713,4 +1777,203 @@ await test("recipe model choices resolve release metadata and reject missing or 
       ),
     { code: "invalid_configuration" },
   );
+});
+
+await test(
+  "prerequisites need no cloud registration; missing images, tools and occupied ports stop setup",
+  local,
+  async (t) => {
+    const { checkInstallationPrerequisites, checkNewInstallationPorts } =
+      await import("./installation/prerequisites.js");
+    const { LocalSetupError } = await import("./deployment/process.js");
+    const { allocatePorts } = await import("./installation/resolve.js");
+    const { prepareConfiguration } =
+      await import("./installation/configure.js");
+    const { createServer } = await import("node:net");
+    const f = await fixture(t);
+    const draft = await prepareConfiguration({
+      ...f,
+      recipe: "custom",
+      nonInteractive: true,
+    });
+    const ports = await allocatePorts();
+    draft.config.exposure = {
+      mode: "local",
+      applicationPort: ports[0] ?? 0,
+      widgetPort: ports[1] ?? 0,
+    };
+    draft.config.access = {
+      mode: "hosted",
+      administratorName: "Admin",
+      cloudUrl: "https://cloud.example.test",
+      registrationFile: "./not-created.json",
+    };
+    const file = await saveConfiguration(
+      f.directory,
+      draft.config,
+      draft.inputs,
+    );
+    const messages: string[] = [],
+      pulled: string[] = [];
+    let missing = new Set([postgresImage]);
+    const command: typeof import("./deployment/process.js").run = (
+      _executable,
+      args,
+    ) => {
+      if (missing.has(args.at(-1) ?? ""))
+        throw new LocalSetupError("command_failed", "fixture", {
+          reason: "exit",
+          exitCode: 1,
+        });
+      return Promise.resolve(
+        args[0] === "info"
+          ? "linux"
+          : args.includes("--format")
+            ? "team-runtime"
+            : "[]",
+      );
+    };
+    const pull: typeof import("./installation/prerequisites.js").pullImage = (
+      image,
+    ) => {
+      pulled.push(image);
+      missing.delete(image);
+      return Promise.resolve();
+    };
+    await assert.rejects(
+      checkInstallationPrerequisites(file, {}, command, pull),
+      /Run configure to download/,
+    );
+    assert.deepEqual(pulled, []);
+    await checkInstallationPrerequisites(
+      file,
+      { acquire: true, report: (message) => messages.push(message) },
+      command,
+      pull,
+    );
+    assert.deepEqual(pulled, [postgresImage]);
+    assert.ok(
+      messages.some(
+        (message) =>
+          message.includes(postgresImage) && message.includes("first setup"),
+      ),
+    );
+    await checkInstallationPrerequisites(
+      file,
+      { acquire: true },
+      command,
+      pull,
+    );
+    assert.deepEqual(pulled, [postgresImage]);
+    missing = new Set([`sha256:${"a".repeat(64)}`]);
+    await assert.rejects(
+      checkInstallationPrerequisites(file, { acquire: true }, command, pull),
+      /cannot be downloaded/,
+    );
+    assert.deepEqual(pulled, [postgresImage]);
+    missing.clear();
+    await writeFile(join(f.parent, "tool"), "tampered");
+    await assert.rejects(
+      checkInstallationPrerequisites(file, { acquire: true }, command, pull),
+      /checksum/,
+    );
+    const server = createServer();
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    t.after(
+      () =>
+        new Promise<void>((resolve, reject) =>
+          server.close((error) => {
+            if (error) reject(error);
+            else resolve();
+          }),
+        ),
+    );
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    await assert.rejects(
+      checkNewInstallationPorts({
+        mode: "local",
+        applicationPort: address.port,
+        widgetPort: ports[1] ?? 0,
+      }),
+      /already in use/,
+    );
+  },
+);
+
+await test(
+  "machine checks distinguish missing Docker, stopped daemon, wrong container OS and absent Compose",
+  local,
+  async () => {
+    const { checkHost } = await import("./installation/prerequisites.js");
+    const { LocalSetupError } = await import("./deployment/process.js");
+    await assert.rejects(
+      checkHost(() => {
+        throw new LocalSetupError("command_failed", "hidden", {
+          reason: "spawn",
+          systemCode: "ENOENT",
+        });
+      }),
+      /Docker is not installed/,
+    );
+    await assert.rejects(
+      checkHost(() => {
+        throw new LocalSetupError("command_failed", "hidden", {
+          reason: "exit",
+          exitCode: 1,
+        });
+      }),
+      /Cannot reach Docker/,
+    );
+    await assert.rejects(
+      checkHost(() => Promise.resolve("windows")),
+      /Linux containers/,
+    );
+    await assert.rejects(
+      checkHost((_exe, args) => {
+        if (args[0] === "compose") throw Error("hidden");
+        return Promise.resolve("linux");
+      }),
+      /Compose is unavailable/,
+    );
+  },
+);
+
+await test("image download reports layer progress, hides registry errors and supports cancellation", async (t) => {
+  const { pullImage } = await import("./installation/prerequisites.js");
+  const directory = await mkdtemp(join(tmpdir(), "clawscarf-pull-test-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const docker = join(directory, "docker");
+  const previous = process.env.PATH;
+  process.env.PATH = directory;
+  t.after(() => {
+    if (previous === undefined) delete process.env.PATH;
+    else process.env.PATH = previous;
+  });
+  const messages: string[] = [];
+  await writeFile(
+    docker,
+    '#!/bin/sh\nprintf "abcdef123456: Downloading [==> ] 2MB/8MB\\n"\nprintf "registry-token-must-not-appear\\n" >&2\nexit 1\n',
+    { mode: 0o700 },
+  );
+  await assert.rejects(
+    pullImage("example/image@sha256:test", (message) => {
+      messages.push(message);
+    }),
+    /Could not download example\/image/,
+  );
+  assert.equal(messages.length, 1);
+  assert.match(messages[0] ?? "", /2MB\/8MB/);
+  assert.ok(!messages.some((message) => message.includes("registry-token")));
+  await writeFile(docker, "#!/bin/sh\nexec /bin/sleep 20\n");
+  const controller = new AbortController();
+  const running = pullImage(
+    "example/image@sha256:test",
+    () => {},
+    controller.signal,
+  );
+  controller.abort(new InstallerCancelled());
+  await assert.rejects(running, InstallerCancelled);
 });

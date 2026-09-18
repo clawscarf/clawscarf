@@ -25,14 +25,20 @@ import {
 } from "./prompts.js";
 import { saveConfiguration } from "../save.js";
 import { planInstallation, applyInstallation } from "../plan.js";
-import { doctorInstallation } from "../doctor.js";
+import {
+  checkHost,
+  checkNewInstallationPorts,
+  checkInstallationPrerequisites,
+} from "../prerequisites.js";
 import { startInstallation, withVerifiedAdministrator } from "../lifecycle.js";
 import { administratorSetup } from "../administrator.js";
 import { InstallationError } from "../errors.js";
 
 const operations = {
   plan: planInstallation,
-  doctor: doctorInstallation,
+  host: checkHost,
+  ports: checkNewInstallationPorts,
+  prerequisites: checkInstallationPrerequisites,
   apply: applyInstallation,
   start: startInstallation,
   administrator: administratorSetup,
@@ -54,11 +60,13 @@ export async function installFromAnswers(
     );
   const saved = await savedSetup(options);
   if (saved) rejectNewSelections(options);
+  await task("Checking this machine", () => operator.host());
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
   while (!saved) {
     draft = options.nonInteractive
       ? await prepareConfiguration(options)
       : await collectInstallation(ui, options, draft);
+    await operator.ports(draft.config.exposure);
     if (options.nonInteractive) break;
     try {
       if (await ui.confirm(`Install in ${draft.directory}?`, true)) break;
@@ -89,6 +97,9 @@ export async function installFromAnswers(
   const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
   try {
+    await task("Preparing required software", (signal, report) =>
+      operator.prerequisites(configFile, { acquire: true, signal, report }),
+    );
     if (options.nonInteractive)
       await registerUnattended(
         configFile,
@@ -102,9 +113,6 @@ export async function installFromAnswers(
     await writeFile(planFile, JSON.stringify(plan, null, 2) + "\n", {
       mode: 0o600,
     });
-    await task("Checking Docker and required images", () =>
-      operator.doctor(configFile),
-    );
     await task("Installing ClawScarf", () =>
       operator.apply(configFile, planFile),
     );
@@ -115,8 +123,8 @@ export async function installFromAnswers(
       ui.note(`clawscarf start --directory ${quote(directory)}`, "Start later");
       return { state: "prepared" as const, directory };
     }
-    const started = await task("Starting ClawScarf", (_signal, report) =>
-      operator.start(stateDirectory, report),
+    const started = await task("Starting ClawScarf", (signal, report) =>
+      operator.start(stateDirectory, report, signal),
     );
     const administrator = await finishAdministrator(
       stateDirectory,

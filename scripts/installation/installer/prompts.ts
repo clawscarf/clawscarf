@@ -112,7 +112,11 @@ export async function progress<T>(
       ? clack.spinner({ output: process.stderr, onCancel: cancel })
       : undefined;
   const report = (detail: string) => {
-    if (spinner) spinner.message(detail);
+    if (spinner && detail.includes("\n")) {
+      spinner.stop(message);
+      process.stderr.write(detail + "\n");
+      spinner.start(message);
+    } else if (spinner) spinner.message(detail);
     else process.stderr.write(detail + "\n");
   };
   if (spinner) spinner.start(message);

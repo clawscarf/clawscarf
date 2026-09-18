@@ -1,3 +1,4 @@
+import { checkHost, checkInstallationPrerequisites } from "./prerequisites.js";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
@@ -120,6 +121,7 @@ async function installationStatus(directory: string) {
 export async function startInstallation(
   directory: string,
   report: (message: string) => void,
+  signal?: AbortSignal,
 ) {
   directory = resolve(directory);
   return withInstallationLock(directory, async () => {
@@ -129,6 +131,12 @@ export async function startInstallation(
         "invalid_configuration",
         "Bundled or existing LiteLLM is required.",
       );
+    await checkHost();
+    await checkInstallationPrerequisites(join(directory, "settings.json"), {
+      acquire: true,
+      report,
+      ...(signal ? { signal } : {}),
+    });
     await launchLocal(directory, report, {
       activate: async () => {
         await activatePacks(directory, report);

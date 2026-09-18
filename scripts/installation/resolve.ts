@@ -1,7 +1,5 @@
+import { verifyReleaseTool } from "./files.js";
 import { hostedOidc, hostedConnections } from "../cloud/registration.js";
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { open } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
 import { loadGatewayConfiguration } from "../deployment/model-gateway.js";
 import { createServer } from "node:net";
@@ -22,29 +20,6 @@ import { fingerprint, readInputFile, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { openPack } from "../packs/source.js";
 
-async function executable(path: string, checksum: string) {
-  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-  try {
-    const stat = await file.stat();
-    if (!stat.isFile() || !(stat.mode & 0o111))
-      throw new InstallationError(
-        "release_mismatch",
-        "A release tool is not an executable file.",
-      );
-    const hash = createHash("sha256");
-    for await (const chunk of file.createReadStream({ autoClose: false })) {
-      if (!Buffer.isBuffer(chunk)) throw Error("Invalid file stream");
-      hash.update(chunk);
-    }
-    if (hash.digest("hex") !== checksum)
-      throw new InstallationError(
-        "release_mismatch",
-        "A release tool does not match its checksum.",
-      );
-  } finally {
-    await file.close();
-  }
-}
 export async function allocatePorts() {
   const servers = Array.from({ length: 7 }, () => createServer());
   try {
@@ -102,8 +77,8 @@ export async function resolveInstallation(
   const toolBase = dirname(releasePath);
   const cli = resolve(toolBase, release.tools.openshell.cli.file);
   const gateway = resolve(toolBase, release.tools.openshell.gateway.file);
-  await executable(cli, release.tools.openshell.cli.sha256);
-  await executable(gateway, release.tools.openshell.gateway.sha256);
+  await verifyReleaseTool(cli, release.tools.openshell.cli.sha256);
+  await verifyReleaseTool(gateway, release.tools.openshell.gateway.sha256);
   const [
     controller,
     management,

@@ -41,3 +41,27 @@ export async function readJson(path: string): Promise<unknown> {
     );
   }
 }
+
+export async function verifyReleaseTool(path: string, checksum: string) {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || !(stat.mode & 0o111))
+      throw new InstallationError(
+        "release_mismatch",
+        "A release tool is not an executable file.",
+      );
+    const hash = createHash("sha256");
+    for await (const chunk of file.createReadStream({ autoClose: false })) {
+      if (!Buffer.isBuffer(chunk)) throw Error("Invalid file stream");
+      hash.update(chunk);
+    }
+    if (hash.digest("hex") !== checksum)
+      throw new InstallationError(
+        "release_mismatch",
+        "A release tool does not match its checksum.",
+      );
+  } finally {
+    await file.close();
+  }
+}

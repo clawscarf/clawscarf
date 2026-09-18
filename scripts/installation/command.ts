@@ -103,7 +103,7 @@ export function installationCommand() {
       const state = await resolveLocation(options);
       const result = await progress(
         "Starting ClawScarf",
-        (_signal, report) => startInstallation(state, report),
+        (signal, report) => startInstallation(state, report, signal),
         program.opts<{ json?: boolean }>(),
       );
       output(result, statusText(result));
