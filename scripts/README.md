@@ -18,7 +18,7 @@ Connections configuration tests use private copies of plugin metadata and source
 so they do not depend on compiled plugin output being present during a build. Compiled
 plugin loading is exercised by the plugin’s native tests.
 The operator build also copies its [Python SDK transport](packs/transport.py) and
-locked dependency inputs beside the compiled pack CLI through
+locked dependency inputs beside the compiled installation operator through
 [build-operator.ts](build-operator.ts). These files belong to the operator artifact,
 not the OpenClaw runtime image. The selected operator Python environment must install
 the pinned SDK dependencies as described in [pack setup](../packs/README.md).
@@ -176,9 +176,7 @@ noninteractive flags share the same operations. Validation and preview/apply sta
 [installation guide](../deploy/deployment/installation.md#change-an-existing-installation)
 for supported changes, persistence and failure handling.
 
-The [cloud API snapshot](../services/cloud/openapi.json) comes from clawscarf-cloud’s API contract
-at commit `154387c`.
-After an upstream contract change, replace the snapshot and run `pnpm cloud:generate`;
-`codegen:check` verifies the generated consumer. It shares the existing HTTP transport.
-Hosted registration and OAuth device authorization live in `scripts/cloud/`; custom OIDC
-bypasses that registration path.
+The [cloud client guide](../services/cloud/README.md) owns API snapshot provenance
+and regeneration instructions. Hosted browser authorization and registration live
+in `scripts/cloud/`. Custom OIDC bypasses hosted login registration; optional hosted
+Connections still registers independently.

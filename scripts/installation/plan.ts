@@ -151,7 +151,7 @@ async function verifyRetainedInputs(directory: string, expected: string) {
     if ((await readFile(join(directory, "inputs.sha256"), "utf8")) !== expected)
       throw new InstallationError(
         "change_unsupported",
-        "Prepared capability inputs changed. Use the explicit model, Connections or pack operator; prepare does not reapply or rotate native settings.",
+        "Saved capability inputs changed. Run clawscarf configure --directory to review changes; startup does not reapply or rotate native settings.",
       );
   } catch (error) {
     if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))

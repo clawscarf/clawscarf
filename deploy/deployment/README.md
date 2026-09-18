@@ -105,7 +105,7 @@ Preparation never runs database migrations on API startup.
 
 The [unified CLI](installation.md#optional-capabilities) additionally initializes
 selected model/Connections credentials and native pack members. The lower-level
-component commands below do not implicitly activate Connections.
+ordinary startup does not implicitly activate Connections.
 
 ## Optional Connections
 
@@ -332,7 +332,7 @@ For an installation created through `configure`, run the explicit replacement wi
 its installation directory (not the private state folder):
 
 ```sh
-pnpm clawscarf upgrade --directory /absolute/my-team \
+clawscarf upgrade --directory /absolute/my-team \
   --runtime-image sha256:REPLACE_WITH_EXACT_IMAGE_ID \
   --python /absolute/operator-python/bin/python --yes
 ```

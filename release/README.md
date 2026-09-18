@@ -35,9 +35,9 @@ support, clean-machine installation or runtime behavior.
 From already-built components, run:
 
 ```sh
-pnpm clawscarf release-create --input /absolute/built-components.json \
+clawscarf release-create --input /absolute/built-components.json \
   --output /absolute/release-bundle
-pnpm clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
+clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
   --directory /absolute/new-team
 ```
 

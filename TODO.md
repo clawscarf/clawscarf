@@ -2,10 +2,6 @@
 
 Open work only. Select a task before implementing; this list does not authorize continuation.
 
-## CLI cleanup — selected
-
-- [ ] Correct stale CLI documentation and deletion guidance.
-
 ## Installer and releases
 
 - [ ] Verify first-time production signup through email verification and installer resume.

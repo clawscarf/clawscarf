@@ -29,7 +29,7 @@ export async function confirmDeletion(
     if (options.confirmDelete !== resolve(directory) || !options.acceptDataLoss)
       throw new InstallationError(
         "invalid_configuration",
-        "Unattended deletion requires --confirm-delete with the exact absolute state directory and --accept-data-loss.",
+        "Unattended deletion requires --confirm-delete with the exact absolute installation directory and --accept-data-loss.",
       );
     return;
   }
@@ -40,7 +40,7 @@ export async function confirmDeletion(
   )
     throw new InstallationError(
       "invalid_configuration",
-      "Deletion requires two confirmations in a terminal, or --confirm-delete <absolute-state-directory> --accept-data-loss.",
+      "Deletion requires two confirmations in a terminal, or --confirm-delete <absolute-installation-directory> --accept-data-loss.",
     );
   try {
     if (

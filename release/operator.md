@@ -1,7 +1,7 @@
 # ClawScarf operator
 
-This development archive contains compiled local setup, controller, model and pack
-commands. It runs outside the contributor checkout. It is not the complete
+This development archive contains the compiled configuration/lifecycle CLI and its controller, model and pack
+operators. It runs outside the contributor checkout. It is not the complete
 distribution: runtime/companion images and the pinned OpenShell executables are
 separate inputs. The interactive menu uses recipes from a supplied
 release bundle; it does not download/build missing components. The generated npm
@@ -18,8 +18,8 @@ pnpm 10.33.0. In the extracted `package` directory:
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
 node scripts/clawscarf.js configure --release /absolute/clawscarf-release.json --directory /absolute/new-team
-node scripts/clawscarf.js models --help
-node scripts/clawscarf.js packs --help
+node scripts/clawscarf.js configure --help
+node scripts/clawscarf.js people --help
 node scripts/clawscarf.js connections --help
 ```
 
@@ -50,8 +50,8 @@ The pack operator additionally needs the pinned Python environment from
 `scripts/packs/requirements.txt`. Models require an external LiteLLM gateway or the unified configuration’s pinned local
 LiteLLM service. This archive contains no model/provider credentials. Unified preparation
 can issue initial scoped model and Connections credentials for fresh installations;
-normal start never rotates or reactivates them. The component Connections operator
-retains its explicit credential/configuration commands.
+normal start never rotates or reactivates them. Use `configure` for capability changes;
+`connections` manages application accounts and grants.
 
 The source checkout owns full local setup, model and pack qualification instructions.
 [Third-party notices](../THIRD_PARTY_NOTICES.md) are retained verbatim; their relative source references refer
