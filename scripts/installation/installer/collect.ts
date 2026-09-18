@@ -103,7 +103,7 @@ export async function collectInstallation(
         "secrets/hosted-login.json",
       );
     const presetFile = recipe?.models
-      ? recipeModelFile(recipe.models, inputs)
+      ? recipeModelFile(recipe.models, inputs, context.release.modelCatalog)
       : undefined;
     if (!config.models && presetFile)
       config.models = {

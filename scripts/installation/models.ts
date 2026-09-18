@@ -1,3 +1,5 @@
+import type { Recipe } from "./recipes/definition.js";
+import { InstallationError } from "./errors.js";
 import type { InstallationConfiguration } from "./configuration.js";
 import type { Release } from "../release/definition.js";
 import { gatewayRoutesSchema } from "../models/configuration.js";
@@ -45,4 +47,33 @@ export function selectModel(
       ? current.upstreamEnvironmentFile
       : "",
   };
+}
+
+/** Recipes select an offering; release catalog metadata has one owner. */
+export function recipeModelRoutes(
+  choice: Recipe["models"],
+  catalog: Release["modelCatalog"],
+) {
+  const matches =
+    catalog?.filter(
+      (item) =>
+        item.model.enabled &&
+        item.model.id === choice.model &&
+        item.model.route.model.split("/")[0] === choice.provider,
+    ) ?? [];
+  const offer = matches[0];
+  if (
+    !offer ||
+    matches.length !== 1 ||
+    (choice.reasoning && !offer.reasoningLevels.includes(choice.reasoning))
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "Recipe model, provider and reasoning must select one enabled offering in the release catalog.",
+    );
+  return gatewayRoutesSchema.parse({
+    models: [offer.model],
+    defaultModel: choice.model,
+    ...(choice.reasoning ? { thinkingDefault: choice.reasoning } : {}),
+  });
 }

@@ -18,24 +18,8 @@
     }
   },
   "models": {
-    "defaultModel": "gpt-6-astra",
-    "models": [
-      {
-        "id": "gpt-6-astra",
-        "name": "GPT-6 Astra",
-        "api": "openai-responses",
-        "enabled": true,
-        "contextWindow": 1050000,
-        "maxTokens": 128000,
-        "reasoning": true,
-        "tools": true,
-        "input": ["text", "image"],
-        "route": {
-          "model": "openai/gpt-6-astra",
-          "apiKeyEnv": "OPENAI_API_KEY"
-        }
-      }
-    ],
-    "thinkingDefault": "medium"
+    "model": "gpt-6-astra",
+    "provider": "openai",
+    "reasoning": "medium"
   }
 }

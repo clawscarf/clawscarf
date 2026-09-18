@@ -16,7 +16,7 @@ import { releaseSchema } from "./release/definition.js";
 import { createDevelopmentRelease } from "./release/create.js";
 import { loadRecipes } from "../tests/recipe-fixture.js";
 import { setupContext, recipeConfiguration } from "./installation/setup.js";
-import { verifyReleasePacks } from "./release/packs.js";
+import { verifyReleaseContents } from "./release/contents.js";
 import { liteLlmImage, postgresImage } from "./deployment/images.js";
 
 await test("release bundles survive relocation without source files and reject missing or altered payloads", async (t) => {
@@ -97,7 +97,7 @@ await test("release bundles survive relocation without source files and reject m
   for (const name of ["tool", "source-pack", "input.json"])
     await rm(join(directory, name), { recursive: true });
   const releaseFile = join(moved, "clawscarf-release.json");
-  await verifyReleasePacks(release, releaseFile);
+  await verifyReleaseContents(release, releaseFile);
   assert.equal(
     await readFile(join(moved, release.tools.openshell.cli.file), "utf8"),
     "executable fixture",
@@ -121,7 +121,7 @@ await test("release bundles survive relocation without source files and reject m
     "changed",
   );
   await assert.rejects(
-    verifyReleasePacks(release, releaseFile),
+    verifyReleaseContents(release, releaseFile),
     /does not match its digest/,
   );
 });

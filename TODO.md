@@ -4,7 +4,6 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## CLI cleanup — selected
 
-- [ ] Resolve recipe models from the release catalog instead of duplicating definitions.
 - [ ] Correct stale CLI documentation and deletion guidance.
 
 ## Installer and releases

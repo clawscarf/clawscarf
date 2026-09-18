@@ -136,6 +136,7 @@ async function fixture(t: TestContext) {
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
       recipes: [],
+      modelCatalog: await readJson(resolve("deploy/models/catalog.json")),
       images: {
         postgres: postgresImage,
         models: liteLlmImage,
@@ -1683,3 +1684,30 @@ await test(
     }
   },
 );
+
+await test("recipe model choices resolve release metadata and reject missing or unsupported offerings", async () => {
+  const { recipeModelRoutes } = await import("./installation/models.js");
+  const { releaseSchema } = await import("./release/definition.js");
+  const catalog = releaseSchema.shape.modelCatalog.parse(
+    await readJson("deploy/models/catalog.json"),
+  );
+  const choice = {
+    model: "gpt-6-astra",
+    provider: "openai",
+    reasoning: "medium" as const,
+  };
+  const routes = recipeModelRoutes(choice, catalog);
+  assert.equal(routes.models[0]?.api, "openai-responses");
+  assert.deepEqual(routes.models[0], catalog?.[0]?.model);
+  assert.throws(() => recipeModelRoutes(choice, []), {
+    code: "invalid_configuration",
+  });
+  assert.throws(
+    () =>
+      recipeModelRoutes(
+        choice,
+        catalog?.map((item) => ({ ...item, reasoningLevels: [] })),
+      ),
+    { code: "invalid_configuration" },
+  );
+});

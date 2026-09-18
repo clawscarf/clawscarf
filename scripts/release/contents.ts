@@ -1,3 +1,4 @@
+import { recipeModelRoutes } from "../installation/models.js";
 import { OperatorError } from "../errors.js";
 import { dirname, join } from "node:path";
 import { openPack } from "../packs/source.js";
@@ -5,7 +6,7 @@ import type { Release } from "./definition.js";
 import type { Recipe } from "../installation/recipes/definition.js";
 
 /** Packs remain native file trees; recipes only select bundled members. */
-export async function verifyReleasePacks(
+export async function verifyReleaseContents(
   release: Release,
   releaseFile: string,
   recipes: readonly Recipe[] = release.recipes,
@@ -20,6 +21,7 @@ export async function verifyReleasePacks(
     packs.set(entry.id, pack);
   }
   for (const recipe of recipes) {
+    recipeModelRoutes(recipe.models, release.modelCatalog);
     const selected = new Set<string>();
     for (const entry of recipe.packs) {
       const pack = packs.get(entry.id);

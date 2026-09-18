@@ -60,7 +60,7 @@ const payload = [
   "scripts/installation",
   "scripts/release/create.js",
   "scripts/release/definition.js",
-  "scripts/release/packs.js",
+  "scripts/release/contents.js",
   "scripts/controller.js",
   "scripts/deployment",
   "scripts/models",

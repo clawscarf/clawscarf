@@ -6,7 +6,7 @@ import { dirname, resolve, join } from "node:path";
 import { loadGatewayConfiguration } from "../deployment/model-gateway.js";
 import { createServer } from "node:net";
 import { releaseSchema } from "../release/definition.js";
-import { verifyReleasePacks } from "../release/packs.js";
+import { verifyReleaseContents } from "../release/contents.js";
 import {
   parseLocalInput,
   type LocalInput,
@@ -89,7 +89,7 @@ export async function resolveInstallation(
   const path = (value: string) => resolve(base, value);
   const releasePath = path(config.releaseFile);
   const release = releaseSchema.parse(await readJson(releasePath));
-  await verifyReleasePacks(release, releasePath);
+  await verifyReleaseContents(release, releasePath);
   if (
     !release.platforms.some(
       (platform) => platform === `${process.platform}-${process.arch}`,

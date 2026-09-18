@@ -319,7 +319,11 @@ export async function selectedDraft(
   if (!config.models && preset)
     config.models = {
       mode: "litellm",
-      configurationFile: recipeModelFile(preset, inputs),
+      configurationFile: recipeModelFile(
+        preset,
+        inputs,
+        context.release.modelCatalog,
+      ),
       upstreamEnvironmentFile: "",
     };
   if (o.modelCatalog)

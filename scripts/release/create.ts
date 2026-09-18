@@ -15,7 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { releaseSchema, type Release } from "./definition.js";
 import { openPack } from "../packs/source.js";
-import { verifyReleasePacks } from "./packs.js";
+import { verifyReleaseContents } from "./contents.js";
 
 // Build inputs use the release contract, replacing tool digests with source paths.
 const inputSchema = releaseSchema.extend({
@@ -98,7 +98,7 @@ export async function createDevelopmentRelease(options: {
       },
     });
     const releaseFile = join(output, "clawscarf-release.json");
-    await verifyReleasePacks(release, releaseFile);
+    await verifyReleaseContents(release, releaseFile);
     await writeFile(releaseFile, JSON.stringify(release, null, 2) + "\n", {
       flag: "wx",
       mode: 0o600,

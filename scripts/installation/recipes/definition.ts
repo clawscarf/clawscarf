@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { gatewayRoutesSchema } from "../../models/configuration.js";
 import { installationSchema } from "../configuration.js";
 
 /** Recipes are release-owned defaults, never executable installation hooks. */
@@ -16,7 +15,11 @@ export const recipeSchema = z.strictObject({
     browser: installationSchema.shape.browser,
     connections: z.strictObject({ enabled: z.boolean() }).optional(),
   }),
-  models: gatewayRoutesSchema,
+  models: z.strictObject({
+    model: z.string().min(1),
+    provider: z.string().min(1),
+    reasoning: z.enum(["low", "medium", "high"]).optional(),
+  }),
   packs: z
     .array(
       z.strictObject({

@@ -1,3 +1,5 @@
+import { recipeModelRoutes } from "./models.js";
+import type { Recipe } from "./recipes/definition.js";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
@@ -8,7 +10,7 @@ import { releaseSchema } from "../release/definition.js";
 import { readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { SetupInputs } from "./save.js";
-import { verifyReleasePacks } from "../release/packs.js";
+import { verifyReleaseContents } from "../release/contents.js";
 
 export type SetupOptions = {
   release?: string;
@@ -43,7 +45,7 @@ export async function setupContext(options: SetupOptions) {
       "This release does not support this host platform. No fallback protection mode is available.",
     );
   const recipes = release.recipes;
-  await verifyReleasePacks(release, releaseFile, recipes);
+  await verifyReleaseContents(release, releaseFile, recipes);
   return {
     release,
     releaseFile,
@@ -101,10 +103,14 @@ export function recipeConfiguration(
   };
 }
 
-export function recipeModelFile(models: unknown, inputs: SetupInputs) {
+export function recipeModelFile(
+  models: Recipe["models"],
+  inputs: SetupInputs,
+  catalog: SetupContext["release"]["modelCatalog"],
+) {
   return inputs.set(
     "recipe-models.json",
-    JSON.stringify(models, null, 2) + "\n",
+    JSON.stringify(recipeModelRoutes(models, catalog), null, 2) + "\n",
   );
 }
 
