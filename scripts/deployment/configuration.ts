@@ -87,24 +87,12 @@ export const connectionsBrokerUrlSchema = z
       }).success
     );
   }, "Use an HTTPS DNS endpoint without credentials, query or fragment.");
-export const connectionsInputSchema = z.discriminatedUnion("mode", [
-  z.strictObject({
-    mode: z.literal("local"),
-    projectId: z
-      .string()
-      .min(1)
-      .max(256)
-      .refine((value) => value.trim() === value),
-    apiKeyFile: absolutePath,
-    catalogDirectory: absolutePath,
-  }),
-  z.strictObject({
-    mode: z.literal("external"),
-    brokerUrl: connectionsBrokerUrlSchema,
-    managementKeyFile: absolutePath.optional(),
-    caFile: absolutePath.optional(),
-  }),
-]);
+export const connectionsInputSchema = z.strictObject({
+  mode: z.literal("external"),
+  brokerUrl: connectionsBrokerUrlSchema,
+  managementKeyFile: absolutePath.optional(),
+  caFile: absolutePath.optional(),
+});
 const teamInput = z
   .strictObject({
     origin: applicationOrigin,
@@ -383,15 +371,6 @@ export function companionConfiguration(input: LocalInput) {
           cloudConnections: {
             url: new URL(input.connections.brokerUrl).origin,
             managementKeyFile: "/run/clawscarf/connections/management-key",
-          },
-        }
-      : {}),
-    ...(input.connections?.mode === "local"
-      ? {
-          connections: {
-            projectId: input.connections.projectId,
-            apiKeyFile: "/run/clawscarf/connections/api-key",
-            catalogDirectory: "/run/clawscarf/connections/catalog",
           },
         }
       : {}),

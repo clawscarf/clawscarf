@@ -7,7 +7,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(access/(runtime/(composition|config)|types/(native|native-errors))|connections/(composition|cloud/http|runtime/http|providers/catalog/provider|shared/errors|types/(provider|errors)))\\.ts$",
+          "^services/(access/(runtime/(composition|config)|types/native)|connections/cloud/http)\\.ts$",
       },
     },
     {
@@ -27,7 +27,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "^(apps|services|scripts|runtime|plugins)/",
-        pathNot: "^services/[^/]+/web/|^plugins/(access|connections)/src/",
+        pathNot: "^plugins/(access|connections)/src/",
       },
       to: { path: "^ui/" },
     },
@@ -54,54 +54,54 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(cloud/generated/|access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/(cloud/generated/|generated/|providers/catalog/provider\\.ts|repo/(catalog-publication|bootstrap)\\.ts|service/catalog-publication\\.ts|shared/errors\\.ts|types/catalog\\.ts))",
+          "^services/(cloud/generated/|access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/cloud/generated/)",
       },
     },
-    ...["access", "connections"].flatMap((domain) => {
-      const base = `^services/${domain}/`;
-      return [
-        {
-          name: `${domain}-types-are-framework-free`,
-          severity: "error",
-          from: { path: base + "(types|shared)/" },
-          to: {
-            path: base + "(service|repo|providers|runtime|web|generated)/",
-          },
-        },
-        {
-          name: `${domain}-services-use-ports`,
-          severity: "error",
-          from: { path: base + "service/" },
-          to: { path: base + "(repo|providers|runtime|web|generated)/" },
-        },
-        {
-          name: `${domain}-repositories-own-sql-only`,
-          severity: "error",
-          from: { path: base + "repo/" },
-          to: { path: base + "(service|providers|runtime|web|generated)/" },
-        },
-        {
-          name: `${domain}-providers-use-domain-ports`,
-          severity: "error",
-          from: { path: base + "providers/" },
-          to: { path: base + "(repo|service|runtime|web|generated)/" },
-        },
-        {
-          name: `${domain}-browser-uses-generated-rest`,
-          severity: "error",
-          from: { path: base + "web/" },
-          to: { path: base + "(types|shared|service|repo|providers|runtime)/" },
-        },
-        {
-          name: `${domain}-domain-has-no-direct-io`,
-          severity: "error",
-          from: { path: base + "(types|shared|service)/" },
-          to: {
-            path: "^(node:)?(fs|child_process|http|https|net|tls|dgram|dns)(/|$)|node_modules/(pg|openid-client|fastify|@openclaw/gateway-client)/",
-          },
-        },
-      ];
-    }),
+
+    {
+      name: "access-types-are-framework-free",
+      severity: "error",
+      from: { path: "^services/access/(types|shared)/" },
+      to: {
+        path: "^services/access/(service|repo|providers|runtime|web|generated)/",
+      },
+    },
+    {
+      name: "access-services-use-ports",
+      severity: "error",
+      from: { path: "^services/access/service/" },
+      to: { path: "^services/access/(repo|providers|runtime|web|generated)/" },
+    },
+    {
+      name: "access-repositories-own-sql-only",
+      severity: "error",
+      from: { path: "^services/access/repo/" },
+      to: {
+        path: "^services/access/(service|providers|runtime|web|generated)/",
+      },
+    },
+    {
+      name: "access-providers-use-domain-ports",
+      severity: "error",
+      from: { path: "^services/access/providers/" },
+      to: { path: "^services/access/(repo|service|runtime|web|generated)/" },
+    },
+    {
+      name: "access-browser-uses-generated-rest",
+      severity: "error",
+      from: { path: "^services/access/web/" },
+      to: {
+        path: "^services/access/(types|shared|service|repo|providers|runtime)/",
+      },
+    },
+    {
+      name: "access-domain-has-no-direct-io",
+      severity: "error",
+      from: { path: "^services/access/(types|shared|service)/" },
+      to: {
+        path: "^(node:)?(fs|child_process|http|https|net|tls|dgram|dns)(/|$)|node_modules/(pg|openid-client|fastify|@openclaw/gateway-client)/",
+      },
+    },
     {
       name: "connections-use-access-public-boundary",
       severity: "error",

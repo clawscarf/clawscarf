@@ -101,17 +101,6 @@ export async function planSettingsChange(configFile: string) {
         "Changing the external model gateway address requires updating its protected network policy.",
       );
   }
-  if (
-    oldConnections &&
-    nextConnections &&
-    (oldConnections.mode !== nextConnections.mode ||
-      (oldConnections.mode === "local" &&
-        nextConnections.mode === "local" &&
-        oldConnections.projectId !== nextConnections.projectId))
-  )
-    unsupported(
-      "Moving existing accounts to another broker or provider project is a separate migration.",
-    );
   const previousEndpoint = await readInitialConnectionsEndpoint(directory);
   const connections = await loadInitialConnections(next.connections);
   await prepareInitialConnections(directory, connections, {

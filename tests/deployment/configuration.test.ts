@@ -99,23 +99,20 @@ await test("local inputs reject mutable images, relative executables and public 
   assert.equal(parseLocalInput({ ...base, cpu: "500m" }).cpu, "500m");
   assert.equal(parseLocalInput({ ...base, cpu: "0.5" }).cpu, "0.5");
 });
-await test("optional local Connections needs neither OIDC nor native provider credentials", () => {
+await test("hosted Connections configures only the native management adapter", () => {
   const input = parseLocalInput({
     ...base,
     connections: {
-      mode: "local",
-      projectId: "dedicated-project",
-      apiKeyFile: "/operator/private/key",
-      catalogDirectory: "/operator/catalog",
+      mode: "external",
+      brokerUrl: "https://cloud.example.com/api/connections",
+      managementKeyFile: "/operator/private/key",
     },
   });
   const result = generate({ input });
-  assert.deepEqual(result.companion.connections, {
-    projectId: "dedicated-project",
-    apiKeyFile: "/run/clawscarf/connections/api-key",
-    catalogDirectory: "/run/clawscarf/connections/catalog",
+  assert.deepEqual(result.companion.cloudConnections, {
+    url: "https://cloud.example.com",
+    managementKeyFile: "/run/clawscarf/connections/management-key",
   });
-  assert.equal(result.access.identity.mode, "local");
   assert.deepEqual(result.native, generate().native);
   assert.equal(JSON.stringify(result).includes("/operator/"), false);
 });

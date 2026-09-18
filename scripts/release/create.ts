@@ -15,7 +15,6 @@ import { z } from "zod";
 import { releaseSchema, type Release } from "./definition.js";
 import { openPack } from "../packs/source.js";
 import { verifyReleasePacks } from "./packs.js";
-import { copyConnectorCatalog } from "../../services/connections/providers/catalog/provider.js";
 
 // Build inputs use the release contract, replacing tool digests with source paths.
 const inputSchema = releaseSchema.extend({
@@ -77,20 +76,10 @@ export async function createDevelopmentRelease(options: {
       });
       packs.push({ id: pack.manifest.id, digest: pack.digest });
     }
-    if (input.connectorCatalogDirectory)
-      await copyConnectorCatalog(
-        resolve(directory, input.connectorCatalogDirectory),
-        join(output, "connectors"),
-      );
     const release = releaseSchema.parse({
       ...input,
       packs,
       modelCatalog: input.modelCatalog ?? bundledCatalog,
-      ...(input.connectorCatalogDirectory
-        ? {
-            connectorCatalogDirectory: "connectors",
-          }
-        : {}),
       tools: {
         openshell: {
           ...input.tools.openshell,

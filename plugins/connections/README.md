@@ -17,9 +17,9 @@ Connectors added independently by a broker remain usable without a packaged icon
 The same operations are available through `clawscarf connections`; see the
 [CLI guide](../../deploy/deployment/installation.md#connections).
 
-The installer still uses its previous broker choices. Wiring the cloud adapter
-into recipes and removing the previous local page/broker is tracked separately
-in [TODO](../../TODO.md). Real Outlook consent, reconnect, read-only execution and
+The installer enables hosted Connections independently of hosted login or custom OIDC.
+The cloud owns accounts and quotas; the installation contains its native page and
+authority adapter. Fresh/retained installer acceptance is tracked in [TODO](../../TODO.md). Real Outlook consent, reconnect, read-only execution and
 disconnect/revocation passed locally; native-page packaging and authorization are tested.
 The skill survives normal stop/start, but pinned OpenClaw’s remote read tool fails on
 the advertised `~/…` skill path; absolute and workspace-relative paths work. This

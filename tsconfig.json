@@ -32,7 +32,6 @@
   ],
   "exclude": [
     "services/access/generated",
-    "services/connections/generated",
     "services/cloud/generated",
     "services/connections/cloud/generated"
   ],

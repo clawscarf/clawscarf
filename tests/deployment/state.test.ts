@@ -92,10 +92,9 @@ await test("local preparation retains private identity/secrets and rejects forei
         input: {
           ...state.input,
           connections: {
-            mode: "local",
-            projectId: "project",
-            apiKeyFile: "/source/private/key",
-            catalogDirectory: "/source/catalog",
+            mode: "external",
+            brokerUrl: "https://cloud.example.com/api/connections",
+            managementKeyFile: "/source/private/key",
           },
         },
       },

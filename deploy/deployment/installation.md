@@ -41,8 +41,8 @@ The input follows the [release contract](../../scripts/release/definition.ts):
 `packs` optionally lists source pack directories; recipes select their IDs and members.
 `modelCatalog` supplies selectable model/provider routes and reasoning levels; when
 omitted, the builder uses [the bundled catalog](../models/catalog.json).
-`connectorCatalogDirectory`, when provided, references the packaged catalog payload
-relative to the release input; the builder copies and validates its runtime files.
+Connections catalogs are deployed with the cloud backend; installation releases contain
+the native plugin and its packaged icons.
 Use exact image digests, the pinned PostgreSQL/LiteLLM images, and recipe objects from
 [deploy/recipes](../recipes/README.md). Under `tools.openshell`, provide `version` and
 `cli`/`gateway` as executable file paths relative to the input file; the builder computes
@@ -385,8 +385,7 @@ clawscarf settings apply --config ./candidate/installation.json --fingerprint PR
 Planning itself does not register accounts.
 The interactive settings menu performs this same registration before its preview.
 
-Superseded local broker internals are being removed under M7; the public installation
-contract no longer selects them.
+The installation contains no local broker or standalone Connections page.
 
 ### Packs
 

@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import { NativeClaws } from "../../scripts/packs/native.js";
 import { planPack, applyPack } from "../../scripts/packs/lifecycle.js";
 import { packSchema } from "../../scripts/packs/model.js";
-import type { Connection } from "../../services/connections/generated/types.gen.js";
+import type { Connection } from "../../services/connections/cloud/generated/types.gen.js";
 class NativeFixture extends NativeClaws {
   writes = 0;
   broker = "";

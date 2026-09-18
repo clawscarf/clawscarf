@@ -76,9 +76,9 @@ relative to the input file. The builder
 embeds recipe objects supplied in `recipes`; the default model catalog comes from
 [deploy/models/catalog.json](../deploy/models/catalog.json). An optional
 `cloudUrl` supplies the hosted login service origin; development can override it with
-`install --cloud-url`. No cloud service has been deployed yet.
-`connectorCatalogDirectory` supplies a prepared catalog; only validated runtime
-catalog files are copied, not importer state or adjacent credentials.
+`install --cloud-url`. Production is the default; staging is available for development.
+The cloud service owns connector catalogs; no provider catalog or secret is bundled
+with an installation release.
 
 A recipe's pack selection is small JSON, for example:
 

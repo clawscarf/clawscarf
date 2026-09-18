@@ -52,7 +52,7 @@ COPY deploy/images/pack-tools/ ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
 COPY scripts/packs.ts scripts/output.ts ./scripts/
 COPY scripts/packs/ ./scripts/packs/
-COPY services/connections/generated/ ./services/connections/generated/
+COPY services/connections/cloud/generated/ ./services/connections/cloud/generated/
 COPY generated/http/ ./generated/http/
 RUN ./node_modules/.bin/tsc -p tsconfig.json \
     && npm prune --omit=dev --ignore-scripts --no-audit --no-fund

@@ -12,7 +12,7 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
 
 - [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
       through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
-      disabled/empty Connections, and remove superseded token-login and local broker/UI paths.
+      disabled/empty Connections, and remove the superseded token-login path.
 - [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
       journeys with native Connections, multiple installations, tenant isolation and quota/revocation
       failures. Cloud build/promotion passed staging and production; full hosted acceptance remains. Update actual status and clean up disposable infrastructure.
@@ -22,7 +22,7 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
 - [ ] Fix native pack removal when an attached automation requires Gateway authentication
       under trusted-proxy login; verify removal on a retained installation without bypassing ownership checks.
 - [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
-      a distributable connector catalog and platform archives with checksums/license notices.
+      platform archives with checksums/license notices.
       Keep recipes and packs together as defined in the [release guide](release/README.md).
 - [ ] Download and verify the CLI's matching release bundle; retain it and the operator
       outside npm's temporary cache. Pin installations; never resolve latest during startup.

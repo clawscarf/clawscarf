@@ -22,20 +22,8 @@ const schema = z
         managementKeyFile: z.string().min(1),
       })
       .optional(),
-    connections: z
-      .object({
-        projectId: z.string().min(1),
-        apiKeyFile: z.string().min(1),
-        catalogDirectory: z.string().min(1),
-      })
-      .strict()
-      .optional(),
   })
-  .strict()
-  .refine(
-    (value) => !(value.connections && value.cloudConnections),
-    "Choose one Connections backend.",
-  );
+  .strict();
 export async function readCompanionConfiguration(path: string) {
   const config = schema.parse(JSON.parse(await readFile(path, "utf8")));
   return {
@@ -43,7 +31,6 @@ export async function readCompanionConfiguration(path: string) {
       ? { cloudConnections: config.cloudConnections }
       : {}),
     access: await readConfiguration(config.accessConfigurationFile),
-    ...(config.connections ? { connections: config.connections } : {}),
   };
 }
 export type CompanionConfiguration = Awaited<

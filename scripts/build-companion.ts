@@ -7,7 +7,6 @@ await writeRuntimePackage(
     "apps/companion/entry.js",
     "services/access/runtime/migrate.js",
     "services/access/runtime/setup.js",
-    "services/connections/runtime/migrate.js",
   ],
   { name: "clawscarf-companion" },
 );

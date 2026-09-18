@@ -69,23 +69,6 @@ const payload = [
   "services/access/repo",
   "services/access/types",
   "services/access/generated",
-  "services/connections/generated",
-  "services/connections/credential-command.js",
-  "services/connections/providers/catalog/provider.js",
-  "services/connections/providers/catalog/artifact.js",
-  "services/connections/providers/catalog/validation.js",
-  "services/connections/providers/catalog/files.js",
-  "services/connections/providers/catalog/file-markers.js",
-  "services/connections/providers/catalog/retirement.js",
-  "services/connections/repo/catalog-publication.js",
-  "services/connections/repo/database.js",
-  "services/connections/repo/schema.js",
-  "services/connections/repo/bootstrap.js",
-  "services/connections/repo/credential-store.js",
-  "services/connections/service/catalog-publication.js",
-  "services/connections/shared/errors.js",
-  "services/connections/shared/json.js",
-  "services/connections/types/errors.js",
   "deploy/execution/browser-node/configuration.js",
   "deploy/execution/browser-node/operator.js",
 ];
@@ -107,20 +90,13 @@ export async function packageOperator(root: string, destination: string) {
     const manifest = await writeRuntimePackage(
       root,
       stage,
-      [
-        "scripts/clawscarf.js",
-        "scripts/people.js",
-        "scripts/controller.js",
-        "services/connections/credential-command.js",
-      ],
+      ["scripts/clawscarf.js", "scripts/people.js", "scripts/controller.js"],
       {
         name: "@clawscarf/cli",
         bin: { clawscarf: "scripts/clawscarf.js" },
         scripts: {
           clawscarf: "node scripts/clawscarf.js",
           controller: "node scripts/controller.js",
-          "connections-credential":
-            "node services/connections/credential-command.js",
         },
       },
     );

@@ -15,7 +15,7 @@ the installer for a fresh private link, never an ordinary unadmitted login. Clou
 with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
 administrator-checking adapter are implemented. Real Outlook consent, reconnect, read-only
 execution and disconnect/revocation passed locally. The native remote skill-path issue,
-full hosted acceptance remains pending. Installer selection now enables the hosted broker independently of login; reconfiguration acceptance and superseded-path removal remain M7. Separate staging/production
+full hosted acceptance remains pending. Installer selection now enables the hosted broker independently of login; reconfiguration acceptance and token-login removal remain M7. The local broker and standalone page have been removed. Separate staging/production
 Vercel deployments with Neon databases pass startup and identity-discovery checks;
 the same successful build passed staging and production promotion, including isolated deployment checks and public deployment-ID verification. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
@@ -104,7 +104,7 @@ This checkout is the primary implementation source, including fixes already made
 - Retain [Access OIDC](../services/access/providers/oidc.ts), native authority checks,
   administrator claim, admission/session storage and revocation regressions. Adapt the
   issuer/client configuration; do not replace the ingress or People implementation.
-- Move [Connections services](../services/connections/composition.ts), their owning SQL,
+- Move [Connections services](https://github.com/clawscarf/clawscarf-cloud/tree/main/src/connections), their owning SQL,
   provider adapters, catalog importer and targeted tests. Replace single-server/local-session
   composition with authenticated installation scope. Moving files is not simplification by itself.
 - Retain the [runtime plugin](../plugins/connections/README.md) and generic tool behavior.

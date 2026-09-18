@@ -20,7 +20,6 @@ const capture = async () =>
       snapshot("services/cloud/generated"),
       snapshot("services/connections/cloud/generated"),
       snapshot("services/access/generated"),
-      snapshot("services/connections/generated"),
       snapshot("plugins/connections/generated"),
       snapshot("plugins/connections/openapi"),
     ]),
@@ -29,7 +28,6 @@ const before = await capture();
 execFileSync("pnpm", ["connections:management:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["cloud:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["http:generate"], { stdio: "inherit" });
-execFileSync("pnpm", ["connections:generate"], { stdio: "inherit" });
 execFileSync("pnpm", ["access:generate"], { stdio: "inherit" });
 execFileSync(
   "npm",

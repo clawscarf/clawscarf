@@ -21,7 +21,6 @@ node scripts/clawscarf.js install --release /absolute/clawscarf-release.json --d
 node scripts/clawscarf.js models --help
 node scripts/clawscarf.js packs --help
 node scripts/clawscarf.js connections --help
-node services/connections/credential-command.js --help
 ```
 
 Dependencies are installed from the included frozen lockfile. Its root importer
@@ -42,7 +41,7 @@ directories; it does not yet edit every capability on an existing installation.
 Without `--release`, the operator expects **clawscarf-release.json** in its **release**
 directory. Release publication/discovery remains unfinished. The example recipe supplies
 defaults, not a document workflow. Keep the generated release bundle available; its
-tools, pack files and optional catalog move together. No original build checkout is needed.
+tools and pack files move together. No original build checkout is needed.
 
 Keep installation data outside this extracted package. Stop retains state; replacing
 an operator archive is not a runtime upgrade or backup. User-service startup survives

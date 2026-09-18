@@ -41,7 +41,6 @@ export const releaseSchema = z.strictObject({
     )
     .max(512)
     .optional(),
-  connectorCatalogDirectory: z.string().min(1).optional(),
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
   platforms: z.array(z.literal("darwin-arm64")).min(1).max(1),
   images: z.strictObject({

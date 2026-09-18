@@ -21,11 +21,7 @@ await test(
     const manifest = await writeRuntimePackage(
       process.cwd(),
       directory,
-      [
-        "apps/companion/entry.js",
-        "services/access/runtime/migrate.js",
-        "services/connections/runtime/migrate.js",
-      ],
+      ["apps/companion/entry.js", "services/access/runtime/migrate.js"],
       { name: "clawscarf-companion" },
     );
     for (const name of ["fastify", "pg", "node-pg-migrate", "zod"])

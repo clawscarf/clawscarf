@@ -9,38 +9,17 @@ import {
   rename,
   rm,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type pg from "pg";
 import { z } from "zod";
-import { openConnectorCatalog } from "../../services/connections/providers/catalog/provider.js";
-import { PostgresCatalogPublicationRepository } from "../../services/connections/repo/catalog-publication.js";
-import { CatalogPublicationService } from "../../services/connections/service/catalog-publication.js";
-import { CommonError } from "../../services/connections/shared/errors.js";
-import type { ConnectorCatalog } from "../../services/connections/types/catalog.js";
 import { networkRequirementSchema } from "../packs/policy.js";
 import {
   connectionsBrokerUrlSchema,
   connectionsInputSchema,
-  managementOrigin,
   type LocalInput,
 } from "./configuration.js";
 import { LocalSetupError } from "./process.js";
-import {
-  ensurePrivateFile,
-  readState,
-  writePrivate,
-  type LocalState,
-} from "./state.js";
+import { ensurePrivateFile, readState, type LocalState } from "./state.js";
 
-interface InitialLocalConnections {
-  mode: "local";
-  projectId: string;
-  apiKey: Buffer;
-  catalogVersion: string;
-  catalog: ConnectorCatalog;
-  files: ReadonlyMap<string, Buffer>;
-}
 const maximumCertificateBytes = 64 * 1024;
 const endpointSchema = z.strictObject({
   brokerUrl: connectionsBrokerUrlSchema,
@@ -48,13 +27,11 @@ const endpointSchema = z.strictObject({
   ca: z.string().min(1).max(maximumCertificateBytes).optional(),
 });
 export type InitialConnectionsEndpoint = z.infer<typeof endpointSchema>;
-export type InitialConnections =
-  | InitialLocalConnections
-  | {
-      mode: "external";
-      endpoint: InitialConnectionsEndpoint;
-      managementKey?: string;
-    };
+export interface InitialConnections {
+  mode: "external";
+  endpoint: InitialConnectionsEndpoint;
+  managementKey?: string;
+}
 
 export async function readInitialConnectionToken(path: string) {
   return z
@@ -65,20 +42,11 @@ export async function readInitialConnectionToken(path: string) {
     .parse((await readRegular(path, true, 4096)).toString("utf8").trim());
 }
 
-const ownerSchema = z.discriminatedUnion("mode", [
-  z.strictObject({
-    ownerId: z.uuid(),
-    mode: z.literal("external"),
-    endpointSha256: z.string().regex(/^[a-f0-9]{64}$/u),
-  }),
-  z.strictObject({
-    ownerId: z.uuid(),
-    mode: z.literal("local"),
-    endpointSha256: z.string().regex(/^[a-f0-9]{64}$/u),
-    projectId: z.string(),
-    catalogVersion: z.string(),
-  }),
-]);
+const ownerSchema = z.strictObject({
+  ownerId: z.uuid(),
+  mode: z.literal("external"),
+  endpointSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+});
 
 function endpoint(brokerUrl: string, ca?: string): InitialConnectionsEndpoint {
   const url = new URL(connectionsBrokerUrlSchema.parse(brokerUrl));
@@ -97,7 +65,7 @@ function endpoint(brokerUrl: string, ca?: string): InitialConnectionsEndpoint {
 function changed(): never {
   throw new LocalSetupError(
     "configuration_changed",
-    "The retained Connections configuration differs from this installation's initial inputs. Setup will not replace endpoints, trust certificates, provider credentials or catalogs.",
+    "The retained Connections configuration differs from this installation's initial inputs. Setup will not replace endpoints, trust certificates or management credentials.",
   );
 }
 async function readRegular(
@@ -178,50 +146,29 @@ export async function loadInitialConnections(
   input: LocalInput["connections"],
 ): Promise<InitialConnections | undefined> {
   if (!input) return undefined;
-  let staging: string | undefined;
   try {
     const checked = connectionsInputSchema.parse(input);
-    if (checked.mode === "external") {
-      const ca = checked.caFile
-        ? new TextDecoder("utf8", { fatal: true }).decode(
-            await readRegular(checked.caFile, false, maximumCertificateBytes),
-          )
-        : undefined;
-      return {
-        mode: "external",
-        endpoint: endpoint(checked.brokerUrl, ca),
-        ...(checked.managementKeyFile
-          ? {
-              managementKey: await readInitialConnectionToken(
-                checked.managementKeyFile,
-              ),
-            }
-          : {}),
-      };
-    }
-    const apiKey = await readRegular(checked.apiKeyFile, true, 65536);
-    if (!apiKey.toString("utf8").trim()) throw Error("Empty API key");
-    const files = await tree(checked.catalogDirectory, false);
-    staging = await mkdtemp(join(tmpdir(), "clawscarf-catalog-"));
-    await writeFiles(staging, files);
-    const catalog = await openConnectorCatalog(staging, {
-      verifyDetails: true,
-    });
+    const ca = checked.caFile
+      ? new TextDecoder("utf8", { fatal: true }).decode(
+          await readRegular(checked.caFile, false, maximumCertificateBytes),
+        )
+      : undefined;
     return {
-      mode: "local",
-      projectId: checked.projectId,
-      apiKey,
-      catalogVersion: catalog.version,
-      catalog,
-      files,
+      mode: "external",
+      endpoint: endpoint(checked.brokerUrl, ca),
+      ...(checked.managementKeyFile
+        ? {
+            managementKey: await readInitialConnectionToken(
+              checked.managementKeyFile,
+            ),
+          }
+        : {}),
     };
   } catch {
     throw new LocalSetupError(
       "invalid_connections_setup",
-      "Check Connections setup inputs: local mode requires a private provider key, project ID and complete catalog; external mode requires an HTTPS DNS endpoint and, if supplied, a valid trust certificate. Configuration files cannot be symbolic links.",
+      "Connections requires an HTTPS DNS endpoint, a private management credential when supplied, and a valid trust certificate when supplied. Configuration files cannot be symbolic links.",
     );
-  } finally {
-    if (staging) await rm(staging, { recursive: true, force: true });
   }
 }
 
@@ -235,30 +182,9 @@ export async function prepareInitialConnections(
   const state = replacement?.state ?? (await readState(directory));
   const input = state.input.connections;
   if (input?.mode !== loaded.mode) changed();
-  if (
-    loaded.mode === "local" &&
-    (input.mode !== "local" || input.projectId !== loaded.projectId)
-  )
+  if (input.brokerUrl.replace(/\/$/, "") !== loaded.endpoint.brokerUrl)
     changed();
-  if (
-    loaded.mode === "external" &&
-    (input.mode !== "external" ||
-      endpoint(input.brokerUrl).brokerUrl !== loaded.endpoint.brokerUrl)
-  )
-    changed();
-  const runtime =
-    loaded.mode === "external"
-      ? loaded.endpoint
-      : endpoint(
-          `${managementOrigin(state.input)}/_clawscarf/connections/v1`,
-          (
-            await readRegular(
-              join(directory, "private/management-ca.pem"),
-              true,
-              maximumCertificateBytes,
-            )
-          ).toString("utf8"),
-        );
+  const runtime = loaded.endpoint;
   const endpointBytes = Buffer.from(JSON.stringify(runtime) + "\n");
   const expected = new Map<string, Buffer>([
     [
@@ -270,39 +196,22 @@ export async function prepareInitialConnections(
           endpointSha256: createHash("sha256")
             .update(endpointBytes)
             .digest("hex"),
-          ...(loaded.mode === "local"
-            ? {
-                projectId: loaded.projectId,
-                catalogVersion: loaded.catalogVersion,
-              }
-            : {}),
         }) + "\n",
       ),
     ],
     ["endpoint.json", endpointBytes],
   ]);
-  if (loaded.mode === "external" && loaded.managementKey)
+  if (loaded.managementKey)
     expected.set("management-key", Buffer.from(loaded.managementKey));
-  if (loaded.mode === "local") {
-    expected.set("api-key", loaded.apiKey);
-    for (const [path, bytes] of loaded.files)
-      expected.set("catalog/" + path, bytes);
-  }
   const target = join(directory, "private/connections");
   try {
     await lstat(target);
     const retained = await tree(target, true);
     if (
       retained.size !== expected.size ||
-      [...expected].some(
-        ([path, bytes]) =>
-          !(replacement && path === "api-key") &&
-          !retained.get(path)?.equals(bytes),
-      )
+      [...expected].some(([path, bytes]) => !retained.get(path)?.equals(bytes))
     )
       changed();
-    if (replacement?.apply && loaded.mode === "local")
-      await writePrivate(join(target, "api-key"), loaded.apiKey);
     return runtime;
   } catch (error) {
     if (!(
@@ -318,41 +227,12 @@ export async function prepareInitialConnections(
   const staging = await mkdtemp(join(directory, "private/.connections-"));
   try {
     await writeFiles(staging, expected);
-    if (loaded.mode === "local") {
-      const copied = await openConnectorCatalog(join(staging, "catalog"), {
-        verifyDetails: true,
-      });
-      if (copied.version !== loaded.catalogVersion) changed();
-    }
     // Reserve the destination before rename so an existing foreign empty directory is never adopted.
     await mkdir(target, { mode: 0o700 });
     await rename(staging, target);
     return runtime;
   } finally {
     await rm(staging, { recursive: true, force: true });
-  }
-}
-
-/** Null is deliberate: initial setup may replay the same publication, never select a replacement version. */
-export async function publishInitialConnections(
-  pool: pg.Pool,
-  loaded: InitialConnections | undefined,
-): Promise<void> {
-  if (!loaded || loaded.mode === "external") return;
-  const service = new CatalogPublicationService(
-    new PostgresCatalogPublicationRepository(pool),
-  );
-  try {
-    const result = await service.publish(loaded.catalog, null);
-    if (result.status === "blocked")
-      throw new LocalSetupError(
-        "connections_catalog_blocked",
-        "Connections catalog publication is blocked by retained account or operation references. Initial setup will not retire them.",
-      );
-  } catch (error) {
-    if (error instanceof CommonError && error.code === "revision_conflict")
-      changed();
-    throw error;
   }
 }
 
@@ -394,25 +274,10 @@ export async function readInitialConnectionsEndpoint(
       JSON.parse(endpointBytes.toString("utf8")),
     );
     const input = state.input.connections;
-    if (owner.ownerId !== state.ownerId || owner.mode !== input.mode) changed();
-    const expected =
-      input.mode === "external"
-        ? endpoint(input.brokerUrl, retained.ca)
-        : endpoint(
-            `${managementOrigin(state.input)}/_clawscarf/connections/v1`,
-            (
-              await readRegular(
-                join(directory, "private/management-ca.pem"),
-                true,
-                maximumCertificateBytes,
-              )
-            ).toString("utf8"),
-          );
+    if (owner.ownerId !== state.ownerId) changed();
+    const expected = endpoint(input.brokerUrl, retained.ca);
     if (
-      (input.mode === "external" &&
-        Boolean(input.caFile) !== (retained.ca !== undefined)) ||
-      (input.mode === "local" &&
-        (owner.mode !== "local" || owner.projectId !== input.projectId)) ||
+      Boolean(input.caFile) !== (retained.ca !== undefined) ||
       retained.brokerUrl !== expected.brokerUrl ||
       retained.ca !== expected.ca ||
       JSON.stringify(retained.network) !== JSON.stringify(expected.network)

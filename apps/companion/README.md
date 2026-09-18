@@ -2,9 +2,8 @@
 
 One process composes [Access](../../services/access/README.md) and optional
 [Connections](../../services/connections/README.md). Access owns identity, admission,
-login and revocation. Connections owns external accounts and its runtime protocol.
-This application owns their configuration, database-pool lifetimes and maintenance;
-neither service imports the other's implementation.
+login and revocation. The optional Connections adapter forwards authorized management requests to the cloud.
+Access owns its database pool; broker storage and maintenance run in the cloud.
 
 ## Build and start
 
@@ -17,7 +16,7 @@ docker build \
   -t clawscarf-companion:dev -f deploy/images/companion.Dockerfile .
 ```
 
-This compiles both services and browser bundles into a production image with only
+This compiles Access and the management adapter into a production image with only
 production dependencies. The local development tag is not a published release.
 The recipe copies the root [license](../../LICENSE) and
 [third-party notices](../../THIRD_PARTY_NOTICES.md) verbatim to
@@ -48,10 +47,9 @@ docker compose -f deploy/compose/companion.yaml up -d
 ```
 
 The referenced file follows the [Access configuration](../../services/access/README.md#configuration-and-operation).
-Omitting Connections starts no provider, requires no Connections schema/catalog/key,
-and exposes disabled capabilities without account actions. The native People page contains no Connections link in this mode. Only enabled Connections grants
-login return destinations for its landing page and account-return pages; API and
-verification endpoints are never return destinations.
+Omitting Connections requires no broker key, schema or catalog and mounts no account
+management routes. Its optional native plugin is enabled separately by installation
+configuration; account pages render inside OpenClaw.
 
 For the cloud broker, configure the management adapter instead:
 
@@ -70,83 +68,10 @@ loop. The native plugin's runtime URL is that origin plus `/api/connections`, wi
 its separate runtime credential. Both credentials are scoped to one cloud installation.
 The installer generates this adapter configuration when hosted Connections is enabled.
 
-To enable the existing local broker, add this optional block instead:
-
-The [local assembly](../../deploy/deployment/README.md#optional-connections)
-can generate this configuration and prepare its private catalog/database inputs.
-For independently operated companions, supply the equivalent configuration below.
-
-```json
-{
-  "accessConfigurationFile": "/run/clawscarf/access.json",
-  "connections": {
-    "projectId": "your-dedicated-project",
-    "apiKeyFile": "/run/clawscarf/composio-key",
-    "catalogDirectory": "/run/clawscarf/catalog"
-  }
-}
-```
-
-Run the separately owned migrations and catalog publication described in
-[Connections setup](../../services/connections/README.md#configuration-and-catalog)
-before enabling it. The same database stores both services in separate schemas;
-each has a bounded connection pool. The shared private encryption key protects
-purpose-bound data; upstream credentials remain outside native OpenClaw.
-Enabled configuration must supply a nonempty key and a validated, published catalog
-or startup fails. An invalid remote credential is reported when the provider is called;
-startup does not connect a customer account.
-
-The callback is derived from the Access public origin:
-`/_clawscarf/connections/verify`. Management rechecks the current Access session and
-acts through OpenClaw as that person. It never uses the bootstrap administrator as
-a service credential. A configured Connections link appears in People only after
-its existing native administrator check succeeds. Session refresh does not add a
-Gateway RPC to discover navigation. Direct URLs still enforce current authority.
-
-When Connections and management TLS are configured, `runtime.managementOrigin`
-also exposes only `/_clawscarf/connections/v1/connector-runtime/` over that TLS
-listener, using its actual Host. This lets the native plugin use the existing REST
-broker with a scoped bearer credential and a trusted CA. Runtime authentication
-rejects missing, revoked and mixed bearer/session credentials. This origin does
-not expose account management, login, native HTTP or WebSocket paths. Connections
-omitted means this route is absent. Native credential provisioning and
-[activation](../../deploy/deployment/README.md#activate-connections) remain explicit
-operator actions; enabling the broker does not configure the plugin.
-
-The process runs the existing Connections maintenance sweep once at startup and
-then once per minute without overlap. It processes persisted cleanup and retention
-work, never provisioning. Shutdown cancels the sweep and closes both services and
-pools. A failed sweep produces an allowlisted operator log and retains work for a
-later sweep. Listen failures abort startup and close acquired resources.
-
 ## Verification
 
-[The composed application test](../../tests/companion/composition.test.ts) uses real
-PostgreSQL, HTTP ingress, management TLS, sessions and service factories, with injected native and
-provider fixtures. It covers disabled operation without a Connections schema,
-enabled account creation, CSRF rejection, native member denial, logout revocation
-and invalid enabled configuration. The HTTPS broker checks cover active, missing,
-invalid, mixed and revoked credentials, disabled routing and the management-path
-boundary. Provider and native fixture results are not live
-account or Gateway acceptance. Existing native access qualification is recorded in
-[Access](../../services/access/README.md#reuse-and-verification).
-
-The compiled image also started successfully with the production entry point and
-Connections omitted. Its authenticated capabilities endpoint returned disabled,
-its UI loaded without account actions, and its Access session contained no
-Connections navigation. No fixture provider or provider credential was loaded.
-The rebuilt image also passed expired-callback checks over HTTPS: browsers receive
-the concise sign-in failure page, while API callers retain Problem Details. The
-page rendered at desktop and mobile sizes.
-
-The companion and Access-only entry share [process startup/shutdown](../process-lifecycle.ts).
-Failure to bind any listener closes the composed application; repeated shutdown
-requests close resources only once.
-
-The companion image derives its production dependencies from the compiled app and
-both separate migration entrypoints using the shared
-[runtime package writer](../../scripts/release/runtime-package.ts). Frontend assets
-are bundled at build time; React and installer tooling are absent from the runtime
-manifest. The package boundary test installs that frozen subset outside the
-checkout and imports the compiled composition. This checks dependency packaging,
-not a rebuilt Docker image or running service.
+The [management adapter regression](../../tests/connections/cloud-management.test.ts)
+covers native member denial, CSRF, revocation during authority verification and scoped
+cloud dispatch. [Process lifecycle tests](../../tests/companion/process-lifecycle.test.ts)
+cover listener failures and cleanup. Broker/provider tests belong to the cloud service.
+Fresh hosted installation and image acceptance remain tracked in [TODO](../../TODO.md).

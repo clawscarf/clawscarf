@@ -259,10 +259,7 @@ export async function resolveInstallation(
     );
   else await loadInitialModels(input.models);
   if (input.team) await readTeamMaterials(input.team);
-  const connections = await loadInitialConnections(input.connections);
-  if (connections?.mode === "local")
-    for (const [name, bytes] of connections.files)
-      inputs[`catalog:${name}`] = fingerprint(bytes);
+  await loadInitialConnections(input.connections);
   const connectorCredentialFile = cloudConnections
     ? await inputFile(cloudConnections.credentialFile, true)
     : undefined;

@@ -161,7 +161,6 @@ await test(
       ["scripts/clawscarf.js", "packs", "--help"],
       ["scripts/clawscarf.js", "config", "render-native", "--help"],
       ["scripts/clawscarf.js", "connections", "configure", "--help"],
-      ["services/connections/credential-command.js", "--help"],
     ]) {
       const { stdout } = await execute(process.execPath, args, {
         cwd,

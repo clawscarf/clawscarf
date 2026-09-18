@@ -129,7 +129,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
       "providers/vendor",
       "runtime/entry",
     ])
-      await write(`services/connections/${file}.ts`, "export const value = 1;");
+      await write(`services/access/${file}.ts`, "export const value = 1;");
     await write("services/access/types/native.ts", "export const value = 1;");
     await write("services/access/repo/private.ts", "export const value = 1;");
     await write("runtime/preset.ts", "export const value = 1;");
@@ -151,39 +151,36 @@ await test("domain layers and the public access seam enforce allowed and forbidd
         "service/work",
         "../types/port.js",
         "../providers/vendor.js",
-        "connections-services-use-ports",
+        "access-services-use-ports",
       ],
       [
         "providers/vendor",
         "../types/port.js",
         "../repo/store.js",
-        "connections-providers-use-domain-ports",
+        "access-providers-use-domain-ports",
       ],
       [
         "repo/store",
         "../types/port.js",
         "../service/work.js",
-        "connections-repositories-own-sql-only",
+        "access-repositories-own-sql-only",
       ],
       [
         "types/port",
         "./local.js",
         "../runtime/entry.js",
-        "connections-types-are-framework-free",
+        "access-types-are-framework-free",
       ],
       [
-        "runtime/entry",
+        "cloud/http",
         "../../access/types/native.js",
         "../../access/repo/private.js",
         "connections-use-access-public-boundary",
       ],
     ];
-    await write(
-      "services/connections/types/local.ts",
-      "export const value = 1;",
-    );
+    await write("services/access/types/local.ts", "export const value = 1;");
     for (const [source, allowed, forbidden, rule] of cases) {
-      const file = `services/connections/${source}.ts`;
+      const file = `services/${source === "cloud/http" ? "connections" : "access"}/${source}.ts`;
       await write(file, `export { value } from "${allowed}";`);
       await run(process.execPath, args, { cwd: root });
       await write(file, `export { value } from "${forbidden}";`);
@@ -247,7 +244,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
     );
     await write("services/access/repo/private.ts", "export const value = 1;");
     await write(
-      "services/connections/service/work.ts",
+      "services/access/service/work.ts",
       'import {readFile} from "node:fs/promises"; export {readFile};',
     );
     await assert.rejects(
@@ -258,7 +255,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
             "stdout" in error &&
             typeof error.stdout === "string",
         );
-        assert.ok(error.stdout.includes("connections-domain-has-no-direct-io"));
+        assert.ok(error.stdout.includes("access-domain-has-no-direct-io"));
         return true;
       },
     );
@@ -289,7 +286,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       "scripts/deployment/prepare",
       "scripts/clawscarf",
       "ui/button",
-      "services/connections/web/page",
+      "plugins/connections/src/page",
       "services/access/repo/postgres",
       "services/access/repo/private",
     ];
@@ -325,7 +322,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       [
         "ui/button",
         "./input.js",
-        "../services/connections/web/page.js",
+        "../plugins/connections/src/page.js",
         "shared-ui-is-domain-independent",
       ],
       [
@@ -354,7 +351,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       await write(`${source}.ts`, "export const value = 1;");
     }
     await write(
-      "services/connections/web/page.ts",
+      "plugins/connections/src/page.ts",
       'export {value} from "../../../ui/button.js";',
     );
     await run(process.execPath, args, { cwd: root });

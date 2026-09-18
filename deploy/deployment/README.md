@@ -84,8 +84,7 @@ The installation directory contains its identity/input manifest, Compose configu
 controller state and private companion configuration. Keep the directory and volumes.
 Only explicit runtime configuration files mount into the companion; database-owner
 credentials and controller keys do not. OpenClaw receives neither. The local management
-certificate is trusted by the companion and, when Connections is activated, the
-Gateway. It is not installed in the workstation's trust
+certificate is trusted by the companion. It is not installed in the workstation's trust
 store. Its private key and the session-encryption key remain in the private directory.
 
 Repeat preparation with the same input to reuse completed state. Existing configuration
@@ -102,76 +101,34 @@ component commands below do not implicitly activate Connections.
 
 ## Optional Connections
 
-For a new installation, choose a local companion or a compatible external broker.
-Neither option requires company OIDC. Local mode supplies the account UI and broker:
-
-```json
-{
-  "connections": {
-    "mode": "local",
-    "projectId": "your-dedicated-project",
-    "apiKeyFile": "/absolute/private/composio-key",
-    "catalogDirectory": "/absolute/path/to/reviewed-catalog"
-  }
-}
-```
-
-Prepare a dedicated provider project and reviewed catalog using the
-[Connections catalog commands](../../services/connections/README.md#configuration-and-catalog).
-Configure the project's callback as the application's origin followed by
-`/_clawscarf/connections/verify`. Local evaluation uses its loopback application
-origin; team deployments use their HTTPS origin. Provider support for a chosen
-callback must be verified independently.
-
-Local preparation validates the key and complete catalog before allocating resources,
-copies them into the private installation directory, applies the existing
-Connections migrations with the database administrator and publishes the catalog.
-Only the companion receives the provider key and catalog. The application database
-login receives table DML, never schema ownership or migration authority. The runtime
-broker endpoint is the prepared management HTTPS listener at
-`https://host.docker.internal:<management-port>`, using its retained certificate.
-
-External mode uses an existing compatible broker and its account-management UI:
+The installer registers optional Connections with its selected cloud service. The
+lower-level deployment input accepts the resulting endpoint and private management key:
 
 ```json
 {
   "connections": {
     "mode": "external",
-    "brokerUrl": "https://connections.example.com/team-broker",
-    "caFile": "/absolute/path/to/broker-ca.pem"
+    "brokerUrl": "https://cloud.clawscarf.com/api/connections",
+    "managementKeyFile": "/absolute/private/management-key"
   }
 }
 ```
 
-`brokerUrl` accepts an HTTPS DNS hostname, explicit port and optional base path;
-credentials, query strings, fragments, IP addresses and `localhost` are rejected.
-Use `host.docker.internal` for a broker on this workstation. A trailing slash is
-removed consistently with the native plugin. Omit `caFile` for a public CA; otherwise
-supply a regular certificate file, not a symbolic link. External mode reads no local
-provider key or catalog, creates no Connections schema, mounts no Connections
-configuration into the companion and exposes no local account actions. Account setup
-and scoped runtime credential issuance belong to that external broker.
+The runtime credential is supplied separately. Provider credentials and catalog data
+remain in the cloud. The companion exposes only the authenticated native-page adapter;
+no broker schema, provider adapter, account page or maintenance loop runs locally.
 
-Both modes retain the endpoint and optional CA privately before resource allocation,
-then add one exact Node HTTPS endpoint to the initial runtime policy. TLS passes
-through OpenShell; Node still verifies the server certificate. Neither preparation
-nor ordinary startup rewrites an authored policy. An explicit installation settings
-change updates only the Connections rule at the next start. Repeating preparation retains matching
-inputs; a changed endpoint, trust certificate, key or catalog requires explicit
-[settings application](installation.md#change-an-existing-installation) rather than an implicit replacement. Omitting `connections` on initial preparation creates
-no Connections schema, loads no provider and exposes no account actions.
-
-The unified installer prepares and activates the scoped native credential. These
-component operations also expose explicit credential delivery for operators. Endpoint
-validation, retained configuration and native activation have tests; external-account
-OAuth remains a separate journey.
+The endpoint must use HTTPS with a DNS hostname and no credentials, query or fragment.
+An optional `caFile` supplies a private CA; omit it for public trust. Preparation retains
+endpoint/trust material and the management key privately, and adds the exact destination
+to the OpenShell policy. Ordinary startup preserves these inputs. Explicit settings
+changes enable or disable Connections without replacing its cloud registration.
 
 ### Activate Connections
 
-For a local broker, sign in as a native administrator and use the
-[credential command](../../services/connections/README.md#configuration-and-catalog)
-to issue a private token file. An external broker supplies its own scoped token.
-Setup does not mint an administrator session or bypass native access checks.
+The unified installer delivers the registered runtime credential automatically. The
+component operator can also explicitly deliver a broker-issued credential; it never
+mints an administrator session or bypasses native access checks.
 
 Stop the installation, then start only its private controller:
 
