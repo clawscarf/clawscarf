@@ -21,8 +21,8 @@ OpenShell's own supervisor is privileged during setup and then confines the
 application process. This is not an unprivileged container supervisor or protection
 against an administrator of the Docker host. One runtime serves one trusted team.
 Whole-runtime confinement does not isolate shell execution from the Gateway's
-own loopback listener. The separate SSH worker has local native member/administrator
-execution acceptance; native browser execution and release qualification remain open.
+own loopback listener. Team code is trusted with Gateway authority; native browser
+execution and release qualification have the limits below.
 
 The runtime's `/home/node` needs its own named volume. It includes OpenClaw state,
 workspaces, native credentials, extensions and browser state. The image's
@@ -151,7 +151,7 @@ uncertain completion reports its exact name for inspection; cleanup never uses
 `--all` or force-removes an attached volume.
 
 Checks cover UID 1000, `no_new_privs`, actual cgroup memory/CPU limits, writable
-scratch space, denied writes outside policy, and unavailable Docker/controller-key
+scratch space, denied writes outside policy, and unavailable Docker/root-SSH
 paths. An unavailable path establishes absence or denied visibility, not proof that
 a secret was mounted and safely blocked. A disposable ordinary Docker container
 first confirms a TCP connection to `1.1.1.1:443` works; the confined process must
@@ -165,11 +165,34 @@ Gateway crash consistency, browser isolation or isolation between team members.
 The current run passed on macOS arm64/Docker Desktop with OpenShell 0.0.116 and
 its Docker driver. Other platforms remain unqualified.
 
+The [native runtime test](../../tests/runtime/team-runtime.test.ts) starts the real
+Gateway in a separate disposable sandbox using the same controller and image:
+
+```sh
+CLAWSCARF_TEST_TEAM_RUNTIME=1 pnpm exec tsx --test tests/runtime/team-runtime.test.ts
+```
+
+This passed with the single-runtime image. After initial file-tool use, it uploads
+a text file through native chat, reads it with the native file tool, edits it using
+Python and reads the result through native Lobster. It also checks an output-file
+reference in chat, native PDF extraction, Lobster approval/resume without replay,
+member shell/file/Lobster access and denial of an administrative RPC. Both shell and
+Lobster children pass filesystem, controller-key, Docker-socket and egress-denial
+checks. The uploaded and edited files survive OpenShell stop/start. Each run deletes
+its own sandbox and volume.
+
+The model is a deterministic loopback fixture that requests real native tool calls.
+The fixture permits shell execution with `tools.exec.mode: "full"`; the product
+preset retains `"auto"`. These checks establish native execution and file placement,
+not model quality, a real inference route, browser file transfer or a complete
+installer/login journey. The member RPC check is an application permission check;
+it does not make code execution safe against hostile teammates.
+
 ## Development footprint
 
-The arm64 runtime image occupies approximately 1.50 GB of unpacked Docker image
+The arm64 team runtime image occupies approximately 1.19 GB of unpacked Docker image
 data; the companion image is approximately 414 MB. These are not compressed
-download sizes. In the current idle local development composition, Docker reports
+download sizes. Earlier idle local development measurements reported
 roughly 600 MiB for the OpenShell/OpenClaw container, 43 MiB for Access/Connections,
 136 MiB for the test PostgreSQL container and 878 MiB for optional LiteLLM. The
 host-side controller uses about 50 MiB RSS; forwarding processes and Docker Desktop
@@ -177,56 +200,30 @@ add their own overhead. Local model weights and inference are additional.
 
 These observations establish a development baseline, not a minimum hardware spec,
 peak-load budget or supported user count. Measure cold installation, active model/tool
-execution and the final selected member/browser sandbox layout before publishing
+execution and the current team runtime/browser layout before publishing
 capacity guidance. Image size comes from `docker image inspect`; container usage
 comes from `docker stats --no-stream`, and controller RSS from the host process table.
 
 ## Execution placement
 
-The outer sandbox contains the Gateway and native plugins together. It does not
-separate member shell execution from the Gateway's loopback listeners. Member
-roles therefore require native sandboxing. The selected execution composition uses
-OpenClaw's supported [SSH backend](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/gateway/sandboxing/ssh-backend.md)
-and an externally operated [SSH worker](../execution/worker/README.md). The Gateway
-receives only that worker's client key and pinned host key. Controller credentials
-and Docker sockets stay outside both application and worker.
+The Gateway, native plugins, ordinary shell and local CLIs run together inside one
+externally controlled OpenShell sandbox. OpenClaw inner sandboxing is off in the
+fresh preset. This preserves the normal native plugin execution model, including
+Lobster. Native application roles do not create an internal security boundary
+against a teammate who can execute code. The [product contract](../../README.md)
+owns the trust model.
 
-OpenClaw's native OpenShell backend needs controller-user authority for worker
-lifecycle. Our local controller's mTLS identity is broader than worker execution,
-so ClawScarf does not copy it into the Gateway. The external operator owns worker
-creation, persistence and stopping through [local setup](../deployment/README.md).
+The persistent home volume contains native state, uploads and agent workspaces.
+There is no SSH worker or filesystem synchronization. Native upload storage may
+use separate managed paths on that same volume; it is not a filesystem per chat.
+Core commands and plugin children inherit OpenShell confinement. They can read
+Gateway-local data and reach its loopback listener; they must still be denied host
+private files, Docker/controller authority and undeclared external destinations.
 
-Neither SSH nor the native OpenShell backend supports native sandboxed-browser
-provisioning in this release. The [shared browser](../execution/browser/README.md)
-instead exposes a native attach-only remote CDP profile, with explicit native
-host-browser permission. Chromium runs in a separate nonroot container with its own
-sandbox. An [isolated network and public-web proxy](../execution/network/README.md)
-prevent browser access to raw Gateway, controller, metadata and private services.
-Chromium cannot retain its namespace sandbox inside the selected OpenShell supervisor,
-which denies the required namespace/syscall operations; no unsandboxed fallback is used.
-
-One trusted team shares worker files and browser logins. SSH session directories
-share one worker user; browser users share profile cookies/state. Individual login
-and native roles remain application controls, not per-person OS isolation. Native
-member roles remove write/edit tools and retain read-only agent workspace inputs;
-worker scratch files remain shared execution state.
-
-Worker and browser component confinement/persistence tests pass. Fresh combined
-startup and administrator login pass. The assembled native execution test passed
-for a temporary member and the administrator: commands and file reads ran as UID
-1000 on the SSH worker, Gateway configuration was absent, and Gateway loopback,
-host-forwarded Gateway, controller and undeclared public-egress probes failed. Member
-administrative RPC was denied; test identities, sessions and files were removed.
-Native SSH uses the owned `runtime.clawscarf.internal` relay
-with an exact-host TCP policy. Its runtime-facing SSH listener is inaccessible from
-the browser network, and it forwards only to the operator-owned worker port.
-See [remaining runtime acceptance](../../TODO.md).
-
-The operator starts a separate [native browser node](../execution/browser-node/README.md)
-with scoped enrollment, private TLS/DNS and immutable shell-execution denial. It
-performs browser-control preflight outside OpenShell while the Gateway and worker
-remain protected. Chromium retains its own namespace sandbox and restricted public-web
-proxy. Explicit node browsing works. OpenClaw's tool guidance can still select `host`,
-which attempts Gateway-side preflight and fails public DNS under OpenShell. This
-[upstream routing issue](../execution/browser-node/README.md#upstream-browser-routing-bug)
-is owner-managed; no prompt workaround or confinement bypass is supplied.
+The optional [browser node](../execution/browser-node/README.md) and
+[Chromium service](../execution/browser/README.md) remain separate. Chromium needs
+namespace operations that this OpenShell policy denies, so it retains its own
+sandbox and restricted [public-web proxy](../execution/network/README.md).
+The browser node retains immutable shell denial and scoped enrollment. The
+[owner-managed routing issue](../execution/browser-node/README.md#upstream-browser-routing-bug)
+remains outside this change.

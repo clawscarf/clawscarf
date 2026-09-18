@@ -143,7 +143,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     ),
   );
   const service = compose.services.browser;
-  const relay = compose.services["execution-relay"];
+  const relay = compose.services["browser-relay"];
   const egress = compose.services["browser-egress"];
   assert.ok(service && relay && egress);
   assert.deepEqual(Object.keys(service.networks), ["browser"]);
@@ -233,7 +233,7 @@ await test("browser profile retains a scoped credential without granting Gateway
   );
 });
 
-await test("browser inputs reject mutable images and collisions with execution or native listeners", () => {
+await test("browser inputs reject mutable images and unsupported worker configuration and collisions with native listeners", () => {
   for (const key of ["image", "egressImage", "nodeImage", "dnsImage"])
     assert.throws(() =>
       parseLocalInput({
@@ -411,7 +411,7 @@ await test("startup refuses symlinked or multiply-linked browser isolation files
   );
 });
 
-await test("a pinned top-level relay image is required exactly when native execution or browser transport is enabled", () => {
+await test("a pinned top-level relay image is required exactly when browser transport is enabled", () => {
   const relayImage = `sha256:${"d".repeat(64)}`;
   assert.throws(() => parseLocalInput({ ...input, browser }));
   assert.throws(() => parseLocalInput({ ...input, relayImage }));

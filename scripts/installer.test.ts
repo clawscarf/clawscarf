@@ -142,7 +142,6 @@ async function fixture(t: TestContext) {
         gateway: image,
         companion: image,
         openshellClient: image,
-        worker: image,
         relay: image,
       },
       tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
@@ -237,7 +236,7 @@ await test(
     );
     assert.equal(config.models.mode, "litellm");
     assert.equal(config.connections.mode, "disabled");
-    assert.ok(config.resources.worker);
+    assert.ok(config.resources.runtime);
     assert.deepEqual(config.packs, []);
     assert.equal(
       (await planInstallation(join(f.directory, "installation.json"))).action,
@@ -525,7 +524,7 @@ await test(
     const { config } = await collectInstallation(ui, f);
     assert.equal(config.name, "my-team");
     assert.equal(config.access.administratorName, "Owner");
-    assert.equal(config.resources.gateway.cpu, "4");
+    assert.equal(config.resources.runtime.cpu, "4");
     assert.equal(config.connections.mode, "disabled");
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },

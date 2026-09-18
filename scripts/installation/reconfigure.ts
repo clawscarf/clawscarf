@@ -51,7 +51,6 @@ export async function planSettingsChange(configFile: string) {
     old.ports.native,
     old.ports.nativeWidgets,
     old.ports.database,
-    old.execution?.port ?? 0,
     old.browser?.port ?? 65534,
     old.modelGateway?.port ?? 65533,
   ]);

@@ -85,8 +85,7 @@ export function recipeConfiguration(
       cloudUrl: context.cloudUrl ?? context.release.cloudUrl,
     },
     resources: {
-      gateway: { cpu: "2", memory: "2Gi" },
-      worker: { cpu: "2", memory: "2Gi" },
+      runtime: { cpu: "4", memory: "4Gi" },
     },
     browser: { enabled: false },
     connections: {
@@ -199,7 +198,10 @@ export function assertReleaseCapabilities(
   context: SetupContext,
   config: InstallationConfiguration,
 ) {
-  if (config.browser.enabled && !context.release.images.browser)
+  if (
+    config.browser.enabled &&
+    (!context.release.images.browser || !context.release.images.relay)
+  )
     throw new InstallationError(
       "invalid_configuration",
       "This release does not include browser images.",

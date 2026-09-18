@@ -32,8 +32,7 @@ const configuration = {
     clientSecretFile: "keys.env",
   },
   resources: {
-    gateway: { cpu: "2", memory: "2Gi" },
-    worker: { cpu: "2", memory: "2Gi" },
+    runtime: { cpu: "2", memory: "2Gi" },
   },
   browser: { enabled: false },
   models: {
@@ -90,7 +89,6 @@ await test(
         postgres: postgresImage,
         models: liteLlmImage,
         gateway: image,
-        worker: image,
         companion: image,
         openshellClient: image,
         relay: image,
@@ -125,7 +123,7 @@ await test(
     const plan = await planInstallation(path);
     assert.equal(plan.action, "prepare");
     assert.equal(plan.stateDirectory, join(directory, "state"));
-    assert.equal(new Set(plan.internalPorts).size, 8);
+    assert.equal(new Set(plan.internalPorts).size, 7);
     await writeFile(
       join(directory, "connections-registration.json"),
       JSON.stringify({
@@ -247,7 +245,7 @@ await test(
         ...configuration,
         resources: {
           ...configuration.resources,
-          gateway: { cpu: "4", memory: "4Gi" },
+          runtime: { cpu: "4", memory: "4Gi" },
         },
       }),
     );

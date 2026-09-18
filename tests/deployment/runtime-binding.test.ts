@@ -4,10 +4,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
 import { z } from "zod";
-import {
-  verifyRuntimeBinding,
-  verifyExecutionBinding,
-} from "../../scripts/deployment/runtime-binding.js";
+import { verifyRuntimeBinding } from "../../scripts/deployment/runtime-binding.js";
+import { verifyRuntimeImage } from "../../scripts/deployment/images.js";
 import {
   readState,
   resourceNames,
@@ -89,6 +87,27 @@ function failure(code: string) {
     error.code === code &&
     !error.message.includes("secret");
 }
+await test("runtime selection requires the packaged execution contract without changing the image", async () => {
+  const image = `sha256:${"a".repeat(64)}`;
+  for (const label of ["team-runtime\n", "", "other-runtime"])
+    if (label.trim() === "team-runtime")
+      await verifyRuntimeImage(image, (executable, args) => {
+        assert.equal(executable, "docker");
+        assert.deepEqual(args, [
+          "image",
+          "inspect",
+          "--format",
+          '{{index .Config.Labels "io.clawscarf.execution-model"}}',
+          image,
+        ]);
+        return Promise.resolve(label);
+      });
+    else
+      await assert.rejects(
+        verifyRuntimeImage(image, () => Promise.resolve(label)),
+        failure("configuration_changed"),
+      );
+});
 await test("runtime verification observes the actual immutable image and owned writable home without mutations", async () => {
   const f = fixture();
   assert.deepEqual(await verifyRuntimeBinding(f.state, f.target, f.command), {
@@ -184,81 +203,3 @@ await test(
     assert.match(binding.containerId, /^[a-f0-9]{64}$/);
   },
 );
-
-function executionFixture() {
-  const f = fixture();
-  const names = resourceNames(f.state);
-  const execution = {
-    image: `sha256:${"e".repeat(64)}`,
-    port: 22022,
-    cpu: "1",
-    memory: "2Gi",
-  };
-  f.state.input.execution = execution;
-  f.target.name = names.workerSandbox;
-  f.actual.Labels["openshell.ai/sandbox-name"] = names.workerSandbox;
-  f.actual.Image = execution.image;
-  f.home.Name = names.workerVolume;
-  f.volume.Name = names.workerVolume;
-  const command: typeof run = (executable, args, options) => {
-    if (args[0] === "image") {
-      assert.equal(args.at(-1), execution.image);
-      return Promise.resolve(execution.image);
-    }
-    if (args[0] === "volume") assert.equal(args.at(-1), names.workerVolume);
-    return f.command(executable, args, options);
-  };
-  return { ...f, command, names };
-}
-await test("execution binding verifies its own sandbox, exact image and volume in the shared controller namespace", async () => {
-  const f = executionFixture();
-  assert.notEqual(f.target.name, f.names.sandbox);
-  assert.deepEqual(await verifyExecutionBinding(f.state, f.target, f.command), {
-    containerId: f.actual.Id,
-    imageId: f.actual.Image,
-  });
-});
-await test("Gateway image, home or namespace substitutions cannot authorize an execution worker", async () => {
-  for (const modify of [
-    (f: ReturnType<typeof executionFixture>) => {
-      f.target.name = f.names.sandbox;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.actual.Image = f.state.input.runtimeImage;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.home.Name = f.names.volume;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.volume.Name = f.names.volume;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.actual.Labels["openshell.ai/sandbox-namespace"] = f.names.workerSandbox;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.actual.Labels["openshell.ai/sandbox-name"] = f.names.sandbox;
-    },
-    (f: ReturnType<typeof executionFixture>) => {
-      f.volume.Labels["clawscarf.installation"] = "foreign";
-    },
-  ]) {
-    const f = executionFixture();
-    modify(f);
-    await assert.rejects(
-      verifyExecutionBinding(f.state, f.target, f.command),
-      failure("runtime_binding_changed"),
-    );
-  }
-});
-await test("execution binding requires execution configuration before observing Docker", async () => {
-  const f = fixture();
-  let called = false;
-  await assert.rejects(
-    verifyExecutionBinding(f.state, f.target, () => {
-      called = true;
-      return Promise.resolve("");
-    }),
-    failure("runtime_binding_changed"),
-  );
-  assert.equal(called, false);
-});

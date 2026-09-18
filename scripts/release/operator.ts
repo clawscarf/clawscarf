@@ -30,7 +30,6 @@ const assets = [
   "deploy/recipes",
   "deploy/models/catalog.json",
   "deploy/openshell/policy.yaml",
-  "deploy/execution/worker/policy.yaml",
   "deploy/execution/browser/seccomp.json",
   "deploy/execution/network/node-ingress.cfg",
   "deploy/execution/browser/LICENSE.playwright",

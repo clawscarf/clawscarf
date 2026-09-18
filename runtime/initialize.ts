@@ -13,15 +13,6 @@ const inputSchema = z.strictObject({
   ownerId: z.uuid(),
   serverId: z.uuid(),
   configuration: z.string().min(1),
-  executionCredential: z
-    .strictObject({
-      clientKey: z
-        .string()
-        .startsWith("-----BEGIN OPENSSH PRIVATE KEY-----\n")
-        .max(8192),
-      knownHosts: z.string().min(1).max(8192),
-    })
-    .optional(),
   modelCredential: z
     .strictObject({
       token: z
@@ -90,12 +81,6 @@ export async function initializeHome(
       serverId: input.serverId,
     }),
   };
-  if (input.executionCredential) {
-    files["clawscarf-execution/client_ed25519"] =
-      input.executionCredential.clientKey;
-    files["clawscarf-execution/known_hosts"] =
-      input.executionCredential.knownHosts;
-  }
   if (input.modelCredential) {
     files["clawscarf-models/initial.json"] = JSON.stringify({
       token: input.modelCredential.token,

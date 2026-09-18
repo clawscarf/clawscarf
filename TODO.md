@@ -41,19 +41,13 @@ Open work only. Select a task before implementing; this list does not authorize 
       Signing in through the cloud and returning to the pending code succeeded. Reproduce
       fresh and expired provider sessions before declaring installer login fully finished.
 
-- [ ] **Resolve the native remote skill-path bug.** The Connections skill remains
-      installed and readable after `clawscarf stop` / `start`. Pinned OpenClaw
-      `7bc487d` advertises a `~/sandboxes/…/SKILL.md` path that its remote read bridge
-      treats as workspace-relative. Absolute and workspace-relative paths succeed;
-      the advertised tilde path fails. Resolve upstream without a plugin-specific
-      workaround, then verify the advertised path in a fresh native session.
-
 ## Future decisions
 
 - [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
       choose packs/Connections explicitly rather than treating the example as a finished product.
-- [ ] Select Lobster, Codex or other optional packs individually. Preserve vanilla ClawHub
-      discovery unless a supported curation approach is explicitly selected.
+- [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
+      Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
+      Native Lobster is required.
 - [ ] Package privately operated Connections against the same broker contract, independent of
       our hosted identity/billing services. The separation is part of the selected cloud design.
 - [ ] Add payment integration to the cloud allowance policy when selected; keep connector

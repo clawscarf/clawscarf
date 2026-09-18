@@ -56,13 +56,5 @@ export function controllerServices(directory: string, state: LocalState) {
     },
     application: forward(name, input.ports.native),
     widgets: forward(name, input.ports.nativeWidgets),
-    ...(input.execution
-      ? {
-          execution: forward(
-            resourceNames(state).workerSandbox,
-            input.execution.port,
-          ),
-        }
-      : {}),
   };
 }

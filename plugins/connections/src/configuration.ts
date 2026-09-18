@@ -19,11 +19,6 @@ const credential = {
   provider: PLUGIN_ID,
   id: TOKEN_ENV,
 } as const;
-const connectorTools = [
-  "connections_search",
-  "connections_describe",
-  "connections_call",
-] as const;
 const requestSchema = Type.Object(
   {
     kind: Type.Union([
@@ -112,16 +107,6 @@ export async function configureConnections(request: ConfigurationRequest) {
           ...(request.enable === undefined ? {} : { enabled: request.enable }),
           config: { ...entry.config, brokerUrl, credential },
         };
-        draft.tools ??= {};
-        draft.tools.sandbox ??= {};
-        draft.tools.sandbox.tools ??= {};
-        if (draft.tools.sandbox.tools.allow === undefined) {
-          const alsoAllow = draft.tools.sandbox.tools.alsoAllow ?? [];
-          draft.tools.sandbox.tools.alsoAllow = [
-            ...alsoAllow,
-            ...connectorTools.filter((tool) => !alsoAllow.includes(tool)),
-          ];
-        }
       },
     });
   }

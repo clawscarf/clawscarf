@@ -5,13 +5,9 @@
   "maturity": "example",
   "defaults": {
     "resources": {
-      "gateway": {
-        "cpu": "2",
-        "memory": "2Gi"
-      },
-      "worker": {
-        "cpu": "2",
-        "memory": "2Gi"
+      "runtime": {
+        "cpu": "4",
+        "memory": "4Gi"
       }
     },
     "browser": {

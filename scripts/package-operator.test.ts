@@ -84,7 +84,6 @@ await test(
     assert.ok(!JSON.stringify(manifest).includes('"react"'));
     assert.ok(!JSON.stringify(manifest).includes('"typescript"'));
     for (const path of [
-      "deploy/execution/worker/policy.yaml",
       "deploy/execution/browser/seccomp.json",
       "deploy/execution/network/node-ingress.cfg",
       "deploy/execution/browser/LICENSE.playwright",
@@ -132,9 +131,10 @@ await test(
         images: {
           postgres: postgresImage,
           ...Object.fromEntries(
-            ["gateway", "worker", "companion", "relay", "openshellClient"].map(
-              (name) => [name, "sha256:" + "a".repeat(64)],
-            ),
+            ["gateway", "companion", "relay", "openshellClient"].map((name) => [
+              name,
+              "sha256:" + "a".repeat(64),
+            ]),
           ),
         },
         tools: {

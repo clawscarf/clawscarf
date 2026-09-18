@@ -73,7 +73,7 @@ const fixture = JSON.parse(fs.readFileSync(${JSON.stringify(fixture)}, "utf8"));
 const args = process.argv.slice(2);
 if(args.includes("ps")) console.log(JSON.stringify({Service:"companion", State: fixture.running ? "running" : "exited"}));
 else if(args.includes("--services")) console.log("companion");
-else if(args.includes("ls")) for(let i=0;i<2;i++) console.log(JSON.stringify({State: fixture.running ? "running" : "exited"}));
+else if(args.includes("ls")) for(let i=0;i<1;i++) console.log(JSON.stringify({State: fixture.running ? "running" : "exited"}));
 else if(args.includes("exec")) console.log(JSON.stringify({complete:fixture.complete,expiresAt:null}));
 else process.exit(1);
 `,

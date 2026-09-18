@@ -203,23 +203,20 @@ blocks private destinations. This is not a domain allowlist: authorized browsing
 can transmit team data to public sites.
 
 OpenClaw receives a private `team` remote-browser profile, not provider or controller
-credentials. With the execution worker configured, native sandbox defaults explicitly
-allow that shared browser and explicitly add its native tool to sandboxed sessions;
-other sandbox-tool denials and native role restrictions still apply. Browser profiles,
+credentials. Native browser selection remains configured through the browser node;
+application tool policies and native role restrictions still apply. Browser profiles,
 cookies and logins belong to the trusted team. Stop/start retains that volume.
 Startup verifies authenticated CDP readiness before OpenClaw, then enrolls and waits
 for the [native browser node](../execution/browser-node/README.md#operator-lifecycle)
 before starting application access. The node uses a scoped native credential and
 private certificate-pinned TLS; its DNS resolver has a separate restricted source rule.
 Compose owns the node, ingress, resolver and browser processes. The CLI stops them, retaining
-owned volumes. No Gateway/worker OpenShell restrictions are removed.
+owned volumes. The team runtime keeps its OpenShell restrictions.
 
-The shared `relayImage` is required exactly when worker or browser is configured.
-It supplies the fixed readiness/SSH relay and private node ingress. Worker SSH uses
-an exact-host OpenShell TCP policy; the Gateway has no direct browser CDP egress.
-Initial native browser routing selects the uniquely named paired node. Native edits
-are not overwritten at restart. Explicit node browsing works; ordinary model-selected
-browsing still has the [owner-managed upstream issue](../execution/browser-node/README.md#upstream-browser-routing-bug).
+The shared `relayImage` is required exactly when the browser is configured.
+It supplies the fixed CDP readiness relay and private node ingress. It carries
+no SSH listener. Ordinary browsing still has the
+[owner-managed upstream issue](../execution/browser-node/README.md#upstream-browser-routing-bug).
 
 ## Initial model setup
 
@@ -268,122 +265,55 @@ and atomic initialization failures. Release-artifact clean-machine acceptance re
 
 ## Run and stop
 
-### Separate execution worker
+### Team runtime
 
-A new installation can include an `execution` block alongside its other inputs:
+New installations have one OpenShell runtime. Native file tools, shell commands,
+Lobster and other local plugins use the same persistent home. There is no `execution`
+input, SSH transport, worker image or worker volume. The Gateway launcher and default
+agent both use `/home/node/.openclaw/workspace`. Per-agent workspaces remain native
+configuration and are visible to local tools on the same filesystem.
 
-```json
-{
-  "relayImage": "sha256:REPLACE_WITH_RELAY_IMAGE_ID",
-  "execution": {
-    "image": "sha256:REPLACE_WITH_WORKER_IMAGE_ID",
-    "port": 19222,
-    "cpu": "1",
-    "memory": "512Mi"
-  }
-}
-```
-
-Build the [worker image](../execution/worker/README.md) and use a distinct loopback
-port. This path requires a rebuilt Gateway image containing both current volume
-initializers. Worker component confinement, lifecycle and assembled native member/
-administrator execution tests have passed on the local candidate. Browser use and
-release qualification remain open.
-
-Preparation creates a separate owned worker-home volume and worker-specific SSH
-keys. The Gateway receives only the client private key and pinned host identity;
-the worker receives only its host key and authorized client public key. Neither
-gets controller credentials. The Gateway policy permits `/usr/bin/ssh` to reach
-`runtime.clawscarf.internal:2222`; the fixed relay forwards to the operator-owned
-worker listener. The worker starts with denied outbound traffic.
-
-Vanilla OpenClaw uses its native SSH execution backend with all-session sandboxing.
-Remote workspaces are seeded once, then remain canonical on the worker volume;
-they are not synchronized back to Gateway files. Native `sandbox recreate` deletes
-the selected remote workspace. Team members share the worker's Unix identity;
-native role-required profiles still receive their own native directory scopes and
-read-only agent inputs. Those directories are not hostile-user isolation.
-
-Startup creates or resumes the worker under the same controller as the Gateway,
-checks pinned SSH authentication and its actual image/volume binding, then starts
-OpenClaw. Separate [allocation intent and UUID receipts](../../scripts/deployment/runtime.ts)
-track the worker independently from the Gateway. Uncertain absent targets are not automatically recreated.
-Shutdown stops the Gateway and worker before their controller; both volumes remain.
-No worker is allocated when `execution` is omitted. Browser execution uses a
-[separate browser component](../execution/browser/README.md); it is not enabled by
-this block. Its ordinary model-selected routing limitation is documented there.
+Do not reapply the fresh preset over native configuration on normal restart.
+Only the current contract is supported; there is no worker compatibility or transition path.
 
 ### Service lifecycle
 
-The [installation CLI](installation.md) starts Compose services, creates or resumes the
-owned OpenShell Gateway and worker, and verifies readiness before returning. Docker
-owns the controller, SSH forwarding and companion service lifetimes; no ClawScarf host
-supervisor, Unix control socket or launchd job is installed.
+The [installation CLI](installation.md) starts Compose services, creates or resumes
+the owned OpenShell runtime, and verifies readiness before returning. Docker owns
+the controller, forwarding and companion service lifetimes. Closing the terminal
+does not stop them; use `clawscarf stop`. Stop retains owned volumes. No ClawScarf
+host daemon, control socket or launchd job is installed.
 
-OpenShell's controller uses its upstream pinned gateway image, mTLS and the Docker
-socket. It alone has Docker authority. Its state directory is mounted at the identical
-absolute path because Docker resolves the extracted sandbox supervisor path on the host.
-Forwarders use the pinned Linux CLI and OpenSSH, with read-only client credentials and
-loopback-only published ports. They have no Docker socket or server signing key.
+The controller alone has the Docker socket and server signing key. Its state
+directory is mounted at the identical absolute path because Docker resolves the
+extracted supervisor path on the host. Forwarders use the pinned Linux CLI and
+OpenSSH, read-only client credentials and loopback-only published ports. They have
+no Docker socket or server signing key.
 
 Startup checks native and Access health. Administrator setup remains pending until
-the administrator completes its private OIDC claim and native authority is verified.
-Initial native team setup applies once; an uncertain mutation is never silently replayed. Closing the
-terminal does not stop services; use `stop`. Interrupted startup retains already-started
-services and data, visible through status/logs, for an explicit stop or resumed start.
+the administrator completes the private OIDC claim and native authority is verified.
+Initial native team setup applies once; uncertain mutations are not silently replayed.
+Interrupted startup retains already-started services and data for inspection, an
+explicit stop or resumed start.
 
-Runtime observation reads every inventory page; an incomplete or repeated page cannot
-establish absence and trigger allocation. Creation intent is stored before allocation.
-An interrupted request is reconciled to its
-owned runtime UUID; an uncertain absent result is not automatically allocated again.
-Foreign/replaced runtimes and terminal errors require inspection. Native start/stop use
-names, so UUID checks before and after detect replacement but cannot provide an atomic
-UUID precondition. The CLI cannot independently read the runtime's actual image through
-its current `get` output; do not treat receipt metadata as that verification.
-Before starting Access, the launcher therefore inspects the uniquely labeled Docker
-container, compares its actual immutable image ID and checks the exact writable,
-owned home-volume mount, rejecting additional mounts that shadow its contents.
-Missing, duplicate or changed bindings stop startup;
-failed observation is distinct from a verified mismatch. This is a read-only
-Docker-driver check, not an atomic replacement precondition or continuous monitoring.
-The [binding regression](../../tests/deployment/runtime-binding.test.ts) covers wrong
-images, runtime labels, missing/duplicate containers, foreign/read-only home mounts
-and incomplete observations. Its optional real Docker check uses
-`CLAWSCARF_TEST_LOCAL_BINDING_DIRECTORY` with an existing owned installation.
-Both that read-only check and normal startup through administrator verification
-passed against the retained development runtime.
+Runtime observation reads every inventory page. Incomplete or repeated pages cannot
+establish absence and trigger allocation. Creation intent is stored before allocation;
+a lost response can be reconciled only to its owned runtime UUID. An uncertain absent
+result, foreign/replaced runtime or terminal error requires inspection. Native
+start/stop use names; UUID checks detect replacement but are not an atomic precondition.
 
-Docker retains controller, forwarder and application logs. `pnpm clawscarf logs --help`
-lists the service names; the command reads Compose logs directly. Failed subprocesses retain allowlisted exit status, signal, timeout or spawn
-error codes; arguments, environment, stdout and stderr are excluded from CLI errors.
-If network reservation fails, inspect Docker's address
-pools and this installation's recorded network intents before resuming. Setup does not
-classify Docker error messages as proof of pool exhaustion. A failed PostgreSQL start
-reports that separate stage and directs the operator to Compose status/logs. Port tests use actual loopback listeners;
-retained Docker ownership/binding denials use structured fixtures. Repeated preparation
-and startup also passed against the retained local installation with its actual
-PostgreSQL listener and runtime volume.
+Before admitting application access, startup checks the uniquely labeled Docker
+container's actual immutable image and exact owned writable home volume. Missing,
+duplicate, foreign or shadowing mounts fail visibly. These are point-in-time checks,
+not continuous monitoring. The [binding regression](../../tests/deployment/runtime-binding.test.ts)
+covers these failures; its optional real check uses
+`CLAWSCARF_TEST_LOCAL_BINDING_DIRECTORY` with an owned installation.
 
-Fresh preparation and startup passed with the actual companion, PostgreSQL and
-OpenShell-hosted Gateway, including the Docker-host management route. Browser login
-opened native OpenClaw with the configured administrator name. A name edited in
-OpenClaw remained after CLI stop/start; the runtime UUID and browser session
-were retained. The compiled operator also resumed that same installation successfully.
-Controller-startup failure also stopped the database and released the
-installation lock without deleting volumes. Tests additionally cover interrupted
-native bootstrap, cancellation, process-tree cleanup and paginated discovery.
-
-The configured administrator browser journey also passed a real model response and
-native file-read tool through the optional gateway; see [model acceptance](../models/README.md#verification-and-provenance).
-A [real-controller crash test](../../tests/deployment/allocation-live.test.ts) passed:
-setup was killed after allocation acceptance and before saving its local receipt;
-resumption recovered the same UUID without another create call. The normal launcher
-then reached verified administrator access and the protected native browser UI with
-models unconfigured. This tests lost local completion after acceptance, not every
-possible failure inside Docker or OpenShell. A release-artifact clean-machine run
-remains required. The selected member/browser
-execution limitations still apply; see
-[runtime placement](../openshell/README.md#execution-placement).
+`clawscarf logs --help` lists the Compose services. Failed subprocess diagnostics
+retain allowlisted exit status, signal, timeout or spawn codes, excluding arguments,
+environment and raw output. If network allocation fails, inspect Docker address
+pools and this installation's recorded intents before resuming. PostgreSQL failures
+report their own stage; they are not inferred from Docker error wording.
 
 ## Runtime upgrade
 
@@ -556,7 +486,7 @@ revocation also have assembled Dex/TLS acceptance against the pinned OpenClaw ru
 This test used an explicit private test certificate trust in the companion and browser,
 with hostnames resolved locally. It does not qualify public DNS, certificate renewal,
 a customer's IdP configuration or browser execution inside the sandbox. The access
-path and separate worker execution are locally qualified. Explicit native-node
+path was locally qualified on the previous execution model. Explicit native-node
 browsing also passed; ordinary model-selected routing and release qualification
 remain open.
 A native configuration reload can briefly make management reads unavailable; a failed

@@ -171,9 +171,8 @@ contains the upstream fix that propagates this flag. Its real request builder is
 covered by the image probe (the published 2026.9.4 image fails that regression).
 A browser chat through GPT-6 Astra / medium, LiteLLM and the cloud broker successfully
 searched real Outlook operations and described `OUTLOOK_LIST_CALENDARS`, omitting
-optional IDs/cursors. No external account operation was executed. The same run
-reported a missing Connections skill file in the worker workspace; that separate
-follow-up remains in [TODO](../../TODO.md).
+optional IDs/cursors. No external account operation was executed. Local file
+execution follows the [team runtime contract](../../runtime/README.md).
 
 The fresh local assembly passed integrated initial model/credential/policy setup
 and a native administrator browser conversation through the rebuilt runtime,

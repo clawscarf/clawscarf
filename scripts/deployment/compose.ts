@@ -86,7 +86,7 @@ export function composeConfiguration(
         : {}),
       ...(input.relayImage
         ? {
-            "execution-relay": {
+            "browser-relay": {
               ...constrained,
               image: input.relayImage,
               user: "1000:1000",

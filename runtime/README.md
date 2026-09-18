@@ -1,6 +1,6 @@
 # Native configuration
 
-[private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Gateway, worker and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
+[private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset. Generate a
 new file with `pnpm clawscarf config render-native --input setup.json
@@ -21,16 +21,15 @@ It retains explicit initial identity, trusted ingress, disabled terminal/communi
 invite/external session catalogs, restricted Codex dynamic tools, separate widget
 origin, self-only sessions, disabled elevated execution and Chrome's sandbox.
 The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
-rootless-Docker UID mapping does not apply. Member policy requires native sandboxing;
-the [local execution option](../deploy/deployment/README.md#separate-execution-worker)
-configures a separately owned SSH worker. Component confinement and assembled native
-member/administrator command and file-read probes passed on the local candidate;
-both used the worker and could not reach the four forbidden test destinations.
-This does not establish per-person filesystem isolation; browser behavior is documented separately below.
+rootless-Docker UID mapping does not apply. The preset sets
+`agents.defaults.sandbox.mode: off`, member `sandbox: inherit` and
+`tools.exec.host: gateway`, while keeping native `exec.mode: auto` approvals.
+OpenShell still encloses the whole runtime. See the [security contract](../README.md)
+for the resulting team trust boundary. Pending identities still have no agent/tool access.
 
 Codex uses the pinned upstream image's bundled plugin and dependency closure.
 Lobster is registered from the separately included official release directory.
-Lobster remains subject to its native unsandboxed-context requirement. Chromium is
+Lobster runs in its ordinary native context inside the outer OpenShell boundary. Chromium is
 configured headless with its sandbox required. The
 [separate browser image](../deploy/execution/browser/README.md) has component
 sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; ordinary model-selected routing has the owner-managed upstream issue in TODO.
@@ -43,7 +42,9 @@ release qualification.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
 Use it for the canonical Gateway command and operator CLI execution. It sets the
-persistent home/state defaults and SQLite temporary directory before invoking the
+persistent home/state defaults and SQLite temporary directory. For Gateway startup it
+creates and enters `/home/node/.openclaw/workspace`, matching the default native
+agent workspace on the retained home volume, before invoking the
 unmodified upstream executable. OpenShell operator execution does not inherit all
 Docker image environment variables, so image `ENV` alone is insufficient.
 When model setup installs a private gateway's public CA, the launcher adds it to

@@ -7,7 +7,7 @@ import type { LocalState } from "./state.js";
 
 export const runtimeRelayHost = "runtime.clawscarf.internal";
 
-/** Fixed TCP destinations; SSH and browser authentication remain end-to-end. */
+/** Fixed browser TCP destination; authentication remains end-to-end. */
 export function relayConfiguration(state: LocalState, address: string) {
   z.ipv4().parse(address);
   return `global
@@ -29,22 +29,14 @@ resolvers docker
   timeout retry 1s
   hold valid 10s
 ${
-  state.input.execution
+  state.input.browser
     ? `
-listen execution
-  bind ${address}:2222
-  server worker host.docker.internal:${String(state.input.execution.port)} resolvers docker init-addr libc,none
-`
-    : ""
-}${
-    state.input.browser
-      ? `
 listen browser
   bind :9223
   server browser browser:9223 resolvers docker init-addr libc,none
 `
-      : ""
-  }`;
+    : ""
+}`;
 }
 
 async function verifyFile(path: string, expected: string) {

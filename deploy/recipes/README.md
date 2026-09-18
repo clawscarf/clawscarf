@@ -21,5 +21,5 @@ The [installation guide](../deployment/installation.md#terminal-installer) owns 
 Use `--recipes <directory>` to replace the release catalogue for development; JSON
 files are loaded deterministically and duplicate/invalid IDs fail. `Custom` remains
 available without recipe provenance. Recipe choices cannot disable OpenShell protection,
-the shared protected worker or authenticated entry. Selected packs retain their existing
+the protected team runtime or authenticated entry. Selected packs retain their existing
 model/account prerequisites.

@@ -13,8 +13,7 @@ export function packsCommand() {
   );
   if (process.env.CLAWSCARF_PACK_RUNTIME !== "1") {
     program
-      .option("--sandbox <name>", "OpenClaw Gateway sandbox")
-      .option("--worker-sandbox <name>", "protected shared execution worker")
+      .option("--sandbox <name>", "protected team runtime")
       .option("--gateway <name>", "OpenShell controller", "clawscarf")
       .option("--openshell <executable>", "OpenShell CLI", "openshell")
       .option(
@@ -26,24 +25,18 @@ export function packsCommand() {
   const native = () => {
     const options = program.opts<{
       sandbox?: string;
-      workerSandbox?: string;
       gateway: string;
       openshell: string;
       python: string;
     }>();
     if (options.sandbox) {
-      if (!options.workerSandbox)
-        throw Error("Supply --worker-sandbox with --sandbox.");
       return new OpenShellClaws({
         executable: options.openshell,
         python: options.python,
         sandbox: options.sandbox,
-        workerSandbox: options.workerSandbox,
         gateway: options.gateway,
       });
     }
-    if (options.workerSandbox)
-      throw Error("Supply --sandbox with --worker-sandbox.");
     return new NativeClaws(
       program.opts<{ openclaw: string }>().openclaw,
       process.env.CLAWSCARF_PACK_RUNTIME !== "1",

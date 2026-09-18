@@ -126,12 +126,7 @@ await test("external Connections retains only endpoint and CA, never reads provi
     new URL("../../deploy/openshell/policy.yaml", import.meta.url),
     "utf8",
   );
-  const policy = initialRuntimePolicy(
-    policySource,
-    undefined,
-    undefined,
-    loaded.endpoint,
-  );
+  const policy = initialRuntimePolicy(policySource, undefined, loaded.endpoint);
   assert.deepEqual(policy.network_policies, {
     connections_broker: {
       name: "Connections broker",
@@ -140,17 +135,12 @@ await test("external Connections retains only endpoint and CA, never reads provi
     },
   });
   assert.equal(JSON.stringify(policy).includes(expected.ca), false);
-  await prepareRuntimePolicy(
-    f.directory,
-    undefined,
-    undefined,
-    loaded.endpoint,
-  );
+  await prepareRuntimePolicy(f.directory, undefined, loaded.endpoint);
   const path = join(f.directory, "private/runtime-policy.json");
   const authored = JSON.stringify({ ...policy, customSetting: "retained" });
   await writeFile(path, authored);
   await assert.rejects(
-    prepareRuntimePolicy(f.directory, undefined, undefined, loaded.endpoint),
+    prepareRuntimePolicy(f.directory, undefined, loaded.endpoint),
     code("configuration_changed"),
   );
   assert.equal(await readFile(path, "utf8"), authored);

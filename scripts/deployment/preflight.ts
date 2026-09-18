@@ -52,7 +52,7 @@ async function ownedListener(
     application: "companion",
     widgets: "companion",
     management: "companion",
-    browser: "execution-relay",
+    browser: "browser-relay",
   };
   const service = services[name] ?? name;
   const project = resourceNames(state).project;
@@ -123,7 +123,6 @@ export async function verifyLocalPorts(
     ...(state.input.modelGateway
       ? { models: state.input.modelGateway.port }
       : {}),
-    ...(state.input.execution ? { execution: state.input.execution.port } : {}),
     ...(state.input.browser ? { browser: state.input.browser.port } : {}),
   };
   for (const [name, port] of Object.entries(ports)) {

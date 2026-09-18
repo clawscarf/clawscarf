@@ -150,7 +150,10 @@ await test("launcher privately loads the token before exec without evaluating it
   await writeFile(
     launcher,
     (await readFile(join(root, "runtime/openclaw.sh"), "utf8"))
-      .replaceAll("/usr/local/bin/node", `${process.execPath} --import tsx`)
+      .replaceAll(
+        "/usr/local/bin/node",
+        `${process.execPath} --import ${join(root, "node_modules/tsx/dist/loader.mjs")}`,
+      )
       .replaceAll(
         "/app/clawscarf/connections-credential-main.js",
         join(root, "runtime/connections-credential-main.ts"),

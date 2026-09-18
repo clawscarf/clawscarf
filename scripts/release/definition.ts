@@ -46,10 +46,9 @@ export const releaseSchema = z.strictObject({
   images: z.strictObject({
     postgres: z.literal(postgresImage),
     gateway: image,
-    worker: image,
     companion: image,
     openshellClient: image,
-    relay: image,
+    relay: image.optional(),
     models: z.literal(liteLlmImage).optional(),
     browser: z
       .strictObject({ chromium: image, node: image, dns: image, egress: image })

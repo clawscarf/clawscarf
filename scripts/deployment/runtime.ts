@@ -45,21 +45,20 @@ function changed(): never {
     "The runtime identity or ownership differs from this installation. No further runtime command was sent.",
   );
 }
-function targetManager(
+export function runtimeManager(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
   command: Command,
-  configuration: RuntimeTarget,
 ) {
-  const name = configuration.name;
+  const name = resourceNames(state).sandbox;
   const intent = {
     ownerId: state.ownerId,
     name,
-    image: configuration.image,
+    image: state.input.runtimeImage,
   };
-  const receiptPath = join(directory, configuration.record + ".json");
-  const intentPath = join(directory, configuration.record + "-create.json");
+  const receiptPath = join(directory, "runtime.json");
+  const intentPath = join(directory, "runtime-create.json");
   const shell = (args: readonly string[]) =>
     command(
       state.input.openshellCli,
@@ -165,70 +164,14 @@ function targetManager(
   };
 }
 
-interface RuntimeTarget {
-  name: string;
-  image: string;
-  cpu: string;
-  memory: string;
-  volume: string;
-  record: "runtime" | "execution";
-  policy: string;
-  argv: readonly string[];
-}
-function gatewayTarget(state: LocalState): RuntimeTarget {
-  const names = resourceNames(state);
-  return {
-    name: names.sandbox,
-    image: state.input.runtimeImage,
-    cpu: state.input.cpu,
-    memory: state.input.memory,
-    volume: names.volume,
-    record: "runtime",
-    policy: "private/runtime-policy.json",
-    argv: ["/app/clawscarf/bin/openclaw", "gateway"],
-  };
-}
-function executionTarget(state: LocalState): RuntimeTarget | undefined {
-  const execution = state.input.execution;
-  if (!execution) return undefined;
-  const names = resourceNames(state);
-  return {
-    name: names.workerSandbox,
-    image: execution.image,
-    cpu: execution.cpu,
-    memory: execution.memory,
-    volume: names.workerVolume,
-    record: "execution",
-    policy: "private/execution-policy.json",
-    argv: [
-      "/usr/sbin/sshd",
-      "-D",
-      "-e",
-      "-f",
-      "/etc/ssh/clawscarf_sshd_config",
-      "-p",
-      String(execution.port),
-    ],
-  };
-}
-export function runtimeManager(
-  directory: string,
-  state: LocalState,
-  env: NodeJS.ProcessEnv,
-  command: Command,
-) {
-  return targetManager(directory, state, env, command, gatewayTarget(state));
-}
-
 /** Caller holds the installation lock. A persisted create intent is never blindly replayed. */
-async function ensureTarget(
+export async function ensureRuntime(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
-  command: Command,
-  configuration: RuntimeTarget,
+  command: Command = run,
 ): Promise<{ id: string; name: string; phase: string }> {
-  const control = targetManager(directory, state, env, command, configuration);
+  const control = runtimeManager(directory, state, env, command);
   const record = await control.recorded();
   let target = await control.observe();
   if (record.receipt && target?.id !== record.receipt.id) changed();
@@ -244,20 +187,20 @@ async function ensureTarget(
       "--name",
       control.name,
       "--from",
-      configuration.image,
+      state.input.runtimeImage,
       "--policy",
-      join(directory, configuration.policy),
+      join(directory, "private/runtime-policy.json"),
       "--cpu",
-      configuration.cpu,
+      state.input.cpu,
       "--memory",
-      configuration.memory,
+      state.input.memory,
       "--driver-config-json",
       JSON.stringify({
         docker: {
           mounts: [
             {
               type: "volume",
-              source: configuration.volume,
+              source: resourceNames(state).volume,
               target: "/home/node",
               read_only: false,
             },
@@ -274,7 +217,8 @@ async function ensureTarget(
       "--workspace",
       "default",
       "--",
-      ...configuration.argv,
+      "/app/clawscarf/bin/openclaw",
+      "gateway",
     ];
     // A failed response may follow successful allocation: reconcile observed identity only.
     try {
@@ -312,14 +256,13 @@ async function ensureTarget(
 }
 
 /** Native start/stop resolve names; identity checks detect replacement, not an atomic UUID precondition. */
-async function stopTarget(
+export async function stopRuntime(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
-  command: Command,
-  configuration: RuntimeTarget,
+  command: Command = run,
 ): Promise<void> {
-  const control = targetManager(directory, state, env, command, configuration);
+  const control = runtimeManager(directory, state, env, command);
   const record = await control.recorded();
   const target = await control.observe();
   if (!target) {
@@ -341,41 +284,4 @@ async function stopTarget(
       "runtime_stop_pending",
       "The runtime has not confirmed Stopped. Keep its controller running and inspect its state.",
     );
-}
-
-export async function ensureRuntime(
-  directory: string,
-  state: LocalState,
-  env: NodeJS.ProcessEnv,
-  command: Command = run,
-) {
-  return ensureTarget(directory, state, env, command, gatewayTarget(state));
-}
-export async function stopRuntime(
-  directory: string,
-  state: LocalState,
-  env: NodeJS.ProcessEnv,
-  command: Command = run,
-) {
-  return stopTarget(directory, state, env, command, gatewayTarget(state));
-}
-export async function ensureExecutionRuntime(
-  directory: string,
-  state: LocalState,
-  env: NodeJS.ProcessEnv,
-  command: Command = run,
-) {
-  const configuration = executionTarget(state);
-  if (!configuration) return undefined;
-  return ensureTarget(directory, state, env, command, configuration);
-}
-export async function stopExecutionRuntime(
-  directory: string,
-  state: LocalState,
-  env: NodeJS.ProcessEnv,
-  command: Command = run,
-): Promise<void> {
-  const configuration = executionTarget(state);
-  if (configuration)
-    await stopTarget(directory, state, env, command, configuration);
 }

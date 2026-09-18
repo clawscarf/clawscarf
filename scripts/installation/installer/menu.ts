@@ -77,8 +77,8 @@ export function installationMenu(
     row(
       "resources",
       "Resources",
-      `${config.resources.gateway.cpu} CPU / ${config.resources.gateway.memory} · ${config.resources.worker.cpu} CPU / ${config.resources.worker.memory}`,
-      "Gateway · protected worker",
+      `${config.resources.runtime.cpu} CPU / ${config.resources.runtime.memory}`,
+      "Protected team runtime",
     ),
     ...(browserAvailable
       ? [

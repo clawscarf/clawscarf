@@ -1,4 +1,7 @@
-import { openshellGatewayImage } from "../deployment/images.js";
+import {
+  openshellGatewayImage,
+  verifyRuntimeImage,
+} from "../deployment/images.js";
 import { run } from "../deployment/process.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 export async function doctorInstallation(configFile: string) {
@@ -11,8 +14,7 @@ export async function doctorInstallation(configFile: string) {
     openshellGatewayImage,
     resolved.input.companionImage,
     resolved.release.images.postgres,
-    resolved.release.images.worker,
-    resolved.release.images.relay,
+    ...(resolved.input.relayImage ? [resolved.input.relayImage] : []),
     ...(resolved.input.modelGateway ? [resolved.input.modelGateway.image] : []),
     ...(resolved.input.browser
       ? [
@@ -24,6 +26,7 @@ export async function doctorInstallation(configFile: string) {
       : []),
   ];
   for (const image of images) await run("docker", ["image", "inspect", image]);
+  await verifyRuntimeImage(resolved.input.runtimeImage);
   if (resolved.packSelection.python)
     await run(
       resolved.packSelection.python,

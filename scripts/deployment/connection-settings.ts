@@ -74,7 +74,7 @@ export async function applyConnectionSettings(
   if (loaded?.managementKey) config.services.companion.volumes.push(mount);
   await writePrivate(file, JSON.stringify(config));
   const rule =
-    initialRuntimePolicy("network_policies: {}", undefined, undefined, endpoint)
+    initialRuntimePolicy("network_policies: {}", undefined, endpoint)
       .network_policies.connections_broker ?? null;
   await writePrivate(
     join(directory, "private/connection-policy-change.json"),

@@ -53,7 +53,6 @@ export async function activatePacks(
       executable: state.input.openshellCli,
       python: selection.python,
       sandbox: gateway,
-      workerSandbox: resourceNames(state).workerSandbox,
       gateway,
       env: {
         ...process.env,

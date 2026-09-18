@@ -17,7 +17,7 @@ export const bundledLiteLlmSchema = z.strictObject({
   configurationFile: path,
   upstreamEnvironmentFile: path,
 });
-/** Product contract: protection and the shared worker are deliberately not selectable. */
+/** Product contract: the whole team runtime is always protected by OpenShell. */
 export const installationSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
@@ -58,7 +58,7 @@ export const installationSchema = z
         administratorEmail: z.email().optional(),
       }),
     ]),
-    resources: z.strictObject({ gateway: resources, worker: resources }),
+    resources: z.strictObject({ runtime: resources }),
     browser: z.strictObject({ enabled: z.boolean() }),
     models: z.discriminatedUnion("mode", [
       externalLiteLlmSchema,

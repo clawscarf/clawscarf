@@ -24,7 +24,6 @@ await test(
     assert.ok(sandbox);
     const options = {
       sandbox,
-      workerSandbox: process.env.CLAWSCARF_TEST_PACK_WORKER ?? "",
       gateway: process.env.CLAWSCARF_TEST_PACK_GATEWAY ?? "clawscarf",
       executable: process.env.CLAWSCARF_TEST_OPENSHELL ?? "openshell",
       python: process.env.CLAWSCARF_TEST_PACK_PYTHON ?? "python3",

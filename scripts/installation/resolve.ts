@@ -46,7 +46,7 @@ async function executable(path: string, checksum: string) {
   }
 }
 export async function allocatePorts() {
-  const servers = Array.from({ length: 8 }, () => createServer());
+  const servers = Array.from({ length: 7 }, () => createServer());
   try {
     const ports: number[] = [];
     for (const server of servers) {
@@ -110,7 +110,6 @@ export async function resolveInstallation(
     native,
     nativeWidgets,
     database,
-    worker,
     browser,
     models,
   ] = internalPorts;
@@ -136,12 +135,12 @@ export async function resolveInstallation(
     administratorName: access.administratorName,
     runtimeImage: release.images.gateway,
     companionImage: release.images.companion,
-    relayImage: release.images.relay,
+    ...(config.browser.enabled ? { relayImage: release.images.relay } : {}),
     openshellCli: cli,
     openshellGateway: gateway,
     openshellClientImage: release.images.openshellClient,
-    cpu: config.resources.gateway.cpu,
-    memory: config.resources.gateway.memory,
+    cpu: config.resources.runtime.cpu,
+    memory: config.resources.runtime.memory,
     ports: {
       controller,
       management,
@@ -156,11 +155,6 @@ export async function resolveInstallation(
         exposure.mode === "local"
           ? exposure.widgetPort
           : Number(new URL(exposure.widgetOrigin).port || "443"),
-    },
-    execution: {
-      image: release.images.worker,
-      port: worker,
-      ...config.resources.worker,
     },
     ...(config.browser.enabled
       ? {

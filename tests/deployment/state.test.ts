@@ -38,8 +38,7 @@ await test("local preparation retains private identity/secrets and rejects forei
     const directory = join(parent, "install");
     const state = await initializeState(directory, input);
     const names = resourceNames(state);
-    assert.notEqual(names.sandbox, names.workerSandbox);
-    for (const name of [names.sandbox, names.workerSandbox]) {
+    for (const name of [names.sandbox]) {
       assert.match(name, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
       assert.ok(
         name.length <= 19,

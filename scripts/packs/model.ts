@@ -44,7 +44,6 @@ export const targetSchema = z.discriminatedUnion("kind", [
     gateway: z.string().min(1),
     sandbox: z.string().min(1),
     sandboxId: z.uuid(),
-    worker: z.strictObject({ sandbox: z.string().min(1), sandboxId: z.uuid() }),
   }),
 ]);
 export type PackTarget = z.infer<typeof targetSchema>;

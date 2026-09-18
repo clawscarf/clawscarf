@@ -8,7 +8,6 @@ import { OpenShellClaws } from "../../scripts/packs/openshell.js";
 import { NativeClaws } from "../../scripts/packs/native.js";
 
 const gatewayId = "00000000-0000-4000-8000-000000000001";
-const workerId = "00000000-0000-4000-8000-000000000002";
 const requirement = {
   binary: "/usr/local/bin/node",
   host: "api.example.com",
@@ -22,7 +21,7 @@ async function fixture() {
   const executable = join(directory, "operator");
   const stateFile = join(directory, "state.json");
   const log = join(directory, "calls.jsonl");
-  const state = { gatewayId, workerId, workerHasBinary: true, permitted: true };
+  const state = { gatewayId, runtimeHasBinary: true, permitted: true };
   await writeFile(stateFile, JSON.stringify(state));
   await writeFile(log, "");
   await writeFile(
@@ -36,12 +35,12 @@ if(args[0].endsWith('.py')) {
  const request = JSON.parse(fs.readFileSync(0, 'utf8'));
  log({kind:'exec', sandboxId:request.sandboxId, command:request.command});
  if(request.command[0] === '/app/clawscarf/bin/openclaw') process.stdout.write('{}');
- else if(request.sandboxId !== state.workerId || !state.workerHasBinary) process.exit(1);
+ else if(request.sandboxId !== state.gatewayId || !state.runtimeHasBinary) process.exit(1);
 } else {
  log({kind:'cli', args});
  const name = args[2];
  if(args[0] === 'sandbox') process.stdout.write(JSON.stringify({
-  id:name === 'gateway' ? state.gatewayId : state.workerId,
+  id:state.gatewayId,
   name, phase:'Ready',current_policy_version:1
  }));
  else if(args.includes('--rev')) process.stdout.write(JSON.stringify({
@@ -59,7 +58,6 @@ if(args[0].endsWith('.py')) {
     executable,
     python: executable,
     sandbox: "gateway",
-    workerSandbox: "worker",
     gateway: "controller",
     env: { ...process.env, TARGET_STATE: stateFile, TARGET_LOG: log },
   };
@@ -87,28 +85,28 @@ if(args[0].endsWith('.py')) {
     close: () => rm(directory, { recursive: true, force: true }),
   };
 }
-await test("pack native calls use Gateway, execution checks and policy use worker", async () => {
+await test("pack native calls, binaries and policy use the same protected runtime", async () => {
   const f = await fixture();
   try {
     await f.native.run(["agents", "list", "--json"]);
     await f.native.binary("node");
     const proof = await f.native.network([requirement]);
-    assert.equal(proof?.sandboxId, workerId);
+    assert.equal(proof?.sandboxId, gatewayId);
     const calls = await f.calls();
     const executions = calls.filter((call) => call.kind === "exec");
     assert.deepEqual(
       executions.map((call) => call.sandboxId),
-      [gatewayId, workerId, workerId],
+      [gatewayId, gatewayId, gatewayId],
     );
     assert.ok(
       calls
         .filter((call) => call.args?.[0] === "policy")
-        .every((call) => call.args?.[2] === "worker"),
+        .every((call) => call.args?.[2] === "gateway"),
     );
-    f.state.workerHasBinary = false;
+    f.state.runtimeHasBinary = false;
     await f.save();
     await assert.rejects(f.native.binary("node"));
-    f.state.workerHasBinary = true;
+    f.state.runtimeHasBinary = true;
     f.state.permitted = false;
     await f.save();
     await assert.rejects(
@@ -119,31 +117,21 @@ await test("pack native calls use Gateway, execution checks and policy use worke
     await f.close();
   }
 });
-await test("pack targets pin both identities and reject shared or replaced workers", async () => {
+await test("pack targets pin the runtime identity and reject replacement", async () => {
   const f = await fixture();
   try {
     const first = await f.native.target();
     assert.equal(first.kind, "openshell");
     if (first.kind !== "openshell") throw Error("Expected protected target");
-    assert.equal(first.worker.sandboxId, workerId);
-    f.state.workerId = "00000000-0000-4000-8000-000000000003";
+    assert.equal(first.sandboxId, gatewayId);
+    f.state.gatewayId = "00000000-0000-4000-8000-000000000003";
     await f.save();
     await assert.rejects(f.native.target(), /identity changed/);
-    await assert.rejects(
-      new OpenShellClaws({ ...f.options, workerSandbox: "gateway" }).target(),
-      /separate sandboxes/,
-    );
-    f.state.workerId = gatewayId;
-    await f.save();
-    await assert.rejects(
-      new OpenShellClaws(f.options).target(),
-      /distinct identities/,
-    );
   } finally {
     await f.close();
   }
 });
-await test("local pack operators cannot substitute Gateway binary availability for worker proof", async () => {
+await test("local pack operators cannot substitute local binaries for protected runtime proof", async () => {
   await assert.rejects(
     new NativeClaws("unused").binary("node"),
     /operator-side verification/,

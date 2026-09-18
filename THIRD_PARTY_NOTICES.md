@@ -44,8 +44,7 @@ The runtime builds unmodified nftables 1.1.3 and libnftnl 1.2.9 from official
 archives. Their GNU GPL notices are retained in the image. The
 [network-tools recipe](deploy/images/network-tools/README.md) owns exact hashes,
 build options and the corresponding-source export required for binary releases.
-The separate [SSH worker](deploy/execution/worker/README.md) reuses that network
-payload and corresponding-source export. The [browser network](deploy/execution/network/README.md)
+The [browser network](deploy/execution/network/README.md)
 uses Squid (GPL-2.0-or-later) and HAProxy (GPL-2.0 with its OpenSSL exception); the relay retains HAProxy's license texts and Debian retains Squid copyright material. The [browser image](deploy/execution/browser/README.md#provenance)
 includes a Playwright-derived Apache-2.0 seccomp profile and MIT-licensed `httpxy`;
 their notices are retained beside the recipe and inside its image.

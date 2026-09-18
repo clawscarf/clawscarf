@@ -1,18 +1,15 @@
-import { runtimeRelayHost } from "./relay.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import type { InitialModels } from "./models.js";
 import type { InitialConnectionsEndpoint } from "./connections.js";
-import type { LocalInput } from "./configuration.js";
 import { LocalSetupError } from "./process.js";
 import { ensurePrivateFile } from "./state.js";
 
 export function initialRuntimePolicy(
   source: string,
   models: InitialModels | undefined,
-  execution?: LocalInput["execution"],
   connections?: InitialConnectionsEndpoint,
 ) {
   const document = parseDocument(source);
@@ -63,21 +60,6 @@ export function initialRuntimePolicy(
             },
           }
         : {}),
-      ...(execution
-        ? {
-            execution_worker: {
-              name: "Execution worker",
-              endpoints: [
-                {
-                  host: runtimeRelayHost,
-                  port: 2222,
-                  protocol: "tcp",
-                },
-              ],
-              binaries: [{ path: "/usr/bin/ssh" }],
-            },
-          }
-        : {}),
     },
   };
 }
@@ -85,7 +67,6 @@ export function initialRuntimePolicy(
 export async function prepareRuntimePolicy(
   directory: string,
   models: InitialModels | undefined,
-  execution: LocalInput["execution"],
   connections?: InitialConnectionsEndpoint,
 ) {
   const policy = initialRuntimePolicy(
@@ -94,7 +75,6 @@ export async function prepareRuntimePolicy(
       "utf8",
     ),
     models,
-    execution,
     connections,
   );
   await ensurePrivateFile(

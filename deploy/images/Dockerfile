@@ -62,15 +62,15 @@ USER root
 WORKDIR /build/runtime-tools
 COPY deploy/images/pack-tools/package*.json ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY runtime/private-files.ts runtime/models.ts runtime/models-main.ts runtime/model-contract.ts runtime/initialize.ts runtime/initialize-main.ts runtime/initialize-worker.ts runtime/initialize-worker-main.ts runtime/initialize-browser.ts runtime/initialize-browser-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/connections-configuration.ts runtime/configure-connections.ts runtime/configure-connections-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
-RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out models.ts models-main.ts model-contract.ts initialize.ts initialize-main.ts initialize-worker.ts initialize-worker-main.ts initialize-browser.ts initialize-browser-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts connections-configuration.ts configure-connections.ts configure-connections-main.ts start-gate.ts start-gate-main.ts
+COPY runtime/private-files.ts runtime/models.ts runtime/models-main.ts runtime/model-contract.ts runtime/initialize.ts runtime/initialize-main.ts runtime/initialize-browser.ts runtime/initialize-browser-main.ts runtime/trust.ts runtime/trust-main.ts runtime/connections-credential.ts runtime/connections-credential-main.ts runtime/connections-configuration.ts runtime/configure-connections.ts runtime/configure-connections-main.ts runtime/start-gate.ts runtime/start-gate-main.ts ./
+RUN ./node_modules/.bin/tsc --target ES2024 --module NodeNext --types node --strict --skipLibCheck --outDir /out models.ts models-main.ts model-contract.ts initialize.ts initialize-main.ts initialize-browser.ts initialize-browser-main.ts trust.ts trust-main.ts connections-credential.ts connections-credential-main.ts connections-configuration.ts configure-connections.ts configure-connections-main.ts start-gate.ts start-gate-main.ts
 
 FROM upstream
-LABEL io.clawscarf.start-gate="1"
+LABEL io.clawscarf.start-gate="1" io.clawscarf.execution-model="team-runtime"
 
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends iproute2=6.1.0-3 \
+    && apt-get install -y --no-install-recommends iproute2=6.1.0-3 python3=3.11.2-1+b1 \
        libmnl0=1.0.4-3 libgmp10=2:6.2.1+dfsg1-1.1 libjansson4=2.14-2 \
        chromium=152.0.7977.82-1~deb12u1 chromium-sandbox=152.0.7977.82-1~deb12u1 \
     && rm -rf /var/lib/apt/lists/* \
@@ -95,6 +95,8 @@ COPY --chmod=0755 runtime/packs.sh /app/clawscarf/bin/packs
 
 USER node
 ENV SQLITE_TMPDIR=/tmp
+# OpenShell reserves the image WORKDIR for its own mount. The Gateway launcher
+# enters the persistent native workspace after the supervisor has started.
 WORKDIR /workspace
 # OpenShell owns the outer container; probe Gateway inside its application namespace.
 HEALTHCHECK NONE

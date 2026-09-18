@@ -6,8 +6,7 @@ navigation passed locally. Ordinary model-selected browsing remains blocked by t
 [upstream routing bug](#upstream-browser-routing-bug), assigned to the owner separately.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
-controller **outside OpenShell**. The Gateway and SSH execution worker retain
-OpenShell. Chromium runs separately with its own sandbox and network boundary.
+controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
 This component does not run team shell commands or hold administrator credentials.
 It is not a replacement Gateway, browser server or per-person sandbox.
 
@@ -46,7 +45,7 @@ local execution denial and configuration, not on hiding that command inventory.
 Run as UID/GID 1000 with read-only root, all capabilities dropped,
 `no-new-privileges`, init, bounded memory/PIDs and a private `/tmp` tmpfs. Mount a
 private writable `/state` volume owned by UID 1000; it contains native device
-identity, device token and browser-control state. Mount no Gateway/worker files,
+identity, device token and browser-control state. Mount no team runtime files,
 controller sockets, host directories or shared provider credentials. Configuration
 and application files must never be writable by the node. A hostile container
 operator can replace those mounts or this image and is outside this boundary.
@@ -95,7 +94,7 @@ private machine ingress reachable only by this controller, forwarding vanilla
 WebSockets without injecting a user identity. Strip caller-supplied trusted-user
 and forwarding headers; any proxy attribution added by the ingress must reflect
 the actual trusted transport. Never expose raw Gateway access publicly alongside
-session-protected browser access. Gateway, SSH worker and Chromium must not be
+session-protected browser access. Gateway and Chromium must not be
 able to connect to that machine ingress.
 
 The node needs authenticated CDP reachability and DNS resolution for native public

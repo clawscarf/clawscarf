@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { composeConfiguration } from "../../scripts/deployment/compose.js";
 import { parseLocalInput } from "../../scripts/deployment/configuration.js";
-import { resourceNames } from "../../scripts/deployment/state.js";
 
 await test("controller authority stays outside the application and forwarding publishes only loopback", () => {
   const state = {
@@ -14,7 +13,6 @@ await test("controller authority stays outside the application and forwarding pu
       memory: "1Gi",
       name: "test",
       administratorName: "Owner",
-      relayImage: `sha256:${"e".repeat(64)}`,
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,
       openshellClientImage: `sha256:${"c".repeat(64)}`,
@@ -30,12 +28,6 @@ await test("controller authority stays outside the application and forwarding pu
         nativeWidgets: 18790,
         database: 15432,
       },
-      execution: {
-        image: `sha256:${"d".repeat(64)}`,
-        port: 17722,
-        cpu: "1",
-        memory: "1Gi",
-      },
     }),
   };
   const configuration = composeConfiguration(
@@ -44,9 +36,8 @@ await test("controller authority stays outside the application and forwarding pu
     undefined,
     "172.30.0.2",
   );
-  const { controller, application, widgets, execution } =
-    configuration.services;
-  assert.ok(execution);
+  const { controller, application, widgets } = configuration.services;
+  assert.equal("execution" in configuration.services, false);
   assert.ok(
     controller.volumes.includes("/var/run/docker.sock:/var/run/docker.sock"),
   );
@@ -55,7 +46,7 @@ await test("controller authority stays outside the application and forwarding pu
       "/private/team/controller:/private/team/controller",
     ),
   );
-  for (const forward of [application, widgets, execution]) {
+  for (const forward of [application, widgets]) {
     assert.deepEqual(forward.volumes, [
       "/private/team/controller/config:/controller/config:ro",
     ]);
@@ -66,7 +57,6 @@ await test("controller authority stays outside the application and forwarding pu
     assert.ok(!forward.command.includes("--gateway-insecure"));
     assert.equal(forward.read_only, true);
   }
-  assert.ok(execution.command.includes(resourceNames(state).workerSandbox));
   const sockets = Object.entries(configuration.services)
     .filter(([, service]) =>
       service.volumes.some((volume) => volume.includes("docker.sock")),

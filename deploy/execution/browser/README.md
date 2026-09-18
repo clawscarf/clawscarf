@@ -114,7 +114,7 @@ It used scoped node pairing, immutable command-execution denial and this isolate
 Chromium composition. Raising native execution approvals to full did not permit
 commands on that node. The trial used administrator-authorized native RPC; it is
 not a member-tool or production-assembly qualification. The browser controller in
-that candidate runs outside OpenShell, with the Gateway and execution worker still
+that candidate runs outside OpenShell, with the team runtime still
 inside OpenShell. A separate [private browser-node assembly](../browser-node/README.md)
 also passed private ingress and member/admin native tool calls with explicit node
 selection. The local operator enrolls that native node and Compose runs it;

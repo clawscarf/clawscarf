@@ -6,14 +6,13 @@ const imageId = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const containerId = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** Read actual Docker-driver identity/image/storage before admitting application access. */
-async function verifyBinding(
+export async function verifyRuntimeBinding(
   state: LocalState,
   target: { id: string; name: string },
-  command: typeof run,
-  expected: { name: string; image: string; volume: string },
+  command: typeof run = run,
 ) {
   const names = resourceNames(state);
-  if (target.name !== expected.name || !z.uuid().safeParse(target.id).success)
+  if (target.name !== names.sandbox || !z.uuid().safeParse(target.id).success)
     throw new LocalSetupError(
       "runtime_binding_changed",
       "The selected runtime does not belong to this installation.",
@@ -69,7 +68,7 @@ async function verifyBinding(
           "inspect",
           "--format",
           "{{.Id}}",
-          expected.image,
+          state.input.runtimeImage,
         ])
       ).trim(),
     );
@@ -95,7 +94,7 @@ async function verifyBinding(
         mount.Destination.startsWith("/home/node/"),
       ) ||
       home?.Type !== "volume" ||
-      home.Name !== expected.volume ||
+      home.Name !== names.volume ||
       !home.RW
     )
       changed();
@@ -111,12 +110,12 @@ async function verifyBinding(
             "inspect",
             "--format",
             '{"Name":{{json .Name}},"Labels":{{json .Labels}}}',
-            expected.volume,
+            names.volume,
           ]),
         ),
       );
     if (
-      volume.Name !== expected.volume ||
+      volume.Name !== names.volume ||
       volume.Labels?.["clawscarf.installation"] !== state.ownerId
     )
       changed();
@@ -139,31 +138,4 @@ function changed(): never {
     "runtime_binding_changed",
     "The runtime container, image or home volume differs from this installation. Inspect its ownership before continuing.",
   );
-}
-
-export async function verifyRuntimeBinding(
-  state: LocalState,
-  target: { id: string; name: string },
-  command: typeof run = run,
-) {
-  const names = resourceNames(state);
-  return verifyBinding(state, target, command, {
-    name: names.sandbox,
-    image: state.input.runtimeImage,
-    volume: names.volume,
-  });
-}
-export async function verifyExecutionBinding(
-  state: LocalState,
-  target: { id: string; name: string },
-  command: typeof run = run,
-) {
-  const execution = state.input.execution;
-  if (!execution) changed();
-  const names = resourceNames(state);
-  return verifyBinding(state, target, command, {
-    name: names.workerSandbox,
-    image: execution.image,
-    volume: names.workerVolume,
-  });
 }

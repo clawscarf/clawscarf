@@ -650,32 +650,6 @@ await test("runtime relay rejects changed network topology, IPAM or receipt inst
   assert.equal(f.creates.length, 4);
 });
 
-await test("execution-only relay reserves no browser network and reconciles lost allocation without replay", async (t) => {
-  const f = await fixture(t);
-  const configured: LocalState = {
-    ...state,
-    input: {
-      ...state.input,
-      relayImage: `sha256:${"d".repeat(64)}`,
-      execution: {
-        image: `sha256:${"c".repeat(64)}`,
-        port: 18803,
-        cpu: "1",
-        memory: "2Gi",
-      },
-    },
-  };
-  f.behavior.failure = "after";
-  await ensureLocalNetworks(f.directory, configured, f.command);
-  assert.deepEqual(f.creates, ["companion", "runtime"]);
-  assert.equal(
-    await observedRelayAddress(f.directory, configured, f.command),
-    "172.29.0.254",
-  );
-  await ensureLocalNetworks(f.directory, configured, f.command);
-  assert.equal(f.creates.length, 2);
-});
-
 await test("machine addresses are independently pinned and never reallocated after receipt drift", async (t) => {
   const f = await fixture(t);
   const configured = browserState();

@@ -1,4 +1,24 @@
 import components from "../../release/components.json" with { type: "json" };
+import { LocalSetupError, run } from "./process.js";
+
+/** Verify the runtime declares the packaged execution contract. */
+export async function verifyRuntimeImage(
+  image: string,
+  command: typeof run = run,
+) {
+  const model = await command("docker", [
+    "image",
+    "inspect",
+    "--format",
+    '{{index .Config.Labels "io.clawscarf.execution-model"}}',
+    image,
+  ]);
+  if (model.trim() !== "team-runtime")
+    throw new LocalSetupError(
+      "configuration_changed",
+      "Use a runtime image built for the team-runtime execution model. The selected image has not declared that contract.",
+    );
+}
 
 export const liteLlmImage =
   "ghcr.io/berriai/litellm:v1.100.1@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf";

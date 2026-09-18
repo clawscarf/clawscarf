@@ -18,4 +18,8 @@ if [ -n "$runtime_trust" ]; then
   export NODE_EXTRA_CA_CERTS
 fi
 unset runtime_trust
+if [ "${1:-}" = "gateway" ]; then
+  mkdir -p "$OPENCLAW_STATE_DIR/workspace"
+  cd "$OPENCLAW_STATE_DIR/workspace"
+fi
 exec /usr/local/bin/node /app/openclaw.mjs "$@"

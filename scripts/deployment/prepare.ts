@@ -1,4 +1,4 @@
-import { openshellGatewayImage } from "./images.js";
+import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import {
   prepareModelGateway,
@@ -14,11 +14,6 @@ import {
 import { prepareRelay } from "./relay.js";
 import { prepareRuntimePolicy } from "./policy.js";
 import { prepareBrowser, initializeBrowserVolume } from "./browser.js";
-import {
-  prepareExecution,
-  initializeExecutionVolume,
-  type InitialExecution,
-} from "./execution.js";
 import { readTeamMaterials, prepareTeamFiles } from "./team.js";
 import { readFile, lstat } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -74,7 +69,6 @@ export async function prepareLocal(
     input.companionImage,
     ...(input.modelGateway ? [input.modelGateway.image] : []),
     ...(input.relayImage ? [input.relayImage] : []),
-    ...(input.execution ? [input.execution.image] : []),
     ...(input.browser
       ? [
           input.browser.image,
@@ -85,6 +79,7 @@ export async function prepareLocal(
       : []),
   ])
     await run("docker", ["image", "inspect", image]);
+  await verifyRuntimeImage(input.runtimeImage);
   const state = await initializeState(directory, input);
   try {
     z.strictObject({ ownerId: z.literal(state.ownerId) }).parse(
@@ -112,7 +107,6 @@ export async function prepareLocal(
     connections,
   );
   await prepareModelGateway(directory, state);
-  const execution = await prepareExecution(directory, state);
   await ensureLocalNetworks(directory, state);
   const browser = await prepareBrowser(directory, state);
   const browserMachine = browser
@@ -125,10 +119,6 @@ export async function prepareLocal(
   await ensureOwnedVolume(names.volume, state.ownerId);
   if (input.modelGateway)
     await ensureOwnedVolume(`${names.project}-models`, state.ownerId);
-  if (execution) {
-    await ensureOwnedVolume(names.workerVolume, state.ownerId);
-    await initializeExecutionVolume(state, execution);
-  }
   if (browser) {
     await ensureOwnedVolume(names.browserVolume, state.ownerId);
     await initializeBrowserVolume(state, browser.token);
@@ -149,12 +139,7 @@ export async function prepareLocal(
   );
   await prepareModelCredential(directory, state);
   const models = await prepareInitialModels(directory, input.models);
-  await prepareRuntimePolicy(
-    directory,
-    models,
-    input.execution,
-    connectionsEndpoint,
-  );
+  await prepareRuntimePolicy(directory, models, connectionsEndpoint);
   await withPreparedDatabase(directory, state, async (pool, runtimeUrl) => {
     const store = new PostgresAccessStore(
       pool,
@@ -201,7 +186,6 @@ export async function prepareLocal(
     const configured = withInitialModels(generated.native, models);
     const native = JSON.stringify(
       withInitialServices(configured, {
-        execution: Boolean(input.execution),
         ...(connectionCredential
           ? { connectionsBrokerUrl: connectionCredential.brokerUrl }
           : {}),
@@ -220,7 +204,6 @@ export async function prepareLocal(
       native,
       identity.serverId,
       models?.credential,
-      execution,
       connectionCredential,
     );
     await writePrivate(
@@ -270,7 +253,6 @@ async function initializeNativeVolume(
   configuration: string,
   serverId: string,
   modelCredential: InitialModels["credential"] | undefined,
-  execution: InitialExecution | undefined,
   connectionsCredential?: { token: string; ca?: string | undefined },
 ) {
   await run(
@@ -305,14 +287,6 @@ async function initializeNativeVolume(
                 ...(connectionsCredential.ca
                   ? { ca: connectionsCredential.ca }
                   : {}),
-              },
-            }
-          : {}),
-        ...(execution
-          ? {
-              executionCredential: {
-                clientKey: execution.clientKey,
-                knownHosts: execution.knownHosts,
               },
             }
           : {}),

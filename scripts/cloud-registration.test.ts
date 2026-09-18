@@ -23,8 +23,7 @@ function configuration(cloudUrl: string) {
     exposure: { mode: "local", applicationPort: 18800, widgetPort: 18801 },
     access: { mode: "hosted", cloudUrl, administratorName: "Administrator" },
     resources: {
-      gateway: { cpu: "1", memory: "4Gi" },
-      worker: { cpu: "1", memory: "4Gi" },
+      runtime: { cpu: "1", memory: "4Gi" },
     },
     browser: { enabled: false },
     models: {

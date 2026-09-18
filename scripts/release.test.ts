@@ -42,9 +42,10 @@ await test("release bundles survive relocation without source files and reject m
       postgres: postgresImage,
       models: liteLlmImage,
       ...Object.fromEntries(
-        ["gateway", "worker", "companion", "relay", "openshellClient"].map(
-          (key) => [key, "sha256:" + "a".repeat(64)],
-        ),
+        ["gateway", "companion", "relay", "openshellClient"].map((key) => [
+          key,
+          "sha256:" + "a".repeat(64),
+        ]),
       ),
     },
     tools: { openshell: { version: "0.0.116", cli: "tool", gateway: "tool" } },

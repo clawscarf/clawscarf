@@ -62,7 +62,7 @@ async function installationStatus(directory: string) {
       ["running", "restarting", "paused"].includes(row.State),
     );
   const containersReady =
-    sandboxRows.length === 2 &&
+    sandboxRows.length === 1 &&
     sandboxRows.every((row) => row.State === "running") &&
     expected.every((name) =>
       rows.some(
@@ -124,13 +124,10 @@ export async function startInstallation(
   directory = resolve(directory);
   return withInstallationLock(directory, async () => {
     const state = await readState(directory);
-    if (
-      !state.input.execution ||
-      (!state.input.modelGateway && !state.input.models)
-    )
+    if (!state.input.modelGateway && !state.input.models)
       throw new InstallationError(
         "invalid_configuration",
-        "A protected worker and bundled or existing LiteLLM are required.",
+        "Bundled or existing LiteLLM is required.",
       );
     await launchLocal(directory, report, {
       activate: async () => {

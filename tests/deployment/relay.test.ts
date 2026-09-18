@@ -25,7 +25,7 @@ import {
 } from "../../scripts/deployment/state.js";
 import { LocalSetupError, type run } from "../../scripts/deployment/process.js";
 
-function state(execution = true, browser = true): LocalState {
+function state(browser = true): LocalState {
   return {
     schemaVersion: 1,
     ownerId: "00000000-0000-4000-8000-000000000001",
@@ -49,19 +49,7 @@ function state(execution = true, browser = true): LocalState {
         nativeWidgets: 17216,
         database: 17217,
       },
-      ...(execution || browser
-        ? { relayImage: `sha256:${"c".repeat(64)}` }
-        : {}),
-      ...(execution
-        ? {
-            execution: {
-              image: `sha256:${"d".repeat(64)}`,
-              port: 17218,
-              cpu: "1",
-              memory: "2Gi",
-            },
-          }
-        : {}),
+      ...(browser ? { relayImage: `sha256:${"c".repeat(64)}` } : {}),
       ...(browser
         ? {
             browser: {
@@ -148,12 +136,8 @@ async function fixture(t: TestContext) {
   return { directory, installation, command };
 }
 
-await test("relay binds SSH only on its runtime address and defines only the selected fixed TCP destinations", () => {
+await test("relay defines only the selected browser destination", () => {
   const both = relayConfiguration(state(), "10.76.2.30");
-  assert.match(
-    both,
-    /listen execution\n {2}bind 10\.76\.2\.30:2222\n {2}server worker host\.docker\.internal:17218 /,
-  );
   assert.match(
     both,
     /listen browser\n {2}bind :9223\n {2}server browser browser:9223 /,
@@ -164,11 +148,11 @@ await test("relay binds SSH only on its runtime address and defines only the sel
     /mode http|http-request|http-response|socks|forwardfor/i,
   );
   assert.doesNotMatch(
-    relayConfiguration(state(false, true), "10.76.2.30"),
+    relayConfiguration(state(true), "10.76.2.30"),
     /listen execution|:2222|host\.docker\.internal/,
   );
   assert.doesNotMatch(
-    relayConfiguration(state(true, false), "10.76.2.30"),
+    relayConfiguration(state(false), "10.76.2.30"),
     /listen browser|:9223/,
   );
   assert.throws(() =>
@@ -182,14 +166,10 @@ await test("relay preparation is optional and observes its owned runtime address
     throw Error("Unexpected Docker command");
   };
   assert.equal(
-    await prepareRelay("/does-not-exist", state(false, false), noCommand),
+    await prepareRelay("/does-not-exist", state(false), noCommand),
     undefined,
   );
-  await verifyRelayConfiguration(
-    "/does-not-exist",
-    state(false, false),
-    noCommand,
-  );
+  await verifyRelayConfiguration("/does-not-exist", state(false), noCommand);
   const previous = process.umask(0o077);
   try {
     assert.equal(
@@ -210,12 +190,15 @@ await test("relay preparation is optional and observes its owned runtime address
   }
 });
 
-await test("relay restart refuses broadened SSH binding or substituted configuration without repair", async (t) => {
+await test("relay restart refuses a substituted destination or substituted configuration without repair", async (t) => {
   const f = await fixture(t);
   await prepareRelay(f.directory, f.installation, f.command);
   const path = join(f.directory, "private/runtime-relay.cfg");
   const original = await readFile(path, "utf8");
-  const broadened = original.replace("bind 10.76.2.30:2222", "bind :2222");
+  const broadened = original.replace(
+    "server browser browser:9223",
+    "server browser other:9223",
+  );
   assert.notEqual(broadened, original);
   await chmod(path, 0o600);
   await writeFile(path, broadened);

@@ -200,9 +200,13 @@ async function fixture(t: TestContext) {
       });
     }
     if (args[0] === "image")
-      return args.includes('{{index .Config.Labels "io.clawscarf.start-gate"}}')
-        ? "1"
-        : (args.at(-1) ?? "");
+      return args.includes(
+        '{{index .Config.Labels "io.clawscarf.execution-model"}}',
+      )
+        ? "team-runtime"
+        : args.includes('{{index .Config.Labels "io.clawscarf.start-gate"}}')
+          ? "1"
+          : (args.at(-1) ?? "");
     if (args[0] === "volume")
       return JSON.stringify({
         Name: names.volume,

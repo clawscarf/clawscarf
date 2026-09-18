@@ -28,12 +28,12 @@ await test("native callbacks and generated links use the same public origin as b
   assert.deepEqual(config.gateway.controlUi.allowedOrigins, [publicOrigin]);
   assert.equal(config.mcp.apps.sandboxOrigin, input.widgetOrigin);
 });
-await test("initial admission is one explicit identity, with required member isolation", () => {
+await test("initial admission is one explicit identity, with native member scopes and shared runtime execution", () => {
   const config = initialConfiguration(input);
   assert.deepEqual(config.gateway.auth.trustedProxy.allowUsers, [
     input.administratorIdentity,
   ]);
-  assert.equal(config.gateway.roles.definitions.member.sandbox, "required");
+  assert.equal(config.gateway.roles.definitions.member.sandbox, "inherit");
   assert.equal(
     config.gateway.roles.definitions.member.scopes.includes("operator.admin"),
     false,

@@ -7,7 +7,7 @@ connection credentials and writable state are initialized separately.
 This commit fixes optional tool arguments on custom Responses routes. Its package
 version is still 2026.9.4; the source revision distinguishes it from the published image.
 Plugin build SDKs remain pinned to the published 2026.9.4 API. The optional browser
-node and worker network-build base retain their published image pins.
+node and network-build base retain their published image pins.
 OpenShell owns the runtime container. Its outer Docker health check is disabled;
 use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.
@@ -31,13 +31,6 @@ resulting exact runtime image ID/digest, never the mutable local build tag. This
 source pin is reproducible input selection, not a promise of bit-identical output:
 the upstream Dockerfile also resolves system packages at build time.
 
-Retained installations need upstream database migration when moving from the published
-2026.9.4 image to this revision. Stop the installation, preserve a private copy of its
-home volume, and run the new image's `openclaw doctor --fix --non-interactive` against
-that stopped volume before resuming. Review its configuration changes; Doctor also
-changes skill selections when dependencies are absent. The development upgrade
-preserved the previous selections. Replacing the image alone does not migrate sessions.
-
 The image includes:
 
 - The built [Connections plugin](../../plugins/connections/README.md), at
@@ -51,13 +44,9 @@ The image includes:
   used for Gateway startup and operator commands.
 - The [fresh-volume initializer](../../runtime/initialize.ts), with its compiled entry
   point `/app/clawscarf/initialize-main.js`, used only by operator setup. It atomically
-  initializes optional scoped model/Connections and worker-client credentials with native state,
+  initializes optional scoped model/Connections credentials with native state,
   makes a fresh home owner-only (0700), preserves existing owned configuration and
   rejects foreign state. Repeating initialization does not repair retained permissions.
-- The [worker-volume initializer](../../runtime/initialize-worker.ts), at
-  `/app/clawscarf/initialize-worker-main.js`, used by operator setup with only the
-  separate worker-home volume mounted. It installs that worker's host key and
-  client public key; no Gateway or controller authority enters the worker image.
 - The [browser-volume initializer](../../runtime/initialize-browser.ts), at
   `/app/clawscarf/initialize-browser-main.js`, used only on the separate owned
   browser volume. It retains profile state and verifies its private CDP identity.
@@ -78,6 +67,11 @@ The image includes:
   Its command is `node /app/dist/extensions/codex/node_modules/@openai/codex/bin/codex.js`.
 - The official Lobster plugin at
   `/app/clawscarf/native-plugins/node_modules/@openclaw/lobster`.
+- Upstream's bundled `document-extract` plugin and its `clawpdf` dependency for
+  native PDF extraction. They come from the pinned OpenClaw build; no separate
+  `clawpdf` CLI installation is required. A native allowlist must include
+  `document-extract` when PDF extraction is selected.
+- Debian Python 3, version 3.11.2-1+b1, for local code execution.
 - Debian Chromium and its sandbox helper, version 152.0.7977.82-1~deb12u1.
   The browser executable is `/usr/bin/chromium`.
 - OpenShell's iproute2 and [Netfilter dependencies](network-tools/README.md),
@@ -115,18 +109,21 @@ allowlist is used and enabled through `plugins.entries`. An explicit external
 Codex path would override the bundled plugin and lose its reserved command and
 native-compaction authority. Set `codex.config.sessionCatalog.enabled: false`
 inside its entry to omit local external-session browsing. Add `lobster` through
-`tools.alsoAllow` for an authorized unsandboxed context. These are runtime presets,
+`tools.alsoAllow` in the native local context, protected by outer OpenShell. These are runtime presets,
 not image mutations; preserve subsequent administrator changes.
 
-Lobster runs in the Gateway process and can execute shell pipeline steps with its
-environment. Its official factory returns no tool for a sandboxed agent context.
-Installing the package does not make it a sandboxed worker tool or establish
-per-member shell isolation. Do not bypass that native restriction.
+Lobster runs in the Gateway process; its shell pipeline children share the runtime
+filesystem and inherit outer OpenShell restrictions. Inner OpenClaw sandboxing is
+off in the fresh preset. Installing native plugins does not establish per-member
+isolation. Python 3 is included in the runtime image for local code execution;
+additional document CLIs/libraries belong in this image or a recipe-selected runtime
+image, not a separate worker.
+The image declares `io.clawscarf.execution-model=team-runtime`; preparation,
+startup, doctor and replacement verify this packaging contract.
 
 The selected [shared browser](../execution/browser/README.md) runs Chromium
 outside this Gateway image with its sandbox intact. [Local setup](../deployment/README.md#shared-browser)
-configures the native remote CDP profile, scoped network route and sandboxed-tool
-permission. Browser execution remains separate from Codex permissions and native
+configures the native remote CDP profile, scoped network route and browser node. Browser execution remains separate from Codex permissions and native
 shell placement. Installing Chromium in the Gateway image does not qualify
 launching it inside OpenShell; see the limits below.
 
@@ -154,6 +151,9 @@ docker run --rm --network none --read-only --tmpfs /tmp:rw,size=256m \
 
 This command uses no existing installation state and makes no provider calls. It
 does not run the OpenShell supervisor or qualify its execution boundary.
+The [native runtime test](../openshell/README.md#repeatable-boundary-and-retention-check)
+qualifies shared upload/file/shell/Lobster execution, PDF extraction and outer
+confinement with a deterministic model fixture inside the real supervisor.
 Codex model execution and its filesystem/network isolation still require runtime
 qualification; CLI startup is not evidence of those properties.
 
@@ -198,4 +198,4 @@ The image contains the checksum-pinned OpenShell 0.0.116 Linux CLI, OpenSSH and 
 `lsof` (BusyBox's implementation does not support OpenShell's port checks). It carries
 no credentials. Compose mounts only the installation's controller client configuration.
 The controller uses the upstream gateway image pinned in the [component manifest](../../release/components.json);
-the application and execution worker remain protected OpenShell containers.
+the team runtime remains a protected OpenShell container.

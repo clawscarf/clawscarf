@@ -3,7 +3,7 @@
 **OpenClaw for your team. On your terms.**
 
 ClawScarf packages vanilla [OpenClaw](https://github.com/openclaw/openclaw) with
-protected team login, isolated execution, LiteLLM models, optional Connections and
+protected team login, a confined team runtime, LiteLLM models, optional Connections and
 reusable agent packs. Run it on infrastructure you control.
 
 > **Developer preview.** OIDC login, model/tool use and retained-state restart
@@ -21,7 +21,7 @@ retained reconfiguration against the deployed cloud remain in [TODO](TODO.md).
 | Component                                                | Responsibility                                                                                                                                           |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Runtime](runtime/README.md)                             | Pinned vanilla OpenClaw, native defaults and persistent home. Agents, roles, conversations and configuration stay native.                                |
-| [OpenShell](deploy/openshell/README.md)                  | Externally controlled protection around the Gateway and separate [execution worker](deploy/execution/worker/README.md).                                  |
+| [OpenShell](deploy/openshell/README.md)                  | Externally controlled protection around the complete team runtime: Gateway, plugins, shell and local tools.                                              |
 | [Access](services/access/README.md)                      | Hosted login or generic company OIDC, enrollment, protected entry and session revocation.                                                                |
 | [Connections](services/connections/README.md) — optional | Account setup, agent grants and a small [search/describe/call plugin](plugins/connections/README.md). Cloud broker with installation-scoped credentials. |
 | [Models](deploy/models/README.md)                        | Existing LiteLLM or bundled LiteLLM; provider credentials stay outside OpenClaw.                                                                         |
@@ -29,16 +29,26 @@ retained reconfiguration against the deployed cloud remain in [TODO](TODO.md).
 
 Compose runs the OpenShell controller, forwarding services, the
 [companion](apps/companion/README.md), PostgreSQL and bundled LiteLLM. OpenShell owns
-the protected Gateway and execution worker containers. The CLI starts/stops this stack
+the protected team runtime container. The CLI starts/stops this stack
 and then exits; no host daemon or launchd registration is required. Access and the optional Connections management adapter run in the companion process. Connections can be omitted entirely. Its native
 plugin can also use an external broker. PostgreSQL stores identity/sessions and,
 when enabled, connection accounts; it does not duplicate native roles or pack state.
 
-One installation serves **one trusted team**. People have distinct native identities
-and roles; execution files and browser accounts may be shared. Different untrusted
-teams need separate installations. OpenShell does not make every permitted action
-safe or protect against the infrastructure administrator. Native plugins execute
-code; MCP and skill visibility are not universal authorization boundaries.
+One installation serves **one trusted team**. Gateway, native plugins, Lobster,
+ordinary shell commands and local tools run together inside the same OpenShell
+boundary. They share the persistent home filesystem. Default agent work happens
+in `/home/node/.openclaw/workspace`; other native agents can have their own
+workspaces on that filesystem. Browser accounts are shared through the separate
+browser service.
+
+People keep native identities and roles for ordinary application permissions.
+Anyone allowed to execute code must be trusted with Gateway authority, including
+its local configuration, sessions and runtime credentials. These roles do not
+isolate hostile teammates from administrators. OpenShell protects the surrounding
+host and services; Access, controller credentials, Docker authority, original
+model-provider keys and Connections management credentials stay outside. External
+revocation stops authenticated entry; it cannot undo a process or persistent change
+already made inside the runtime. Different untrusted teams need separate installations.
 
 ## Run the preview
 
@@ -56,10 +66,12 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 
 ## Current verification and limits
 
-- Administrator model responses and file tools passed. Native administrator
-  and member execution passed through the separate worker, including administrative
-  denial and forbidden network targets.
-- The rebuilt development images passed OIDC administrator setup, native Account/People
+- The single runtime passed native chat upload → file read → Python → Lobster,
+  PDF extraction, Lobster approval/resume, member permissions and persistent restart
+  with a deterministic model fixture. Shell and Lobster remained confined by
+  OpenShell. Reproduction and limits are in the
+  [OpenShell guide](deploy/openshell/README.md#repeatable-boundary-and-retention-check).
+- Prior component and assembly checks passed OIDC administrator setup, native Account/People
   pages and a direct OpenAI GPT-6 Astra response with medium reasoning and a tool call
   through LiteLLM Responses.
 - Fresh installer setup passed normal Docker networking, hosted account approval,
@@ -76,13 +88,17 @@ outbound traffic denied. That policy is not a blanket network policy for every c
   navigation and full stop/start with retained browser cookies passed.
   Member/administrator explicit-node browsing and revocation passed
   component acceptance. Ordinary model-selected browsing has an owner-managed upstream
-  routing bug. Gateway and worker retain OpenShell; Chromium retains its own sandbox.
+  routing bug. The team runtime retains OpenShell; Chromium retains its own sandbox.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
   tests. Changed-upstream-version upgrades, clean-machine release installation,
   Linux/WSL and automated backups are unfinished.
 
-[TODO.md](TODO.md) contains only open work and future decisions. Lobster and other
-optional capabilities are not release requirements. Vanilla ClawHub discovery stays.
+The complete installer/login/real-model journey has not been rerun with the single
+runtime. The native runtime check above is its current integration evidence.
+
+[TODO.md](TODO.md) contains only open work and future decisions. Native Lobster is
+a required capability. Built-in plugin/skill curation and removal of ClawHub mentions
+are a separate selected direction; this execution-model change does not implement them.
 
 ## Installation management
 
@@ -101,11 +117,12 @@ Administrators invite people using copyable links, assign native roles and remov
 The external Access companion enforces admission and revocation. Connections remains
 optional and renders its native page inside OpenClaw; its backend runs in the cloud.
 
-The unified product design fixes OpenShell Gateway protection, a separate protected
-shared worker and authenticated entry/admission/revocation. Recipes vary deployment
-settings and optional capabilities, not these protections. The current developer
-operator can omit the worker for component work; the unified CLI requires it. External
-access remains a proposed verified delegation, never anonymous entry.
+Every recipe retains the same outer protection and authenticated entry/admission/
+revocation. Recipes select resources, models and capabilities. CLI dependencies
+belong in the runtime image; a document recipe may eventually select an enriched
+image without introducing a second execution filesystem. Current recipes use one
+runtime image per release. External access remains a proposed verified delegation,
+never anonymous entry.
 
 OpenClaw retains its mutable application state. Applying selected installation
 settings must preserve unrelated native edits. External hosting must supply its own

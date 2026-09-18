@@ -11,10 +11,7 @@ import { EnrollmentService } from "../../services/access/service/enrollment.js";
 import { hash, token } from "../../services/access/service/session.js";
 import { isAccessDenied } from "../../services/access/providers/gateway.js";
 import { readState } from "../../scripts/deployment/state.js";
-import {
-  verifyExecutionBinding,
-  verifyRuntimeBinding,
-} from "../../scripts/deployment/runtime-binding.js";
+import { verifyRuntimeBinding } from "../../scripts/deployment/runtime-binding.js";
 import { run } from "../../scripts/deployment/process.js";
 
 const configPath = process.env.CLAWSCARF_NATIVE_TEST_CONFIG;
@@ -36,14 +33,14 @@ const proofSchema = z.object({
   uid: z.literal(1000),
   marker: z.string(),
   cwd: z.string(),
-  nativeConfigurationVisible: z.literal(false),
+  nativeConfigurationVisible: z.literal(true),
   endpoints: z
     .array(z.object({ name: z.string(), connected: z.literal(false) }))
-    .length(4),
+    .length(3),
 });
 
 await test(
-  "assembled native member and administrator tools use isolated runtimes",
+  "assembled native member and administrator tools share the protected team runtime",
   {
     skip: !executionEnabled && !browserEnabled,
     timeout: 600000,
@@ -54,21 +51,11 @@ await test(
       "Explicit native config, administrator session and installation directory are required",
     );
     const state = await readState(directory);
-    assert.ok(
-      state.input.execution,
-      "This test requires the assembled SSH execution worker",
-    );
     const gatewayReceipt = receiptSchema.parse(
       JSON.parse(await readFile(join(directory, "runtime.json"), "utf8")),
     );
-    const workerReceipt = receiptSchema.parse(
-      JSON.parse(await readFile(join(directory, "execution.json"), "utf8")),
-    );
     assert.equal(gatewayReceipt.ownerId, state.ownerId);
-    assert.equal(workerReceipt.ownerId, state.ownerId);
     const gatewayBinding = await verifyRuntimeBinding(state, gatewayReceipt);
-    const workerBinding = await verifyExecutionBinding(state, workerReceipt);
-    assert.notEqual(workerBinding.containerId, gatewayBinding.containerId);
     const config = await readConfiguration(configPath);
     const app = await composeAccess(config);
     const actor = await app.access.authenticate(
@@ -328,11 +315,6 @@ await test(
         if (!executionEnabled) continue;
         const endpoints = [
           {
-            name: "gateway-loopback",
-            host: "127.0.0.1",
-            port: state.input.ports.native,
-          },
-          {
             name: "gateway-host",
             host: "host.docker.internal",
             port: state.input.ports.native,
@@ -344,7 +326,7 @@ await test(
           },
           { name: "undeclared-public-egress", host: "1.1.1.1", port: 443 },
         ];
-        const script = `import os,json,socket,pathlib\n${probe.kind === "member" ? `pathlib.Path(${JSON.stringify(toolFile)}).write_text(${JSON.stringify(nonce)})\n` : ""}result={'nonce':${JSON.stringify(nonce)},'uid':os.getuid(),'cwd':str(pathlib.Path.cwd()),'marker':${JSON.stringify(proofPath)},'nativeConfigurationVisible':pathlib.Path('/home/node/.openclaw/openclaw.json').exists(),'endpoints':[]}\nfor endpoint in json.loads(${JSON.stringify(JSON.stringify(endpoints))}):\n try:\n  connection=socket.create_connection((endpoint['host'],endpoint['port']),timeout=2);connection.close();connected=True\n except OSError:\n  connected=False\n result['endpoints'].append({'name':endpoint['name'],'connected':connected})\npathlib.Path(${JSON.stringify(proofPath)}).write_text(json.dumps(result))\nprint(pathlib.Path(${JSON.stringify(proofPath)}).read_text())\n`;
+        const script = `import os,json,socket,pathlib\n${probe.kind === "member" ? `pathlib.Path(${JSON.stringify(toolFile)}).write_text(${JSON.stringify(nonce)})\n` : ""}result={'nonce':${JSON.stringify(nonce)},'uid':os.getuid(),'cwd':str(pathlib.Path.cwd()),'marker':${JSON.stringify(proofPath)},'nativeConfigurationVisible':pathlib.Path('/home/node/.openclaw/clawscarf-installation.json').exists(),'endpoints':[]}\nfor endpoint in json.loads(${JSON.stringify(JSON.stringify(endpoints))}):\n try:\n  connection=socket.create_connection((endpoint['host'],endpoint['port']),timeout=2);connection.close();connected=True\n except OSError:\n  connected=False\n result['endpoints'].append({'name':endpoint['name'],'connected':connected})\npathlib.Path(${JSON.stringify(proofPath)}).write_text(json.dumps(result))\nprint(pathlib.Path(${JSON.stringify(proofPath)}).read_text())\n`;
         await run(
           "docker",
           [
@@ -352,7 +334,7 @@ await test(
             "--user",
             "1000:1000",
             "-i",
-            workerBinding.containerId,
+            gatewayBinding.containerId,
             "python3",
             "-c",
             "import pathlib,sys;p=pathlib.Path(sys.argv[1]);p.write_text(sys.stdin.read());p.chmod(0o600)",
@@ -361,11 +343,8 @@ await test(
           { input: script },
         );
         const command = `python3 ${scriptPath}`;
-        const fileInstructions =
-          probe.kind === "administrator"
-            ? `First create the relative file ${toolFile} containing exactly ${nonce} and read it back, using the available native file tools or exec. Then run the command.`
-            : `Run the command first; it creates your own scratch file ${toolFile}. Then read that relative file back with the available native read tool or exec. Your native member sandbox has no write/edit tools; do not request those tools or change permissions.`;
-        const prompt = `Perform this bounded installation acceptance test using your actual tools. ${fileInstructions} The operator has placed the nonce-scoped probe script on your execution worker. Run this exact command once with exec (do not change it, use host sandbox, and do not request elevated access):\n${command}\nThe command only writes its unique test files and checks four TCP connection outcomes. Do not make other network requests or inspect credentials. Report failures truthfully. Do not substitute a claim or a manually fabricated JSON result for execution.`;
+        const fileInstructions = `Create the relative file ${toolFile} containing exactly ${nonce} and read it back using the native file tools. Then run the command.`;
+        const prompt = `Perform this bounded installation acceptance test using your actual tools. ${fileInstructions} The operator has placed the nonce-scoped probe script in your team runtime. Run this exact command once with exec (use host gateway, do not request elevated access):\n${command}\nThe command only writes its unique test files and checks three TCP connection outcomes. Do not make other network requests or inspect credentials. Report failures truthfully. Do not change configuration or permissions.`;
         const history = await chat(probe.gateway, session.key, prompt);
         const calls = toolCalls(history);
         assert.ok(
@@ -404,17 +383,11 @@ await test(
           ),
           "A native file read must return the nonce, not just an assistant assertion",
         );
-        if (probe.kind === "member") {
-          assert.equal(
-            calls.some((call) => ["write", "edit"].includes(call.name)),
-            false,
-          );
-        }
         const proof = proofSchema.parse(
           JSON.parse(
             await run("docker", [
               "exec",
-              workerBinding.containerId,
+              gatewayBinding.containerId,
               "cat",
               proofPath,
             ]),
@@ -426,16 +399,16 @@ await test(
           proof.endpoints.map((endpoint) => endpoint.name),
           endpoints.map((endpoint) => endpoint.name),
         );
-        assert.match(proof.cwd, /^\/home\/node\/sandboxes\//);
+        assert.equal(proof.cwd, "/home/node/.openclaw/workspace");
         assert.equal(
           await run("docker", [
             "exec",
-            workerBinding.containerId,
+            gatewayBinding.containerId,
             "cat",
             join(proof.cwd, toolFile),
           ]),
           nonce,
-          "The native tool file must exist with the exact content in the worker",
+          "The native tool file must exist with the exact content in the runtime",
         );
         assert.equal(
           (
@@ -448,11 +421,11 @@ await test(
               proofPath,
             ])
           ).trim(),
-          "false",
-          "The execution marker must not be on the Gateway",
+          "true",
+          "The execution marker must be on the Gateway filesystem",
         );
         t.diagnostic(
-          `${probe.kind}: native tools used the owned UID1000 SSH worker; all four forbidden TCP destinations failed.`,
+          `${probe.kind}: native tools used the owned UID1000 runtime; all three forbidden TCP destinations failed.`,
         );
       }
       t.diagnostic(
@@ -511,7 +484,7 @@ await test(
       try {
         await run("docker", [
           "exec",
-          workerBinding.containerId,
+          gatewayBinding.containerId,
           "python3",
           "-c",
           "import pathlib,sys;root=pathlib.Path('/home/node');[(p.unlink()) for name in sys.argv[1:] for p in root.rglob(name) if p.is_file()]",

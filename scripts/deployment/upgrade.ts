@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { verifyRuntimeImage } from "./images.js";
 import { mkdtemp, writeFile, rm, chmod } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +41,7 @@ export async function upgradeLocal(
   const directory = resolve(directoryInput);
   await withInstallationLock(directory, async () => {
     const state = await readState(directory);
+    await verifyRuntimeImage(image, command);
     const next = {
       ...state,
       input: parseLocalInput({ ...state.input, runtimeImage: image }),

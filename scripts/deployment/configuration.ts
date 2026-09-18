@@ -176,7 +176,6 @@ export const localInput = z
       .optional(),
     cpu,
     memory,
-    execution: z.strictObject({ image, port, cpu, memory }).optional(),
     relayImage: image.optional(),
     browser: z
       .strictObject({
@@ -192,37 +191,24 @@ export const localInput = z
     if (
       value.modelGateway &&
       (!value.models ||
-        [
-          ...Object.values(value.ports),
-          value.execution?.port,
-          value.browser?.port,
-        ].includes(value.modelGateway.port))
+        [...Object.values(value.ports), value.browser?.port].includes(
+          value.modelGateway.port,
+        ))
     )
       ctx.addIssue({
         code: "custom",
         message:
           "The model gateway requires native model configuration and a distinct port.",
       });
-    if (Boolean(value.relayImage) !== Boolean(value.execution || value.browser))
+    if (Boolean(value.relayImage) !== Boolean(value.browser))
       ctx.addIssue({
         code: "custom",
         path: ["relayImage"],
-        message:
-          "Supply the relay image exactly when an execution worker or browser is configured.",
-      });
-    if (
-      value.execution &&
-      Object.values(value.ports).includes(value.execution.port)
-    )
-      ctx.addIssue({
-        code: "custom",
-        path: ["execution", "port"],
-        message: "The execution worker needs a distinct port.",
+        message: "Supply the relay image exactly when a browser is configured.",
       });
     if (
       value.browser &&
-      (Object.values(value.ports).includes(value.browser.port) ||
-        value.execution?.port === value.browser.port)
+      Object.values(value.ports).includes(value.browser.port)
     )
       ctx.addIssue({
         code: "custom",

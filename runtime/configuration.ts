@@ -77,9 +77,15 @@ export function initialConfiguration(
             agents: "*",
             scopes: ["operator.read", "operator.write", "operator.talk"],
             sessions: { others: "none" },
-            sandbox: "required",
+            sandbox: "inherit",
           },
         },
+      },
+    },
+    agents: {
+      defaults: {
+        workspace: "/home/node/.openclaw/workspace",
+        sandbox: { mode: "off" },
       },
     },
     plugins: {
@@ -128,7 +134,7 @@ export function initialConfiguration(
     },
     tools: {
       alsoAllow: ["lobster"],
-      exec: { mode: "auto" },
+      exec: { host: "gateway", mode: "auto" },
       sessions: { visibility: "self" },
       elevated: { enabled: false },
     },

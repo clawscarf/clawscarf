@@ -1,12 +1,11 @@
-# Execution network
+# Browser network
 
 The [browser](../browser/README.md) runs on a Docker internal bridge with
 `com.docker.network.bridge.gateway_mode_ipv4=isolated`. It has no default route
 or host port publication. Two maintained proxies provide separate paths:
 
-- HAProxy forwards native TCP to fixed worker/browser upstreams. Native SSH
-  retains host-key and client-key authentication; the browser retains CDP token
-  authentication. The relay has no admin listener, credentials or generic
+- HAProxy forwards native TCP to the fixed browser upstream. The browser retains
+  CDP token authentication. The relay has no admin listener, credentials or generic
   forward-proxy capability. It does not parse or translate native protocols.
 - [Squid](squid.conf) accepts only the browser's exact source address and permits
   public HTTP on port 80 and HTTPS CONNECT on port 443. Destination ACLs require
@@ -24,31 +23,27 @@ execute with Gateway authority and are outside the browser boundary.
 The composition owns a nonoverlapping private IPv4 subnet, static browser address,
 private profile/token volumes and lifecycle. Required service wiring:
 
-| Service       | Networks                                                              | Listener                   | Runtime configuration                                                                                |
-| ------------- | --------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Browser       | Isolated browser network only; alias `browser`                        | 9223                       | `CLAWSCARF_BROWSER_PROXY_SERVER=http://browser-egress:3128`; existing browser token/profile settings |
-| Egress        | Isolated browser network plus outbound bridge; alias `browser-egress` | 3128, unpublished          | Read-only `/etc/squid/browser-source.acl`, containing the browser's exact IPv4 `/32`                 |
-| Runtime relay | Owned runtime network; also isolated browser network when enabled     | 2222 for SSH, 9223 for CDP | Read-only generated `/usr/local/etc/haproxy/haproxy.cfg`; alias `runtime.clawscarf.internal`         |
+| Service       | Networks                                                              | Listener          | Runtime configuration                                                                                |
+| ------------- | --------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Browser       | Isolated browser network only; alias `browser`                        | 9223              | `CLAWSCARF_BROWSER_PROXY_SERVER=http://browser-egress:3128`; existing browser token/profile settings |
+| Egress        | Isolated browser network plus outbound bridge; alias `browser-egress` | 3128, unpublished | Read-only `/etc/squid/browser-source.acl`, containing the browser's exact IPv4 `/32`                 |
+| Runtime relay | Owned runtime network; also isolated browser network when enabled     | 9223 for CDP      | Read-only generated `/usr/local/etc/haproxy/haproxy.cfg`; alias `runtime.clawscarf.internal`         |
 
-The relay binds SSH **only to its runtime-network address**, never its
-browser-network address. Its sole SSH upstream is
-`host.docker.internal:<operator-owned-worker-forward-port>`. Browser traffic has
-one upstream, `browser:9223`; only CDP is published on operator loopback for
-readiness. Disabled capabilities have no listener. No relay service is needed
-when both capabilities are disabled. The relay never joins the companion network.
+The relay has one upstream, `browser:9223`; CDP is published on operator loopback
+for readiness. No relay service is needed when the browser is disabled. The relay
+never joins the companion network and has no worker/SSH listener.
 
 The generated configuration uses native Docker DNS resolution (`127.0.0.11:53`)
 with `resolvers` and `init-addr libc,none` for the browser backend, allowing the
 browser container to start later or change address. Fixed listeners do not accept
-a destination from clients. SSH and CDP byte streams pass through unchanged.
+a destination from clients. CDP byte streams pass through unchanged.
 OpenShell policies target the ordinary relay DNS name and exact listener port;
 policy DNS supplies synthetic addresses and enforces the native caller binary.
 Reserved Docker host aliases are not used as native client targets.
 
 The browser must not attach to another network. IPv6 is disabled on the
 browser network; the Squid IPv6 ACL also filters destinations resolved by the
-proxy. Browser traffic cannot reach the SSH listener, even through the relay's
-browser-facing address.
+proxy.
 
 Both proxy containers run nonroot, read-only, with all capabilities dropped,
 `no-new-privileges` and a private writable `/tmp` tmpfs. Set bounded CPU, memory
@@ -112,10 +107,10 @@ The composition must supply these operator-owned settings:
 - Native `gateway.nodes.pairing.autoApproveLocal: false`, without trusted-CIDR
   auto-approval. Forwarding to loopback must not create pairing authority.
 
-The listener must not bind the Chromium, worker or application-facing network.
+The listener must not bind the Chromium or application-facing network.
 The operator gives ingress a separate internal machine interface and an upstream
 network attachment; it binds only the machine address and publishes no port.
-Gateway and worker OpenShell policy must deny this machine listener. The native
+Team runtime OpenShell policy must deny this machine listener. The native
 paired-node credential authorizes the connection; network placement alone does not.
 
 The [ingress regression](../../../tests/runtime/machine-ingress.test.ts) passed TLS,

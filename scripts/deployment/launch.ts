@@ -1,9 +1,9 @@
 import { applyConnectionPolicy } from "./connection-policy.js";
+import { verifyRuntimeImage } from "./images.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
 import { verifyBrowserNode } from "./browser-node.js";
 import { verifyRelayConfiguration } from "./relay.js";
 import { requireNoConnectionsChange } from "./connections-runtime.js";
-import { verifyExecutionListener } from "./execution.js";
 import {
   verifyBrowserListener,
   verifyBrowserConfiguration,
@@ -16,18 +16,10 @@ import { z } from "zod";
 import { readState, resourceNames } from "./state.js";
 import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
-import {
-  ensureRuntime,
-  stopRuntime,
-  ensureExecutionRuntime,
-  stopExecutionRuntime,
-} from "./runtime.js";
+import { ensureRuntime, stopRuntime } from "./runtime.js";
 import { LocalSetupError, run } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
-import {
-  verifyRuntimeBinding,
-  verifyExecutionBinding,
-} from "./runtime-binding.js";
+import { verifyRuntimeBinding } from "./runtime-binding.js";
 import { requireNoUpgrade } from "./upgrade-state.js";
 
 /** Internal operation: the caller holds the installation lock for its full lifetime. */
@@ -59,6 +51,7 @@ export async function launchLocal(
   const name = resourceNames(state).sandbox;
   await requireNoUpgrade(directory);
   await requireNoConnectionsChange(directory, state.ownerId);
+  await verifyRuntimeImage(state.input.runtimeImage);
   await verifyLocalExecutables(state);
   await verifyLocalPorts(state);
   await verifyLocalNetworks(directory, state);
@@ -125,22 +118,9 @@ export async function launchLocal(
       ]);
       check();
     }
-    if (state.input.execution) {
-      report("Starting execution worker…");
-      const execution = await ensureExecutionRuntime(directory, state, env);
-      if (!execution)
-        throw new LocalSetupError(
-          "configuration_changed",
-          "The execution worker is not configured.",
-        );
-      await compose(directory, ["up", "-d", "execution"]);
-      const port = state.input.execution.port;
-      await waitFor(() => verifyExecutionListener(directory, port));
-      await verifyExecutionBinding(state, execution);
-    }
     if (state.input.relayImage) {
-      report("Starting execution relay…");
-      await compose(directory, ["up", "-d", "execution-relay"]);
+      report("Starting browser relay…");
+      await compose(directory, ["up", "-d", "browser-relay"]);
       if (state.input.browser) {
         const browserPort = state.input.browser.port;
         await waitFor(() => verifyBrowserListener(directory, browserPort));
@@ -203,7 +183,6 @@ export async function stopLocal(directory: string) {
     "companion",
     "application",
     "widgets",
-    ...(state.input.execution ? ["execution"] : []),
     ...(state.input.browser
       ? ["browser-node", "browser-node-ingress", "browser-node-dns"]
       : []),
@@ -232,6 +211,5 @@ export async function stopLocal(directory: string) {
     }
   }
   await stopRuntime(directory, state, env);
-  await stopExecutionRuntime(directory, state, env);
   await compose(directory, ["stop"]);
 }

@@ -25,10 +25,12 @@
   Presets apply once; refresh observes. Explicit reapplication confirms selected changes
   and preserves unrelated edits. No duplicate role database or replacement dashboard.
 - One installation serves one trusted team with separate native identities/roles and
-  shared execution files/browser accounts. OpenShell protects the Gateway and separate
-  shared worker under external control. These protections and authenticated entry,
+  shared execution files/browser accounts. OpenShell protects the whole team runtime
+  (Gateway, native plugins, shell and local tools) under external control. Code execution
+  is trusted with Gateway authority; native roles are application controls, not isolation
+  from other team members or administrators. Outer protection and authenticated entry,
   admission and revocation are mandatory, including in recipes. Unsupported combinations
-  fail visibly. Containers and visible tools do not imply hostile-tenant isolation.
+  fail visibly. Maintain only this execution model; no legacy worker or migration path.
 - Ingress owns entry and revocation; OpenClaw owns application permissions and execution.
   Do not filter native RPC methods or disconnect valid streams on a timer. Preserve
   identity freshness, effective native authority and last-administrator protection.

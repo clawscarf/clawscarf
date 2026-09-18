@@ -7,22 +7,20 @@ export async function collectResources(
   ui: InstallerPrompts,
   current: InstallationConfiguration["resources"],
 ) {
-  const resources = structuredClone(current);
-  for (const component of ["gateway", "worker"] as const) {
-    resources[component] = {
+  return {
+    runtime: {
       cpu: await field(
         ui,
-        `${component} CPUs`,
+        "Runtime CPUs",
         localInput.shape.cpu,
-        current[component].cpu,
+        current.runtime.cpu,
       ),
       memory: await field(
         ui,
-        `${component} memory`,
+        "Runtime memory",
         localInput.shape.memory,
-        current[component].memory,
+        current.runtime.memory,
       ),
-    };
-  }
-  return resources;
+    },
+  };
 }

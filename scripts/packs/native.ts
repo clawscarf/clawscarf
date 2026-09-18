@@ -18,7 +18,7 @@ export class NativeClaws {
   binary(name: string): Promise<void> {
     return Promise.reject(
       new Error(
-        `Required binary ${name} needs operator-side verification on the execution worker.`,
+        `Required binary ${name} needs operator-side verification on the team runtime.`,
       ),
     );
   }

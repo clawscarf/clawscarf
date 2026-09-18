@@ -1,7 +1,7 @@
 # Unified installation CLI
 
 The unified CLI composes the existing [deployment operators](README.md). It requires
-OpenShell, the protected shared worker and authenticated entry. The current target
+OpenShell protection around the complete team runtime and authenticated entry. The current target
 is macOS arm64 with Docker Desktop. Published downloads remain unfinished. The
 terminal installer covers initial setup. Required LiteLLM, optional Connections and pack selections
 are wired into initial preparation and startup.
@@ -21,8 +21,10 @@ There is no token-only fallback when cloud configuration is missing.
 A fresh team installation passed normal Docker network allocation, persistent startup,
 private first-administrator setup through local Dex, native browser login and a GPT-6
 Astra response through the configured model gateway. Closing the initiating command
-left the server running. Earlier retained-state checks also preserved native appearance,
-worker files and revoked credentials across stop/start.
+left the server running. The current single-runtime image separately passed native
+uploads, file tools, Python, Lobster, PDF extraction and persistent restart through
+the [runtime acceptance test](../openshell/README.md#repeatable-boundary-and-retention-check).
+The complete installer/login/real-model journey has not been rerun with this image.
 
 These are local macOS arm64 checks, not a published-release or public deployment test.
 Real Outlook linking, reconnect, execution and revocation passed with the local cloud
@@ -192,8 +194,7 @@ files must be regular, private files owned by the operator. A minimal example:
   },
   "access": { "mode": "hosted", "administratorName": "Administrator" },
   "resources": {
-    "gateway": { "cpu": "2", "memory": "2Gi" },
-    "worker": { "cpu": "2", "memory": "2Gi" }
+    "runtime": { "cpu": "4", "memory": "4Gi" }
   },
   "browser": { "enabled": false },
   "models": {
@@ -300,7 +301,7 @@ creates no Connections database schema and exposes no connector tools.
 - `{"mode":"litellm","configurationFile":"routes.json","upstreamEnvironmentFile":"secrets/providers.env"}`
   starts the pinned LiteLLM image and its own PostgreSQL service/volume. The operator
   creates private TLS and a scoped inference key. Only that runtime key reaches OpenClaw.
-  Upstream keys and LiteLLM administration remain outside Gateway/worker state.
+  Upstream keys and LiteLLM administration remain outside runtime state.
 
 The bundled route file contains `defaultModel`, `models` and optional `thinkingDefault`; it has no endpoint or
 mode field because the operator allocates the private endpoint. For example:
@@ -487,7 +488,7 @@ Verification: a real stopped macOS arm64 installation accepted a new model ID/de
 and reasoning setting while retaining its existing LiteLLM key. Native Connections
 enable/disable and pack add/update/remove have regression coverage. Connections
 enable/disable/re-enable and pack installation also passed with the protected Gateway
-and worker running. Native removal of that pack was correctly blocked by an attached
+running on the previous execution model. Native removal of that pack was correctly blocked by an attached
 `skill-collection-review` job: the CLI could not authenticate to the serving Gateway
 to establish ownership. Pack removal in this trusted-proxy setup therefore remains
 a live limitation; the operator leaves the agent intact and reports `blocked`. These

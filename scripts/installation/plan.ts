@@ -19,7 +19,7 @@ export const planSchema = z.strictObject({
   stateDirectory: z.string(),
   fingerprint: z.string(),
   observedState: z.string().nullable(),
-  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(8),
+  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(7),
   action: z.enum(["prepare", "resume"]),
   release: z.string(),
   browser: z.boolean(),
@@ -57,7 +57,6 @@ export async function planInstallation(configFile: string) {
         input.ports.native,
         input.ports.nativeWidgets,
         input.ports.database,
-        input.execution?.port ?? 0,
         input.browser?.port ?? 65534,
         input.modelGateway?.port ?? 65533,
       ]
