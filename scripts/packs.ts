@@ -9,7 +9,10 @@ await new Command("clawscarf-packs")
   .action(async (directory: string) => {
     console.log(
       JSON.stringify(
-        await inspectPack(directory, new NativeClaws("openclaw", false)),
+        await inspectPack(
+          directory,
+          new NativeClaws("/app/clawscarf/bin/openclaw", false),
+        ),
       ),
     );
   })

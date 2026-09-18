@@ -216,7 +216,7 @@ The server must stop. Pack changes finish at the next start.`,
         ? true
         : await ui.confirm("Start with these settings?", true))
     ) {
-      return task("Starting ClawScarf", (_signal, report) =>
+      return await task("Starting ClawScarf", (_signal, report) =>
         startInstallation(directory, report),
       );
     }

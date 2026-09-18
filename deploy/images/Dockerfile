@@ -50,7 +50,7 @@ USER root
 WORKDIR /build/pack-tools
 COPY deploy/images/pack-tools/ ./
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
-COPY scripts/packs.ts scripts/output.ts ./scripts/
+COPY scripts/packs.ts scripts/errors.ts ./scripts/
 COPY scripts/packs/ ./scripts/packs/
 COPY services/connections/cloud/generated/ ./services/connections/cloud/generated/
 COPY generated/http/ ./generated/http/

@@ -1565,30 +1565,33 @@ await test(
       await import("./installation/installer/prompts.js");
     let authorized = false;
     const operators: NonNullable<Parameters<typeof installFromAnswers>[2]> = {
-      register: async () => {
+      register: () => {
         if (!authorized)
           throw new CloudAuthorizationRequired({
             url: "https://cloud.example.test/setup?code=TEST-TEST",
             expiresAt: new Date(Date.now() + 60000).toISOString(),
             retryAfterSeconds: 5,
           });
+        return Promise.resolve();
       },
       plan: planInstallation,
-      doctor: async () => ({
-        state: "prerequisites_available",
-        platform: "darwin-arm64",
-        release: "0.1.0-dev",
-        images: 0,
-      }),
-      apply: async () => ({
-        state: "prepared",
-        directory: f.directory,
-        release: "0.1.0-dev",
-      }),
-      start: async () => {
+      doctor: () =>
+        Promise.resolve({
+          state: "prerequisites_available",
+          platform: "darwin-arm64",
+          release: "0.1.0-dev",
+          images: 0,
+        }),
+      apply: () =>
+        Promise.resolve({
+          state: "prepared",
+          directory: f.directory,
+          release: "0.1.0-dev",
+        }),
+      start: () => {
         throw Error("Must not start");
       },
-      administrator: async () => {
+      administrator: () => {
         throw Error("Must not request administrator login before start");
       },
     };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -157,10 +157,10 @@ await test(
       /tools\/openshell/,
     );
     for (const args of [
-      ["scripts/clawscarf.js", "install", "--help"],
-      ["scripts/clawscarf.js", "packs", "--help"],
-      ["scripts/clawscarf.js", "config", "render-native", "--help"],
-      ["scripts/clawscarf.js", "connections", "configure", "--help"],
+      ["scripts/clawscarf.js", "configure", "--help"],
+      ["scripts/clawscarf.js", "people", "--help"],
+      ["scripts/clawscarf.js", "status", "--help"],
+      ["scripts/clawscarf.js", "connections", "--help"],
     ]) {
       const { stdout } = await execute(process.execPath, args, {
         cwd,
@@ -169,7 +169,7 @@ await test(
       assert.match(stdout, /Usage:/);
     }
     await assert.rejects(
-      execute(process.execPath, ["scripts/clawscarf.js", "install"], {
+      execute(process.execPath, ["scripts/clawscarf.js", "configure"], {
         cwd,
         timeout: 15000,
       }),
@@ -177,31 +177,20 @@ await test(
         error instanceof Error &&
         "stderr" in error &&
         typeof error.stderr === "string" &&
-        error.stderr.includes("interactive terminal"),
+        error.stderr.includes("--non-interactive"),
     );
-    const configuration = join(directory, "models.json");
-    const rendered = join(directory, "gateway.json");
-    await copyFile(
-      join(root, "deploy/models/config.example.json"),
-      configuration,
-    );
-    await execute(
+    const listed = await execute(
       process.execPath,
       [
         "scripts/clawscarf.js",
-        "models",
-        "render",
-        "--config",
-        configuration,
-        "--output",
-        rendered,
+        "recipes",
+        "--release",
+        join(bundle, "clawscarf-release.json"),
+        "--json",
       ],
       { cwd },
     );
-    assert.match(
-      await readFile(rendered, "utf8"),
-      /openrouter\/openai\/gpt-5\.4/,
-    );
+    assert.match(listed.stdout, /gpt-6-astra/);
     const { stdout } = await execute(
       "pnpm",
       ["list", "--depth", "0", "--json"],
