@@ -2,21 +2,6 @@
 
 Open work only. Select a task before implementing; this list does not authorize continuation.
 
-## Hosted login and native Connections
-
-Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
-payment integration and privately operated broker packaging come later.
-Cloud staging/production are deployed. The installer defaults to the production cloud; releases or `--cloud-url` can select staging. M7 integration is in progress.
-
-Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout.
-
-- [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
-      through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
-      disabled/empty Connections after removing superseded paths.
-- [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
-      journeys with native Connections, multiple installations, tenant isolation and quota/revocation
-      failures. Cloud build/promotion passed staging and production; full hosted acceptance remains. Update actual status and clean up disposable infrastructure.
-
 ## Installer and releases
 
 - [ ] Fix native pack removal when an attached automation requires Gateway authentication
@@ -50,6 +35,11 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
       Ordinary model-selected member/admin browsing awaits that supported correction.
 
 ## Bugs to investigate
+
+- [ ] Fix or document the cloud-owner device-login session edge case: WorkOS’s approval
+      page can say “You must be signed in to continue” instead of starting sign-in.
+      Signing in through the cloud and returning to the pending code succeeded. Reproduce
+      fresh and expired provider sessions before declaring installer login fully finished.
 
 - [ ] **Resolve the native remote skill-path bug.** The Connections skill remains
       installed and readable after `clawscarf stop` / `start`. Pinned OpenClaw

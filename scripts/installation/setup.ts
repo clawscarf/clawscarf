@@ -110,7 +110,7 @@ export function recipeConfiguration(
   };
 }
 
-/** Section replacement, not recursive merging: switching modes discards obsolete fields. */
+/** Mode-specific sections replace defaults; Connections retains the selected cloud service. */
 export const setupSettingsSchema = z
   .strictObject(installationSchema.shape)
   .omit({ schemaVersion: true, releaseFile: true, recipe: true })

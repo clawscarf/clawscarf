@@ -86,7 +86,7 @@ for an **LLM API key**. Advanced settings can import a model catalog or use an e
 LiteLLM gateway. Connections defaults to off. Enabling it uses ClawScarf Cloud;
 the installer asks for cloud owner approval only when a registration is needed.
 Provider credentials and the connector catalog stay in the cloud.
-Account linking and teammate enrollment remain separate, deferred application work.
+Account linking and teammate enrollment happen after login in the native Connections and People pages.
 
 **Esc** discards unsaved section edits and returns to its parent. At the recipe picker,
 Esc exits. **Save section changes** accepts edits; accepted answers survive navigation.

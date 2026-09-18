@@ -1,20 +1,29 @@
 # Hosted login and Connections
 
-Hosted login, installation registration, the cloud Connections broker and native People/
-Connections pages are implemented. Local tests passed real WorkOS administrator/member
-login, revocation, a GPT-6 Astra / medium response, and Outlook linking, reconnect,
-read-only execution and disconnect. Database regressions cover isolated credentials,
-quotas and admission. WorkOS Connect supplies no logout endpoint; sign-out revokes the
-installation session and requests fresh authentication on the next sign-in.
+Hosted login, installation registration, the cloud Connections broker, native People/
+Connections pages and installer integration are implemented. The installer defaults to
+production; a release or `--cloud-url` can select staging. Hosted login and optional
+Connections are independent. The installation has no token-only login, local broker or
+standalone Connections dashboard.
 
-Cloud staging and production are deployed on Vercel with separate Neon databases. The
-same build passed both promotions, isolated deployment checks and public deployment-ID
-verification. The installer defaults to production and supports a staging override.
-Hosted login and optional Connections are independently configurable; the superseded
-local broker, standalone Connections page and token-only login are removed. Fresh and
-retained installation acceptance against the deployed cloud remains in
-[TODO.md](../TODO.md#hosted-login-and-native-connections), alongside the separate native
-remote skill-path issue.
+Fresh macOS installations passed first-administrator login and GPT-6 Astra / medium
+responses using both hosted login and a separately configured OIDC client. Against the
+Vercel/Neon staging deployment, native Connections completed Outlook authorization and
+a read-only profile call. Retained enable/disable preserved native state and cloud account
+records; disabled Connections had no native page. Live checks covered installation
+isolation, credential-purpose separation, disconnect and credential revocation, including
+continued Account access after broker revocation. Real PostgreSQL regressions cover quota
+races, idempotency, cross-account denial, admission, invitations and session revocation.
+Earlier two-person WorkOS/native checks remain applicable; they were not repeated against
+this staging deployment. Disposable servers, provider accounts and login clients were cleaned up.
+
+Staging and production run the same promoted cloud artifact. Production passed deployment
+health, identity and deployment-ID checks; the complete browser journey above ran against
+staging. This does not establish Linux/WSL or public-HTTPS installation acceptance. The
+upstream remote skill-path and browser-routing issues remain separately in [TODO.md](../TODO.md).
+A device-approval session edge case remains in TODO: the provider page can require an
+intervening cloud sign-in before accepting its pending code. WorkOS Connect supplies no logout endpoint; sign-out revokes the installation session and
+requests fresh authentication on the next sign-in.
 
 [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
@@ -23,8 +32,7 @@ are owned by that repository.
 ## Product choices
 
 ClawScarf defaults to our hosted login. Company or customer-operated OIDC is always
-available instead. Do not bundle Keycloak or replace the token-only preview with
-another home-grown account/password system. People, admission, session revocation
+available instead. No identity server or home-grown account/password system is bundled. People, admission, session revocation
 and native OpenClaw roles remain installation-owned.
 
 Connections is independent of login: disabled, our hosted service, or eventually a
@@ -49,45 +57,19 @@ matching email addresses must never silently transfer admission or administrator
 
 ## Repository and service ownership
 
-Create the cloud repository at `~/clawscarf/clawscarf-cloud`. Keep it a small service,
-not another VM control plane or a framework of separately deployed microservices.
-
-```text
-clawscarf-cloud/
-  README.md, AGENTS.md, LICENSE
-  api/                  OpenAPI contract and generated client
-  src/
-    http/               routes and managed-host entrypoint
-    accounts/           cloud account ownership and installation registration
-    identity/           hosted identity-provider integration
-    connections/        broker, provider adapters, catalog and execution receipts
-    usage/              quota policy and atomic accounting
-    web/                owner approval, OAuth completion and service usage only
-  migrations/           explicit database migrations
-  tests/                real authorization, quota and provider-boundary regressions
-  deploy/               deployment configuration and scheduled maintenance
-```
-
-Each domain keeps its own SQL and provider adapters. No empty package hierarchy.
-The intended managed deployment is Vercel plus PostgreSQL/Neon and WorkOS for human
-cloud authentication, with Composio initially providing connector operations. Reuse Kora's
-existing cloud hosting and account-authentication patterns. During broker integration,
-adapt request deadlines, response handling and maintenance scheduling for this service;
-do not carry over the companion's process timer as serverless maintenance. This is normal
-deployment integration, not a new hosting feasibility project. No new queue or worker
-without a demonstrated requirement.
+The [cloud repository](https://github.com/clawscarf/clawscarf-cloud) is one service,
+deployed on Vercel with PostgreSQL/Neon, WorkOS and Composio. Its component READMEs own
+its structure and operation. Each domain owns its SQL and provider adapters. Scheduled
+maintenance uses the authenticated Vercel cron endpoint; no separate worker is deployed.
 
 This repository retains the installer, Access/ingress, native People and Connections
 plugins, and a small authenticated management adapter to the broker. The cloud owns
 connection/account records, provider credentials, grants, receipts and usage. It must
 not depend on local Access database tables or import this repository's private modules.
 
-Move the reviewed broker implementation and its useful regressions into the cloud
-repository as ownership changes; do not maintain two implementations. Delete the
-standalone Connections dashboard and superseded local broker composition after their
-native UI and remote-service replacements work. Preserve required migration history
-and notices. Existing developer connection data may need explicit relinking; do not
-invent compatibility paths or silently discard data.
+The reviewed broker and its useful regressions live in the cloud repository. Required
+migration history and notices remain here. Existing development connections are not
+silently migrated between services; changing service ownership requires explicit relinking.
 
 The cloud owns its OpenAPI contract. Publish a versioned generated client/artifact for
 ClawScarf; use an explicit locally built artifact during development. No runtime sibling
@@ -102,12 +84,10 @@ This checkout is the primary implementation source, including fixes already made
 - Retain [Access OIDC](../services/access/providers/oidc.ts), native authority checks,
   administrator claim, admission/session storage and revocation regressions. Adapt the
   issuer/client configuration; do not replace the ingress or People implementation.
-- Move [Connections services](https://github.com/clawscarf/clawscarf-cloud/tree/main/src/connections), their owning SQL,
-  provider adapters, catalog importer and targeted tests. Replace single-server/local-session
-  composition with authenticated installation scope. Moving files is not simplification by itself.
+- The cloud owns [Connections services](https://github.com/clawscarf/clawscarf-cloud/tree/main/src/connections), their SQL,
+  provider adapters, catalog importer and targeted tests, scoped by installation credentials.
 - Retain the [runtime plugin](../plugins/connections/README.md) and generic tool behavior.
-  Follow [People's native page integration](../plugins/access/src/control-ui.ts) for the
-  new Connections page; reuse suitable existing account forms and catalog assets.
+  Both pages use [native plugin UI](../plugins/access/src/control-ui.ts).
 - Extend existing CLI configuration, setup and lifecycle operations. Do not introduce a
   second installer, supervisor or recipe engine for hosted services.
 
@@ -146,39 +126,6 @@ New code is limited to cloud registration/ownership, cloud composition and insta
 authorization, quota accounting, the local management adapter and native Connections UI.
 Provider integrations already present should not be rewritten for the repository move.
 
-## Execution checkpoints
-
-[TODO.md](../TODO.md#hosted-login-and-native-connections) owns stable milestone IDs M1–M8
-and their completion criteria, including work in both repositories. Do not duplicate
-these milestones in a new cloud checklist. The cloud README links back to that owner;
-any cloud TODO contains only separately selected future work, not a second progress copy.
-
-At each milestone, inspect changed code, test its real affected boundary, update the
-owning docs and remove its TODO only after its completion criteria pass. A blocker stays
-as a short unchecked item with the failing boundary and next action. Report implemented,
-tested and deployed status separately. Keep evidence in ignored logs/CI and coherent
-commits when authorized; do not rely on chat memory or leave critical claims only in logs.
-
-M1 establishes the cloud service and its owner login from existing patterns. M2–M3 add
-the part absent from ordinary cloud-site login: automatically register each independently
-installed server's OIDC client/callback, then authenticate through that server's Access
-service and admission rules. The current Access adapter requires a confidential client
-secret and supports client-secret POST/basic. Public-client/device flows are not drop-in
-replacements. Test exact callbacks, logout and the supported localhost/private/public
-addresses while implementing this flow. Do not work around a provider limitation with a
-custom token issuer, unsafe redirect policy or weaker login.
-
-Login becomes usable before broker migration; broker execution works through its API
-and management through the CLI before native UI; quota enforcement passes before shared cloud access. Final verification joins
-already working pieces rather than discovering their first integration. A restricted test
-deployment may precede quota enforcement; an openly usable service may not.
-
-There is no separate general feasibility/audit phase. Verify each new integration as it is
-built; report a concrete provider or deployment limitation if encountered. Concrete free
-quota values are a launch decision, not an excuse to build billing. If an assumption fails,
-report the finding and narrow alternatives before expanding scope. Reusing known cloud
-patterns does not establish that the newly wired installation journey has passed.
-
 ## Identity and installation registration
 
 A cloud account owns service allowance and one or more registered installations.
@@ -189,9 +136,7 @@ to connector contents. Installation People continues to use native roles.
 Use maintained OIDC/OAuth implementations. WorkOS documents
 [Connect application management](https://workos.com/docs/reference/workos-connect/applications),
 [OIDC discovery](https://workos.com/docs/reference/workos-connect/metadata) and
-[CLI device authorization](https://workos.com/docs/authkit/cli-auth). Validate those
-against our actual localhost, private-LAN and public-host flows before committing the
-wire contract. The intended browser path is an installation-specific OIDC client with
+[CLI device authorization](https://workos.com/docs/authkit/cli-auth). The browser path uses an installation-specific OIDC client with
 exact callbacks, PKCE, state and nonce, using existing Access OIDC handling. Do not build
 an OAuth issuer, accept wildcard callbacks or distribute our WorkOS management secret.
 Device authorization approves cloud ownership through the dedicated public CLI client;
@@ -235,8 +180,7 @@ and descriptions. Provider schemas remain advisory; no connector-specific workar
 Provider bindings explicitly identify their backend so a later adapter can coexist with
 Composio. Replacing a backend may require reconnecting accounts and rediscovering tools.
 
-Build the management page through OpenClaw's supported native plugin UI, following the
-existing People integration. The page offers add, reconnect, disconnect, remove inactive
+The management page uses OpenClaw's native plugin UI, like People. The page offers add, reconnect, disconnect, remove inactive
 entries, account selection, agent grants and usage. It uses concise content-level loading,
 retains data on refresh, and distinguishes missing data from no accounts. Empty is valid.
 No installation/VM work runs when adding an account. Disabled means no page or tools.
@@ -297,8 +241,8 @@ never automatically refunded or replayed. Reserve upstream-request budget before
 provider request; hidden SDK retries must not bypass it. Recover abandoned pre-dispatch
 reservations conservatively; process crashes cannot create free or double executions.
 
-Return structured `quota_exhausted`, `rate_limited`, `service_disabled`,
-`credential_revoked` and `provider_unavailable` outcomes, preserving existing uncertain
+The [cloud API contract](https://github.com/clawscarf/clawscarf-cloud/blob/main/api/openapi.json)
+defines structured quota, rate-limit, authorization and provider failures, including uncertain
 execution outcomes. Expose only the customer's applicable scope, unit and reset/retry
 information, not other tenants' usage or private global budgets. Quota exhaustion must
 not look like OAuth disconnection. Administrative inspection and local disconnect remain
@@ -309,17 +253,8 @@ OpenClaw/models. Later payment integration changes the same server-owned allowan
 defer Stripe, purchases, currency accounting, subscriptions and software license machinery.
 Choose concrete free limits before public exposure; do not silently ship unlimited defaults.
 
-## Review and verification boundaries
+## Scope boundaries
 
-Implement the TODO stages in order, with a working boundary at each handoff. The first
-integration must prove fresh install, real hosted login, first administrator, invitation,
-normal subsequent login/logout, native connection setup and one real authorized tool call.
-Also prove custom OIDC with our broker, Connections disabled, multiple installations under
-one account, cross-account denial, quota races/retries and preserved access at exhaustion.
-
-Reuse existing source and tests rather than a broad rewrite. Native UI is a replacement;
-the reviewed broker is adapted. Test retained state/revoked credentials when persistence
-changes. Test real callbacks and native role enforcement where mocks are insufficient.
-Delete disposable infrastructure after testing. Report supported and untested platforms
-separately. Billing, a private-broker installer, VM SaaS, identity migration tooling and the
-owner-managed upstream browser issue are outside this implementation.
+[TODO.md](../TODO.md) is the only backlog. Billing, private-broker packaging, VM SaaS,
+identity migration tooling, public release packaging and additional-platform acceptance
+remain separate work. The owner-managed upstream browser issue is not an automatic task.
