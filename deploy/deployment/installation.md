@@ -107,7 +107,8 @@ Noninteractive configuration validates required selections, saves configuration,
 selected cloud services, checks prerequisites, prepares and starts the server. It does
 not prompt. If sign-in is needed, it returns `state: "action_required"`, a browser URL,
 expiry, polling delay and exact resume command. Complete the browser step, then run
-that command; accepted selections and the pending registration are retained. It does
+that command; accepted selections and the pending registration are retained. The resume
+command preserves an explicit `--no-start` choice. It does
 not print provider tokens or silently choose an account. `--no-start` stops after preparation.
 
 An existing short-lived owner token or provisioning credential can instead be supplied

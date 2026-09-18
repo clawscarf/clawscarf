@@ -4,7 +4,6 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## CLI cleanup — selected
 
-- [ ] Preserve start/stop intent when resuming authorization.
 - [ ] Remove competing public configuration commands; retain shared component operators.
 - [ ] Apply only changed capabilities; unchanged configuration must not restart services.
 - [ ] Return actionable, sanitized CLI errors.

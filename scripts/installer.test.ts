@@ -1552,3 +1552,58 @@ await test(
     );
   },
 );
+
+await test(
+  "authorization resume preserves an explicit no-start selection",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const { CloudAuthorizationRequired } = await import("./cloud/login.js");
+    const { unattendedPrompts } =
+      await import("./installation/installer/prompts.js");
+    let authorized = false;
+    const operators: NonNullable<Parameters<typeof installFromAnswers>[2]> = {
+      register: async () => {
+        if (!authorized)
+          throw new CloudAuthorizationRequired({
+            url: "https://cloud.example.test/setup?code=TEST-TEST",
+            expiresAt: new Date(Date.now() + 60000).toISOString(),
+            retryAfterSeconds: 5,
+          });
+      },
+      plan: planInstallation,
+      doctor: async () => ({
+        state: "prerequisites_available",
+        platform: "darwin-arm64",
+        release: "0.1.0-dev",
+        images: 0,
+      }),
+      apply: async () => ({
+        state: "prepared",
+        directory: f.directory,
+        release: "0.1.0-dev",
+      }),
+      start: async () => {
+        throw Error("Must not start");
+      },
+      administrator: async () => {
+        throw Error("Must not request administrator login before start");
+      },
+    };
+    const first = await installFromAnswers(
+      { ...f, recipe: "custom", nonInteractive: true, start: false },
+      unattendedPrompts,
+      operators,
+    );
+    assert.equal(first.state, "action_required");
+    assert.ok("resume" in first);
+    assert.match(first.resume, /--no-start/);
+    authorized = true;
+    const resumed = await installFromAnswers(
+      { directory: f.directory, nonInteractive: true, start: false },
+      unattendedPrompts,
+      operators,
+    );
+    assert.equal(resumed.state, "prepared");
+  },
+);

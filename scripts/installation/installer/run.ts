@@ -146,7 +146,7 @@ export async function installFromAnswers(
         action: "cloud_authorization",
         ...error.action,
         directory,
-        resume: `clawscarf configure --directory ${quote(directory)} --non-interactive --json`,
+        resume: `clawscarf configure --directory ${quote(directory)} --non-interactive${options.start === false ? " --no-start" : ""} --json`,
       };
     if (
       error instanceof InstallerCancelled ||
@@ -300,7 +300,7 @@ export async function runConfiguration(options: InstallOptions) {
         action: "cloud_authorization",
         ...error.action,
         directory: options.directory,
-        resume: `clawscarf configure --directory ${quote(resolve(options.directory ?? "."))} --non-interactive --yes --json`,
+        resume: `clawscarf configure --directory ${quote(resolve(options.directory ?? "."))} --non-interactive --yes${options.start === false ? " --no-start" : ""} --json`,
       };
     if (
       !(error instanceof InstallerCancelled) &&
