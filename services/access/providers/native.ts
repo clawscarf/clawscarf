@@ -159,12 +159,11 @@ export class OpenClawAuthority implements NativeAuthority {
     );
   }
 
-  async prepareTeam(actor: NativeActor, credential: string) {
-    if (actor.name)
-      await this.enrichName(actor, credential, {
-        identity: actor.identity,
-        name: actor.name,
-      });
+  async prepareTeam(
+    actor: NativeActor & Pick<User, "email">,
+    credential: string,
+  ) {
+    await this.enrichName(actor, credential, actor);
     const observe = () => this.acting(actor, credential, readState);
     const before = await observe();
     const roles = before.config.gateway.roles;
@@ -251,7 +250,7 @@ export class OpenClawAuthority implements NativeAuthority {
   private async enrichName(
     actor: NativeActor,
     credential: string,
-    person: Pick<User, "identity" | "name">,
+    person: Pick<User, "identity" | "email">,
   ) {
     const name = z
       .string()
@@ -264,7 +263,7 @@ export class OpenClawAuthority implements NativeAuthority {
             character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
         ),
       )
-      .safeParse(person.name);
+      .safeParse(person.email);
     if (!name.success) throw new NativeFailure("invalid_response");
     let expectedName = name.data;
     const observe = () => this.acting(actor, credential, readState);
@@ -304,7 +303,7 @@ export class OpenClawAuthority implements NativeAuthority {
   async enroll(
     actor: NativeActor,
     credential: string,
-    person: Pick<User, "identity" | "name">,
+    person: Pick<User, "identity" | "email">,
     targetCredential: string,
   ) {
     const observe = () => this.acting(actor, credential, readState);

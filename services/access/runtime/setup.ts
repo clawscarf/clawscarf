@@ -27,7 +27,11 @@ try {
           ? { endpoint: config.runtime.managementOrigin }
           : {},
       );
-      const actor = { identity: person.identity, sessionHash: digest };
+      const actor = {
+        identity: person.identity,
+        email: person.email,
+        sessionHash: digest,
+      };
       await native.verifyAdministrator(actor, credential);
       await native.prepareTeam(actor, credential);
     } finally {

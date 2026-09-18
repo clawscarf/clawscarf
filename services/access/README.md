@@ -54,6 +54,9 @@ claim to terminate a provider-wide session when its logout endpoint is unavailab
 
 The initial administrator has a stable UUID reserved before native configuration.
 Native initial configuration must use the same `clawscarf:<UUID>` identity.
+Administrator setup and teammate enrollment set the native display name to the
+person’s email through `users.setDisplayName`, preserving an existing custom name.
+Email is presentation only: it never replaces or links the stable authorization identity.
 
 Hosted setup supplies the cloud-verified issuer/subject and email as explicit initial
 bootstrap input. After startup, the local operator verifies native administrator

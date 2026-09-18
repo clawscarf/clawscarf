@@ -177,7 +177,7 @@ export class SessionService {
           try {
             const actor = {
               identity: person.identity,
-              name: person.name,
+              email: person.email,
               sessionHash: hash(credential),
             };
             await this.native.verifyAdministrator(actor, credential);

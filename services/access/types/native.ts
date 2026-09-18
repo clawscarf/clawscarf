@@ -28,7 +28,10 @@ export interface NativeAuthority {
     actor: NativeActor,
     credential: string,
   ): Promise<TeamEnrollmentState>;
-  prepareTeam(actor: NativeActor, credential: string): Promise<void>;
+  prepareTeam(
+    actor: NativeActor & Pick<User, "email">,
+    credential: string,
+  ): Promise<void>;
   verifyAdministrator(
     actor: NativeActor,
     credential: string,
@@ -36,7 +39,7 @@ export interface NativeAuthority {
   enroll(
     actor: NativeActor,
     credential: string,
-    person: Pick<User, "identity" | "name">,
+    person: Pick<User, "identity" | "email">,
     targetCredential: string,
   ): Promise<void>;
   revoke(

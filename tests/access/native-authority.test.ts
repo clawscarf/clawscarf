@@ -149,19 +149,21 @@ await test("self-revocation succeeds after definitive denial, without replaying 
   );
   assert.equal(f.writes(), 1);
 });
-await test("explicit team preparation enriches an empty native administrator name", async () => {
-  const f = fixture();
+await test("team preparation replaces the internal administrator label with email without changing authority", async () => {
+  const f = fixture("access_denied", "clawscarf:actor");
+  const before = structuredClone(f.config);
   await f.authority.prepareTeam(
-    { identity: f.identity, sessionHash: "hash", name: "Ada" },
+    { identity: f.identity, sessionHash: "hash", email: "ada@example.test" },
     "credential",
   );
-  assert.equal(f.displayName(), "Ada");
+  assert.equal(f.displayName(), "ada@example.test");
+  assert.deepEqual(f.config, before);
   assert.equal(f.writes(), 1);
 });
 await test("team preparation preserves a native administrator's edited display name", async () => {
   const f = fixture("access_denied", "My chosen name");
   await f.authority.prepareTeam(
-    { identity: f.identity, sessionHash: "hash", name: "Ada" },
+    { identity: f.identity, sessionHash: "hash", email: "ada@example.test" },
     "credential",
   );
   assert.equal(f.displayName(), "My chosen name");

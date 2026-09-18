@@ -93,7 +93,7 @@ await test(
             );
             assert.ok(profile);
             assert.equal(profile.role, "member");
-            assert.equal(profile.displayName, "Qualification member");
+            assert.equal(profile.displayName, "member@example.test");
             await gateway.mutate("users.setRole", {
               profileId: profile.id,
               role: "admin",

@@ -88,7 +88,7 @@ export class EnrollmentService {
       this.native.prepareTeam(
         {
           identity: actor.user.identity,
-          name: actor.user.name,
+          email: actor.user.email,
           sessionHash: actor.hash,
         },
         credential,
