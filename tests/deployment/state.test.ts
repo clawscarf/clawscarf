@@ -1,11 +1,21 @@
 import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdtemp,
+  readFile,
+  rm,
+  mkdir,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   initializeState,
+  readInstallationIdentity,
+  readState,
   withInstallationLock,
   resourceNames,
 } from "../../scripts/deployment/state.js";
@@ -32,6 +42,49 @@ const input = parseLocalInput({
   cpu: "2",
   memory: "2Gi",
 });
+await test("cleanup identity survives invalid inputs but rejects missing ownership and unsafe directories", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "clawscarf-identity-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const directory = join(root, "state");
+  const state = await initializeState(directory, input);
+  const identity = {
+    schemaVersion: state.schemaVersion,
+    ownerId: state.ownerId,
+  };
+  const record = join(directory, "installation.json");
+  for (const invalidInput of [undefined, null, {}, { team: {} }]) {
+    await writeFile(
+      record,
+      JSON.stringify({ ...identity, input: invalidInput }),
+    );
+    assert.deepEqual(await readInstallationIdentity(directory), identity);
+    await assert.rejects(readState(directory));
+  }
+  for (const invalidIdentity of [
+    {},
+    { schemaVersion: 1 },
+    { ownerId: state.ownerId },
+    { ...identity, ownerId: "not-an-installation-id" },
+    { ...identity, schemaVersion: 2 },
+  ]) {
+    await writeFile(record, JSON.stringify(invalidIdentity));
+    await assert.rejects(readInstallationIdentity(directory));
+  }
+  await writeFile(record, JSON.stringify(identity));
+  await chmod(directory, 0o755);
+  await assert.rejects(
+    readInstallationIdentity(directory),
+    /private installation directory/,
+  );
+  await chmod(directory, 0o700);
+  const link = join(root, "linked");
+  await symlink(directory, link);
+  await assert.rejects(
+    readInstallationIdentity(link),
+    /private installation directory/,
+  );
+});
+
 await test("local preparation retains private identity/secrets and rejects foreign directories or changed inputs", async () => {
   const parent = await mkdtemp(join(tmpdir(), "clawscarf-setup-"));
   try {

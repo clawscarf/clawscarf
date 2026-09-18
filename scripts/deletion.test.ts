@@ -9,7 +9,11 @@ import {
   InstallerCancelled,
   SectionCancelled,
 } from "./installation/installer/prompts.js";
-import { initializeState, resourceNames } from "./deployment/state.js";
+import {
+  initializeState,
+  readState,
+  resourceNames,
+} from "./deployment/state.js";
 import { run } from "./deployment/process.js";
 
 await test("deletion requires both confirmations; declining or Esc cancels", async () => {
@@ -53,7 +57,7 @@ await test("deletion requires both confirmations; declining or Esc cancels", asy
 
 const image = process.env.CLAWSCARF_TEST_DELETE_IMAGE;
 await test(
-  "delete removes only owned Docker resources and can resume a partial deletion",
+  "delete removes only owned Docker resources with invalid configuration and can resume partial deletion",
   { skip: !image },
   async (t) => {
     assert.ok(image);
@@ -95,6 +99,15 @@ await test(
           await run("docker", [kind, "rm", id]).catch(() => {});
       await rm(root, { recursive: true, force: true });
     });
+    await writeFile(
+      join(directory, "installation.json"),
+      JSON.stringify({ ...state, input: {} }),
+    );
+    await assert.rejects(readState(directory));
+    await writeFile(
+      join(root, "installation.json"),
+      JSON.stringify({ stateDirectory: "./state" }),
+    );
     const volume = (
       await run("docker", ["volume", "create", "--label", label])
     ).trim();
@@ -200,12 +213,10 @@ await test(
     await run("docker", ["rm", "--force", outside]);
     const result: unknown = JSON.parse(
       await run(process.execPath, [
-        "--import",
-        "tsx",
-        "scripts/clawscarf.ts",
+        "scripts/clawscarf.mjs",
         "stop",
-        "--state",
-        directory,
+        "--directory",
+        root,
         "--delete",
         "--confirm-delete",
         directory,

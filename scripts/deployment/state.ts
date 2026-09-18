@@ -16,11 +16,13 @@ import { z } from "zod";
 import { parseLocalInput, type LocalInput } from "./configuration.js";
 import { LocalSetupError } from "./process.js";
 
-const stateSchema = z.strictObject({
+const identitySchema = z.object({
   schemaVersion: z.literal(1),
   ownerId: z.uuid(),
-  input: z.unknown().transform(parseLocalInput),
 });
+const stateSchema = identitySchema
+  .extend({ input: z.unknown().transform(parseLocalInput) })
+  .strict();
 export type LocalState = z.infer<typeof stateSchema>;
 export async function writePrivate(path: string, value: string | Buffer) {
   const temporary = path + "." + randomUUID();
@@ -63,7 +65,7 @@ export async function ensurePrivateFile(path: string, value: string | Buffer) {
     await rm(temporary, { force: true });
   }
 }
-export async function readState(directory: string): Promise<LocalState> {
+async function readStateRecord(directory: string): Promise<unknown> {
   const metadata = await lstat(directory);
   if (
     !metadata.isDirectory() ||
@@ -74,9 +76,16 @@ export async function readState(directory: string): Promise<LocalState> {
       "private_directory_required",
       "Use a private installation directory owned by the current user.",
     );
-  return stateSchema.parse(
-    JSON.parse(await readFile(join(directory, "installation.json"), "utf8")),
+  return JSON.parse(
+    await readFile(join(directory, "installation.json"), "utf8"),
   );
+}
+/** Cleanup needs ownership, even when the execution configuration is incomplete. */
+export async function readInstallationIdentity(directory: string) {
+  return identitySchema.parse(await readStateRecord(directory));
+}
+export async function readState(directory: string): Promise<LocalState> {
+  return stateSchema.parse(await readStateRecord(directory));
 }
 export async function initializeState(path: string, input: LocalInput) {
   const directory = resolve(path);
@@ -172,7 +181,7 @@ export async function withInstallationLock<T>(
     await release();
   }
 }
-export function resourceNames(state: LocalState) {
+export function resourceNames(state: Pick<LocalState, "ownerId">) {
   const suffix = state.ownerId.replaceAll("-", "").slice(0, 12);
   return {
     project: `clawscarf-${suffix}`,

@@ -255,6 +255,8 @@ and browser profiles in those volumes are lost. Images, external services and th
 installation folder remain. After successful deletion, remove the folder yourself;
 it still contains private configuration and credentials and cannot be restarted.
 If deletion fails, keep the folder and rerun the same command after resolving the error.
+Deletion validates the private state directory and installation identity without requiring
+a valid startup configuration. Missing or invalid ownership records still block deletion.
 The command never prunes Docker or forcibly removes another container to free a volume.
 
 For unattended use, both acknowledgments are required:

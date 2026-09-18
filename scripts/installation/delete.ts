@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { run } from "../deployment/process.js";
 import {
-  readState,
+  readInstallationIdentity,
   resourceNames,
   withInstallationLock,
 } from "../deployment/state.js";
@@ -67,7 +67,7 @@ export async function deleteInstallation(
 ) {
   directory = resolve(directory);
   return withInstallationLock(directory, async () => {
-    const state = await readState(directory);
+    const state = await readInstallationIdentity(directory);
     const names = resourceNames(state);
     const list = async (
       kind: "container" | "volume" | "network",
