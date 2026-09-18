@@ -15,6 +15,7 @@ import { installationSchema } from "../configuration.js";
 import { planSettingsChange, reconfigureInstallation } from "../reconfigure.js";
 import { controlInstallation, startInstallation } from "../lifecycle.js";
 import { InstallationError } from "../errors.js";
+import { withInstallationLock, writePrivate } from "../../deployment/state.js";
 
 /** The menu only gathers answers; the same plan/apply operations serve unattended callers. */
 export async function editInstallationSettings(
@@ -57,6 +58,8 @@ export async function editInstallationSettings(
     : join(directory, `.settings-${randomUUID()}`);
   const inputs = new SetupInputs(staging);
   let attempted = false;
+  let authorizing: string | undefined;
+  let retained = Boolean(pending);
   try {
     const context = await setupContext({ release: config.releaseFile });
     const selected = await selectedDraft(
@@ -93,9 +96,11 @@ export async function editInstallationSettings(
         inputs,
         true,
       ));
+    authorizing = candidate;
     if (options.nonInteractive)
       await registerUnattended(candidate, options.cloudCredentialFile);
     else await registerWithBrowser(candidate, ui, task);
+    authorizing = undefined;
     const plan = await planSettingsChange(candidate);
     ui.note(
       `Reapply models and selected Connections settings. Keep individual model overrides and unrelated native settings.
@@ -159,6 +164,33 @@ The server must stop. Pack changes finish at the next start.`,
     );
     return { state: "prepared" };
   } catch (error) {
+    if (authorizing && !pending) {
+      const candidate = authorizing;
+      await withInstallationLock(directory, async () => {
+        if ((await readFile(settingsFile, "utf8")) !== before)
+          throw new InstallationError(
+            "stale_plan",
+            "Settings changed during authorization. Reopen configure before applying.",
+          );
+        const prepared = z
+          .object({
+            ownerId: z.string(),
+            settingsCandidate: z.string().optional(),
+            settingsPending: z.string().optional(),
+          })
+          .parse(await readJson(join(directory, "prepared.json")));
+        if (prepared.settingsCandidate || prepared.settingsPending)
+          throw new InstallationError(
+            "stale_plan",
+            "Another configuration is pending. Resume it before applying these settings.",
+          );
+        await writePrivate(
+          join(directory, "prepared.json"),
+          JSON.stringify({ ...prepared, settingsCandidate: candidate }),
+        );
+        retained = true;
+      });
+    }
     if (attempted)
       ui.note(
         "Check status, then run configure --directory again to review and resume the interrupted change.",
@@ -166,7 +198,7 @@ The server must stop. Pack changes finish at the next start.`,
       );
     throw error;
   } finally {
-    if (!attempted && !pending)
+    if (!attempted && !retained)
       await rm(staging, { recursive: true, force: true });
   }
 }

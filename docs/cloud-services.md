@@ -19,13 +19,17 @@ this staging deployment. Disposable servers, provider accounts and login clients
 
 Staging and production run the same promoted cloud artifact. Production passed deployment
 health, identity and deployment-ID checks; the complete browser journey above ran against
-staging. These installation checks preceded the single-runtime execution model; they
-have not been repeated with it. Current runtime verification is in the
+staging. The current single-runtime installer additionally passed fresh hosted registration
+and native administrator verification, entry without a second login, and a real GPT-6
+Astra / medium response using the Responses API. Full new-account email verification
+in production and the earlier two-person/Connections journeys have not been repeated
+with this image. Current runtime verification is in the
 [OpenShell guide](../deploy/openshell/README.md#repeatable-boundary-and-retention-check).
 Linux/WSL and public-HTTPS installation acceptance remain unqualified. The
 owner-managed upstream browser-routing issue remains in [TODO.md](../TODO.md).
-A device-approval session edge case remains in TODO: the provider page can require an
-intervening cloud sign-in before accepting its pending code. WorkOS Connect supplies no logout endpoint; sign-out revokes the installation session and
+Hosted setup starts at the cloud `/setup` page, which establishes an ordinary AuthKit
+signup/sign-in session before device approval. The installer persists the pending
+challenge and supports noninteractive action-required/resume results. WorkOS Connect supplies no logout endpoint; sign-out revokes the installation session and
 requests fresh authentication on the next sign-in.
 
 [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
@@ -154,11 +158,17 @@ to the hosted identity provider, not a new ClawScarf password UI or per-installa
 configuration. Verify recovery, logout and account switching as well as initial sign-in.
 
 The installer registers/authorizes an installation when a selected hosted service needs
-it. A private, expiring, one-use administrator claim binds the successfully authenticated
-OIDC identity locally and verifies its native authority. The browser confirms completion
-and returns the user to the waiting installer. Subsequent login uses the installation
-URL and ordinary OIDC, without installer codes. With custom OIDC, administrator claim
-uses that provider; optional cloud-service linking is a separate owner authorization.
+it. During initial hosted configuration, the CLI explicitly selects the verified cloud
+identity (exact issuer/subject, never email matching) as the first administrator. It
+checks native administrator authority after startup and revokes its temporary session.
+The user does not authenticate a second time for administrator setup. A provisioning
+credential carries no human identity and needs explicit subject/email bootstrap input.
+Cloud ownership never grants continuing access or overrides native role changes.
+
+With customer OIDC and no explicit bootstrap identity, a private, expiring, one-use
+administrator claim binds that provider's successfully authenticated user. Optional
+cloud-service linking remains separate from that company's login. Later users enter
+through ordinary OIDC and existing admission/invitation rules.
 
 Invitation links remain in native People, not the installer. A cloud-authenticated
 stranger is not admitted automatically. Issuer/subject identity, admission revisions,

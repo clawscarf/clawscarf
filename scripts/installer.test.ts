@@ -488,11 +488,15 @@ await test(
         if (fail) await assert.rejects(work);
         else {
           const result = await work;
-          assert.equal(result.state, "running");
+          assert.equal(
+            result.state,
+            nonInteractive ? "action_required" : "running",
+          );
           if (nonInteractive)
             assert.partialDeepStrictEqual(result, {
               ready: false,
-              administrator: { complete: false },
+              action: "administrator_sign_in",
+              complete: false,
             });
         }
         assert.deepEqual(
@@ -616,12 +620,25 @@ await test(
       cloudUrl: "https://staging.example.test",
     });
     for (const connections of [false, true]) {
+      const inputs = new SetupInputs(f.directory);
       const draft = await selectedDraft(
         context,
         "team-documents",
         { connections },
-        new SetupInputs(f.directory),
+        inputs,
       );
+      const { gatewayRoutesSchema, nativeModelProvider } =
+        await import("./models/configuration.js");
+      assert.ok(draft.models);
+      const routes = gatewayRoutesSchema.parse(
+        await inputs.readJson(draft.models.configurationFile),
+      );
+      const native = nativeModelProvider({
+        ...routes,
+        mode: "litellm",
+        baseUrl: "https://models.example.test/v1",
+      });
+      assert.equal(native.models[0]?.api, "openai-responses");
       assert.equal(draft.connections.mode, connections ? "hosted" : "disabled");
       assert.equal(draft.connections.cloudUrl, context.cloudUrl);
     }
@@ -1322,7 +1339,14 @@ await test(
     const id = randomUUID();
     const credential = join(f.parent, "cloud-credential");
     await writeFile(credential, "owner-token", { mode: 0o600 });
-    app.get("/api/account", () => ({ accountId: randomUUID() }));
+    app.get("/api/account", () => ({
+      accountId: randomUUID(),
+      identity: {
+        issuer: "https://identity.example",
+        subject: "owner",
+        email: "owner@example.com",
+      },
+    }));
     app.post("/api/installations", (request) => {
       assert.equal(request.headers.authorization, "Bearer owner-token");
       return { id, origin: "http://127.0.0.1:18800", oidcState: "ready" };
@@ -1353,7 +1377,7 @@ await test(
     const resolved = await resolveInstallation(configFile, plan.internalPorts);
     assert.equal(resolved.config.access.mode, "hosted");
     assert.equal(resolved.input.team.clientId, "registered-client");
-    assert.equal(resolved.input.team.administratorSubject, undefined);
+    assert.equal(resolved.input.team.administratorSubject, "owner");
     await app.close();
     await registerUnattended(configFile, undefined);
   },
@@ -1419,5 +1443,73 @@ await test(
       { code: "invalid_configuration" },
     );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "interrupted cloud authorization retains an accepted settings candidate without stopping the server",
+  local,
+  async (t) => {
+    const { default: Fastify } = await import("fastify");
+    const { editInstallationSettings } =
+      await import("./installation/installer/settings.js");
+    const { resolveConfigurationInputs } =
+      await import("./installation/configure.js");
+    const { unattendedPrompts } =
+      await import("./installation/installer/prompts.js");
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const configFile = await saveConfiguration(
+      first.directory,
+      first.config,
+      first.inputs,
+    );
+    const state = join(f.directory, "state");
+    await mkdir(state, { mode: 0o700 });
+    const config = resolveConfigurationInputs(
+      installationSchema.parse(await readJson(configFile)),
+      first.directory,
+    );
+    const accepted = JSON.stringify({ ...config, stateDirectory: state });
+    await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
+    await writeFile(
+      join(state, "prepared.json"),
+      JSON.stringify({ ownerId: "test" }),
+    );
+    const app = Fastify();
+    t.after(() => app.close());
+    app.get("/api/identity", (_request, reply) =>
+      reply.code(503).send({ error: "unavailable" }),
+    );
+    const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
+    await assert.rejects(
+      () =>
+        editInstallationSettings(state, unattendedPrompts, {
+          nonInteractive: true,
+          yes: true,
+          connections: true,
+          connectionsCloudUrl: cloudUrl,
+        }),
+      { code: "unavailable" },
+    );
+    const before = await readJson(join(state, "prepared.json"));
+    assert.equal(
+      await readFile(join(state, "settings.json"), "utf8"),
+      accepted,
+    );
+    await assert.rejects(
+      () =>
+        editInstallationSettings(state, unattendedPrompts, {
+          nonInteractive: true,
+          yes: true,
+        }),
+      { code: "unavailable" },
+    );
+    assert.deepEqual(await readJson(join(state, "prepared.json")), before);
+    assert.equal(
+      (await readdir(state)).filter((name) => name.startsWith(".settings-"))
+        .length,
+      1,
+    );
   },
 );

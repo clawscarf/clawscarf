@@ -97,11 +97,11 @@ export function installationOptions(command: Command) {
     .option("--oidc-secret-file <file>", "Private company OIDC client secret")
     .option(
       "--administrator-subject <subject>",
-      "Company OIDC first administrator subject",
+      "First administrator OIDC subject (for unattended setup)",
     )
     .option(
       "--administrator-email <email>",
-      "Company OIDC first administrator email",
+      "First administrator email (with --administrator-subject)",
     )
     .option("--cpu <count>", "Runtime CPU allocation")
     .option("--memory <size>", "Runtime memory, for example 4Gi")
@@ -243,32 +243,25 @@ export async function selectedDraft(
     if (config.exposure.applicationPort === config.exposure.widgetPort)
       invalid("Application and widgets must use different ports.");
   }
-  const oidc =
-    o.oidcIssuer ||
-    o.oidcClientId ||
-    o.oidcSecretFile ||
-    o.administratorSubject ||
-    o.administratorEmail;
+  const oidc = o.oidcIssuer || o.oidcClientId || o.oidcSecretFile;
   if (oidc || o.access === "oidc") {
     if (o.access === "hosted")
       invalid("Company OIDC options conflict with --access hosted.");
     if (!o.oidcIssuer || !o.oidcClientId)
       invalid("Company login requires --oidc-issuer and --oidc-client-id.");
-    if (Boolean(o.administratorSubject) !== Boolean(o.administratorEmail))
-      invalid("Supply both --administrator-subject and --administrator-email.");
     config.access = {
       mode: "oidc",
       administratorName: config.access.administratorName,
       issuer: o.oidcIssuer,
       clientId: o.oidcClientId,
       clientSecretFile: o.oidcSecretFile ?? "",
-      ...(o.administratorSubject && o.administratorEmail
-        ? {
-            administratorSubject: o.administratorSubject,
-            administratorEmail: o.administratorEmail,
-          }
-        : {}),
     };
+  }
+  if (Boolean(o.administratorSubject) !== Boolean(o.administratorEmail))
+    invalid("Supply both --administrator-subject and --administrator-email.");
+  if (o.administratorSubject && o.administratorEmail) {
+    config.access.administratorSubject = o.administratorSubject;
+    config.access.administratorEmail = o.administratorEmail;
   }
   if (o.pack && o.packs === false)
     invalid("Use --pack or --no-packs, not both.");

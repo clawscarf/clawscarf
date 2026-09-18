@@ -4,6 +4,8 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Installer and releases
 
+- [ ] Verify first-time production signup through email verification and installer resume.
+
 - [ ] Fix native pack removal under trusted-proxy login: monitor cleanup requires Gateway
       authentication even when the pack declares no monitors. Verify removal on the protected
       team runtime without bypassing ownership checks.
@@ -35,13 +37,6 @@ Open work only. Select a task before implementing; this list does not authorize 
       Evidence, pinned sources and limits are in the [browser integration report](deploy/execution/browser-node/README.md#upstream-browser-routing-bug).
       Do not patch, report upstream, expand or resume this task automatically.
       Ordinary model-selected member/admin browsing awaits that supported correction.
-
-## Bugs to investigate
-
-- [ ] Fix or document the cloud-owner device-login session edge case: WorkOS’s approval
-      page can say “You must be signed in to continue” instead of starting sign-in.
-      Signing in through the cloud and returning to the pending code succeeded. Reproduce
-      fresh and expired provider sessions before declaring installer login fully finished.
 
 ## Future decisions
 

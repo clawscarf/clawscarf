@@ -810,11 +810,37 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["accountId"],
+                  "required": ["accountId", "identity"],
                   "properties": {
                     "accountId": {
                       "type": "string",
                       "format": "uuid"
+                    },
+                    "identity": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["issuer", "subject", "email"],
+                          "properties": {
+                            "issuer": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "subject": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            }
+                          }
+                        }
+                      ]
                     }
                   }
                 }

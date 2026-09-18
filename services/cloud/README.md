@@ -1,7 +1,7 @@
 # Cloud client
 
 [openapi.json](openapi.json) is the public contract copied from
-[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/4eefbd6/api/openapi.json).
+[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/eb3f163/api/openapi.json).
 It is shared by installation registration and the Connections management adapter.
 The Connections plugin derives only the runtime routes for its portable SDK.
 

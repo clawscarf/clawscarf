@@ -56,17 +56,31 @@ Hosted login defaults to `https://cloud.clawscarf.com`. A release's `cloudUrl` o
 development `--cloud-url` override can select staging. Connections independently uses
 that cloud unless `--connections-cloud-url` selects another service.
 
-The current login sequence is unchanged: when registration is needed, configuration
-shows a cloud device-authorization link. After startup it shows a separate private,
-15-minute administrator link and waits for completion. Sign in there to bind your
-identity as the first native administrator; the browser returns you to the terminal.
-Ordinary login cannot claim an uninitialized server. Expired setup links can be replaced
-with `clawscarf administrator --directory ~/my-team --issue`.
+For hosted login, configuration shows a clickable `cloud.clawscarf.com/setup` link.
+Sign in or create an account, then approve this installation in the browser and return
+to the terminal. That verified identity becomes this installation's first administrator.
+The CLI starts the server and verifies native administrator access; there is no second
+administrator sign-in. Closing the terminal preserves pending approval for the next
+`configure --directory` invocation. An expired approval can be retried with a fresh link.
+
+For staging, select it when creating a **separate installation**:
+
+```sh
+clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
+  --directory ~/my-team-staging --cloud-url https://cloud-staging.clawscarf.com
+```
+
+This selects staging for hosted login and Connections. Production remains the default.
+Existing installations retain their registered environment; this flag does not move
+users, accounts or credentials between environments.
 
 Use the Access menu or `--access oidc` with your issuer/client credentials for company
 OIDC. This avoids hosted login registration; Connections remains independently optional.
-Explicit OIDC administrator subject/email can be supplied together for unattended setup.
-Otherwise the first administrator uses the same private setup link.
+Supply administrator subject/email together for unattended bootstrap, or follow the
+private, 15-minute administrator link after startup. The installer waits while that
+identity is bound and verified. Ordinary login cannot claim an uninitialized server.
+Replace an expired company-OIDC setup link with
+`clawscarf administrator --directory ~/my-team --issue`.
 
 Registration keys are retained and reused. Retrying does not silently change cloud owners
 or restore revoked credentials. Teammate invitations and external account linking belong
@@ -82,7 +96,6 @@ clawscarf configure --directory ~/my-team \
   --release /absolute/release-bundle/clawscarf-release.json \
   --recipe team-documents --model gpt-6-astra --provider openai --reasoning medium \
   --llm-key-file /private/openai-key \
-  --cloud-credential-file /private/cloud-owner-token \
   --non-interactive --json
 ```
 
@@ -92,10 +105,16 @@ file is also supported for multiple routes. Secrets never go in command-line val
 
 Noninteractive configuration validates required selections, saves configuration, registers
 selected cloud services, checks prerequisites, prepares and starts the server. It does
-not prompt. Hosted registration requires a cloud owner/provisioner credential file when
-no existing registration can be reused. Missing input fails with an actionable error.
-`--no-start` stops after preparation. If administrator setup remains necessary, the result
-contains a private setup URL and reports `ready: false`; it does not claim setup is complete.
+not prompt. If sign-in is needed, it returns `state: "action_required"`, a browser URL,
+expiry, polling delay and exact resume command. Complete the browser step, then run
+that command; accepted selections and the pending registration are retained. It does
+not print provider tokens or silently choose an account. `--no-start` stops after preparation.
+
+An existing short-lived owner token or provisioning credential can instead be supplied
+with `--cloud-credential-file`. Provisioning credentials have no personal identity:
+initial hosted setup also requires `--administrator-subject` and `--administrator-email`.
+Company OIDC without explicit bootstrap returns its private administrator URL and
+`ready: false`; this is not completed setup.
 
 Precedence is recipe defaults, explicit options, then accepted menu edits. Omitted options
 preserve defaults (or current choices); `--no-connections`, for example, explicitly turns
@@ -221,7 +240,11 @@ Fresh setup previously passed persistent startup, private administrator claim, W
 and a real model response on macOS arm64. The current single-runtime image passed native
 uploads, file tools, Python, Lobster, PDF extraction and persistent restart through the
 [runtime acceptance test](../openshell/README.md#repeatable-boundary-and-retention-check).
-The complete installer/login/real-model journey has not been rerun with this image.
+The current installer also passed fresh hosted registration against staging, native
+administrator verification and entry without a second login on macOS arm64. A live
+GPT-6 Astra / medium response passed after correcting the recipe to use the Responses
+API. Production sign-in and sign-up forms render correctly; complete new-account
+email verification remains untested.
 Real Outlook linking, reconnect, execution and revocation passed locally.
 
 Pack removal can be blocked by attached automations whose ownership cannot be established

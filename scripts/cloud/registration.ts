@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import lockfile from "proper-lockfile";
 import { z } from "zod";
 import { createClient } from "../../generated/http/client/index.js";
@@ -23,6 +23,11 @@ const identitySchema = z.strictObject({
   clientId: z.string().min(1),
   clientSecret: z.string().min(1),
 });
+const administratorSchema = z.strictObject({
+  issuer: cloudUrlSchema,
+  subject: z.string().min(1),
+  email: z.email(),
+});
 const registrationSchema = z.strictObject({
   cloudUrl: cloudUrlSchema,
   request: z.strictObject({
@@ -35,6 +40,7 @@ const registrationSchema = z.strictObject({
   accountId: z.uuid().optional(),
   installationId: z.uuid().optional(),
   identity: identitySchema.optional(),
+  administrator: administratorSchema.optional(),
 });
 export async function readHostedRegistration(file: string) {
   return registrationSchema.parse(
@@ -53,7 +59,11 @@ function connectionsRegistration(config: InstallationConfiguration) {
 
 export async function registerCloudServices(
   configFile: string,
-  authorize: (cloudUrl: string) => Promise<string>,
+  authorize: (
+    cloudUrl: string,
+    file: string,
+    administrator: boolean,
+  ) => Promise<string>,
 ) {
   const config = installationSchema.parse(await readJson(configFile));
   const connections = connectionsRegistration(config);
@@ -77,6 +87,7 @@ export async function registerCloudServices(
       config.name,
       origin,
       authorize,
+      selection.login && !config.access.administratorSubject,
     );
   }
 }
@@ -87,7 +98,12 @@ async function registerService(
   cloudUrl: string,
   name: string,
   origin: string | null,
-  authorize: (cloudUrl: string) => Promise<string>,
+  authorize: (
+    cloudUrl: string,
+    file: string,
+    administrator: boolean,
+  ) => Promise<string>,
+  claimAdministrator: boolean,
 ) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const unlock = await lockfile.lock(dirname(path), {
@@ -135,26 +151,42 @@ async function registerService(
     }
     const client = createClient({ baseUrl: cloudUrl, redirect: "error" });
     if (!registration.installationId) {
-      const auth = await authorize(cloudUrl);
+      const auth = await authorize(
+        cloudUrl,
+        path + ".login",
+        claimAdministrator,
+      );
       const account = await getAccount({
         client,
         auth,
         signal: AbortSignal.timeout(10_000),
       });
-      if (!account.data)
+      if (!account.data) {
+        if (account.response?.status === 401)
+          await rm(path + ".login", { force: true });
         throw new InstallationError(
           "unavailable",
           "Cloud account could not be verified. Registration has not been dispatched.",
         );
-      const { accountId } = z
-        .object({ accountId: z.uuid() })
+      }
+      const { accountId, identity } = z
+        .object({
+          accountId: z.uuid(),
+          identity: administratorSchema.nullable(),
+        })
         .parse(account.data);
       if (registration.accountId && registration.accountId !== accountId)
         throw new InstallationError(
           "change_unsupported",
           "Resume registration with the original ClawScarf account.",
         );
+      if (claimAdministrator && !identity)
+        throw new InstallationError(
+          "invalid_configuration",
+          "A provisioning credential does not select an administrator. Supply --administrator-subject and --administrator-email during initial configuration, or sign in interactively.",
+        );
       registration.accountId = accountId;
+      if (claimAdministrator && identity) registration.administrator = identity;
       await writePrivate(path, JSON.stringify(registration));
       const result = await registerInstallation({
         client,
@@ -194,6 +226,7 @@ async function registerService(
           `Hosted login registration is ${installation.oidcState}. No new client will be allocated; contact the cloud operator.`,
         );
     }
+    await rm(path + ".login", { force: true });
     if (!origin) return;
     const result = await getInstallationIdentity({
       client,
@@ -207,6 +240,14 @@ async function registerService(
         "Hosted login credentials are unavailable. The saved registration is retained; no keys are replaced.",
       );
     registration.identity = identitySchema.parse(result.data);
+    if (
+      registration.administrator &&
+      registration.administrator.issuer !== registration.identity.issuer
+    )
+      throw new InstallationError(
+        "invalid_configuration",
+        "Administrator identity belongs to a different issuer.",
+      );
     await ensurePrivateFile(
       join(dirname(path), "hosted-oidc-secret"),
       registration.identity.clientSecret,
@@ -224,6 +265,14 @@ export async function hostedOidc(file: string) {
       "unavailable",
       "Hosted login registration is incomplete. Resume the installer or run configure again.",
     );
+  if (
+    registration.administrator &&
+    registration.administrator.issuer !== registration.identity.issuer
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "Administrator identity belongs to a different issuer.",
+    );
   const clientSecretFile = join(dirname(file), "hosted-oidc-secret");
   if (
     (await readInputFile(clientSecretFile, true)).toString("utf8") !==
@@ -237,6 +286,12 @@ export async function hostedOidc(file: string) {
     issuer: registration.identity.issuer,
     clientId: registration.identity.clientId,
     clientSecretFile,
+    ...(registration.administrator
+      ? {
+          administratorSubject: registration.administrator.subject,
+          administratorEmail: registration.administrator.email,
+        }
+      : {}),
   };
 }
 

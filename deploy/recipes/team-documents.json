@@ -23,6 +23,7 @@
       {
         "id": "gpt-6-astra",
         "name": "GPT-6 Astra",
+        "api": "openai-responses",
         "enabled": true,
         "contextWindow": 1050000,
         "maxTokens": 128000,

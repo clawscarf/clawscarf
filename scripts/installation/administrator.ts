@@ -2,7 +2,11 @@ import { z } from "zod";
 import { compose } from "../deployment/compose.js";
 
 /** Local operator command; no public endpoint can issue an ownership claim. */
-export async function administratorSetup(directory: string, issue = false) {
+export async function administratorSetup(
+  directory: string,
+  issue = false,
+  verify = false,
+) {
   const output = await compose(
     directory,
     [
@@ -14,8 +18,9 @@ export async function administratorSetup(directory: string, issue = false) {
       "node",
       "services/access/runtime/setup.js",
       ...(issue ? ["--issue"] : []),
+      ...(verify ? ["--verify"] : []),
     ],
-    issue ? 30_000 : 3000,
+    issue || verify ? 60_000 : 3000,
   );
   return z
     .strictObject({

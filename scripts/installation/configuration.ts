@@ -46,6 +46,8 @@ export const installationSchema = z
         mode: z.literal("hosted"),
         cloudUrl: cloudUrlSchema.default(defaultCloudUrl),
         registrationFile: path.default("./secrets/hosted-login.json"),
+        administratorSubject: z.string().min(1).optional(),
+        administratorEmail: z.email().optional(),
         administratorName: localInput.shape.administratorName,
       }),
       z.strictObject({
@@ -87,9 +89,8 @@ export const installationSchema = z
   })
   .superRefine((value, context) => {
     if (
-      value.access.mode === "oidc" &&
       Boolean(value.access.administratorSubject) !==
-        Boolean(value.access.administratorEmail)
+      Boolean(value.access.administratorEmail)
     )
       context.addIssue({
         code: "custom",

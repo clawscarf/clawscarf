@@ -1,3 +1,4 @@
+import { CloudAuthorizationRequired } from "../../cloud/login.js";
 import { editInstallationSettings } from "./settings.js";
 import { registerCloudServices } from "../../cloud/registration.js";
 import { registerWithBrowser, registerUnattended } from "./cloud.js";
@@ -118,9 +119,16 @@ export async function installFromAnswers(
       ui,
       task,
       operator.administrator,
+      true,
     );
     if (administrator)
-      return { state: "running", ready: false, administrator, directory };
+      return {
+        state: "action_required",
+        ready: false,
+        ...administrator,
+        directory,
+        resume: `clawscarf status --directory ${quote(directory)} --json`,
+      };
     const origin =
       config.exposure.mode === "https"
         ? config.exposure.applicationOrigin
@@ -132,6 +140,14 @@ export async function installFromAnswers(
     );
     return { state: "running", directory };
   } catch (error) {
+    if (error instanceof CloudAuthorizationRequired)
+      return {
+        state: "action_required",
+        action: "cloud_authorization",
+        ...error.action,
+        directory,
+        resume: `clawscarf configure --directory ${quote(directory)} --non-interactive --json`,
+      };
     if (
       error instanceof InstallerCancelled ||
       error instanceof SectionCancelled
@@ -150,10 +166,17 @@ async function finishAdministrator(
   ui: InstallerPrompts,
   task: typeof progress,
   administrator = administratorSetup,
+  verify = false,
 ) {
-  const current = await administrator(state);
+  const current = await task("Verifying administrator access", () =>
+    administrator(state, false, verify),
+  );
   if (current.complete) return undefined;
-  if (options.nonInteractive) return administrator(state, true);
+  if (options.nonInteractive)
+    return {
+      action: "administrator_sign_in",
+      ...(await administrator(state, true)),
+    };
   await browserSignIn(
     ui,
     task,
@@ -248,7 +271,14 @@ export async function runConfiguration(options: InstallOptions) {
         ui,
         (message, work) => progress(message, work, options),
       );
-      if (administrator) return { ...result, ready: false, administrator };
+      if (administrator)
+        return {
+          state: "action_required",
+          ready: false,
+          ...administrator,
+          directory: options.directory,
+          resume: `clawscarf status --directory ${quote(resolve(options.directory ?? "."))} --json`,
+        };
     }
     if (!options.nonInteractive) {
       if (result.state === "cancelled") clack.cancel("Cancelled.");
@@ -261,6 +291,14 @@ export async function runConfiguration(options: InstallOptions) {
     }
     return result;
   } catch (error) {
+    if (error instanceof CloudAuthorizationRequired)
+      return {
+        state: "action_required",
+        action: "cloud_authorization",
+        ...error.action,
+        directory: options.directory,
+        resume: `clawscarf configure --directory ${quote(resolve(options.directory ?? "."))} --non-interactive --yes --json`,
+      };
     if (
       !(error instanceof InstallerCancelled) &&
       !(error instanceof SectionCancelled)

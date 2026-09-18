@@ -1,5 +1,4 @@
 import { readInputFile } from "../files.js";
-import { InstallationError } from "../errors.js";
 import { styleText } from "node:util";
 import { registerCloudServices } from "../../cloud/registration.js";
 import { authorizeCloud } from "../../cloud/login.js";
@@ -16,12 +15,12 @@ export function registerWithBrowser(
   register = registerCloudServices,
 ) {
   return task("Connecting selected cloud services", (signal) =>
-    register(configFile, (url) =>
-      authorizeCloud(
-        url,
-        (link, code) => {
+    register(configFile, (url, file, administrator) =>
+      authorizeCloud(url, file, {
+        wait: true,
+        present: (link, _code, expiresAt) => {
           ui.note(
-            `${terminalLink(link)}\n\nApproval code: ${code}`,
+            `${administrator ? "Sign in or create an account to set up this installation and become its first administrator." : "Sign in or create an account to authorize the selected cloud services."}\n\n${terminalLink(link)}\n\nExpires at ${expiresAt}. Return to this terminal after approval.`,
             styleText(
               ["bold", "yellow"],
               "ACTION REQUIRED — Sign in to ClawScarf",
@@ -29,7 +28,7 @@ export function registerWithBrowser(
           );
         },
         signal,
-      ),
+      }),
     ),
   );
 }
@@ -39,12 +38,8 @@ export async function registerUnattended(
   credentialFile: string | undefined,
   register = registerCloudServices,
 ) {
-  await register(configFile, async () => {
-    if (!credentialFile)
-      throw new InstallationError(
-        "invalid_configuration",
-        "Hosted registration requires --cloud-credential-file in noninteractive mode. Omit --non-interactive to sign in through the browser.",
-      );
+  await register(configFile, async (url, file) => {
+    if (!credentialFile) return authorizeCloud(url, file, { wait: false });
     return (await readInputFile(credentialFile, true)).toString("utf8").trim();
   });
 }

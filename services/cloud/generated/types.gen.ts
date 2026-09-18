@@ -805,6 +805,11 @@ export type GetAccountResponses = {
      */
     200: {
         accountId: string;
+        identity: null | {
+            issuer: string;
+            subject: string;
+            email: string;
+        };
     };
 };
 

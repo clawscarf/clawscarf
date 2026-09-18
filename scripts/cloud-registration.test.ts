@@ -49,6 +49,11 @@ await test("hosted registration survives a lost response without changing accoun
     identities = 0;
   let rejected = true;
   app.get("/api/account", (request) => ({
+    identity: {
+      issuer: "https://identity.example",
+      subject: "owner",
+      email: "owner@example.com",
+    },
     accountId:
       request.headers.authorization === "Bearer other"
         ? otherAccountId
@@ -133,6 +138,8 @@ await test("hosted registration survives a lost response without changing accoun
   assert.equal(identities, 3);
   const oidc = await hostedOidc(join(directory, "secrets/hosted-login.json"));
   assert.equal(oidc.clientId, "client-example");
+  assert.equal(oidc.administratorSubject, "owner");
+  assert.equal(oidc.administratorEmail, "owner@example.com");
   assert.equal((await stat(oidc.clientSecretFile)).mode & 0o777, 0o600);
   config.connections.mode = "hosted";
   config.connections.cloudUrl = cloudUrl;
@@ -178,7 +185,7 @@ await test("company OIDC registers only enabled Connections and preserves its cr
   const app = Fastify();
   t.after(() => app.close());
   let posts = 0;
-  app.get("/api/account", () => ({ accountId: randomUUID() }));
+  app.get("/api/account", () => ({ accountId: randomUUID(), identity: null }));
   app.post("/api/installations", (request) => {
     posts++;
     assert.equal(
@@ -225,4 +232,59 @@ await test("company OIDC registers only enabled Connections and preserves its cr
   );
   assert.deepEqual(after, before);
   assert.equal(posts, 1);
+});
+
+await test("provisioning credentials require an explicit administrator; issuer mismatches cannot bootstrap", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "clawscarf-bootstrap-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const app = Fastify();
+  t.after(() => app.close());
+  let posts = 0;
+  const accountId = randomUUID();
+  app.get("/api/account", () => ({ accountId, identity: null }));
+  app.post("/api/installations", () => {
+    posts++;
+    return {
+      id: randomUUID(),
+      origin: "http://127.0.0.1:18800",
+      oidcState: "ready",
+    };
+  });
+  app.get("/api/installations/:id/identity", () => ({
+    issuer: "https://identity.example",
+    clientId: "client",
+    clientSecret: "secret",
+  }));
+  const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
+  const config = configuration(cloudUrl);
+  const file = join(directory, "installation.json");
+  await writeFile(file, JSON.stringify(config));
+  await assert.rejects(
+    () => registerCloudServices(file, () => Promise.resolve("provisioner")),
+    { code: "invalid_configuration" },
+  );
+  assert.equal(posts, 0);
+  config.access.administratorSubject = "explicit-subject";
+  config.access.administratorEmail = "owner@example.com";
+  await writeFile(file, JSON.stringify(config));
+  await registerCloudServices(file, () => Promise.resolve("provisioner"));
+  assert.equal(posts, 1);
+  const path = join(directory, "secrets/hosted-login.json");
+  const saved = await readHostedRegistration(path);
+  assert.equal(saved.administrator, undefined);
+  await writeFile(
+    path,
+    JSON.stringify({
+      ...saved,
+      administrator: {
+        issuer: "https://another-issuer.example",
+        subject: "owner",
+        email: "owner@example.com",
+      },
+    }),
+    { mode: 0o600 },
+  );
+  await assert.rejects(() => hostedOidc(path), {
+    code: "invalid_configuration",
+  });
 });

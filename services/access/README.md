@@ -5,8 +5,10 @@ or the user’s own OIDC provider. The service
 owns enrollment and revocable browser sessions; OpenClaw owns application roles.
 There are no RawClaw organizations, allocations, host records or provider accounts.
 
-The first-administrator claim is distinct from ordinary account login. Both authenticate
-through OIDC. People management renders in the native plugin; no identity server or
+Hosted setup explicitly selects the authenticated cloud owner as the initial administrator.
+Company OIDC without an explicit administrator uses a private, one-use claim link.
+Ordinary login never grants admission or administrator authority. People management
+renders in the native plugin; no identity server or
 password database is bundled with the installation.
 
 The implementation contains a session service, Postgres persistence, generated
@@ -52,6 +54,11 @@ claim to terminate a provider-wide session when its logout endpoint is unavailab
 
 The initial administrator has a stable UUID reserved before native configuration.
 Native initial configuration must use the same `clawscarf:<UUID>` identity.
+
+Hosted setup supplies the cloud-verified issuer/subject and email as explicit initial
+bootstrap input. After startup, the local operator verifies native administrator
+authority and team preparation using a temporary session that it always revokes. This
+is initial setup, not a recurring grant from cloud account ownership.
 
 Without an explicit administrator identity, the local operator issues a private setup
 link using [the setup command](runtime/setup.ts) with `--issue`. The link expires after
