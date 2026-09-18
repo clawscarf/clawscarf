@@ -1,3 +1,4 @@
+import { defaultInstallationDirectory } from "./location.js";
 import { resolve } from "node:path";
 import { setupContext, assertReleaseCapabilities } from "./setup.js";
 import { readJson, readInputFile, fingerprint } from "./files.js";
@@ -61,16 +62,21 @@ export async function prepareConfiguration(options: ConfigureOptions) {
       "invalid_configuration",
       "--reapply requires an existing installation.",
     );
-  if (!options.directory || !options.recipe)
+  if (!options.recipe)
     throw new InstallationError(
       "invalid_configuration",
-      "Unattended new configuration requires --directory and --recipe (or custom).",
+      "Unattended new configuration requires --recipe <name-or-file>.",
     );
-  const directory = resolve(options.directory);
+  const directory = resolve(options.directory ?? defaultInstallationDirectory);
   await newDirectory(directory);
   const context = await setupContext(options);
   const inputs = new SetupInputs(directory);
-  const draft = await selectedDraft(context, options.recipe, options, inputs);
+  const draft = await selectedDraft(
+    context,
+    context.recipeId ?? options.recipe,
+    options,
+    inputs,
+  );
   const config = await validateSelections(context, draft);
   return { directory, config, inputs };
 }
@@ -118,8 +124,10 @@ export async function validateSelections(
 }
 
 export async function savedSetup(options: ConfigureOptions) {
-  if (!options.directory) return undefined;
-  const configFile = resolve(options.directory, "installation.json");
+  const configFile = resolve(
+    options.directory ?? defaultInstallationDirectory,
+    "installation.json",
+  );
   try {
     const config = installationSchema.parse(await readJson(configFile));
     return { configFile, config };
@@ -133,7 +141,6 @@ export async function savedSetup(options: ConfigureOptions) {
 export function rejectNewSelections(options: ConfigureOptions) {
   if (
     options.recipe ||
-    options.release ||
     options.cloudUrl ||
     Object.values(selectionSchema.parse(options)).some(
       (value) => value !== undefined,

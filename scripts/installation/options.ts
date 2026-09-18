@@ -1,5 +1,5 @@
 import { Command, Option } from "commander";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { z } from "zod";
 import { installationSchema, type InstallationDraft } from "./configuration.js";
 import { cloudUrlSchema } from "../cloud/url.js";
@@ -68,7 +68,6 @@ export type InstallationSelections = z.input<typeof selectionSchema>;
 export type ConfigureOptions = SetupOptions &
   InstallationSelections & {
     directory?: string;
-    recipe?: string;
     nonInteractive?: boolean;
     yes?: boolean;
     start?: boolean;
@@ -114,7 +113,7 @@ export function installationOptions(command: Command) {
     )
     .option("--browser", "Enable experimental browser capability")
     .option("--no-browser", "Disable browser capability")
-    .option("--model <id>", "Default model from the release catalog")
+    .option("--model <id>", "Default model from the model catalog")
     .option(
       "--provider <id>",
       "Model provider, for example openai or openrouter",
@@ -149,7 +148,7 @@ export function installationOptions(command: Command) {
     )
     .option(
       "--pack <id:members>",
-      "Select release pack members; repeat for multiple packs",
+      "Select bundled pack members; repeat for multiple packs",
       append,
     )
     .addOption(
@@ -275,12 +274,13 @@ export async function selectedDraft(
         !id ||
         !members ||
         extra !== undefined ||
-        !context.release.packs.some((pack) => pack.id === id)
+        !context.packs.some((pack) => pack.id === id)
       )
         invalid(
-          "Use --pack <release-pack-id:member,member>; list available packs with clawscarf recipes.",
+          "Use --pack <pack-id:member,member>; list available packs with clawscarf recipes.",
         );
-      const directory = resolve(dirname(context.releaseFile), "packs", id);
+      const directory = context.packs.find((pack) => pack.id === id)?.directory;
+      if (!directory) invalid(`Unknown pack: ${id}`);
       const pack = await openPack(directory);
       const selected = members.split(",");
       if (
@@ -300,7 +300,8 @@ export async function selectedDraft(
       path = binding.slice(separator + 1);
     const selected = config.packs.find(
       (pack) =>
-        pack.directory === resolve(dirname(context.releaseFile), "packs", id),
+        pack.directory ===
+        context.packs.find((pack) => pack.id === id)?.directory,
     );
     if (separator < 1 || !path || !selected)
       invalid("Use --pack-bindings <selected-pack-id=file>.");
@@ -319,11 +320,7 @@ export async function selectedDraft(
   if (!config.models && preset)
     config.models = {
       mode: "litellm",
-      configurationFile: recipeModelFile(
-        preset,
-        inputs,
-        context.release.modelCatalog,
-      ),
+      configurationFile: recipeModelFile(preset, inputs, context.modelCatalog),
       upstreamEnvironmentFile: "",
     };
   if (o.modelCatalog)
@@ -408,7 +405,7 @@ export async function selectedDraft(
           "Select --model before choosing a provider or reasoning level.",
         );
       const existing = routes?.models.find((item) => item.id === id);
-      const offers = [...(context.release.modelCatalog ?? [])];
+      const offers = [...context.modelCatalog];
       if (
         existing?.route &&
         !offers.some(
@@ -433,7 +430,7 @@ export async function selectedDraft(
         ) ?? matching[0];
       if (!offer)
         invalid(
-          "Unknown model/provider selection. Use clawscarf recipes to see this release's model catalog.",
+          "Unknown model/provider selection. Use clawscarf recipes to see the model catalog.",
         );
       if (o.reasoning && !offer.reasoningLevels.includes(o.reasoning))
         invalid(

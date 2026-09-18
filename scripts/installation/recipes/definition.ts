@@ -1,12 +1,10 @@
 import { z } from "zod";
 import { installationSchema } from "../configuration.js";
 
-/** Recipes are release-owned defaults, never executable installation hooks. */
+/** Recipes are CLI-owned defaults, never executable installation hooks. */
 export const recipeSchema = z.strictObject({
-  id: z
-    .string()
-    .regex(/^[a-z][a-z0-9-]{0,63}$/)
-    .refine((id) => id !== "custom"),
+  id: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+  runtime: z.string().min(1),
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
   maturity: z.enum(["example", "supported"]),

@@ -17,7 +17,8 @@ import {
 import { doctorInstallation } from "./doctor.js";
 import { localLogNames } from "../deployment/logs.js";
 import { upgradeLocal } from "../deployment/upgrade.js";
-import { setupContext, type SetupOptions } from "./setup.js";
+import { installationCatalog } from "./recipes/catalog.js";
+import { defaultInstallationDirectory } from "./location.js";
 import { progress } from "./installer/prompts.js";
 import { runConfiguration } from "./installer/run.js";
 import { installationOptions, type ConfigureOptions } from "./options.js";
@@ -39,11 +40,14 @@ export function installationCommand() {
     .description(
       "Create or change an installation; prompts unless --non-interactive",
     )
-    .option("--directory <path>", "Installation directory")
-    .option("--recipe <id>", "New installation: release recipe ID, or custom")
     .option(
-      "--release <file>",
-      "Development override: local software release bundle",
+      "--directory <path>",
+      "Installation directory",
+      defaultInstallationDirectory,
+    )
+    .option(
+      "--recipe <name-or-file>",
+      "New installation: bundled recipe name or recipe JSON file",
     )
     .option("--cloud-url <url>", "Development override: ClawScarf Cloud origin")
     .option(
@@ -72,17 +76,9 @@ export function installationCommand() {
     });
   program
     .command("recipes")
-    .description("List the release's recipe defaults")
-    .option("--release <file>")
-    .action(async (options: SetupOptions) => {
-      const context = await setupContext(options);
-      output({
-        release: context.release.version,
-        recipes: context.recipes,
-        models: context.release.modelCatalog,
-        packs: context.release.packs,
-        custom: true,
-      });
+    .description("List bundled recipes, models and packs")
+    .action(async () => {
+      output(await installationCatalog());
     });
   program
     .command("release-create")
@@ -254,16 +250,28 @@ function statusText(status: Awaited<ReturnType<typeof controlInstallation>>) {
 
 type LocationOptions = { directory: string };
 function withLocation(command: Command) {
-  return command.requiredOption(
+  return command.option(
     "--directory <path>",
     "Installation directory selected during configure",
+    defaultInstallationDirectory,
   );
 }
 
 /** Read only the location contract so stop/delete still work with invalid startup settings. */
 async function resolveLocation({ directory }: LocationOptions) {
+  let value: unknown;
+  try {
+    value = await readJson(join(resolve(directory), "installation.json"));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      throw new InstallationError(
+        "unavailable",
+        `No installation found in ${resolve(directory)}. Run clawscarf configure to create one, or use --directory to select an existing installation.`,
+      );
+    throw error;
+  }
   const config = z
     .object({ stateDirectory: installationSchema.shape.stateDirectory })
-    .parse(await readJson(join(resolve(directory), "installation.json")));
+    .parse(value);
   return resolve(directory, config.stateDirectory);
 }

@@ -145,8 +145,9 @@ are not supported product installation modes.
 
 ## Installer choices
 
-[The release catalog](catalog.json) contains model/provider choices for initial setup.
-Release creation embeds it by default; a release input can supply its own `modelCatalog`.
+[The model catalog](catalog.json) ships with the CLI and supplies model/provider choices
+for setup. Recipes select defaults from it; runtime releases contain no model settings.
+Operators can import their own catalog through the advanced menu or `--model-catalog`.
 Each model can select the native `api` protocol (`openai-completions` or
 `openai-responses`) used between OpenClaw and LiteLLM. Direct OpenAI offerings use
 Responses so tool calls and reasoning work together; other offerings use Chat

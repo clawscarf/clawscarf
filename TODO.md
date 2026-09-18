@@ -11,8 +11,8 @@ Open work only. Select a task before implementing; this list does not authorize 
       team runtime without bypassing ownership checks.
 - [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
       platform archives with checksums/license notices.
-      Keep recipes and packs together as defined in the [release guide](release/README.md).
-- [ ] Download and verify the CLI's matching release bundle; retain it and the operator
+      Keep runtime artifacts separate from CLI-bundled recipes/packs as defined in the [release guide](release/README.md).
+- [ ] Download and verify the runtime selected by a recipe; retain it and the operator
       outside npm's temporary cache. Pin installations; never resolve latest during startup.
 - [ ] Test a complete release on a clean supported machine through administrator login
       and a real model response, then publish the matching npm CLI, GitHub assets and GHCR images.

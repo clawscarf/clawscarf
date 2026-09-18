@@ -140,10 +140,12 @@ else process.exit(1);
   assert.match(pending.stdout, /administrator --issue/);
 });
 
-await test("CLI errors support human and JSON output", async () => {
+await test("CLI missing-installation errors support human and JSON output", async (t) => {
+  const root = await mkdtemp("/tmp/clawscarf-empty-cli-");
+  t.after(() => rm(root, { recursive: true, force: true }));
   for (const json of [false, true]) {
     await assert.rejects(
-      cli("status", ...(json ? ["--json"] : [])),
+      cli("status", "--directory", root, ...(json ? ["--json"] : [])),
       (error: unknown) => {
         assert.ok(
           error instanceof Error &&
@@ -152,9 +154,13 @@ await test("CLI errors support human and JSON output", async () => {
         );
         if (json)
           assert.partialDeepStrictEqual(JSON.parse(error.stderr), {
-            code: "invalid_arguments",
+            code: "unavailable",
           });
-        else assert.match(error.stderr, /^Error: .*--directory/);
+        else
+          assert.match(
+            error.stderr,
+            /^Error: No installation found.*clawscarf configure.*--directory/,
+          );
         return true;
       },
     );
@@ -237,9 +243,12 @@ await test("file and JSON failures identify the input without disclosing its con
         );
         const result: unknown = JSON.parse(error.stderr);
         assert.partialDeepStrictEqual(result, {
-          code: value ? "invalid_configuration" : "ENOENT",
+          code: value ? "invalid_configuration" : "unavailable",
         });
-        assert.match(error.stderr, /installation.json/);
+        assert.match(
+          error.stderr,
+          value ? /installation.json/ : /No installation found/,
+        );
         assert.doesNotMatch(error.stderr, /sk-do-not-print/);
         return true;
       },

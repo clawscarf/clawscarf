@@ -5,7 +5,6 @@ import { promisify } from "node:util";
 import { test, type TestContext } from "node:test";
 import {
   chmod,
-  cp,
   lstat,
   mkdtemp,
   mkdir,
@@ -132,11 +131,8 @@ async function fixture(t: TestContext) {
     JSON.stringify({
       schemaVersion: 1,
       version: "0.1.0-dev",
-      cloudUrl: "https://cloud.example.test",
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
-      recipes: [],
-      modelCatalog: await readJson(resolve("deploy/models/catalog.json")),
       images: {
         postgres: postgresImage,
         models: liteLlmImage,
@@ -145,6 +141,19 @@ async function fixture(t: TestContext) {
         openshellClient: image,
       },
       tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
+    }),
+  );
+  const recipe = join(parent, "recipe.json");
+  const { readRecipe } = await import("./installation/recipes/catalog.js");
+  const preset = await readRecipe(
+    resolve("recipes/team-documents/recipe.json"),
+  );
+  await writeFile(
+    recipe,
+    JSON.stringify({
+      ...preset,
+      runtime: release,
+      defaults: { ...preset.defaults, connections: { enabled: false } },
     }),
   );
   const models = join(parent, "initial-models.json");
@@ -170,7 +179,7 @@ async function fixture(t: TestContext) {
   const env = join(parent, "initial-models.env");
   await writeFile(env, "PROVIDER_KEY=test-key\n", { mode: 0o600 });
   const answers = {
-    "Starting point": "custom",
+    "Starting point": "team-documents",
     Access: "local",
     "Default model": "team",
     Provider: "openai/test",
@@ -184,8 +193,10 @@ async function fixture(t: TestContext) {
   return {
     parent,
     release,
+    recipe,
     directory,
     answers,
+    cloudUrl: "https://cloud.example.test",
     oidcIssuer: "https://issuer.example.test",
     oidcClientId: "fixture",
     oidcSecretFile: env,
@@ -370,7 +381,7 @@ await test(
         "LLM API keys": "file",
         "Provider credentials file (.env)": key,
         "Install a pack? (experimental native Claws)": true,
-        "Pack directory": resolve("packs/research-team"),
+        Pack: resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
         "Python executable with the pinned OpenShell SDK": "/usr/bin/python3",
       },
@@ -441,7 +452,7 @@ await test(
         const { unattendedPrompts } =
           await import("./installation/installer/prompts.js");
         const work = installFromAnswers(
-          nonInteractive ? { ...f, recipe: "custom", nonInteractive: true } : f,
+          nonInteractive ? { ...f, recipe: f.recipe, nonInteractive: true } : f,
           nonInteractive
             ? {
                 ...unattendedPrompts,
@@ -611,7 +622,10 @@ await test(
       draft.config.connections.cloudUrl,
       "https://cloud.example.test",
     );
-    assert.equal(draft.inputs.files.size, 0);
+    assert.deepEqual(
+      [...draft.inputs.files.keys()].map((file) => file.split("/").at(-1)),
+      ["recipe-models.json"],
+    );
     assert.ok(
       !ui.questions.some((question) =>
         /Composio|broker key|catalog directory/i.test(question),
@@ -637,24 +651,22 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("../tests/recipe-fixture.js");
+    const { readRecipe } = await import("./installation/recipes/catalog.js");
     const { setupContext } = await import("./installation/setup.js");
     const { prepareConfiguration } =
       await import("./installation/configure.js");
     const { selectedDraft } = await import("./installation/options.js");
     const { SetupInputs } = await import("./installation/save.js");
-    const { releaseSchema } = await import("./release/definition.js");
-    const release = releaseSchema.parse(await readJson(f.release));
+    const [preset] = [
+      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+    ];
     await writeFile(
-      f.release,
-      JSON.stringify({
-        ...release,
-        recipes: await loadRecipes(resolve("deploy/recipes")),
-      }),
+      f.recipe,
+      JSON.stringify({ ...preset, runtime: f.release }),
     );
     const options = {
       ...f,
-      recipe: "team-documents",
+      recipe: f.recipe,
       name: "chosen-name",
       port: 19800,
       widgetPort: 19802,
@@ -665,7 +677,7 @@ await test(
     assert.equal(unattended.config.connections.mode, "hosted");
     assert.equal(unattended.config.name, "chosen-name");
     const context = await setupContext({
-      release: f.release,
+      recipe: f.recipe,
       cloudUrl: "https://staging.example.test",
     });
     for (const connections of [false, true]) {
@@ -711,7 +723,7 @@ await test(
     await assert.rejects(
       selectedDraft(
         context,
-        "custom",
+        "team-documents",
         { port: 19800, widgetPort: 19800 },
         new SetupInputs(f.directory),
       ),
@@ -721,27 +733,21 @@ await test(
 );
 
 await test(
-  "recipe packs are selected from the release and collect prerequisites after review",
+  "recipe packs are selected from the CLI catalog and collect prerequisites after review",
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("../tests/recipe-fixture.js");
-    const { releaseSchema } = await import("./release/definition.js");
-    const { openPack } = await import("./packs/source.js");
-    const source = await openPack(resolve("packs/research-team"));
-    await cp(source.root, join(f.parent, "packs/research-team"), {
-      recursive: true,
-    });
-    const recipes = await loadRecipes(resolve("deploy/recipes"));
+    const { readRecipe } = await import("./installation/recipes/catalog.js");
+    const recipes = [
+      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+    ];
     assert.ok(recipes[0]);
-    recipes[0].packs = [{ id: "research-team", members: ["researcher"] }];
-    const release = releaseSchema.parse(await readJson(f.release));
     await writeFile(
-      f.release,
+      f.recipe,
       JSON.stringify({
-        ...release,
-        recipes,
-        packs: [{ id: "research-team", digest: source.digest }],
+        ...recipes[0],
+        runtime: f.release,
+        packs: [{ id: "research-team", members: ["researcher"] }],
       }),
     );
     const ui = new Answers({
@@ -750,11 +756,11 @@ await test(
     });
     const draft = await collectInstallation(ui, {
       ...f,
-      recipe: "team-documents",
+      recipe: f.recipe,
     });
     assert.equal(
       draft.config.packs[0]?.directory,
-      join(f.parent, "packs/research-team"),
+      resolve("packs/research-team"),
     );
     assert.deepEqual(draft.config.packs[0].members, ["researcher"]);
     assert.equal(
@@ -766,10 +772,12 @@ await test(
 );
 
 await test("recipes refuse scripts, personal configuration, duplicate IDs and protection switches", async () => {
-  const { loadRecipes } = await import("../tests/recipe-fixture.js");
+  const { readRecipe } = await import("./installation/recipes/catalog.js");
   const { recipesSchema } =
     await import("./installation/recipes/definition.js");
-  const [recipe] = await loadRecipes(resolve("deploy/recipes"));
+  const [recipe] = [
+    await readRecipe(resolve("recipes/team-documents/recipe.json")),
+  ];
   assert.ok(recipe);
   assert.equal(recipesSchema.safeParse([recipe, recipe]).success, false);
   for (const field of [
@@ -848,21 +856,18 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { loadRecipes } = await import("../tests/recipe-fixture.js");
-    const { releaseSchema } = await import("./release/definition.js");
-    const release = releaseSchema.parse(await readJson(f.release));
+    const { readRecipe } = await import("./installation/recipes/catalog.js");
+    const [preset] = [
+      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+    ];
     await writeFile(
-      f.release,
-      JSON.stringify({
-        ...release,
-        recipes: await loadRecipes(resolve("deploy/recipes")),
-      }),
+      f.recipe,
+      JSON.stringify({ ...preset, runtime: f.release }),
     );
     const ui = new Answers(f.answers);
     const draft = await collectInstallation(ui, {
-      release: f.release,
+      recipe: f.recipe,
       directory: f.directory,
-      recipe: "team-documents",
     });
     assert.ok(ui.questions.includes("secret:OpenAI LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
@@ -912,7 +917,7 @@ await test(
     await collectInstallation(supplied, {
       ...f,
       directory: join(f.parent, "supplied"),
-      recipe: "team-documents",
+      recipe: f.recipe,
     });
     assert.ok(
       !supplied.questions.some((question) => question.startsWith("secret:")),
@@ -959,17 +964,15 @@ await test(
       await import("./installation/configure.js");
     await assert.rejects(
       prepareConfiguration({
-        release: f.release,
+        recipe: f.recipe,
         directory: f.directory,
-        recipe: "custom",
       }),
       { code: "invalid_configuration" },
     );
     await assert.rejects(
       prepareConfiguration({
-        release: f.release,
+        recipe: f.recipe,
         directory: f.directory,
-        recipe: "custom",
         model: "unknown-model",
       }),
     );
@@ -1057,41 +1060,14 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const { releaseSchema } = await import("./release/definition.js");
     const { gatewayRoutesSchema } = await import("./models/configuration.js");
-    const release = releaseSchema.parse(await readJson(f.release));
-    const model = gatewayRoutesSchema.parse(
-      await readJson(join(f.parent, "initial-models.json")),
-    ).models[0];
-    assert.ok(model);
-    await writeFile(
-      f.release,
-      JSON.stringify({
-        ...release,
-        modelCatalog: [
-          {
-            provider: "Anthropic",
-            model: {
-              ...model,
-              id: "selected",
-              name: "Selected",
-              reasoning: true,
-              route: {
-                model: "anthropic/selected",
-                apiKeyEnv: "ANTHROPIC_API_KEY",
-              },
-            },
-            reasoningLevels: ["high"],
-          },
-        ],
-      }),
-    );
     const ui = new Answers(
       {
         ...f.answers,
-        "Default model": "selected",
-        Provider: "anthropic/selected",
+        "Default model": "claude-sonnet-5",
+        Provider: "anthropic/claude-sonnet-5",
         "secret:Anthropic LLM API key": "selected-secret",
+        Reasoning: "high",
       },
       ["models"],
     );
@@ -1106,7 +1082,7 @@ await test(
     );
     assert.deepEqual(
       routes.models.map((entry) => entry.id),
-      ["selected"],
+      ["claude-sonnet-5"],
     );
     assert.equal(routes.thinkingDefault, "high");
     assert.ok(ui.questions.includes("secret:Anthropic LLM API key"));
@@ -1269,7 +1245,7 @@ await test(
         { ...f.answers, "secret:OpenAI LLM API key": "discard-me" },
         ["model-credentials"],
       ),
-      { release: f.release, existing: true },
+      { recipe: f.recipe, existing: true },
       first,
     );
     assert.deepEqual(result.config, original);
@@ -1323,30 +1299,18 @@ await test(
   async (t) => {
     const f = await fixture(t);
     const first = await collectInstallation(new Answers(f.answers), f);
-    const { releaseSchema } = await import("./release/definition.js");
     const { gatewayRoutesSchema } = await import("./models/configuration.js");
-    const release = releaseSchema.parse(await readJson(f.release));
-    const routes = gatewayRoutesSchema.parse(
-      await readJson(first.config.models.configurationFile),
-    );
-    const model = routes.models[0];
-    assert.ok(model);
-    await writeFile(
-      f.release,
-      JSON.stringify({
-        ...release,
-        modelCatalog: [
-          {
-            provider: "OpenAI",
-            model: { ...model, id: "second", name: "Second" },
-            reasoningLevels: [],
-          },
-        ],
-      }),
-    );
     const result = await collectInstallation(
-      new Answers({ ...f.answers, "Default model": "second" }, ["models"]),
-      { release: f.release, existing: true },
+      new Answers(
+        {
+          ...f.answers,
+          "Default model": "gpt-6-astra",
+          Provider: "openai/gpt-6-astra",
+          Reasoning: "medium",
+        },
+        ["models"],
+      ),
+      { recipe: f.recipe, existing: true },
       first,
     );
     const changed = gatewayRoutesSchema.parse(
@@ -1354,9 +1318,9 @@ await test(
     );
     assert.deepEqual(
       changed.models.map((model) => model.id),
-      ["team", "second"],
+      ["team", "gpt-6-astra"],
     );
-    assert.equal(changed.defaultModel, "second");
+    assert.equal(changed.defaultModel, "gpt-6-astra");
     const saved = await saveConfiguration(
       f.directory,
       result.config,
@@ -1407,11 +1371,10 @@ await test(
     }));
     const cloudUrl = await app.listen({ host: "127.0.0.1", port: 0 });
     const draft = await prepareConfiguration({
-      release: f.release,
+      recipe: f.recipe,
       directory: f.directory,
       modelCatalog: f.modelCatalog,
       providerEnvFile: f.providerEnvFile,
-      recipe: "custom",
       cloudUrl,
     });
     const configFile = await saveConfiguration(
@@ -1444,7 +1407,7 @@ await test(
     const context = await setupContext(f);
     const first = await selectedDraft(
       context,
-      "custom",
+      "team-documents",
       f,
       new SetupInputs(f.directory),
     );
@@ -1453,7 +1416,7 @@ await test(
     const inputs = new SetupInputs(f.directory);
     const updated = await selectedDraft(
       context,
-      "custom",
+      "team-documents",
       { model: "team", provider: "openai", llmKeyFile: key },
       inputs,
       first,
@@ -1475,7 +1438,7 @@ await test(
       await assert.rejects(
         selectedDraft(
           context,
-          "custom",
+          "team-documents",
           options,
           new SetupInputs(f.directory),
           first,
@@ -1485,7 +1448,7 @@ await test(
     await assert.rejects(
       selectedDraft(
         context,
-        "custom",
+        "team-documents",
         { access: "hosted", oidcIssuer: f.oidcIssuer },
         inputs,
       ),
@@ -1660,7 +1623,7 @@ await test(
       },
     };
     const first = await installFromAnswers(
-      { ...f, recipe: "custom", nonInteractive: true, start: false },
+      { ...f, recipe: f.recipe, nonInteractive: true, start: false },
       unattendedPrompts,
       operators,
     );
@@ -1752,10 +1715,10 @@ await test(
   },
 );
 
-await test("recipe model choices resolve release metadata and reject missing or unsupported offerings", async () => {
+await test("recipe model choices resolve catalog metadata and reject missing or unsupported offerings", async () => {
   const { recipeModelRoutes } = await import("./installation/models.js");
-  const { releaseSchema } = await import("./release/definition.js");
-  const catalog = releaseSchema.shape.modelCatalog.parse(
+  const { modelCatalogSchema } = await import("./models/catalog.js");
+  const catalog = modelCatalogSchema.parse(
     await readJson("deploy/models/catalog.json"),
   );
   const choice = {
@@ -1765,7 +1728,7 @@ await test("recipe model choices resolve release metadata and reject missing or 
   };
   const routes = recipeModelRoutes(choice, catalog);
   assert.equal(routes.models[0]?.api, "openai-responses");
-  assert.deepEqual(routes.models[0], catalog?.[0]?.model);
+  assert.deepEqual(routes.models[0], catalog[0]?.model);
   assert.throws(() => recipeModelRoutes(choice, []), {
     code: "invalid_configuration",
   });
@@ -1773,7 +1736,7 @@ await test("recipe model choices resolve release metadata and reject missing or 
     () =>
       recipeModelRoutes(
         choice,
-        catalog?.map((item) => ({ ...item, reasoningLevels: [] })),
+        catalog.map((item) => ({ ...item, reasoningLevels: [] })),
       ),
     { code: "invalid_configuration" },
   );
@@ -1793,7 +1756,7 @@ await test(
     const f = await fixture(t);
     const draft = await prepareConfiguration({
       ...f,
-      recipe: "custom",
+      recipe: f.recipe,
       nonInteractive: true,
     });
     const ports = await allocatePorts();
@@ -1805,8 +1768,8 @@ await test(
     draft.config.access = {
       mode: "hosted",
       administratorName: "Admin",
-      cloudUrl: "https://cloud.example.test",
       registrationFile: "./not-created.json",
+      cloudUrl: "https://cloud.example.test",
     };
     const file = await saveConfiguration(
       f.directory,
@@ -1977,3 +1940,35 @@ await test("image download reports layer progress, hides registry errors and sup
   controller.abort(new InstallerCancelled());
   await assert.rejects(running, InstallerCancelled);
 });
+
+await test(
+  "no recipe flag lists bundled recipes and uses their runtime with staging defaults",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const ui = new Answers({
+      ...f.answers,
+      "Starting point": "team-documents",
+    });
+    const result = await collectInstallation(ui, {
+      directory: f.directory,
+      cloudUrl: "https://cloud-staging.clawscarf.com",
+    });
+    assert.ok(ui.questions.includes("Starting point"));
+    assert.equal(
+      result.config.releaseFile,
+      resolve("runtime/releases/0.1.0-dev.json"),
+    );
+    assert.equal(result.config.connections.mode, "hosted");
+    assert.equal(
+      result.config.connections.cloudUrl,
+      "https://cloud-staging.clawscarf.com",
+    );
+    assert.equal(result.config.access.mode, "hosted");
+    assert.equal(
+      result.config.access.cloudUrl,
+      result.config.connections.cloudUrl,
+    );
+    await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);

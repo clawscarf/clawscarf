@@ -1,6 +1,6 @@
 import { selectModel } from "../../models.js";
 import type { InstallationConfiguration } from "../../configuration.js";
-import type { Release } from "../../../release/definition.js";
+import type { ModelCatalog } from "../../../models/catalog.js";
 import type { InstallerPrompts } from "../prompts.js";
 import {
   gatewayRoutesSchema,
@@ -31,7 +31,7 @@ export function providerLabel(route: { model: string }) {
 /** Settings only. Credentials are collected after the complete installation review. */
 export async function collectModels(
   ui: InstallerPrompts,
-  release: Release,
+  offers: ModelCatalog,
   current: InstallationConfiguration["models"] | undefined,
   inputs: SetupInputs,
   presetFile?: string,
@@ -76,7 +76,6 @@ export async function collectModels(
   }
   const file = current?.configurationFile ?? presetFile;
   const routes = file ? await modelRoutes(file, inputs) : undefined;
-  const offers = release.modelCatalog ?? [];
   const choices = new Map([
     ...offers.map((offer) => [offer.model.id, offer.model.name] as const),
     ...(routes?.models.map((model) => [model.id, model.name] as const) ?? []),
@@ -84,7 +83,7 @@ export async function collectModels(
   if (!choices.size)
     throw new InstallationError(
       "invalid_configuration",
-      "This release contains no model choices. Import a catalog under Advanced.",
+      "No model choices are available. Import a catalog under Advanced.",
     );
   const id = await ui.select(
     "Default model",

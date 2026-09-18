@@ -48,6 +48,10 @@ await test(
     assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));
+    assert.ok(listing.includes("package/recipes/team-documents/recipe.json"));
+    assert.ok(listing.includes("package/packs/research-team/pack.json"));
+    assert.ok(listing.includes("package/runtime/releases/0.1.0-dev.json"));
+    assert.ok(!listing.includes("package/runtime/tools/"));
     assert.ok(listing.includes("package/runtime/model-contract.js"));
     assert.ok(listing.includes("package/pnpm-lock.yaml"));
     assert.ok(
@@ -127,7 +131,6 @@ await test(
         version: "0.1.0-dev",
         sourceRevision: "a".repeat(40),
         platforms: ["darwin-arm64"],
-        recipes: [],
         images: {
           postgres: postgresImage,
           ...Object.fromEntries(
@@ -181,13 +184,7 @@ await test(
     );
     const listed = await execute(
       process.execPath,
-      [
-        "scripts/clawscarf.js",
-        "recipes",
-        "--release",
-        join(bundle, "clawscarf-release.json"),
-        "--json",
-      ],
+      ["scripts/clawscarf.js", "recipes", "--json"],
       { cwd },
     );
     assert.match(listed.stdout, /gpt-6-astra/);

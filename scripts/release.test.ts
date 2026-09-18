@@ -1,53 +1,35 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import {
-  chmod,
-  cp,
-  mkdtemp,
-  readFile,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { releaseSchema } from "./release/definition.js";
 import { createDevelopmentRelease } from "./release/create.js";
-import { loadRecipes } from "../tests/recipe-fixture.js";
 import { setupContext, recipeConfiguration } from "./installation/setup.js";
-import { verifyReleaseContents } from "./release/contents.js";
-import { liteLlmImage, postgresImage } from "./deployment/images.js";
+import { verifyReleaseTool } from "./installation/files.js";
+import {
+  installationCatalog,
+  readRecipe,
+} from "./installation/recipes/catalog.js";
+import { postgresImage } from "./deployment/images.js";
 
-await test("release bundles survive relocation without source files and reject missing or altered payloads", async (t) => {
+await test("runtime artifacts relocate independently of recipes and reject altered tools", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-release-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await writeFile(join(directory, "tool"), "executable fixture");
-  await chmod(join(directory, "tool"), 0o755);
-  await cp("packs/research-team", join(directory, "source-pack"), {
-    recursive: true,
+  await writeFile(join(directory, "tool"), "executable fixture", {
+    mode: 0o755,
   });
-  const recipes = await loadRecipes("deploy/recipes");
-  assert.ok(recipes[0]);
-  recipes[0].packs = [
-    { id: "research-team", members: ["researcher", "reviewer"] },
-  ];
+  const image = `sha256:${"a".repeat(64)}`;
   const input = {
     schemaVersion: 1,
-    version: "0.1.0-dev",
+    version: "0.1.0-test",
     sourceRevision: "a".repeat(40),
     platforms: ["darwin-arm64"],
-    recipes,
-    packs: ["source-pack"],
     images: {
       postgres: postgresImage,
-      models: liteLlmImage,
-      ...Object.fromEntries(
-        ["gateway", "companion", "openshellClient"].map((key) => [
-          key,
-          "sha256:" + "a".repeat(64),
-        ]),
-      ),
+      gateway: image,
+      companion: image,
+      openshellClient: image,
     },
     tools: { openshell: { version: "0.0.116", cli: "tool", gateway: "tool" } },
   };
@@ -57,72 +39,66 @@ await test("release bundles survive relocation without source files and reject m
   };
   await writeFile(options.inputFile, JSON.stringify(input));
   const release = await createDevelopmentRelease(options);
-  assert.deepEqual(release.tools.openshell.cli, {
-    file: "tools/openshell",
-    sha256: createHash("sha256").update("executable fixture").digest("hex"),
-  });
-  assert.deepEqual(
-    JSON.parse(
-      await readFile(
-        join(options.outputDirectory, "clawscarf-release.json"),
-        "utf8",
-      ),
-    ),
-    release,
-  );
   await assert.rejects(createDevelopmentRelease(options), { code: "EEXIST" });
-  const second = { ...options, outputDirectory: join(directory, "second") };
   assert.deepEqual(
-    await createDevelopmentRelease(second),
+    await createDevelopmentRelease({
+      ...options,
+      outputDirectory: join(directory, "second"),
+    }),
     release,
-    "Repeated builds have identical metadata/digests",
   );
-  await writeFile(options.inputFile, JSON.stringify({ ...input, packs: [] }));
-  const broken = { ...options, outputDirectory: join(directory, "broken") };
-  await assert.rejects(
-    createDevelopmentRelease(broken),
-    /requires missing pack/,
-  );
-  await assert.rejects(
-    readFile(join(broken.outputDirectory, "clawscarf-release.json")),
-    { code: "ENOENT" },
-  );
-  await writeFile(
-    options.inputFile,
-    JSON.stringify({ ...input, administratorName: "Not a build input" }),
-  );
-  await assert.rejects(createDevelopmentRelease(options), { name: "ZodError" });
+  assert.equal("recipes" in release, false);
+  assert.equal("packs" in release, false);
+  assert.equal("modelCatalog" in release, false);
+  assert.throws(() => releaseSchema.parse({ ...release, recipes: [] }));
   const moved = join(directory, "moved");
   await rename(options.outputDirectory, moved);
-  for (const name of ["tool", "source-pack", "input.json"])
-    await rm(join(directory, name), { recursive: true });
-  const releaseFile = join(moved, "clawscarf-release.json");
-  await verifyReleaseContents(release, releaseFile);
-  assert.equal(
-    await readFile(join(moved, release.tools.openshell.cli.file), "utf8"),
-    "executable fixture",
-  );
-  assert.ok(
-    !JSON.stringify(release).includes(directory),
-    "No build-machine paths escape into metadata",
-  );
+  await rm(join(directory, "tool"));
+  const tool = release.tools.openshell.cli;
+  await verifyReleaseTool(join(moved, tool.file), tool.sha256);
+  assert.ok(!JSON.stringify(release).includes(directory));
   if (process.platform === "darwin" && process.arch === "arm64") {
-    const context = await setupContext({ release: releaseFile });
-    const config = recipeConfiguration(context, "team-documents");
-    assert.deepEqual(config.packs, [
-      {
-        directory: resolve(moved, "packs/research-team"),
-        members: ["researcher", "reviewer"],
-      },
-    ]);
+    const recipe = await readRecipe(
+      resolve("recipes/team-documents/recipe.json"),
+    );
+    const file = join(directory, "recipe.json");
+    await writeFile(
+      file,
+      JSON.stringify({
+        ...recipe,
+        runtime: "./moved/clawscarf-release.json",
+        packs: [{ id: "research-team", members: ["researcher"] }],
+      }),
+    );
+    const context = await setupContext({ recipe: file });
+    assert.equal(context.release.version, release.version);
+    assert.equal(
+      recipeConfiguration(context, recipe.id).packs[0]?.directory,
+      resolve("packs/research-team"),
+    );
   }
-  await writeFile(
-    join(moved, "packs/research-team/researcher/CLAW.md"),
-    "changed",
+  await writeFile(join(moved, tool.file), "modified");
+  await assert.rejects(verifyReleaseTool(join(moved, tool.file), tool.sha256));
+  assert.deepEqual(
+    JSON.parse(await readFile(join(moved, "clawscarf-release.json"), "utf8")),
+    release,
   );
-  await assert.rejects(
-    verifyReleaseContents(release, releaseFile),
-    /does not match its digest/,
+});
+
+await test("bundled recipes pin a runtime and validate their editable defaults", async () => {
+  const catalog = await installationCatalog();
+  const recipe = catalog.recipes.find((item) => item.id === "team-documents");
+  assert.ok(recipe);
+  assert.equal(recipe.defaults.connections?.enabled, true);
+  assert.deepEqual(recipe.models, {
+    model: "gpt-6-astra",
+    provider: "openai",
+    reasoning: "medium",
+  });
+  assert.equal(
+    releaseSchema.parse(JSON.parse(await readFile(recipe.runtime, "utf8")))
+      .version,
+    "0.1.0-dev",
   );
 });
 

@@ -7,7 +7,7 @@ run separate validation, preview and apply commands.
 
 This is a developer preview for macOS arm64 with Docker Desktop. Published downloads
 remain unfinished. [Link the development command](../../scripts/README.md#development-command)
-and prepare a [release bundle](../../release/README.md) before configuring a server.
+and prepare the runtime artifacts selected by the [recipe](../../recipes/README.md) before configuring a server.
 For a new installation, the CLI checks macOS/architecture, Docker and Compose before
 asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
 then checked again during preparation and startup.
@@ -23,7 +23,7 @@ The CLI does not install Docker or download an incomplete release bundle's missi
 ## Terminal installer
 
 ```sh
-clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
+clawscarf configure \
   --directory ~/my-team
 ```
 
@@ -35,15 +35,20 @@ asking for missing credentials. Explicit command options preselect those same ch
 
 The illustrative **Team documents** recipe selects GPT-6 Astra through OpenAI with
 medium reasoning and enables Connections. It does not include a document ingestion
-workflow. Custom starts without recipe defaults and with Connections off. Recipes
+workflow. All recipe defaults except the runtime can be edited. Recipes
 cannot disable OpenShell protection or authenticated entry.
 
-`--recipe <id>` skips the recipe picker. Recipes and selectable models belong to the
-software release; `clawscarf recipes --release <file>` lists them. Maintained recipe
-sources live in [deploy/recipes](../recipes/README.md), not generated test directories.
-The development `--release` override selects the bundle of pinned software, tools,
-recipes and packs. Without it, the CLI looks for the release shipped with its operator.
+`--recipe <name-or-file>` skips the picker: use `team-documents` for the bundled
+recipe or a path to a custom recipe JSON. Without it the menu lists all bundled
+recipes. Sources live in [recipes](../../recipes/README.md); the CLI package includes
+them, the model catalog and pack files. Each recipe points to its fixed runtime
+under [runtime/releases](../../runtime/releases/0.1.0-dev.json). There is no public
+`--release` override. Runtime images/tools are separate [release artifacts](../../release/README.md).
 Recipe defaults are copied once; changing a recipe never changes an existing server.
+
+The directory defaults to `~/clawscarf-team` for configure, start, stop, status and
+logs. Change it with `--directory` or the initial settings menu. Reusing a configured
+directory opens its existing settings; it does not replace the installation.
 
 For first setup, choose a new directory whose parent exists. Configuration and secrets
 are saved there with private permissions. If setup is interrupted, rerun:
@@ -62,7 +67,7 @@ of the terminal. No host daemon is installed. Docker must remain available. Use
 
 ## Login and administrator
 
-Hosted login defaults to `https://cloud.clawscarf.com`. A release's `cloudUrl` or the
+Hosted login defaults to `https://cloud.clawscarf.com`. The
 development `--cloud-url` override can select staging. Connections independently uses
 that cloud unless `--connections-cloud-url` selects another service.
 
@@ -76,7 +81,7 @@ administrator sign-in. Closing the terminal preserves pending approval for the n
 For staging, select it when creating a **separate installation**:
 
 ```sh
-clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
+clawscarf configure \
   --directory ~/my-team-staging --cloud-url https://cloud-staging.clawscarf.com
 ```
 
@@ -103,13 +108,12 @@ The same command and options serve coding agents and scripts:
 
 ```sh
 clawscarf configure --directory ~/my-team \
-  --release /absolute/release-bundle/clawscarf-release.json \
   --recipe team-documents --model gpt-6-astra --provider openai --reasoning medium \
   --llm-key-file /private/openai-key \
   --non-interactive --json
 ```
 
-Use model IDs returned by `recipes` for the selected release. Private key files contain
+Use model IDs returned by `clawscarf recipes`. Private key files contain
 only the secret and must be regular files owned by you, with mode 600. A provider `.env`
 file is also supported for multiple routes. Secrets never go in command-line values.
 
@@ -139,7 +143,7 @@ Run `clawscarf configure --help` for descriptions. The relevant groups are:
 
 | Choices                | Options                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Initial setup          | `--directory`, `--recipe`, `--release`, `--name`, `--administrator-name`                                                               |
+| Initial setup          | `--directory`, `--recipe`, `--name`, `--administrator-name`                                                                            |
 | Models                 | `--model`, `--provider`, `--reasoning`, `--llm-key-file`, `--provider-env-file`                                                        |
 | Login                  | `--access hosted\|oidc`, `--oidc-issuer`, `--oidc-client-id`, `--oidc-secret-file`, `--administrator-subject`, `--administrator-email` |
 | Local networking       | `--port`, `--widget-port`                                                                                                              |
@@ -169,7 +173,7 @@ The installer contains no local broker or connector catalog.
 
 ### Packs
 
-Packs are release-bundled native Claws with explicit member selections. The pinned Python
+Packs are CLI-bundled native Claws with explicit member selections. The pinned Python
 OpenShell SDK is currently required by their operator. Account-dependent members need
 [bindings](../../packs/README.md); configuration never invents accounts or grants.
 

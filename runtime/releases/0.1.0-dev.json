@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0-dev",
+  "sourceRevision": "06398300846e25258d33cee753d081ff5777ed0f",
+  "platforms": ["darwin-arm64"],
+  "images": {
+    "postgres": "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+    "gateway": "sha256:df547bd3440d7d4ddc079a31aad3fbc02b00b9f977b82d1a0d30c874c7cfe5ea",
+    "companion": "sha256:1667427f4e8b1982d21903e72ecb0a8478a16c4c3be22379fa4fcef3f1dab97f",
+    "openshellClient": "sha256:92d9fb21a6a8ea860b579f4e1eb195f36c06951b59a35e1954d3b1da544398d3",
+    "relay": "sha256:f262a64e49b6c444786d5040dbedf5fc55bf45db61705d8f5371edfb7d969da6",
+    "models": "ghcr.io/berriai/litellm:v1.100.1@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf",
+    "browser": {
+      "chromium": "sha256:03d7c94d241f0b2c36bd8710902b2d770bcee5e76e0c741cc950750a0b26cf13",
+      "node": "sha256:783399aa742b5a486b5fdcbe0425dfd83af11d01ff7b5fc11aeed044029fc800",
+      "dns": "sha256:4040e18a739d2dc5a3374de7fbfb91d551740b0b2e110908b94926e845622b9f",
+      "egress": "sha256:16c3cd28fe7c585b45164c3fffe0e90cc78fb8959ae929c1231682992aee7267"
+    }
+  },
+  "tools": {
+    "openshell": {
+      "version": "0.0.116",
+      "cli": {
+        "file": "../tools/0.0.116/openshell",
+        "sha256": "0baeeffe0e4c184b08fde910ac9e8815fb0b8cfb808e49c0e634d7db65fb03bb"
+      },
+      "gateway": {
+        "file": "../tools/0.0.116/openshell-gateway",
+        "sha256": "298706259ef18350f334c222e981e91583558511d50bce22727c689d261203e6"
+      }
+    }
+  }
+}

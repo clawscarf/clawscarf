@@ -5,8 +5,8 @@ A ClawScarf pack groups native OpenClaw Claws. Each member is a normal
 workspace files, skills, plugins, MCP definitions, workflows and ownership records.
 ClawScarf's small group manifest adds compatibility and prerequisite bindings; it
 has no pack database or alternate installer for native resources.
-Recipes can select pack IDs and members from a [release bundle](../release/README.md).
-The bundle carries native files beside its JSON metadata; setup checks their digests
+Recipes can select pack IDs and members from the [CLI package](../release/README.md).
+The CLI package carries the native files. Preparation records their content digests
 and collects required operator/account inputs. No separate pack registry is involved.
 
 The [research-team pack](research-team/pack.json) contains a researcher and reviewer
@@ -16,7 +16,7 @@ a person supplies material and transfers a draft for review.
 
 ## Select and change packs
 
-Use `clawscarf configure --directory /path/to/team` to select release packs and
+Use `clawscarf configure --directory /path/to/team` to select bundled packs and
 members. Noninteractive callers use `--pack <id:member,member>` and optional
 `--pack-bindings <id=file>`. `--no-packs` removes all selected members. Changes
 are reviewed before the server stops; native application finishes at startup.

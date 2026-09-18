@@ -1,7 +1,7 @@
 import type { Recipe } from "./recipes/definition.js";
 import { InstallationError } from "./errors.js";
 import type { InstallationConfiguration } from "./configuration.js";
-import type { Release } from "../release/definition.js";
+import type { ModelCatalog } from "../models/catalog.js";
 import { gatewayRoutesSchema } from "../models/configuration.js";
 import type { SetupInputs } from "./save.js";
 
@@ -9,7 +9,7 @@ import type { SetupInputs } from "./save.js";
 export function selectModel(
   current: InstallationConfiguration["models"] | undefined,
   routes: ReturnType<typeof gatewayRoutesSchema.parse> | undefined,
-  offer: NonNullable<Release["modelCatalog"]>[number],
+  offer: ModelCatalog[number],
   thinkingDefault: string | undefined,
   inputs: SetupInputs,
   retainModels = false,
@@ -49,18 +49,17 @@ export function selectModel(
   };
 }
 
-/** Recipes select an offering; release catalog metadata has one owner. */
+/** Recipes select an offering; model catalog metadata has one owner. */
 export function recipeModelRoutes(
   choice: Recipe["models"],
-  catalog: Release["modelCatalog"],
+  catalog: ModelCatalog,
 ) {
-  const matches =
-    catalog?.filter(
-      (item) =>
-        item.model.enabled &&
-        item.model.id === choice.model &&
-        item.model.route.model.split("/")[0] === choice.provider,
-    ) ?? [];
+  const matches = catalog.filter(
+    (item) =>
+      item.model.enabled &&
+      item.model.id === choice.model &&
+      item.model.route.model.split("/")[0] === choice.provider,
+  );
   const offer = matches[0];
   if (
     !offer ||
@@ -69,7 +68,7 @@ export function recipeModelRoutes(
   )
     throw new InstallationError(
       "invalid_configuration",
-      "Recipe model, provider and reasoning must select one enabled offering in the release catalog.",
+      "Recipe model, provider and reasoning must select one enabled offering in the model catalog.",
     );
   return gatewayRoutesSchema.parse({
     models: [offer.model],

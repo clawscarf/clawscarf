@@ -56,9 +56,9 @@ modules collect feature-specific answers; shared prompts render the revisitable 
 `configure` handles both new and existing installations, interactively or with explicit
 noninteractive flags. It calls the shared validation, preparation and change operators;
 there is no separate provisioning engine.
-Recipes are bundled release data from [deploy/recipes](../deploy/recipes/README.md).
-Run `clawscarf configure --release /absolute/clawscarf-release.json` after linking the
-development command below.
+Recipes and packs are CLI assets from [recipes](../recipes/README.md) and [packs](../packs/README.md).
+Each recipe pins a runtime definition in [runtime/releases](../runtime/releases/0.1.0-dev.json).
+Run `clawscarf configure` after linking the development command below.
 
 ## Development command
 

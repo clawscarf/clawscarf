@@ -73,7 +73,9 @@
   available as explicit flags in noninteractive mode. Keep validation and preview/apply
   internal; do not expose parallel commands, settings-file inputs or state-path aliases.
   CLI operations own configuration/effects; installer menus only collect and present.
-  Recipes are validated defaults, not scripts or another deployment engine. Present the
+  Recipes pin runtime releases and provide editable defaults; they are not scripts or
+  another deployment engine. Keep recipes, packs and runtime definitions in their tracked
+  source directories and package the catalogs with the CLI. Present the
   recipe-filled settings menu first, with Accept and continue at the top; request missing
   secrets afterward in the context of the chosen settings. Keep equivalent noninteractive
   operations and advanced details out of normal copy. Esc returns to the parent screen

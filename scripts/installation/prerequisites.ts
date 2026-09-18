@@ -12,7 +12,7 @@ import {
   installationSchema,
   type InstallationConfiguration,
 } from "./configuration.js";
-import { setupContext, assertReleaseCapabilities } from "./setup.js";
+import { readRuntime, assertReleaseCapabilities } from "./setup.js";
 import { readJson, verifyReleaseTool } from "./files.js";
 import { InstallationError } from "./errors.js";
 
@@ -147,13 +147,10 @@ export async function checkInstallationPrerequisites(
   const report = options.report ?? (() => {});
   const config = installationSchema.parse(await readJson(configFile));
   const base = dirname(resolve(configFile));
-  const { release, releaseFile } = await setupContext({
-    release: resolve(base, config.releaseFile),
-  });
-  assertReleaseCapabilities(
-    { release, releaseFile, recipes: release.recipes },
-    config,
+  const { release, releaseFile } = await readRuntime(
+    resolve(base, config.releaseFile),
   );
+  assertReleaseCapabilities({ release }, config);
   for (const tool of [
     release.tools.openshell.cli,
     release.tools.openshell.gateway,
@@ -165,11 +162,11 @@ export async function checkInstallationPrerequisites(
       if (error instanceof InstallationError) throw error;
       throw new InstallationError(
         "release_mismatch",
-        `The bundled tool ${tool.file} is unavailable. Restore the complete release bundle; tools are not downloaded separately.`,
+        `The runtime tool ${tool.file} is unavailable. Prepare the tools referenced by this runtime release; automatic tool downloading is not available yet.`,
       );
     }
   }
-  report("Bundled tools verified");
+  report("Runtime tools verified");
   let state;
   try {
     state = await readState(resolve(base, config.stateDirectory));
@@ -226,7 +223,7 @@ export async function checkInstallationPrerequisites(
     if (local.length)
       throw new InstallationError(
         "unavailable",
-        `Missing local development images: ${local.join(", ")}. Rebuild the development images and release bundle; these image IDs cannot be downloaded.`,
+        `Missing local development images: ${local.join(", ")}. Rebuild the development images and update the runtime definition; these image IDs cannot be downloaded.`,
       );
     if (!options.acquire)
       throw new InstallationError(

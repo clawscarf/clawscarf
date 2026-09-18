@@ -30,7 +30,7 @@ export async function editInstallationSettings(
   prerequisites = { host: checkHost, check: checkInstallationPrerequisites },
 ) {
   directory = resolve(directory);
-  if (options.recipe || options.release || options.cloudUrl)
+  if (options.recipe || options.cloudUrl)
     throw new InstallationError(
       "change_unsupported",
       "Existing installations keep their recipe, software release and login service. Change models, keys, Connections or packs instead.",
@@ -81,7 +81,7 @@ export async function editInstallationSettings(
   let authorizing: string | undefined;
   let retained = Boolean(pending);
   try {
-    const context = await setupContext({ release: config.releaseFile });
+    const context = await setupContext({}, config.releaseFile);
     const selected = await selectedDraft(
       context,
       config.recipe?.id ?? "custom",
@@ -100,7 +100,7 @@ export async function editInstallationSettings(
         ? { config: await validateSelections(context, selected) }
         : await collectInstallation(
             ui,
-            { release: config.releaseFile, existing: true },
+            { existing: true },
             { directory: staging, config: selected, inputs },
           );
     if ((await readFile(settingsFile, "utf8")) !== before)

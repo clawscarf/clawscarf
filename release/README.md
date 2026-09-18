@@ -1,99 +1,86 @@
-# Releases, recipes and packs
+# Runtime releases, recipes and packs
 
-One ClawScarf version identifies a CLI and its matching platform bundle. Recipes live
-in [deploy/recipes](../deploy/recipes/README.md), packs in [packs](../packs/README.md).
-They ship together; there is no separate recipe repository, registry or dependency
-resolver. A recipe selects packs and agent members from that release. Updating a
-recipe or bundled pack produces a new ClawScarf release. Existing installations keep
-their selected release and editable settings until an explicit change.
+These have separate responsibilities:
 
-## Distribution
+| Definition      | Owns                                                                                             | Location                                               |
+| --------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Runtime release | Exact software images, OpenShell executables, checksums and supported platforms                  | [runtime/releases](../runtime/releases/0.1.0-dev.json) |
+| Recipe          | A fixed runtime reference plus editable model, reasoning, resource, capability and pack defaults | [recipes](../recipes/README.md)                        |
+| Pack            | Native agent, skill and workflow files with declared prerequisites                               | [packs](../packs/README.md)                            |
 
-The publication design is:
+Several recipes can use the same runtime. A runtime contains no recipes, model
+catalog or pack selections. Changing a recipe does not require rebuilding its runtime.
+Recipes and packs ship with the CLI; there is no separate registry or dependency resolver.
+The [model catalog](../deploy/models/catalog.json) is also a CLI asset. Recipe IDs select
+catalog entries; model protocols and limits have one definition.
 
-| Location                  | Contents                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------- |
-| npm: `@clawscarf/cli`     | Compiled `clawscarf` command and its operator assets. No source checkout or TypeScript build for users. |
-| GitHub Releases: `vX.Y.Z` | Matching platform payload archives, release metadata, checksums and required license/source notices.    |
-| GHCR                      | Application, companion and forwarding images referenced by registry digest in the release metadata.     |
+## Current development use
 
-The intended first command is `npx @clawscarf/cli@latest configure`. npm chooses the
-CLI version; that CLI downloads its **exact matching** platform bundle, verifies it,
-and retains the operator and payloads outside npm's temporary cache. An explicit npm
-version selects an older release. Ordinary startup never resolves `latest` again.
-Recipes are chosen from the selected release, not fetched independently. Prereleases
-remain opt-in. A published version is immutable; corrections get a new version.
+```sh
+clawscarf configure
+# Or use staging for hosted login and Connections:
+clawscarf configure --cloud-url https://cloud-staging.clawscarf.com
+```
 
-**Publication and automatic downloading are not implemented.** The operator archive
-already has a `clawscarf` executable entry, but remains private and unpublished. Local
-image IDs are accepted for development; publication must use pullable registry digests.
-Only macOS arm64 is currently supported. Packaging does not establish other-platform
-support, clean-machine installation or runtime behavior.
+No recipe argument opens the bundled recipe menu. `--recipe team-documents` selects
+that bundled definition; `--recipe /path/to/recipe.json` reads a custom one. Its
+`runtime` path resolves relative to the recipe file. The runtime cannot be changed
+in the settings menu. `--directory` defaults to `~/clawscarf-team`.
 
-## Development bundles today
+The tracked [development runtime](../runtime/releases/0.1.0-dev.json) currently names
+locally built Docker image IDs and checksum-pinned OpenShell tools under ignored
+`runtime/tools/0.0.116/`. It works on the prepared development machine; it is **not a
+published, clean-machine release**. Definitions belong in the tracked directories
+above. Compiled images, binaries and test artifacts are not source definitions.
 
-From already-built components, run:
+The current platform is macOS arm64 with Docker Desktop. Setup validates the host,
+tools and ports; it can pull registry images pinned by digest. It cannot recover a
+missing local image ID or download missing OpenShell binaries yet. See the
+[installation guide](../deploy/deployment/installation.md) for diagnostics.
+
+## Publishing structure
+
+The intended distribution uses:
+
+- npm `@clawscarf/cli`: compiled CLI, recipes, pack files, model catalog and runtime
+  definitions. No Docker images or large OpenShell executables in npm.
+- GitHub Releases: versioned runtime tool archives, checksums and required notices.
+- GHCR: runtime/companion images referenced by immutable registry digest.
+
+Installing a newer CLI supplies newer recipes. Each recipe still selects an exact
+runtime; startup never resolves “latest.” Existing installations retain their
+accepted settings and runtime. Explicit configuration changes preserve unrelated
+native edits. The CLI package version and a runtime version need not be the same.
+
+The operator archive already includes the small catalogs and pack trees. Publication,
+runtime tool downloading and a complete clean-machine release remain in
+[TODO.md](../TODO.md). Do not describe the development archive as a published installer.
+
+## Assemble runtime artifacts
+
+For release development, the existing builder copies already-built tools into a
+movable directory:
 
 ```sh
 clawscarf release-create --input /absolute/built-components.json \
-  --output /absolute/release-bundle
-clawscarf configure --release /absolute/release-bundle/clawscarf-release.json \
-  --directory /absolute/new-team
+  --output /absolute/runtime-bundle
 ```
 
-The output is a movable directory:
+The input follows the [runtime schema](../scripts/release/definition.ts), except
+`tools.openshell.cli` and `gateway` are source executable paths. Relative inputs
+resolve beside that input file. The result is:
 
 ```text
-release-bundle/
-  clawscarf-release.json   # version, image digests, recipes, models, payload hashes
-  tools/
-    openshell
-    openshell-gateway
-  packs/                  # only the selected release packs
-    research-team/
-      pack.json
-      researcher/CLAW.md
-      researcher/profiles/openclaw.yml
-      reviewer/...
+runtime-bundle/
+  clawscarf-release.json
   LICENSE
   THIRD_PARTY_NOTICES.md
+  tools/openshell
+  tools/openshell-gateway
 ```
 
-The builder copies tools and payloads; it does not retain paths into the build
-checkout. It rejects missing recipe packs/members, duplicate agent selections,
-invalid model catalogs and non-executable tools. Tool checksums and pack digests cover
-the copied bytes; setup verifies bundled packs again. Repeating assembly with the
-same inputs produces the same metadata and content digests. This is not a claim
-of byte-identical image builds or compressed archives.
-
-Build inputs follow the [release schema](../scripts/release/definition.ts), except
-`tools.openshell.cli` and `gateway` are source executable paths and `packs` is an
-array of source directories. `images.openshellClient` is the exact built
-[forwarding image](../deploy/images/README.md#openshell-forwarding-image); the upstream
-controller image is pinned in the [component manifest](components.json).
-`images.browser` and `images.relay` are optional together; incomplete browser image
-sets fail validation before the installer offers the capability. Paths resolve
-relative to the input file. The builder
-embeds recipe objects supplied in `recipes`; the default model catalog comes from
-[deploy/models/catalog.json](../deploy/models/catalog.json). An optional
-`cloudUrl` supplies the hosted login service origin; development can override it with
-`configure --cloud-url`. Production is the default; staging is available for development.
-The cloud service owns connector catalogs; no provider catalog or secret is bundled
-with an installation release.
-
-A recipe's pack selection is small JSON, for example:
-
-```json
-{ "packs": [{ "id": "research-team", "members": ["researcher", "reviewer"] }] }
-```
-
-The files are not embedded in that JSON. Members remain native OpenClaw Claws and
-use its install/update/remove operations. ClawScarf's group manifest records shared
-requirements. The illustrative Team documents recipe still selects no pack; wiring
-packs into releases does not make that example a finished document workflow.
-
-The CLI, Docker images and pack operator's Python SDK are still separate development
-prerequisites. This command assembles payloads; it does not build images, install the
-SDK or publish a complete download. Keep the resulting bundle available to the
-installation. [Local installation](../deploy/deployment/installation.md) and
-[operator packaging](operator.md) describe the current commands and limitations.
+The builder checks executable files, computes their checksums, refuses overwriting
+an existing output directory and removes incomplete output on failure. It does not
+build images, copy recipes/packs or publish artifacts. A custom recipe can point to
+the resulting runtime definition. The [component pins](components.json) record
+upstream sources; [operator packaging](operator.md) describes the CLI archive.

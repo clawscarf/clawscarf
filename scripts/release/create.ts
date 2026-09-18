@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
   copyFile,
-  cp,
   lstat,
   mkdir,
   readFile,
@@ -13,13 +12,10 @@ import {
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { releaseSchema, type Release } from "./definition.js";
-import { openPack } from "../packs/source.js";
-import { verifyReleaseContents } from "./contents.js";
+import { releaseSchema } from "./definition.js";
 
 // Build inputs use the release contract, replacing tool digests with source paths.
 const inputSchema = releaseSchema.extend({
-  packs: z.array(z.string().min(1)).max(32).default([]),
   tools: z.strictObject({
     openshell: releaseSchema.shape.tools.shape.openshell.extend({
       cli: z.string().min(1),
@@ -50,14 +46,6 @@ export async function createDevelopmentRelease(options: {
     JSON.parse(await readFile(options.inputFile, "utf8")),
   );
   const directory = dirname(resolve(options.inputFile));
-  const bundledCatalog: unknown = JSON.parse(
-    await readFile(
-      fileURLToPath(
-        new URL("../../deploy/models/catalog.json", import.meta.url),
-      ),
-      "utf8",
-    ),
-  );
   const output = resolve(options.outputDirectory);
   await mkdir(output); // Refuse to merge with an existing bundle.
   try {
@@ -67,20 +55,8 @@ export async function createDevelopmentRelease(options: {
         join(output, name),
       );
     await mkdir(join(output, "tools"));
-    const packs: Release["packs"] = [];
-    for (const source of input.packs) {
-      const pack = await openPack(resolve(directory, source));
-      if (packs.some((entry) => entry.id === pack.manifest.id))
-        throw new OperatorError(`Duplicate release pack: ${pack.manifest.id}`);
-      await cp(pack.root, join(output, "packs", pack.manifest.id), {
-        recursive: true,
-      });
-      packs.push({ id: pack.manifest.id, digest: pack.digest });
-    }
     const release = releaseSchema.parse({
       ...input,
-      packs,
-      modelCatalog: input.modelCatalog ?? bundledCatalog,
       tools: {
         openshell: {
           ...input.tools.openshell,
@@ -98,7 +74,6 @@ export async function createDevelopmentRelease(options: {
       },
     });
     const releaseFile = join(output, "clawscarf-release.json");
-    await verifyReleaseContents(release, releaseFile);
     await writeFile(releaseFile, JSON.stringify(release, null, 2) + "\n", {
       flag: "wx",
       mode: 0o600,

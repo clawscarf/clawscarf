@@ -83,8 +83,6 @@ await test(
       version: "0.1.0",
       sourceRevision: "a".repeat(40),
       platforms: ["darwin-arm64"],
-      recipes: [],
-      packs: [],
       images: {
         postgres: postgresImage,
         models: liteLlmImage,
@@ -385,4 +383,19 @@ await test("concurrent operators cannot mutate the same installation", async (t)
     /operation failed/,
   );
   await withInstallationLock(state, () => Promise.resolve(undefined));
+});
+
+await test("configuration and lifecycle commands share a home-directory default; runtime selection is recipe-owned", async () => {
+  const { installationCommand } = await import("./installation/command.js");
+  const { homedir } = await import("node:os");
+  const commands = installationCommand().commands;
+  for (const name of ["configure", "start", "stop", "status", "logs"]) {
+    const command = commands.find((item) => item.name() === name);
+    assert.ok(command);
+    assert.equal(
+      command.opts()["directory"],
+      join(homedir(), "clawscarf-team"),
+    );
+    assert.ok(!command.options.some((option) => option.long === "--release"));
+  }
 });

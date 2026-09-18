@@ -1,5 +1,7 @@
+import { installationCatalog, readRecipe } from "../recipes/catalog.js";
+import { defaultInstallationDirectory } from "../location.js";
 import { isDeepStrictEqual } from "node:util";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { localInput } from "../../deployment/configuration.js";
 import {
   installationSchema,
@@ -39,7 +41,15 @@ export async function collectInstallation(
   options: InstallOptions,
   retained?: InstallationDraftState,
 ) {
-  const context = await setupContext(options);
+  const catalog = await installationCatalog();
+  const customRecipe = options.recipe?.endsWith(".json")
+    ? await readRecipe(resolve(options.recipe))
+    : undefined;
+  if (customRecipe)
+    catalog.recipes = [
+      customRecipe,
+      ...catalog.recipes.filter((recipe) => recipe.id !== customRecipe.id),
+    ];
   let recipeId = retained
     ? (retained.config.recipe?.id ?? "custom")
     : options.recipe;
@@ -53,19 +63,17 @@ export async function collectInstallation(
           recipeId = await ui.select(
             "Starting point",
             [
-              ...context.recipes.map((recipe) => ({
-                value: recipe.id,
+              ...catalog.recipes.map((recipe) => ({
+                value:
+                  recipe.id === customRecipe?.id
+                    ? (options.recipe ?? recipe.id)
+                    : recipe.id,
                 label: recipe.name,
                 hint:
                   recipe.maturity === "example"
                     ? "Example defaults; workflow not included"
                     : recipe.description,
               })),
-              {
-                value: "custom",
-                label: "Custom",
-                hint: "Choose your own settings",
-              },
             ],
             recipeId,
           );
@@ -77,7 +85,7 @@ export async function collectInstallation(
       directory = absolute(
         retained?.directory ??
           options.directory ??
-          (await ui.text("New installation directory", "./clawscarf-team")),
+          defaultInstallationDirectory,
       );
     } catch (error) {
       if (!(error instanceof SectionCancelled)) throw error;
@@ -85,25 +93,32 @@ export async function collectInstallation(
       continue;
     }
     if (!options.existing) await newDirectory(directory);
-    const recipe = context.recipes.find((recipe) => recipe.id === recipeId);
-    if (recipeId === undefined)
+    const context = await setupContext(
+      { ...options, ...(recipeId ? { recipe: recipeId } : {}) },
+      options.existing ? retained?.config.releaseFile : undefined,
+    );
+    const recipe = context.recipes.find(
+      (recipe) => recipe.id === context.recipeId,
+    );
+    const selectedId = context.recipeId ?? recipeId;
+    if (selectedId === undefined)
       throw new InstallationError(
         "invalid_configuration",
         "Select a starting point.",
       );
-    if (retained && (retained.config.recipe?.id ?? "custom") !== recipeId)
+    if (retained && (retained.config.recipe?.id ?? "custom") !== selectedId)
       retained = undefined;
     const inputs = retained?.inputs ?? new SetupInputs(directory);
     let config =
       retained?.config ??
-      (await selectedDraft(context, recipeId, options, inputs));
+      (await selectedDraft(context, selectedId, options, inputs));
     if (!options.existing && config.access.mode === "hosted")
       config.access.registrationFile = resolve(
         directory,
         "secrets/hosted-login.json",
       );
     const presetFile = recipe?.models
-      ? recipeModelFile(recipe.models, inputs, context.release.modelCatalog)
+      ? recipeModelFile(recipe.models, inputs, context.modelCatalog)
       : undefined;
     if (!config.models && presetFile)
       config.models = {
@@ -179,17 +194,13 @@ export async function collectInstallation(
           case "access":
             config = {
               ...config,
-              ...(await collectAccess(
-                ui,
-                config,
-                context.cloudUrl ?? context.release.cloudUrl,
-              )),
+              ...(await collectAccess(ui, config, context.cloudUrl)),
             };
             break;
           case "models":
             config.models = await collectModels(
               ui,
-              context.release,
+              context.modelCatalog,
               config.models,
               inputs,
               presetFile,
@@ -260,14 +271,7 @@ export async function collectInstallation(
               config.models,
               config.connections,
               config,
-              context.release.packs.map((pack) => ({
-                id: pack.id,
-                directory: resolve(
-                  dirname(context.releaseFile),
-                  "packs",
-                  pack.id,
-                ),
-              })),
+              context.packs,
             );
             if (!options.existing) delete config.packOperator;
             config = { ...config, ...selection };
@@ -277,7 +281,7 @@ export async function collectInstallation(
             if (!config.models)
               config.models = await collectModels(
                 ui,
-                context.release,
+                context.modelCatalog,
                 undefined,
                 inputs,
                 presetFile,

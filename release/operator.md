@@ -3,8 +3,9 @@
 This development archive contains the compiled configuration/lifecycle CLI and its controller, model and pack
 operators. It runs outside the contributor checkout. It is not the complete
 distribution: runtime/companion images and the pinned OpenShell executables are
-separate inputs. The interactive menu uses recipes from a supplied
-release bundle; it does not download/build missing components. The generated npm
+separate inputs. The archive includes recipes, packs, the model catalog and runtime definitions.
+The interactive menu lists those recipes; each fixes its runtime. It does not
+download missing OpenShell tools or build missing local images. The generated npm
 package is named `@clawscarf/cli` and exposes the `clawscarf` command, but remains
 private/unpublished. [Release contents](README.md) defines the publication model.
 
@@ -17,7 +18,7 @@ pnpm 10.33.0. In the extracted `package` directory:
 ```sh
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
-node scripts/clawscarf.js configure --release /absolute/clawscarf-release.json --directory /absolute/new-team
+node scripts/clawscarf.js configure --directory /absolute/new-team
 node scripts/clawscarf.js configure --help
 node scripts/clawscarf.js people --help
 node scripts/clawscarf.js connections --help
@@ -38,10 +39,11 @@ for automation. `start`, `stop`, `status` and `logs` operate the selected `--dir
 Validation and preview/apply are internal. See the source installation guide for
 supported retained changes and administrator setup.
 
-Without `--release`, the operator expects **clawscarf-release.json** in its **release**
-directory. Release publication/discovery remains unfinished. The example recipe supplies
-defaults, not a document workflow. Keep the generated release bundle available; its
-tools and pack files move together. No original build checkout is needed.
+Recipes select runtime definitions relative to their own files. Published runtime
+downloading remains unfinished. The development runtime descriptor uses local image
+IDs and expects OpenShell tools prepared separately; the archive alone cannot install
+on a clean machine. Custom recipe files can point to a separately prepared runtime
+bundle. The example recipe supplies defaults, not a document workflow.
 
 Keep installation data outside this extracted package. Stop retains state; replacing
 an operator archive is not a runtime upgrade or backup. Docker services keep running after

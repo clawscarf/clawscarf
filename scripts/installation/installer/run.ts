@@ -1,3 +1,4 @@
+import { defaultInstallationDirectory } from "../location.js";
 import { CloudAuthorizationRequired } from "../../cloud/login.js";
 import { editInstallationSettings } from "./settings.js";
 import { registerCloudServices } from "../../cloud/registration.js";
@@ -242,6 +243,10 @@ function quote(value: string) {
 
 /** The command selects the workflow; users never manipulate preparation files. */
 export async function runConfiguration(options: InstallOptions) {
+  options = {
+    ...options,
+    directory: options.directory ?? defaultInstallationDirectory,
+  };
   if (options.json && !options.nonInteractive)
     throw new InstallationError(
       "invalid_configuration",
