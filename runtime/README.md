@@ -34,8 +34,8 @@ Lobster remains subject to its native unsandboxed-context requirement. Chromium 
 configured headless with its sandbox required. The
 [separate browser image](../deploy/execution/browser/README.md) has component
 sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; ordinary model-selected routing has the owner-managed upstream issue in TODO.
-Connections is bundled and registered without broker credentials; it contributes
-no executable tools until configured. Remote model-catalog refresh and mDNS are
+Connections is bundled but disabled in the base preset. Selecting the capability enables
+its native page and scoped broker tools; disabling it removes both. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
 application settings. The [image guide](../deploy/images/README.md#verified-limits)
 owns exercised capability limits; [TODO.md](../TODO.md) tracks combined runtime and

@@ -585,6 +585,29 @@ await test(
       recipe: "team-documents",
     });
     const context = await setupContext({ release: f.release });
+    const staging = await setupContext({
+      release: f.release,
+      cloudUrl: "https://staging.example.test",
+    });
+    for (const mode of ["disabled", "hosted"] as const) {
+      assert.equal(
+        configureRecipe(staging, "team-documents", {
+          models: draft.config.models,
+          connections: { mode },
+        }).connections.cloudUrl,
+        staging.cloudUrl,
+      );
+    }
+    assert.equal(
+      configureRecipe(staging, "team-documents", {
+        models: draft.config.models,
+        connections: {
+          mode: "hosted",
+          cloudUrl: "https://chosen.example.test",
+        },
+      }).connections.cloudUrl,
+      "https://chosen.example.test",
+    );
     assert.deepEqual(
       {
         ...configureRecipe(

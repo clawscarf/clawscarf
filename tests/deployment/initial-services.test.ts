@@ -69,6 +69,10 @@ await test("shared browser is admitted through the native sandbox tool policy on
       assert.deepEqual(result.tools.elevated, { enabled: false });
       assert.deepEqual(result.gateway, native.gateway);
       assert.deepEqual(result.plugins, native.plugins);
+      assert.equal(
+        result.plugins.entries["clawscarf-connections"].enabled,
+        false,
+      );
       const defaults = "agents" in result ? result.agents?.defaults : undefined;
       const sandbox =
         defaults && "sandbox" in defaults ? defaults.sandbox : undefined;

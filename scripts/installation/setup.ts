@@ -116,6 +116,17 @@ export const setupSettingsSchema = z
   .omit({ schemaVersion: true, releaseFile: true, recipe: true })
   .partial()
   .extend({
+    connections: installationSchema.shape.connections
+      .extend({
+        cloudUrl: installationSchema.shape.connections.shape.cloudUrl
+          .unwrap()
+          .optional(),
+        registrationFile:
+          installationSchema.shape.connections.shape.registrationFile
+            .unwrap()
+            .optional(),
+      })
+      .optional(),
     models: z
       .discriminatedUnion("mode", [
         externalLiteLlmSchema,
@@ -145,11 +156,16 @@ export function setupDraft(
   inputs?: SetupInputs,
 ): InstallationDraft {
   const overrides = setupSettingsSchema.parse(settings);
-  const { models, ...rest } = overrides;
+  const { models, connections, ...rest } = overrides;
+  const defaults = recipeConfiguration(context, recipeId);
   const base = z
     .strictObject(installationSchema.shape)
     .omit({ models: true })
-    .parse({ ...recipeConfiguration(context, recipeId), ...rest });
+    .parse({
+      ...defaults,
+      ...rest,
+      connections: { ...defaults.connections, ...connections },
+    });
   if (models?.mode === "litellm" && !models.configurationFile) {
     const recipe = context.recipes.find((entry) => entry.id === recipeId);
     if (!recipe?.models || !inputs)

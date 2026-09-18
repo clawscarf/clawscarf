@@ -12,7 +12,9 @@ The `pnpm clawscarf` examples below are for running this unreleased source check
 The selected [hosted-services design](../../docs/cloud-services.md) replaces token-only
 evaluation login with hosted OIDC by default and customer OIDC as the alternative,
 without bundling an identity server. The installer defaults to `https://cloud.clawscarf.com`;
-a release's `cloudUrl` or `--cloud-url` can select staging. Connections can be enabled
+a release's `cloudUrl` or `--cloud-url` can select staging. A settings override that
+only changes Connections on/off retains that selected service; an explicit Connections
+`cloudUrl` selects a different service. Connections can be enabled
 independently of hosted or custom OIDC login.
 There is no token-only fallback when cloud configuration is missing.
 

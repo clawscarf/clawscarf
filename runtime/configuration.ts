@@ -91,7 +91,7 @@ export function initialConfiguration(
         ],
       },
       entries: {
-        "clawscarf-connections": { enabled: true },
+        "clawscarf-connections": { enabled: false },
         "clawscarf-access": { enabled: settings.standaloneNavigation },
         lobster: { enabled: true },
         codex: {
