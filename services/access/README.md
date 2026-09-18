@@ -1,14 +1,13 @@
 # Standalone access
 
 Generic OIDC for one ClawScarf server; the installer configures either hosted login
-or the user’s own OIDC provider. Token-only login remains a component fixture. The service
+or the user’s own OIDC provider. The service
 owns enrollment and revocable browser sessions; OpenClaw owns application roles.
 There are no RawClaw organizations, allocations, host records or provider accounts.
 
-The token-only local mode below is current preview behavior, selected for replacement
-by [hosted login with a customer-OIDC alternative](../../docs/cloud-services.md).
-No bundled identity server is planned. The first-admin claim remains distinct from
-ordinary account login; the existing native People interface remains the management UI.
+The first-administrator claim is distinct from ordinary account login. Both authenticate
+through OIDC. People management renders in the native plugin; no identity server or
+password database is bundled with the installation.
 
 The implementation contains a session service, Postgres persistence, generated
 OpenAPI handlers/client, a native streaming reverse proxy and the unified `clawscarf people` commands. Native enrollment has REST, CLI and a People page. Administrator proof and team
@@ -27,22 +26,11 @@ Set `CLAWSCARF_ACCESS_CONFIG` to an operator-owned JSON file. It contains `origi
 It is not included in an image. The database is a separate persistent Postgres service.
 The access process never runs migrations.
 
-Local identity is `{ "mode": "local", "name": "Administrator" }`. Local mode
-requires a loopback public origin and normally a loopback bind. In a container,
-`containerLoopbackPublication: true` permits `host: "0.0.0.0"`; the Compose host
-port must remain loopback-only. Set the container UID/GID to the owner of the private
-configuration mount, preserving restrictive file permissions. The operator runs
-[local-token command](runtime/local-token.ts) to create a five-minute,
-one-use sign-in link. Its code is carried in the URL fragment, read and cleared by the
-browser, then automatically submitted by POST. A page opened without the fragment
-still offers manual code entry. It is exchanged for
-an HTTP-only session cookie, never a permanent anonymous administrator session.
-Issuing a new code invalidates any outstanding code.
-The command's `--json` option returns `{ "url": "…", "code": "…", "expiresAt": "…" }` for private
-operator tooling. Treat that output as a temporary credential; never log it as diagnostics.
-The local operator can observe that specific login with `--status <code-sha256>`.
-Consumption and session creation commit together; a failed session write cannot signal
-completion. The installer waits for this confirmation, not merely an opened link.
+Identity configuration always uses `mode: "oidc"`, whether hosted or customer-owned.
+Loopback HTTP is supported for local installation. Public exposure requires HTTPS.
+In a container, `containerLoopbackPublication: true` permits `host: "0.0.0.0"` with
+loopback-only Compose publication. The operator retains restrictive permissions on
+private configuration and OIDC client credentials.
 
 For the assembled single-host path, use the [team profile](../../deploy/deployment/README.md#team-profile).
 
@@ -89,7 +77,7 @@ unchanged and ingress records the actual network peer.
   Give the runtime database role table DML and schema usage, not DDL authority.
 - Run [identity command](runtime/identity.ts) to initialize/read the
   durable server ID and initial administrator identity before generating native config.
-  Identity and local-token commands open only Access storage; they require neither
+  Identity and setup commands open only Access storage; they require neither
   browser assets, native runtime availability nor OIDC/TLS secret files.
 - Build the native UI with `pnpm access:plugin:build`; run `pnpm access:start` for the
   backend alone, or use the companion composition with optional Connections.
@@ -100,7 +88,7 @@ unchanged and ingress records the actual network peer.
 - Run `pnpm access:generate` after changing [the contract](openapi.json).
 
 [The companion application](../../apps/companion/README.md) is the process entry for
-Access plus optional Connections. Its image includes the existing Connections browser surface; Account/People assets ship in the native plugin.
+Access plus optional Connections. It serves no management dashboard; Account/People and optional Connections assets ship in native plugins.
 The Access-only command above remains useful for isolated component work. Both entries
 use the same [process lifecycle](../../apps/process-lifecycle.ts), including cleanup
 after a partially failed startup and one shutdown for simultaneous signals.
@@ -172,7 +160,7 @@ Session authentication checks current
 admission revisions; revocation cannot revive after a later admission. Stored logout
 hints are encrypted and bound to their session. Browser mutations require exact
 Origin and CSRF validation; the OpenAPI contract declares both session-cookie and
-CSRF requirements. Local sign-in is disabled in OIDC mode.
+CSRF requirements.
 
 The runtime connection uses [standard OpenShell SSH forwarding](../../deploy/openshell/README.md#application-transport), which preserves native HTTP headers and multiplexes concurrent requests.
 
@@ -198,9 +186,9 @@ listener rejects this origin; the original application Host on management TLS ke
 its existing session authorization and native forwarding. The
 [listener boundary test](../../tests/access/companion-api.test.ts) covers Host,
 path, upgrade and disabled-route rejection. The composing app owns the concrete
-[Connections route](../../apps/companion/README.md).
+route selection. The current companion does not enable this separate API origin.
 
-Local sign-in, native document forwarding, administrator proof and explicit native
+OIDC sign-in, native document forwarding, administrator proof and explicit native
 team preparation have passed through this Compose/OpenShell arrangement. The initial
 profile displays the configured administrator name. A real native regression also
 verifies 40 concurrent authenticated page requests, member enrollment, explicit

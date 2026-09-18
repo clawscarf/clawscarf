@@ -12,7 +12,7 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
 
 - [ ] **M7 — Complete installation and replacement.** Wire independent login/broker choices
       through recipes, settings and release artifacts. Verify fresh install and retained reconfiguration,
-      disabled/empty Connections, and remove the superseded token-login path.
+      disabled/empty Connections after removing superseded paths.
 - [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
       journeys with native Connections, multiple installations, tenant isolation and quota/revocation
       failures. Cloud build/promotion passed staging and production; full hosted acceptance remains. Update actual status and clean up disposable infrastructure.

@@ -75,7 +75,6 @@ await test("companion API is confined to its management TLS Host and prefix with
             upstream: `http://127.0.0.1:${String(nativeAddress.port)}`,
           },
         ],
-        true,
         (req, res) => {
           observed.push({ path: req.url, headers: { ...req.headers } });
           res.end("companion");
@@ -221,7 +220,6 @@ await test("companion API composition rejects insecure, colliding and noncanonic
       createIngress(
         { authenticate: () => Promise.resolve({ identity: "test" }) },
         [application],
-        false,
         () => {},
         { management: {} },
         route,
@@ -231,7 +229,6 @@ await test("companion API composition rejects insecure, colliding and noncanonic
     createIngress(
       { authenticate: () => Promise.resolve({ identity: "test" }) },
       [application],
-      false,
       () => {},
       {},
       { origin: "https://broker.example", pathPrefix: prefix },

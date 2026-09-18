@@ -34,17 +34,12 @@ export async function composeAccess(
   let http: FastifyInstance | undefined;
   try {
     const mode = config.identity;
-    const provider =
-      mode.mode === "oidc"
-        ? new DeploymentOidcProvider({
-            issuer: mode.issuer,
-            clientId: mode.clientId,
-            clientSecret: (
-              await readFile(mode.clientSecretFile, "utf8")
-            ).trim(),
-            redirectUri: `${config.origin}/_clawscarf/callback`,
-          })
-        : null;
+    const provider = new DeploymentOidcProvider({
+      issuer: mode.issuer,
+      clientId: mode.clientId,
+      clientSecret: (await readFile(mode.clientSecretFile, "utf8")).trim(),
+      redirectUri: `${config.origin}/_clawscarf/callback`,
+    });
     const native =
       options.native ??
       new OpenClawAuthority(
@@ -73,7 +68,7 @@ export async function composeAccess(
       repository,
       native,
       config.origin,
-      mode.mode === "oidc" ? mode.issuer : null,
+      mode.issuer,
     );
     http = await createAccessHttp(
       service,
@@ -108,7 +103,6 @@ export async function composeAccess(
         }),
       },
       routes,
-      mode.mode === "local",
       (req, res) => activeHttp.routing(req, res),
       {
         ...(config.managementTls

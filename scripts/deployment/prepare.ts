@@ -61,9 +61,7 @@ export async function prepareLocal(
   const directory = resolve(directoryInput);
   const input = parseLocalInput(inputValue);
   const connections = await loadInitialConnections(input.connections);
-  const teamMaterials = input.team
-    ? await readTeamMaterials(input.team)
-    : undefined;
+  const teamMaterials = await readTeamMaterials(input.team);
   if (process.platform !== "darwin" || process.arch !== "arm64")
     throw new LocalSetupError(
       "platform_unqualified",
@@ -122,7 +120,7 @@ export async function prepareLocal(
     : undefined;
   const relayAddress = await prepareRelay(directory, state);
   const names = resourceNames(state);
-  if (teamMaterials) await prepareTeamFiles(privateDirectory, teamMaterials);
+  await prepareTeamFiles(privateDirectory, teamMaterials);
   await ensureOwnedVolume(names.databaseVolume, state.ownerId);
   await ensureOwnedVolume(names.volume, state.ownerId);
   if (input.modelGateway)
@@ -162,14 +160,10 @@ export async function prepareLocal(
       pool,
       await readFile(join(privateDirectory, "encryption.key")),
       {
-        issuer: input.team?.issuer ?? "urn:clawscarf:local",
-        subject: input.team
-          ? (input.team.administratorSubject ?? "urn:clawscarf:unclaimed")
-          : "administrator",
-        email: input.team
-          ? (input.team.administratorEmail ?? "")
-          : "administrator@localhost",
-        claimRequired: !!input.team && !input.team.administratorSubject,
+        issuer: input.team.issuer,
+        subject: input.team.administratorSubject ?? "urn:clawscarf:unclaimed",
+        email: input.team.administratorEmail ?? "",
+        claimRequired: !input.team.administratorSubject,
         name: input.administratorName,
       },
     );

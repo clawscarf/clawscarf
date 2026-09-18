@@ -1,3 +1,4 @@
+import { oidcTeam } from "../tests/deployment/oidc.js";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import assert from "node:assert/strict";
@@ -49,6 +50,7 @@ await test("CLI status use readable output or explicit JSON without issuing cred
     openshellCli: "/tools/openshell",
     openshellGateway: "/tools/gateway",
     openshellClientImage: `sha256:${"a".repeat(64)}`,
+    team: oidcTeam(19000, 19002),
     ports: {
       controller: 17671,
       application: 19000,
@@ -102,7 +104,6 @@ else process.exit(1);
     ["start"],
     ["status"],
     ["stop"],
-    ["login"],
     ["administrator"],
     ["settings"],
     ["logs", "--service", "controller"],

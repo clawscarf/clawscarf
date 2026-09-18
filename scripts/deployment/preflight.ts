@@ -128,7 +128,7 @@ export async function verifyLocalPorts(
   };
   for (const [name, port] of Object.entries(ports)) {
     const host =
-      state.input.team?.certificateFile &&
+      state.input.team.certificateFile &&
       ["application", "widgets"].includes(name)
         ? "0.0.0.0"
         : "127.0.0.1";

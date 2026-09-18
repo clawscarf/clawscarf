@@ -258,7 +258,7 @@ export async function resolveInstallation(
       input.modelGateway.upstreamEnvironmentFile,
     );
   else await loadInitialModels(input.models);
-  if (input.team) await readTeamMaterials(input.team);
+  await readTeamMaterials(input.team);
   await loadInitialConnections(input.connections);
   const connectorCredentialFile = cloudConnections
     ? await inputFile(cloudConnections.credentialFile, true)

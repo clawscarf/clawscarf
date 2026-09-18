@@ -1,26 +1,24 @@
 # Hosted login and Connections
 
-Selected product direction. Cloud owner login/logout and installation registration are
-implemented and locally tested against real WorkOS and PostgreSQL. Registration covers
-separate scoped credentials, revocation and exact OIDC callbacks. The existing installation
-OIDC adapter completed real administrator and invited-member login. The current working
-tree passed native member denial, open-session revocation and rejected reentry, plus generic
-OIDC handover/rejoining regressions. Logout requests fresh authentication on the next sign-in;
-WorkOS Connect currently has no logout endpoint in discovery, so this does not end its
-provider-wide session. Installer registration now defaults to hosted login and persists account-bound requests
-and credentials for retry. Custom OIDC with Connections disabled bypasses registration. A fresh automatic installer
-journey passed device approval, registration, administrator sign-in, native People and a
-real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
-the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections broker/API and quota enforcement are implemented and tested locally
-with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
-administrator-checking adapter are implemented. Real Outlook consent, reconnect, read-only
-execution and disconnect/revocation passed locally. The native remote skill-path issue,
-full hosted acceptance remains pending. Installer selection now enables the hosted broker independently of login; reconfiguration acceptance and token-login removal remain M7. The local broker and standalone page have been removed. Separate staging/production
-Vercel deployments with Neon databases pass startup and identity-discovery checks;
-the same successful build passed staging and production promotion, including isolated deployment checks and public deployment-ID verification. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+Hosted login, installation registration, the cloud Connections broker and native People/
+Connections pages are implemented. Local tests passed real WorkOS administrator/member
+login, revocation, a GPT-6 Astra / medium response, and Outlook linking, reconnect,
+read-only execution and disconnect. Database regressions cover isolated credentials,
+quotas and admission. WorkOS Connect supplies no logout endpoint; sign-out revokes the
+installation session and requests fresh authentication on the next sign-in.
+
+Cloud staging and production are deployed on Vercel with separate Neon databases. The
+same build passed both promotions, isolated deployment checks and public deployment-ID
+verification. The installer defaults to production and supports a staging override.
+Hosted login and optional Connections are independently configurable; the superseded
+local broker, standalone Connections page and token-only login are removed. Fresh and
+retained installation acceptance against the deployed cloud remains in
+[TODO.md](../TODO.md#hosted-login-and-native-connections), alongside the separate native
+remote skill-path issue.
+
+[Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
-are owned by that repository; the implementation sequence is owned only by
-[TODO.md](../TODO.md#hosted-login-and-native-connections).
+are owned by that repository.
 
 ## Product choices
 

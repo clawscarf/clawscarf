@@ -55,14 +55,13 @@ release-bundle/
       researcher/CLAW.md
       researcher/profiles/openclaw.yml
       reviewer/...
-  connectors/             # optional validated index and action-schema files
   LICENSE
   THIRD_PARTY_NOTICES.md
 ```
 
 The builder copies tools and payloads; it does not retain paths into the build
 checkout. It rejects missing recipe packs/members, duplicate agent selections,
-invalid catalogs and non-executable tools. Tool checksums and pack digests cover
+invalid model catalogs and non-executable tools. Tool checksums and pack digests cover
 the copied bytes; setup verifies bundled packs again. Repeating assembly with the
 same inputs produces the same metadata and content digests. This is not a claim
 of byte-identical image builds or compressed archives.

@@ -6,7 +6,7 @@ ClawScarf packages vanilla [OpenClaw](https://github.com/openclaw/openclaw) with
 protected team login, isolated execution, LiteLLM models, optional Connections and
 reusable agent packs. Run it on infrastructure you control.
 
-> **Developer preview.** Local login, model/tool use and retained-state restart
+> **Developer preview.** OIDC login, model/tool use and retained-state restart
 > have passed on macOS arm64 with Docker Desktop. This is not yet a qualified
 > production release or a downloadable one-command installation.
 
@@ -56,10 +56,10 @@ outbound traffic denied. That policy is not a blanket network policy for every c
 
 ## Current verification and limits
 
-- Local administrator model responses and file tools passed. Native administrator
+- Administrator model responses and file tools passed. Native administrator
   and member execution passed through the separate worker, including administrative
   denial and forbidden network targets.
-- The rebuilt development images passed local one-use browser login, native Account/People
+- The rebuilt development images passed OIDC administrator setup, native Account/People
   pages and a direct OpenAI GPT-6 Astra response with medium reasoning and a tool call
   through LiteLLM Responses.
 - Fresh installer setup passed normal Docker networking, hosted account approval,

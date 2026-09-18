@@ -43,7 +43,6 @@ await test("application and management TLS require a trusted CA and share authen
           kind: "application",
         },
       ],
-      true,
       (_req, res) => {
         res.end("same access handler");
       },

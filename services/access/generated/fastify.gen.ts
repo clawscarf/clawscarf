@@ -2,7 +2,7 @@
 
 import type { RouteHandler } from 'fastify';
 
-import type { CompleteLoginData, CreateInvitationData, CreateInvitationResponses, EnrollPersonData, EnrollPersonResponses, HealthResponses, ListInvitationsResponses, ListPeopleResponses, LocalLoginData, LocalLoginResponses, LogoutResponses, PrepareTeamResponses, RemovePersonData, RemovePersonResponses, RevokeInvitationData, RevokeInvitationResponses, SessionResponses, SetPersonRoleData, SetPersonRoleResponses, StartLoginData } from './types.gen.js';
+import type { CompleteLoginData, CreateInvitationData, CreateInvitationResponses, EnrollPersonData, EnrollPersonResponses, HealthResponses, ListInvitationsResponses, ListPeopleResponses, LogoutResponses, PrepareTeamResponses, RemovePersonData, RemovePersonResponses, RevokeInvitationData, RevokeInvitationResponses, SessionResponses, SetPersonRoleData, SetPersonRoleResponses, StartLoginData } from './types.gen.js';
 
 export type RouteHandlers = {
     health: RouteHandler<{
@@ -13,11 +13,6 @@ export type RouteHandlers = {
     }>;
     completeLogin: RouteHandler<{
         Querystring: CompleteLoginData['query'];
-    }>;
-    localLogin: RouteHandler<{
-        Body: LocalLoginData['body'];
-        Querystring?: LocalLoginData['query'];
-        Reply: LocalLoginResponses;
     }>;
     session: RouteHandler<{
         Reply: SessionResponses;

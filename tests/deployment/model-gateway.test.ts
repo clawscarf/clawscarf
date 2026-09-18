@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -54,6 +55,7 @@ await test("disabled models add no service; enabled gateway has TLS and no publi
     openshellClientImage: `sha256:${"a".repeat(64)}`,
     cpu: "1",
     memory: "1Gi",
+    team: oidcTeam(18001, 18002),
     ports: {
       controller: 18000,
       application: 18001,

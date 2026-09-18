@@ -3,7 +3,7 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from '../../../generated/http/client/index.js';
 
 import { client } from './client.gen.js';
-import type { CompleteLoginData, CompleteLoginErrors, CompleteLoginResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, EnrollPersonData, EnrollPersonErrors, EnrollPersonResponses, HealthData, HealthErrors, HealthResponses, ListInvitationsData, ListInvitationsErrors, ListInvitationsResponses, ListPeopleData, ListPeopleErrors, ListPeopleResponses, LocalLoginData, LocalLoginErrors, LocalLoginResponses, LogoutData, LogoutErrors, LogoutResponses, PrepareTeamData, PrepareTeamErrors, PrepareTeamResponses, RemovePersonData, RemovePersonErrors, RemovePersonResponses, RevokeInvitationData, RevokeInvitationErrors, RevokeInvitationResponses, SessionData, SessionErrors, SessionResponses, SetPersonRoleData, SetPersonRoleErrors, SetPersonRoleResponses, StartLoginData, StartLoginErrors, StartLoginResponses } from './types.gen.js';
+import type { CompleteLoginData, CompleteLoginErrors, CompleteLoginResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, EnrollPersonData, EnrollPersonErrors, EnrollPersonResponses, HealthData, HealthErrors, HealthResponses, ListInvitationsData, ListInvitationsErrors, ListInvitationsResponses, ListPeopleData, ListPeopleErrors, ListPeopleResponses, LogoutData, LogoutErrors, LogoutResponses, PrepareTeamData, PrepareTeamErrors, PrepareTeamResponses, RemovePersonData, RemovePersonErrors, RemovePersonResponses, RevokeInvitationData, RevokeInvitationErrors, RevokeInvitationResponses, SessionData, SessionErrors, SessionResponses, SetPersonRoleData, SetPersonRoleErrors, SetPersonRoleResponses, StartLoginData, StartLoginErrors, StartLoginResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,18 +24,6 @@ export const health = <ThrowOnError extends boolean = false>(options?: Options<H
 export const startLogin = <ThrowOnError extends boolean = false>(options?: Options<StartLoginData, ThrowOnError>): RequestResult<StartLoginResponses, StartLoginErrors, ThrowOnError> => (options?.client ?? client).get<StartLoginResponses, StartLoginErrors, ThrowOnError>({ url: '/_clawscarf/login', ...options });
 
 export const completeLogin = <ThrowOnError extends boolean = false>(options: Options<CompleteLoginData, ThrowOnError>): RequestResult<CompleteLoginResponses, CompleteLoginErrors, ThrowOnError> => (options.client ?? client).get<CompleteLoginResponses, CompleteLoginErrors, ThrowOnError>({ url: '/_clawscarf/callback', ...options });
-
-/**
- * One-use local sign-in token exchange. Requires an exact matching Origin header; an existing browser session or CSRF token is not required.
- */
-export const localLogin = <ThrowOnError extends boolean = false>(options: Options<LocalLoginData, ThrowOnError>): RequestResult<LocalLoginResponses, LocalLoginErrors, ThrowOnError> => (options.client ?? client).post<LocalLoginResponses, LocalLoginErrors, ThrowOnError>({
-    url: '/_clawscarf/local',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
 
 export const session = <ThrowOnError extends boolean = false>(options?: Options<SessionData, ThrowOnError>): RequestResult<SessionResponses, SessionErrors, ThrowOnError> => (options?.client ?? client).get<SessionResponses, SessionErrors, ThrowOnError>({
     security: [{

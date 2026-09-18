@@ -1349,7 +1349,7 @@ await test(
       plan.internalPorts,
     );
     assert.equal(resolved.config.access.mode, "hosted");
-    assert.equal(resolved.input.team?.clientId, "registered-client");
+    assert.equal(resolved.input.team.clientId, "registered-client");
     assert.equal(resolved.input.team.administratorSubject, undefined);
     await app.close();
     await configureInstallation({ directory: f.directory });

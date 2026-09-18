@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import {
   mkdtemp,
@@ -35,6 +36,7 @@ const state: LocalState = {
     openshellCli: "/tools/openshell",
     openshellGateway: "/tools/openshell-gateway",
     openshellClientImage: `sha256:${"a".repeat(64)}`,
+    team: oidcTeam(18800, 18802),
     ports: {
       controller: 17671,
       application: 18800,

@@ -67,7 +67,6 @@ await test("only exact hook POSTs retain native credentials; widgets receive no 
         Promise.reject(new AccessError("unauthenticated", "Sign in.")),
     },
     [route, widget],
-    true,
     () => {
       throw Error("Unexpected access dispatch");
     },

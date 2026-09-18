@@ -7,7 +7,7 @@ import type { LocalInput } from "./configuration.js";
 import { ensurePrivateFile } from "./state.js";
 import { LocalSetupError } from "./process.js";
 
-export async function readTeamMaterials(team: NonNullable<LocalInput["team"]>) {
+export async function readTeamMaterials(team: LocalInput["team"]) {
   try {
     for (const path of [
       ...(team.keyFile ? [team.keyFile] : []),
@@ -73,11 +73,6 @@ export async function probeTeamAccess(
   input: LocalInput,
   signal: AbortSignal,
 ) {
-  if (!input.team)
-    throw new LocalSetupError(
-      "invalid_team_configuration",
-      "Team profile required.",
-    );
   const origin = input.team.origin;
   const ca = await readFile(join(directory, "private/management-ca.pem"));
   await new Promise<void>((resolve, reject) => {

@@ -1,9 +1,7 @@
 import {
-  localSignInPage,
   signedOutPage,
   signInFailurePage,
   signInPagePolicy,
-  localSignInPagePolicy,
   setupCompletePage,
 } from "./pages.js";
 import Fastify, {
@@ -38,7 +36,6 @@ export async function createAccessHttp(
     | "validateReturn"
     | "startLogin"
     | "completeLogin"
-    | "localLogin"
     | "authenticate"
     | "csrf"
     | "logout"
@@ -162,8 +159,6 @@ export async function createAccessHttp(
       [
         "/_clawscarf/login",
         "/_clawscarf/callback",
-        "/_clawscarf/local",
-        "/_clawscarf/local-sign-in",
         "/_clawscarf/setup-complete",
       ].includes(req.routeOptions.url ?? "")
     ) {
@@ -171,14 +166,7 @@ export async function createAccessHttp(
         .code(status)
         .header("Content-Security-Policy", signInPagePolicy)
         .type("text/html")
-        .send(
-          signInFailurePage(
-            code,
-            code !== "forbidden" &&
-              (req.routeOptions.url === "/_clawscarf/local" ||
-                req.routeOptions.url === "/_clawscarf/local-sign-in"),
-          ),
-        );
+        .send(signInFailurePage(code));
       return;
     }
     void reply
@@ -290,21 +278,6 @@ export async function createAccessHttp(
       cookies(reply, "clawscarf_reauthenticate", "", 0);
       return reply.redirect(result.returnTo);
     },
-    localLogin: async (req, reply) => {
-      if (req.headers.origin !== origin)
-        throw new AccessError(
-          "csrf_failed",
-          "Open the sign-in page on this server.",
-        );
-      const result = await service.localLogin(
-        req.body.token,
-        req.query?.returnTo ?? "/",
-      );
-      cookies(reply, "clawscarf_session", result.session, 43200);
-      if (req.headers.accept?.includes("text/html"))
-        return reply.redirect(result.returnTo);
-      return reply.code(200).send({ redirect: result.returnTo });
-    },
     session: async (req, reply) => {
       const session = await service.authenticate(
         req.cookies.clawscarf_session ?? "",
@@ -337,26 +310,6 @@ export async function createAccessHttp(
     specification: fileURLToPath(new URL("../openapi.json", import.meta.url)),
     serviceHandlers: handlers,
   });
-  app.get<{ Querystring: { returnTo?: string } }>(
-    "/_clawscarf/local-sign-in",
-    {
-      schema: {
-        querystring: {
-          type: "object",
-          properties: { returnTo: { type: "string", maxLength: 2048 } },
-          additionalProperties: false,
-        },
-      },
-    },
-    async (req, reply) =>
-      reply
-        .header("Content-Security-Policy", localSignInPagePolicy)
-        .header("Referrer-Policy", "same-origin")
-        .type("text/html")
-        .send(
-          localSignInPage(service.validateReturn(req.query?.returnTo ?? "/")),
-        ),
-  );
   app.get("/_clawscarf/setup-complete", async (req, reply) => {
     await service.authenticate(req.cookies.clawscarf_session ?? "");
     return reply

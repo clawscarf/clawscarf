@@ -136,7 +136,6 @@ await test("HTTP ingress preserves streaming, replaces forged identity and revok
           : Promise.reject(Error("revoked")),
     },
     [route],
-    true,
     () => {
       throw Error("unused");
     },

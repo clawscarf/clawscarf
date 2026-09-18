@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { test, type TestContext } from "node:test";
@@ -49,6 +50,7 @@ async function fixture(t: TestContext): Promise<LocalState> {
     schemaVersion: 1,
     ownerId: "00000000-0000-4000-8000-000000000001",
     input: {
+      team: oidcTeam(ports.application, ports.widgets),
       name: "preflight",
       administratorName: "Ada",
       runtimeImage: `sha256:${"a".repeat(64)}`,

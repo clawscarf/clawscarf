@@ -49,19 +49,14 @@ export class SessionService {
     invitationToken?: string,
     reauthenticate = false,
   ) {
+    if (!this.provider)
+      throw new AccessError("dependency_unavailable", "Login is unavailable.");
     const next = this.validateReturn(returnTo);
     if (setupToken && invitationToken)
       throw new AccessError(
         "invalid_request",
         "Choose setup or an invitation.",
       );
-    if (invitationToken && !this.provider)
-      throw new AccessError("forbidden", "Invitations require company login.");
-    if (!this.provider)
-      return {
-        url: `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(next)}`,
-        cookie: "",
-      };
     if (!setupToken && !(await this.store.administratorSetup()).complete)
       throw new AccessError(
         "administrator_setup_required",
@@ -93,7 +88,7 @@ export class SessionService {
   }
   async completeLogin(cookie: string, state: string, callbackUrl: string) {
     if (!this.provider)
-      throw new AccessError("forbidden", "Company login is not configured.");
+      throw new AccessError("dependency_unavailable", "Login is unavailable.");
     const transaction = await this.store.consumeLogin(hash(cookie), state);
     if (!transaction) {
       if (!(await this.store.administratorSetup()).complete)
@@ -142,7 +137,11 @@ export class SessionService {
             ...identity,
             email: identity.email.toLowerCase(),
           });
-          const sessions = new SessionService(store, null, this.origin);
+          const sessions = new SessionService(
+            store,
+            this.provider,
+            this.origin,
+          );
           await sessions.withEnrollmentSession(
             sponsor.hash,
             person.id,
@@ -204,27 +203,6 @@ export class SessionService {
         logoutUrl,
       );
     return { session, returnTo: this.validateReturn(transaction.returnTo) };
-  }
-  async localLogin(value: string, returnTo = "/") {
-    const next = this.validateReturn(returnTo);
-    if (this.provider)
-      throw new AccessError(
-        "forbidden",
-        "Local sign-in is disabled in team mode.",
-      );
-    const session = token();
-    if (
-      !(await this.store.createLocalSession(
-        hash(value),
-        hash(session),
-        token(),
-      ))
-    )
-      throw new AccessError(
-        "invalid_authorization",
-        "Local sign-in expired or was already used.",
-      );
-    return { session, returnTo: next };
   }
   async authenticate(value: string): Promise<Session> {
     const session = await this.store.authenticateSession(hash(value));

@@ -40,7 +40,6 @@ await test("sign-out requires fresh OIDC authentication until a successful callb
           ? Promise.reject(callbackError)
           : Promise.resolve({ session: "new", returnTo: "/" }),
       authenticate: () => Promise.reject(new Error("unused")),
-      localLogin: () => Promise.reject(new Error("unused")),
       csrf() {},
       logout: () => {
         return Promise.resolve(origin + "/_clawscarf/signed-out");

@@ -17,7 +17,6 @@ function failingService(error: Error) {
       validateReturn: safeReturn,
       startLogin: fail,
       completeLogin: fail,
-      localLogin: fail,
       authenticate: fail,
       csrf() {},
       logout: fail,
@@ -121,15 +120,8 @@ await test("API login failures keep Problem Details and browser-only routes do n
   }
 });
 
-await test("local code and login failures offer a fresh sign-in without exposing error details", async () => {
+await test("login failures offer a fresh sign-in without exposing error details", async () => {
   for (const scenario of [
-    {
-      route: "/_clawscarf/local",
-      error: new AccessError("invalid_authorization", privateDetail),
-      status: 400,
-      copy: "Get a new code from your terminal.",
-      href: "/_clawscarf/local-sign-in",
-    },
     {
       route: "/_clawscarf/login",
       error: new Error(privateDetail),
@@ -157,9 +149,6 @@ await test("local code and login failures offer a fresh sign-in without exposing
     try {
       const response = await app.inject({
         url: scenario.route,
-        ...(scenario.route === "/_clawscarf/local"
-          ? { method: "POST", payload: "token=private-code" }
-          : {}),
         headers: {
           accept: "text/html",
           origin,
@@ -181,7 +170,7 @@ await test("local code and login failures offer a fresh sign-in without exposing
   }
 });
 
-await test("callback validation and local CSRF failures render safe pages before authentication", async () => {
+await test("callback validation fails safely before authentication", async () => {
   const fixture = failingService(new Error("Must not be reached"));
   const app = await createAccessHttp(fixture.service, origin);
   try {
@@ -196,21 +185,6 @@ await test("callback validation and local CSRF failures render safe pages before
         ?.maxAge,
       0,
     );
-    const csrf = await app.inject({
-      url: "/_clawscarf/local",
-      method: "POST",
-      headers: { accept: "text/html", origin: "https://evil.example" },
-      payload: { token: "private-code" },
-    });
-    assert.equal(csrf.statusCode, 403);
-    assert.match(csrf.body, /Open the sign-in page on this server/);
-    assert.match(csrf.body, /href="\/_clawscarf\/local-sign-in"/);
-    const returnTo = await app.inject({
-      url: "/_clawscarf/local-sign-in?returnTo=https%3A%2F%2Fevil.example",
-      headers: { accept: "text/html" },
-    });
-    assert.equal(returnTo.statusCode, 400);
-    assert.doesNotMatch(returnTo.body, /evil.example/);
     assert.equal(fixture.calls(), 0);
   } finally {
     await app.close();

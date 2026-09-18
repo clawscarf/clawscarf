@@ -23,7 +23,6 @@ import {
   stopExecutionRuntime,
 } from "./runtime.js";
 import { LocalSetupError, run } from "./process.js";
-import { verifyLocalAdministrator } from "./login.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import {
   verifyRuntimeBinding,
@@ -169,44 +168,17 @@ export async function launchLocal(
       report("Starting native browser node…");
       await startBrowserNode(directory, state, cancellation.signal);
     }
-    report(
-      state.input.team
-        ? "Starting company access…"
-        : "Starting access and verifying administrator…",
-    );
+    report("Starting access…");
     await compose(directory, ["up", "-d", "--wait", "companion"]);
-    if (state.input.team) {
-      await waitFor(() =>
-        probeTeamAccess(
-          directory,
-          state.input,
-          AbortSignal.any([cancellation.signal, AbortSignal.timeout(3000)]),
-        ),
-      );
-      check();
-      report(`Open ${state.input.team.origin}`);
-    } else {
-      const origin = `http://127.0.0.1:${String(state.input.ports.application)}`;
-      await waitFor(async () => {
-        const response = await fetch(origin + "/_clawscarf/health", {
-          signal: AbortSignal.timeout(3000),
-        });
-        if (!response.ok)
-          throw new LocalSetupError(
-            "native_unavailable",
-            "The access companion has not become healthy.",
-          );
-        await response.body?.cancel();
-      });
-      // This may create a one-use login, so it is deliberately not retried by waitFor.
-      await verifyLocalAdministrator(
+    await waitFor(() =>
+      probeTeamAccess(
         directory,
-        origin,
-        AbortSignal.any([cancellation.signal, AbortSignal.timeout(90_000)]),
-      );
-      check();
-      report(`Open ${origin}`);
-    }
+        state.input,
+        AbortSignal.any([cancellation.signal, AbortSignal.timeout(3000)]),
+      ),
+    );
+    check();
+    report(`Open ${state.input.team.origin}`);
     await control.activate?.();
     check();
   } finally {

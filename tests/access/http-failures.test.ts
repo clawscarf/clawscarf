@@ -17,8 +17,6 @@ const service = {
       ),
     ),
   completeLogin: () => Promise.reject(new Error("unused")),
-  localLogin: () =>
-    Promise.reject(new Error("must not authenticate invalid input")),
   authenticate: () => Promise.reject(new NativeFailure("request_rejected")),
   csrf() {},
   logout: () => Promise.reject(new Error("unused")),
@@ -71,7 +69,7 @@ await test("malformed JSON, empty JSON, unsupported content types and oversize i
     ]) {
       const response = await app.inject({
         method: "POST",
-        url: "/_clawscarf/local",
+        url: "/_clawscarf/people",
         payload: scenario.body,
         headers: { origin, "content-type": scenario.type },
       });

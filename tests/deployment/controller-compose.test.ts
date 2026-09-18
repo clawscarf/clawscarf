@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { composeConfiguration } from "../../scripts/deployment/compose.js";
@@ -19,6 +20,7 @@ await test("controller authority stays outside the application and forwarding pu
       openshellClientImage: `sha256:${"c".repeat(64)}`,
       openshellCli: "/tools/openshell",
       openshellGateway: "/tools/gateway",
+      team: oidcTeam(18800, 18802),
       ports: {
         controller: 17671,
         application: 18800,

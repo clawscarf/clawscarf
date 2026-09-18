@@ -471,16 +471,6 @@ export class PostgresAccessStore implements AccessStore {
       ? null
       : this.logoutProtection.open(digest, row.logout_redirect);
   }
-  async createLocalToken(digest: string) {
-    await this.transaction(async (client) => {
-      await client.query("SELECT pg_advisory_xact_lock(174992003)");
-      await client.query("DELETE FROM clawscarf_access.local_tokens");
-      await client.query(
-        "INSERT INTO clawscarf_access.local_tokens(hash) VALUES($1)",
-        [digest],
-      );
-    });
-  }
   async administratorSetup() {
     const result = await (this.client ?? this.pool).query<{
       setup_complete: boolean;
@@ -592,40 +582,5 @@ export class PostgresAccessStore implements AccessStore {
         logoutUrl,
       );
     });
-  }
-  async createLocalSession(
-    digest: string,
-    sessionHash: string,
-    csrfToken: string,
-  ) {
-    return this.transaction(async (client) => {
-      const consumed = await client.query(
-        "UPDATE clawscarf_access.local_tokens SET consumed_at=clock_timestamp() WHERE hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() RETURNING hash",
-        [digest],
-      );
-      if (consumed.rowCount !== 1) return false;
-      const result = await client.query<UserRow>(
-        "SELECT u.* FROM clawscarf_access.users u JOIN clawscarf_access.server s ON s.administrator_id=u.id WHERE u.admitted",
-      );
-      const person = result.rows[0];
-      if (!person)
-        throw new AccessError("forbidden", "This account is not admitted.");
-      await this.insertSession(client, person.id, sessionHash, csrfToken, null);
-      return true;
-    });
-  }
-  async localTokenStatus(digest: string) {
-    const result = await (this.client ?? this.pool).query<{
-      consumed_at: Date | null;
-      expires_at: Date;
-    }>(
-      "SELECT consumed_at,expires_at FROM clawscarf_access.local_tokens WHERE hash=$1",
-      [digest],
-    );
-    const row = result.rows[0];
-    return {
-      complete: row?.consumed_at != null,
-      expiresAt: row?.expires_at.toISOString() ?? null,
-    };
   }
 }

@@ -40,7 +40,6 @@ export function cleanHeaders(
 export function createIngress(
   authority: IngressAuthority,
   routes: readonly RuntimeRoute[],
-  localLogin: boolean,
   handleAccess: (request: IncomingMessage, response: ServerResponse) => void,
   tls: { management?: TlsOptions; application?: TlsOptions } = {},
   companionApi?: CompanionApiRoute,
@@ -200,9 +199,7 @@ export function createIngress(
           req.headers.accept?.includes("text/html")
         )
           res.writeHead(302, {
-            Location: localLogin
-              ? `/_clawscarf/local-sign-in?returnTo=${encodeURIComponent(req.url ?? "/")}`
-              : `/_clawscarf/login?returnTo=${encodeURIComponent(req.url ?? "/")}`,
+            Location: `/_clawscarf/login?returnTo=${encodeURIComponent(req.url ?? "/")}`,
             "Cache-Control": "no-store",
           });
         else res.writeHead(status, { "Cache-Control": "no-store" });

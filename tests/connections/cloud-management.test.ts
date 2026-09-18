@@ -113,7 +113,6 @@ await test("native Connections adapter rejects members, forged authority, CSRF a
       validateReturn: safeReturn,
       startLogin: unused,
       completeLogin: unused,
-      localLogin: unused,
       authenticate: (token) => access.authenticate(token),
       csrf: (session, origin, token) => access.csrf(session, origin, token),
       logout: unused,

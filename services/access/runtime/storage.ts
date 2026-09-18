@@ -13,21 +13,13 @@ export async function openAccessStorage(
   const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
   try {
     const mode = config.identity;
-    const administrator =
-      mode.mode === "local"
-        ? {
-            issuer: "urn:clawscarf:local",
-            subject: "administrator",
-            email: "administrator@localhost",
-            name: mode.name,
-          }
-        : {
-            issuer: mode.issuer,
-            subject: mode.administratorSubject ?? "urn:clawscarf:unclaimed",
-            email: mode.administratorEmail ?? "",
-            name: mode.administratorEmail ?? "Administrator",
-            claimRequired: !mode.administratorSubject,
-          };
+    const administrator = {
+      issuer: mode.issuer,
+      subject: mode.administratorSubject ?? "urn:clawscarf:unclaimed",
+      email: mode.administratorEmail ?? "",
+      name: mode.administratorEmail ?? "Administrator",
+      claimRequired: !mode.administratorSubject,
+    };
     const repository = new PostgresAccessStore(
       pool,
       await readFile(config.encryptionKeyFile),

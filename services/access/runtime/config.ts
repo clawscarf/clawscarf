@@ -45,30 +45,22 @@ const configSchema = z
         widgetUpstream: origin.optional(),
       })
       .strict(),
-    identity: z.discriminatedUnion("mode", [
-      z
-        .object({
-          mode: z.literal("local"),
-          name: z.string().min(1).default("Administrator"),
-        })
-        .strict(),
-      z
-        .object({
-          mode: z.literal("oidc"),
-          issuer: z
-            .string()
-            .url()
-            .refine((value) => {
-              const url = new URL(value);
-              return !url.username && !url.password && !url.search && !url.hash;
-            }, "Use an issuer URL without credentials, query or fragment."),
-          clientId: z.string().min(1),
-          clientSecretFile: z.string().min(1),
-          administratorSubject: z.string().min(1).optional(),
-          administratorEmail: z.string().email().optional(),
-        })
-        .strict(),
-    ]),
+    identity: z
+      .object({
+        mode: z.literal("oidc"),
+        issuer: z
+          .string()
+          .url()
+          .refine((value) => {
+            const url = new URL(value);
+            return !url.username && !url.password && !url.search && !url.hash;
+          }, "Use an issuer URL without credentials, query or fragment."),
+        clientId: z.string().min(1),
+        clientSecretFile: z.string().min(1),
+        administratorSubject: z.string().min(1).optional(),
+        administratorEmail: z.string().email().optional(),
+      })
+      .strict(),
   })
   .strict();
 export type AccessConfiguration = z.infer<typeof configSchema>;
@@ -78,9 +70,8 @@ export async function readConfiguration(
   const config = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
   const hostname = new URL(config.origin).hostname;
   if (
-    config.identity.mode === "oidc" &&
     Boolean(config.identity.administratorSubject) !==
-      Boolean(config.identity.administratorEmail)
+    Boolean(config.identity.administratorEmail)
   )
     throw Error(
       "Provide both administrator subject and email, or neither for a setup link.",
@@ -88,15 +79,13 @@ export async function readConfiguration(
   if (config.applicationTls && new URL(config.origin).protocol !== "https:")
     throw Error("Application TLS requires an HTTPS origin.");
   if (
-    (config.identity.mode === "local" ||
-      new URL(config.origin).protocol === "http:") &&
+    new URL(config.origin).protocol === "http:" &&
     (!["127.0.0.1", "localhost", "[::1]"].includes(hostname) ||
       (!["127.0.0.1", "::1"].includes(config.host) &&
         !(config.containerLoopbackPublication && config.host === "0.0.0.0")))
   )
     throw Error("Local access binds only to loopback.");
   if (
-    config.identity.mode === "oidc" &&
     new URL(config.origin).protocol !== "https:" &&
     !(
       new URL(config.origin).protocol === "http:" &&
@@ -130,15 +119,5 @@ export async function readConfiguration(
       new URL(config.runtime.managementOrigin).protocol !== "https:")
   )
     throw Error("Management TLS requires an HTTPS management origin.");
-  if (
-    config.identity.mode === "local" &&
-    config.managementTls &&
-    !["127.0.0.1", "::1"].includes(config.managementTls.host) &&
-    !(
-      config.containerLoopbackPublication &&
-      config.managementTls.host === "0.0.0.0"
-    )
-  )
-    throw Error("Local management TLS binds only to loopback.");
   return config;
 }

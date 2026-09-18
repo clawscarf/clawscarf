@@ -145,17 +145,17 @@ export function composeConfiguration(
           "management-cert.pem",
           "management-key.pem",
           ...(input.connections?.managementKeyFile ? ["connections"] : []),
-          ...(input.team ? ["oidc-client-secret"] : []),
-          ...(input.team?.certificateFile
+          "oidc-client-secret",
+          ...(input.team.certificateFile
             ? ["application-cert.pem", "application-key.pem"]
             : []),
         ].map(
           (name) => `${join(privateDirectory, name)}:/run/clawscarf/${name}:ro`,
         ),
         ports: [
-          `${input.team?.certificateFile ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.application)}:18800`,
+          `${input.team.certificateFile ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.application)}:18800`,
           `127.0.0.1:${String(input.ports.management)}:18801`,
-          `${input.team?.certificateFile ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.widgets)}:18800`,
+          `${input.team.certificateFile ? "0.0.0.0" : "127.0.0.1"}:${String(input.ports.widgets)}:18800`,
         ],
         read_only: true,
         tmpfs: ["/tmp"],

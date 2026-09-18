@@ -1,3 +1,4 @@
+import { oidcTeam } from "../deployment/oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { cp, mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
@@ -51,6 +52,7 @@ for (const uncertain of [false, true])
     await initializeState(
       directory,
       parseLocalInput({
+        team: oidcTeam(18800, 18802),
         name: "test",
         administratorName: "Owner",
         runtimeImage: `sha256:${"a".repeat(64)}`,

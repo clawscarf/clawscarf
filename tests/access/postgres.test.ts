@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -27,7 +27,7 @@ async function migrate(pool: pg.Pool) {
 }
 
 await test(
-  "real Postgres local login, CSRF, revocation, admission revision and restart identity",
+  "real Postgres OIDC login, CSRF, revocation, admission revision and restart identity",
   { skip: !url },
   async () => {
     const pool = new pg.Pool({ connectionString: url });
@@ -35,13 +35,27 @@ await test(
       await migrate(pool);
       const key = randomBytes(32),
         initial = {
-          issuer: "urn:clawscarf:local",
+          issuer: "https://identity.example.test",
           subject: "administrator",
           email: "administrator@localhost",
-          name: "Local admin",
+          name: "Administrator",
         };
       const repo = new PostgresAccessStore(pool, key, initial),
-        service = new SessionService(repo, null, "http://127.0.0.1:18800");
+        service = new SessionService(
+          repo,
+          {
+            authorization: ({ state }) =>
+              Promise.resolve(
+                `https://identity.example.test/authorize?state=${state}`,
+              ),
+            exchange: () =>
+              Promise.resolve({
+                identity: { ...initial, emailVerified: true },
+                logoutUrl: null,
+              }),
+          },
+          "http://127.0.0.1:18800",
+        );
       const id = await repo.initialize();
       assert.deepEqual(await repo.initialize(), id);
       const resumed = new PostgresAccessStore(pool, key, initial);
@@ -53,20 +67,20 @@ await test(
         }).initialize(),
         /Configured initial identity differs/,
       );
-      const code = randomUUID();
-      await repo.createLocalToken(hash(code));
-      assert.equal((await repo.localTokenStatus(hash(code))).complete, false);
-      // A failed session write must not consume the link or signal completion.
-      await pool.query(`CREATE FUNCTION clawscarf_access.reject_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'session unavailable'; END $$;
-        CREATE TRIGGER reject_session BEFORE INSERT ON clawscarf_access.browser_sessions FOR EACH ROW EXECUTE FUNCTION clawscarf_access.reject_session();`);
-      await assert.rejects(service.localLogin(code), /session unavailable/);
-      assert.equal((await repo.localTokenStatus(hash(code))).complete, false);
-      await pool.query(
-        "DROP TRIGGER reject_session ON clawscarf_access.browser_sessions; DROP FUNCTION clawscarf_access.reject_session()",
-      );
+      const login = await service.startLogin();
+      const state = new URL(login.url).searchParams.get("state");
+      assert.ok(state);
       const outcomes = await Promise.allSettled([
-        service.localLogin(code),
-        service.localLogin(code),
+        service.completeLogin(
+          login.cookie,
+          state,
+          "http://127.0.0.1:18800/_clawscarf/callback?code=fixture",
+        ),
+        service.completeLogin(
+          login.cookie,
+          state,
+          "http://127.0.0.1:18800/_clawscarf/callback?code=fixture",
+        ),
       ]);
       assert.equal(
         outcomes.filter((value) => value.status === "fulfilled").length,
@@ -74,7 +88,6 @@ await test(
       );
       const success = outcomes.find((value) => value.status === "fulfilled");
       assert.ok(success?.status === "fulfilled");
-      assert.equal((await repo.localTokenStatus(hash(code))).complete, true);
       const actor = await service.authenticate(success.value.session);
       assert.equal(actor.user.id, id.administrator.id);
       assert.throws(() =>
@@ -124,12 +137,9 @@ await test(
         enrollment,
       );
       try {
-        const form = await app.inject({ url: "/_clawscarf/local-sign-in" });
-        assert.equal(form.headers["referrer-policy"], "same-origin");
-        assert.match(form.body, /Sign-in code/);
-        assert.match(
-          form.headers["content-security-policy"] ?? "",
-          /script-src 'sha256-/,
+        assert.equal(
+          (await app.inject({ url: "/_clawscarf/local-sign-in" })).statusCode,
+          404,
         );
         const complete = await app.inject({
           url: "/_clawscarf/setup-complete",
@@ -236,11 +246,6 @@ await test(
           ]);
           assert.equal(reads.length, 2);
         });
-        const localRedirect = await service.startLogin("/sessions?agent=main");
-        assert.equal(
-          localRedirect.url,
-          "/_clawscarf/local-sign-in?returnTo=%2Fsessions%3Fagent%3Dmain",
-        );
         const bad = await app.inject({
           method: "POST",
           url: "/_clawscarf/logout",
@@ -372,7 +377,7 @@ await test(
         );
         const lockedSessions = new SessionService(
           locked,
-          null,
+          provider,
           "http://127.0.0.1:18800",
         );
         await lockedSessions.withActingSession(

@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
@@ -18,6 +19,7 @@ const input = parseLocalInput({
   openshellCli: "/tmp/openshell",
   openshellGateway: "/tmp/gateway",
   openshellClientImage: `sha256:${"a".repeat(64)}`,
+  team: oidcTeam(18800, 18802),
   ports: {
     controller: 17671,
     application: 18800,

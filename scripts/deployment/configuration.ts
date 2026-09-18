@@ -134,7 +134,7 @@ const teamInput = z
   }, "HTTPS requires both TLS files; loopback HTTP must not supply TLS files.");
 export const localInput = z
   .strictObject({
-    team: teamInput.optional(),
+    team: teamInput,
     name: z
       .string()
       .max(30)
@@ -229,7 +229,6 @@ export const localInput = z
         path: ["browser", "port"],
         message: "The browser relay needs a distinct port.",
       });
-    if (!value.team) return;
     for (const [key, port] of [
       ["origin", value.ports.application],
       ["widgetOrigin", value.ports.widgets],
@@ -244,7 +243,7 @@ export const localInput = z
   });
 export type LocalInput = z.infer<typeof localInput>;
 
-/** A single-host installation uses loopback local identity unless an explicit OIDC team profile is supplied. */
+/** Hosted login and custom identity providers both use the same OIDC team profile. */
 export function parseLocalInput(value: unknown): LocalInput {
   return localInput.parse(value);
 }
@@ -293,16 +292,13 @@ export function generateLocalConfiguration(options: {
       "Use a PostgreSQL connection URL.",
     )
     .parse(options.runtimeDatabaseUrl);
-  const publicOrigin =
-    input.team?.origin ?? `http://127.0.0.1:${String(input.ports.application)}`;
-  const widgetOrigin =
-    input.team?.widgetOrigin ??
-    `http://127.0.0.1:${String(input.ports.widgets)}`;
+  const publicOrigin = input.team.origin;
+  const widgetOrigin = input.team.widgetOrigin;
   const access: AccessConfiguration = {
     origin: publicOrigin,
     host: "0.0.0.0",
     port: 18800,
-    containerLoopbackPublication: !input.team?.certificateFile,
+    containerLoopbackPublication: !input.team.certificateFile,
     databaseUrl: database,
     encryptionKeyFile: mountedPrivateFile(
       directory,
@@ -329,7 +325,7 @@ export function generateLocalConfiguration(options: {
       widgetOrigin,
       widgetUpstream: `http://host.docker.internal:${String(input.ports.nativeWidgets)}`,
     },
-    ...(input.team?.certificateFile
+    ...(input.team.certificateFile
       ? {
           applicationTls: {
             certificateFile: "/run/clawscarf/application-cert.pem",
@@ -337,16 +333,14 @@ export function generateLocalConfiguration(options: {
           },
         }
       : {}),
-    identity: input.team
-      ? {
-          mode: "oidc",
-          issuer: input.team.issuer,
-          clientId: input.team.clientId,
-          clientSecretFile: "/run/clawscarf/oidc-client-secret",
-          administratorSubject: input.team.administratorSubject,
-          administratorEmail: input.team.administratorEmail,
-        }
-      : { mode: "local", name: input.administratorName },
+    identity: {
+      mode: "oidc",
+      issuer: input.team.issuer,
+      clientId: input.team.clientId,
+      clientSecretFile: "/run/clawscarf/oidc-client-secret",
+      administratorSubject: input.team.administratorSubject,
+      administratorEmail: input.team.administratorEmail,
+    },
   };
   const native = initialConfiguration({
     publicOrigin,

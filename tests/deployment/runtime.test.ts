@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { randomUUID } from "node:crypto";
@@ -29,6 +30,7 @@ async function fixture() {
       openshellCli: "/tools/openshell",
       openshellGateway: "/tools/gateway",
       openshellClientImage: `sha256:${"a".repeat(64)}`,
+      team: oidcTeam(19000, 19002),
       ports: {
         controller: 17671,
         application: 19000,

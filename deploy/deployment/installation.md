@@ -232,11 +232,10 @@ Use the same CLI for operation (here the installation directory is `./team`):
 pnpm clawscarf status --directory ./team
 pnpm clawscarf stop --directory ./team
 pnpm clawscarf logs --directory ./team --service controller
-pnpm clawscarf login --directory ./team
 ```
 
 `--directory` is the same folder supplied to `install` or `configure`. Existing-installation
-commands (start, stop, status, logs, login, administrator, settings, upgrade and Connections
+commands (start, stop, status, logs, administrator, settings, upgrade and Connections
 operations) read its installation.json to locate state, including a custom state location.
 Alternatively, pass `--state` with the private state folder itself, for example
 `pnpm clawscarf status --state ./team/state`. Supply one location option, not both.
@@ -272,8 +271,7 @@ cached state. Readiness does not prove a fresh model response or upstream-provid
 Docker restarts exited Compose services unless explicitly stopped. OpenShell owns sandbox
 lifecycle; use start to resume stopped sandboxes. A stopped Docker engine is reported as
 unavailable, not as a confirmed stopped installation.
-Normal sign-in goes directly to the configured identity provider. The low-level `login`
-command only supports old token-only component fixtures; new installations do not use it.
+Normal sign-in starts from the application URL and goes directly to the configured identity provider.
 
 OIDC supports the private administrator claim or explicit subject/email bootstrap.
 It can be combined with local loopback exposure; network-accessible exposure requires HTTPS.

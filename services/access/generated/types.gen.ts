@@ -141,37 +141,6 @@ export type CompleteLoginResponses = {
 
 export type CompleteLoginResponse = CompleteLoginResponses[keyof CompleteLoginResponses];
 
-export type LocalLoginData = {
-    body: {
-        token: string;
-    };
-    path?: never;
-    query?: {
-        returnTo?: string;
-    };
-    url: '/_clawscarf/local';
-};
-
-export type LocalLoginErrors = {
-    /**
-     * Failure. Browser requests accepting text/html receive a sign-in error page; API clients receive Problem Details.
-     */
-    default: Problem;
-};
-
-export type LocalLoginError = LocalLoginErrors[keyof LocalLoginErrors];
-
-export type LocalLoginResponses = {
-    /**
-     * Success
-     */
-    200: {
-        redirect: string;
-    };
-};
-
-export type LocalLoginResponse = LocalLoginResponses[keyof LocalLoginResponses];
-
 export type SessionData = {
     body?: never;
     path?: never;

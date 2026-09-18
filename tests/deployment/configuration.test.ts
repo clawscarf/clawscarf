@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -14,6 +15,7 @@ const base = {
   openshellCli: "/tools/openshell",
   openshellGateway: "/tools/openshell-gateway",
   openshellClientImage: `sha256:${"a".repeat(64)}`,
+  team: oidcTeam(19000, 19002),
   ports: {
     controller: 17671,
     application: 19000,
@@ -131,7 +133,7 @@ await test("external Connections accepts a scoped HTTPS base path without enabli
     accessConfigurationFile: "/run/clawscarf/access.json",
   });
   assert.deepEqual(result.native, generate().native);
-  assert.equal(result.access.identity.mode, "local");
+  assert.equal(result.access.identity.mode, "oidc");
   assert.equal(JSON.stringify(result).includes("broker.example"), false);
   for (const brokerUrl of [
     "http://broker.example",
@@ -213,8 +215,12 @@ await test("generated configuration separates public, container and native liste
   );
   assert.equal(result.access.containerLoopbackPublication, true);
   assert.deepEqual(result.access.identity, {
-    mode: "local",
-    name: "Ada Lovelace",
+    mode: "oidc",
+    issuer: base.team.issuer,
+    clientId: base.team.clientId,
+    clientSecretFile: "/run/clawscarf/oidc-client-secret",
+    administratorSubject: undefined,
+    administratorEmail: undefined,
   });
   assert.deepEqual(result.companion, {
     accessConfigurationFile: "/run/clawscarf/access.json",

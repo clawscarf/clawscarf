@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import { mkdtemp, mkdir, readFile, rm, stat } from "node:fs/promises";
@@ -37,6 +38,7 @@ async function fixture(t: TestContext) {
       openshellClientImage: `sha256:${"a".repeat(64)}`,
       cpu: "2",
       memory: "2Gi",
+      team: oidcTeam(18800, 18802),
       ports: {
         controller: 17671,
         application: 18800,

@@ -19,6 +19,13 @@ image IDs or registry digest references, and executable paths with absolute path
 {
   "name": "my-team",
   "administratorName": "Administrator",
+  "team": {
+    "origin": "http://127.0.0.1:18800",
+    "widgetOrigin": "http://127.0.0.1:18802",
+    "issuer": "https://identity.example.com",
+    "clientId": "your-client-id",
+    "clientSecretFile": "/absolute/private/oidc-client-secret"
+  },
   "runtimeImage": "sha256:REPLACE_WITH_RUNTIME_IMAGE_ID",
   "companionImage": "sha256:REPLACE_WITH_COMPANION_IMAGE_ID",
   "openshellCli": "/absolute/path/to/openshell",
@@ -46,9 +53,9 @@ Compose project/service labels and loopback publication. Other occupied ports st
 setup with the affected listener named. These checks do not reserve ports; another
 process can still claim one before startup. A failed preflight retains any initialized
 private installation directory for resumption.
-Public DNS, company login and external exposure
-are not part of this local profile. An explicit [team profile](#team-profile)
-assembles company OIDC and public TLS using the same operator.
+Both loopback and public installations require an OIDC team profile. The installer
+registers hosted identity automatically or accepts customer OIDC. The
+[team profile](#team-profile) also supports public TLS using the same operator.
 No AI or connection provider key is required by preparation.
 
 The CLI generates this internal input and calls [prepareLocal](../../scripts/deployment/prepare.ts).
@@ -319,9 +326,9 @@ absolute path because Docker resolves the extracted sandbox supervisor path on t
 Forwarders use the pinned Linux CLI and OpenSSH, with read-only client credentials and
 loopback-only published ports. They have no Docker socket or server signing key.
 
-Startup checks native health and verifies local administrator authority. Initial native
-team setup applies once; an uncertain mutation is never silently replayed. Company OIDC
-setup stays pending until the administrator completes its private claim. Closing the
+Startup checks native and Access health. Administrator setup remains pending until
+the administrator completes its private OIDC claim and native authority is verified.
+Initial native team setup applies once; an uncertain mutation is never silently replayed. Closing the
 terminal does not stop services; use `stop`. Interrupted startup retains already-started
 services and data, visible through status/logs, for an explicit stop or resumed start.
 
@@ -526,7 +533,7 @@ clients; this operator does not configure the host firewall or DNS.
 
 `prepareLocal` initializes the configured OIDC administrator and matching native identity.
 Foreground startup checks service availability through private management TLS and
-reports the application URL. It does not issue a local login code or claim to have
+reports the application URL. It does not claim to have
 verified the administrator through OIDC. The unified installer can instead reserve an
 unclaimed administrator and supply the [private setup link](installation.md#terminal-installer). Company login, native preparation and
 member enrollment use the existing Access service and People page; no RawClaw service

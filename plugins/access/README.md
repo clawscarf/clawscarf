@@ -14,11 +14,10 @@ Plugin JavaScript is trusted application code, not a sandbox. It receives neithe
 provider secret nor a reusable backend administrator credential. Disabling the plugin
 hides these pages without disabling ingress authentication or revocation.
 
-The installation preset includes the plugin by default. Account works in local and
-OIDC modes. The token-only component fixture has one operator-managed administrator
-and no invitations; new installations use OIDC.
+The installation preset includes the plugin by default. Account and People use the
+same native authority with either hosted login or customer OIDC.
 The external companion serves login/callback/setup endpoints, not an Access dashboard.
-Connections retains its existing separate interface until its own selected rewrite.
+Optional Connections also renders through its native plugin.
 
 Build with `pnpm access:plugin:build`; validate with `pnpm access:plugin:check`.
 The native builder bundles the shared generated REST client and records hashed assets

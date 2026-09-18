@@ -1,3 +1,4 @@
+import { oidcTeam } from "./oidc.js";
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import {
@@ -38,6 +39,7 @@ function state(execution = true, browser = true): LocalState {
       openshellClientImage: `sha256:${"a".repeat(64)}`,
       cpu: "1",
       memory: "2Gi",
+      team: oidcTeam(17212, 17213),
       ports: {
         controller: 17211,
         application: 17212,

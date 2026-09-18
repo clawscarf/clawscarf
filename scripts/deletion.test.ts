@@ -1,3 +1,4 @@
+import { oidcTeam } from "../tests/deployment/oidc.js";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, access, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -66,6 +67,7 @@ await test(
       openshellClientImage: `sha256:${"a".repeat(64)}`,
       openshellCli: "/tools/openshell",
       openshellGateway: "/tools/gateway",
+      team: oidcTeam(18800, 18802),
       ports: {
         controller: 17671,
         application: 18800,

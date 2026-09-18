@@ -22,14 +22,13 @@ import {
   installationLogs,
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
-import { localLoginCode } from "../deployment/login.js";
 import { localLogNames } from "../deployment/logs.js";
 import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { upgradeLocal } from "../deployment/upgrade.js";
 import { configureInstallation } from "./configure.js";
 import { setupContext, type SetupOptions } from "./setup.js";
 import { operateConnectionsRuntime } from "../deployment/connections-runtime.js";
-import { progress, terminalLink } from "./installer/prompts.js";
+import { progress } from "./installer/prompts.js";
 import { runInstaller } from "./installer/run.js";
 import { planSettingsChange, reconfigureInstallation } from "./reconfigure.js";
 import { runSettings, readInstallationSettings } from "./installer/settings.js";
@@ -292,15 +291,6 @@ export function installationCommand() {
     .action(async ({ config }: { config: string }) => {
       output(await doctorInstallation(config));
     });
-  withLocation(program.command("login")).action(
-    async (options: LocationOptions) => {
-      const login = await localLoginCode(await resolveLocation(options));
-      output(
-        login,
-        `${terminalLink(login.url)}\nExpires at ${login.expiresAt}.`,
-      );
-    },
-  );
   withLocation(program.command("upgrade"))
     .requiredOption("--runtime-image <digest>")
     .requiredOption("--python <executable>")

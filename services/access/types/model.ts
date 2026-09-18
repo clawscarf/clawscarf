@@ -93,12 +93,6 @@ export interface AccessStore {
   prepareEnrollment(identity: Identity): Promise<User>;
   activateEnrollment(id: string): Promise<void>;
   removeEnrollment(id: string): Promise<void>;
-  createLocalToken(hash: string): Promise<void>;
-  createLocalSession(
-    tokenHash: string,
-    sessionHash: string,
-    csrfToken: string,
-  ): Promise<boolean>;
   administratorSetup(): Promise<{
     complete: boolean;
     expiresAt: string | null;
