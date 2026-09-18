@@ -1,4 +1,5 @@
 import { z } from "zod";
+export const defaultCloudUrl = "https://cloud.clawscarf.com";
 export const cloudUrlSchema = z.url().refine((value) => {
   const url = new URL(value);
   return (

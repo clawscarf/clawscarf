@@ -236,7 +236,7 @@ await test(
       await readJson(join(f.directory, "installation.json")),
     );
     assert.equal(config.models.mode, "litellm");
-    assert.deepEqual(config.connections, { mode: "disabled" });
+    assert.equal(config.connections.mode, "disabled");
     assert.ok(config.resources.worker);
     assert.deepEqual(config.packs, []);
     assert.equal(
@@ -353,20 +353,15 @@ await test(
         ...f.answers,
         "Default model": "team",
         Provider: "openai/test",
-        Connections: "on",
-        "Connections backend": "external",
         "Model catalog file": modelFile,
         "LLM API keys": "file",
         "Provider credentials file (.env)": key,
-        "Connections broker URL": "https://broker.example.test",
-        "Connections broker key": "file",
-        "Connections broker key file": key,
         "Install a pack? (experimental native Claws)": true,
         "Pack directory": resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
         "Python executable with the pinned OpenShell SDK": "/usr/bin/python3",
       },
-      ["advanced-models", "connections", "packs"],
+      ["advanced-models", "packs"],
     );
     const result = await savePreview(f, ui);
     assert.equal(result.state, "saved");
@@ -374,7 +369,7 @@ await test(
       planFile = join(f.directory, "preview.json");
     const plan = await planInstallation(configFile);
     assert.equal(plan.capabilities.models, "litellm");
-    assert.equal(plan.capabilities.connections, "external");
+    assert.equal(plan.capabilities.connections, "disabled");
     assert.deepEqual(plan.capabilities.packs[0]?.members, [
       "researcher",
       "reviewer",
@@ -398,9 +393,9 @@ await test(
     const { config } = await collectInstallation(new Answers(f.answers), f);
     const key = join(f.parent, "key");
     await writeFile(key, "private-test-secret", { mode: 0o644 });
-    config.connections = {
+    config.models = {
       mode: "external",
-      brokerUrl: "https://broker.example.test",
+      configurationFile: config.models.configurationFile,
       credentialFile: key,
     };
     await assert.rejects(saveConfiguration(f.directory, config), {
@@ -410,7 +405,7 @@ await test(
     await chmod(key, 0o600);
     const linked = join(f.parent, "linked");
     await symlink(key, linked);
-    config.connections.credentialFile = linked;
+    config.models.credentialFile = linked;
     await assert.rejects(saveConfiguration(f.directory, config));
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
@@ -531,78 +526,42 @@ await test(
     assert.equal(config.name, "my-team");
     assert.equal(config.access.administratorName, "Owner");
     assert.equal(config.resources.gateway.cpu, "4");
-    assert.deepEqual(config.connections, { mode: "disabled" });
+    assert.equal(config.connections.mode, "disabled");
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
 );
 
 await test(
-  "masked secrets stay unsaved until acceptance and never enter configuration or notes",
+  "Connections selection needs no provider credentials and retains its cloud destination when toggled",
   local,
   async (t) => {
     const f = await fixture(t);
-    const ui = new Answers(
-      {
-        ...f.answers,
-        Connections: "on",
-        "Connections backend": "external",
-        "Connections broker URL": "https://broker.example.test",
-        "Connections broker key": "paste",
-        "secret:Connections broker key": "masked-test-secret",
-      },
-      ["connections"],
-    );
+    const ui = new Answers({ ...f.answers, "Enable Connections?": true }, [
+      "connections",
+    ]);
     const draft = await collectInstallation(ui, f);
-    assert.equal(draft.inputs.files.size, 1);
+    assert.equal(draft.config.connections.mode, "hosted");
+    assert.equal(
+      draft.config.connections.cloudUrl,
+      "https://cloud.example.test",
+    );
+    assert.equal(draft.inputs.files.size, 0);
+    assert.ok(
+      !ui.questions.some((question) =>
+        /Composio|broker key|catalog directory/i.test(question),
+      ),
+    );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
-    assert.ok(!JSON.stringify(draft.config).includes("masked-test-secret"));
-    assert.ok(!ui.notes.join().includes("masked-test-secret"));
-    const file = await saveConfiguration(
-      draft.directory,
-      draft.config,
-      draft.inputs,
+    const toggled = await collectInstallation(
+      new Answers({ ...f.answers, "Enable Connections?": false }, [
+        "connections",
+      ]),
+      f,
+      draft,
     );
-    assert.ok(!(await readFile(file, "utf8")).includes("masked-test-secret"));
-    assert.equal(
-      await readFile(join(f.directory, "secrets/broker-key"), "utf8"),
-      "masked-test-secret",
-    );
-    assert.equal(
-      (await lstat(join(f.directory, "secrets/broker-key"))).mode & 0o777,
-      0o600,
-    );
-  },
-);
-
-await test(
-  "disabling Connections discards entered credentials from the saved installation",
-  local,
-  async (t) => {
-    const f = await fixture(t);
-    class DisableConnections extends Answers {
-      private visits = 0;
-      override select(message: string, choices: Choice[], initial?: string) {
-        if (message === "Connections")
-          return Promise.resolve(this.visits++ ? "off" : "on");
-        return super.select(message, choices, initial);
-      }
-    }
-    const ui = new DisableConnections(
-      {
-        ...f.answers,
-        Connections: "on",
-        "Connections backend": "external",
-        "Connections broker URL": "https://broker.example.test",
-        "Connections broker key": "paste",
-        "secret:Connections broker key": "unused-secret",
-      },
-      ["connections", "connections"],
-    );
-    const draft = await collectInstallation(ui, f);
-    assert.deepEqual(draft.config.connections, { mode: "disabled" });
-    await saveConfiguration(draft.directory, draft.config, draft.inputs);
-    await assert.rejects(lstat(join(f.directory, "secrets/broker-key")), {
-      code: "ENOENT",
+    assert.deepEqual(toggled.config.connections, {
+      ...draft.config.connections,
+      mode: "disabled",
     });
   },
 );
@@ -627,7 +586,21 @@ await test(
     });
     const context = await setupContext({ release: f.release });
     assert.deepEqual(
-      configureRecipe(context, "team-documents", await readJson(f.settings)),
+      {
+        ...configureRecipe(
+          context,
+          "team-documents",
+          await readJson(f.settings),
+        ),
+        connections: {
+          mode: "disabled",
+          cloudUrl: "https://cloud.example.test",
+          registrationFile: join(
+            f.directory,
+            "secrets/connections-registration.json",
+          ),
+        },
+      },
       draft.config,
     );
     assert.equal(draft.config.recipe?.id, "team-documents");
@@ -650,11 +623,7 @@ await test(
           clientSecretFile: "initial-models.env",
         },
         name: "configured-team",
-        connections: {
-          mode: "external",
-          brokerUrl: "https://broker.example.test",
-          credentialFile: "key",
-        },
+        connections: { mode: "disabled" },
       }),
     );
     const result = await configureInstallation({
@@ -664,10 +633,7 @@ await test(
     });
     const saved = installationSchema.parse(await readJson(result.configFile));
     assert.equal(saved.name, "configured-team");
-    assert.equal(
-      await readFile(join(f.directory, "secrets/broker-key"), "utf8"),
-      "cli-private-key",
-    );
+    assert.equal(saved.connections.mode, "disabled");
     assert.throws(() => configureRecipe(context, "missing", {}), {
       code: "invalid_configuration",
     });
@@ -891,25 +857,19 @@ await test(
 );
 
 await test(
-  "Esc cancels a section atomically, drops new secrets and preserves accepted settings",
+  "Esc cancels a Connections section and preserves accepted settings",
   local,
   async (t) => {
     const f = await fixture(t);
     class CancelSection extends Answers {
       override async confirm(message: string) {
-        if (message === "Use a custom certificate authority?")
-          throw new SectionCancelled();
+        if (message === "Enable Connections?") throw new SectionCancelled();
         return super.confirm(message);
       }
     }
     const ui = new CancelSection(
       {
         ...f.answers,
-        Connections: "on",
-        "Connections backend": "external",
-        "Connections broker URL": "https://broker.example.test",
-        "Connections broker key": "paste",
-        "secret:Connections broker key": "discard-me",
         "Installation name": "accepted-team",
       },
       ["identity", "connections"],
@@ -922,12 +882,7 @@ await test(
       ).length,
       3,
     );
-    assert.deepEqual(draft.config.connections, { mode: "disabled" });
-    assert.ok(
-      ![...draft.inputs.files.values()].some((value) =>
-        value.includes("discard-me"),
-      ),
-    );
+    assert.equal(draft.config.connections.mode, "disabled");
   },
 );
 
@@ -1104,13 +1059,9 @@ await test(
     const f = await fixture(t);
     const failure = new TypeError("fixture programming error");
     class BrokenPrompt extends Answers {
-      override select(
-        message: string,
-        choices: Choice[],
-        initial?: string,
-      ): Promise<string> {
-        if (message === "Connections") return Promise.reject(failure);
-        return super.select(message, choices, initial);
+      override confirm(message: string, initial?: boolean): Promise<boolean> {
+        if (message === "Enable Connections?") return Promise.reject(failure);
+        return super.confirm(message, initial);
       }
     }
     await assert.rejects(

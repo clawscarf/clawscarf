@@ -144,7 +144,10 @@ export function composeConfiguration(
           "management-ca.pem",
           "management-cert.pem",
           "management-key.pem",
-          ...(input.connections?.mode === "local" ? ["connections"] : []),
+          ...(input.connections?.mode === "local" ||
+          input.connections?.managementKeyFile
+            ? ["connections"]
+            : []),
           ...(input.team ? ["oidc-client-secret"] : []),
           ...(input.team?.certificateFile
             ? ["application-cert.pem", "application-key.pem"]

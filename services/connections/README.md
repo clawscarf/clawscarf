@@ -11,8 +11,8 @@ retry information are preserved. Browser and CLI share the
 
 Configure `cloudConnections: { url, managementKeyFile }` in the
 [companion](../../apps/companion/README.md); it cannot coexist with local `connections`.
-The rest of this document describes the local broker still used by the installer.
-Its replacement/removal belongs to M7 in [TODO](../../TODO.md).
+The public installer now selects this cloud adapter. The rest of this document describes
+superseded local broker internals, whose removal remains M7 in [TODO](../../TODO.md).
 
 Optional same-origin account management and tool broker for one ClawScarf server.
 The [OpenClaw plugin](../../plugins/connections/README.md) exposes search, describe
@@ -24,8 +24,9 @@ checks both clients and the portable contract for drift.
 All REST clients share the [generated HTTP transport](../../generated/README.md).
 
 The [unified installation CLI](../../deploy/deployment/installation.md#connections)
-can bootstrap local Connections on a fresh installation, including its initial scoped
-runtime credential and native plugin settings. Offline bootstrap uses the repository
+selects hosted Connections on a fresh installation, including separate management and
+runtime credentials and native plugin settings. The lower-level local broker still has
+an offline bootstrap implementation pending removal. Offline bootstrap uses the repository
 transaction and never replaces or reactivates existing credentials. External mode
 accepts an existing scoped broker token; disabled mode creates no Connections schema.
 

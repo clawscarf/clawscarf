@@ -1,3 +1,4 @@
+import { defaultCloudUrl } from "../../../cloud/url.js";
 import { z } from "zod";
 import type { InstallationDraft } from "../../configuration.js";
 import type { InstallerPrompts } from "../prompts.js";
@@ -6,6 +7,7 @@ import { field, inputFile } from "../inputs.js";
 export async function collectAccess(
   ui: InstallerPrompts,
   current: InstallationDraft,
+  cloudUrl = defaultCloudUrl,
 ) {
   const custom = await ui.confirm(
     "Use your own OIDC provider?",
@@ -17,9 +19,8 @@ export async function collectAccess(
         mode: "hosted" as const,
         administratorName: current.access.administratorName,
         registrationFile: "./secrets/hosted-login.json",
-        ...(current.access.mode === "hosted" && current.access.cloudUrl
-          ? { cloudUrl: current.access.cloudUrl }
-          : {}),
+        cloudUrl:
+          current.access.mode === "hosted" ? current.access.cloudUrl : cloudUrl,
       },
     };
   const previous = current.access.mode === "oidc" ? current.access : undefined;

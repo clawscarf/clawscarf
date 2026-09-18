@@ -1,3 +1,4 @@
+import { registerWithBrowser } from "./cloud.js";
 import * as clack from "@clack/prompts";
 import { randomUUID } from "node:crypto";
 import { rm, readFile } from "node:fs/promises";
@@ -58,6 +59,7 @@ export async function editInstallationSettings(
       inputs,
       true,
     );
+    await registerWithBrowser(candidate, ui, progress);
     const plan = await planSettingsChange(candidate);
     ui.note(
       `Reapply models and selected Connections settings. Keep individual model overrides and unrelated native settings.

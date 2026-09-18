@@ -50,7 +50,7 @@ export async function installationSummary(
     `${config.name} — ${origin}`,
     `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
     `Models: ${model}`,
-    `Connections: ${config.connections.mode === "disabled" ? "Off" : config.connections.mode}`,
+    `Connections: ${config.connections.mode === "disabled" ? "Off" : "On"}`,
     `Browser: ${config.browser.enabled ? "Experimental" : "Off"} · Packs: ${config.packs.flatMap((pack) => pack.members).join(", ") || "None"}`,
   ].join("\n");
 }

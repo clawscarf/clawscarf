@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
@@ -125,9 +126,22 @@ await test(
     assert.equal(plan.action, "prepare");
     assert.equal(plan.stateDirectory, join(directory, "state"));
     assert.equal(new Set(plan.internalPorts).size, 8);
-    await writeFile(join(directory, "connection-key"), "private-scoped-token", {
-      mode: 0o600,
-    });
+    await writeFile(
+      join(directory, "connections-registration.json"),
+      JSON.stringify({
+        cloudUrl: "https://broker.example.test",
+        request: {
+          reference: randomUUID(),
+          name: "team",
+          origin: null,
+          managementSecret: "m".repeat(43),
+          runtimeSecret: "r".repeat(43),
+        },
+        accountId: randomUUID(),
+        installationId: randomUUID(),
+      }),
+      { mode: 0o600 },
+    );
     await writeFile(
       path,
       JSON.stringify({
@@ -138,15 +152,15 @@ await test(
           upstreamEnvironmentFile: "keys.env",
         },
         connections: {
-          mode: "external",
-          brokerUrl: "https://broker.example.test",
-          credentialFile: "connection-key",
+          mode: "hosted",
+          cloudUrl: "https://broker.example.test",
+          registrationFile: "connections-registration.json",
         },
       }),
     );
     const enabled = await planInstallation(path);
     assert.equal(enabled.capabilities.models, "litellm");
-    assert.equal(enabled.capabilities.connections, "external");
+    assert.equal(enabled.capabilities.connections, "hosted");
     assert.ok(!JSON.stringify(enabled).includes("private-test-key"));
     const enabledPreview = join(directory, "enabled.json");
     await writeFile(enabledPreview, JSON.stringify(enabled));
@@ -185,7 +199,7 @@ await test(
     const retained = await readState(join(directory, "state"));
     await writeFile(
       join(directory, "state/release.json"),
-      JSON.stringify(release),
+      JSON.stringify(resolved.release),
     );
     await writeFile(
       join(directory, "state/packs.json"),

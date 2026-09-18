@@ -1,4 +1,3 @@
-import { InstallationError } from "./errors.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { readInputFile } from "./files.js";
@@ -30,11 +29,6 @@ export async function saveConfiguration(
   retained = false,
 ) {
   const config = installationSchema.parse(value);
-  if (config.access.mode === "hosted" && !config.access.cloudUrl)
-    throw new InstallationError(
-      "invalid_configuration",
-      "This development release has no cloud URL. Supply --cloud-url or configure your own OIDC provider before installing.",
-    );
   const files = new Map<string, Buffer>();
   async function secret(source: string, name: string) {
     const path = join("secrets", name);
@@ -68,16 +62,6 @@ export async function saveConfiguration(
     config.models.upstreamEnvironmentFile = await secret(
       config.models.upstreamEnvironmentFile,
       "models.env",
-    );
-  if (config.connections.mode === "local")
-    config.connections.apiKeyFile = await secret(
-      config.connections.apiKeyFile,
-      "connections-key",
-    );
-  if (config.connections.mode === "external")
-    config.connections.credentialFile = await secret(
-      config.connections.credentialFile,
-      "broker-key",
     );
   for (const [index, pack] of config.packs.entries())
     if (pack.bindingsFile)

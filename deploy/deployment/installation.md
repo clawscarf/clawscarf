@@ -11,9 +11,9 @@ The `pnpm clawscarf` examples below are for running this unreleased source check
 
 The selected [hosted-services design](../../docs/cloud-services.md) replaces token-only
 evaluation login with hosted OIDC by default and customer OIDC as the alternative,
-without bundling an identity server. The installer uses hosted login unless custom OIDC is supplied. Cloud deployment and
-independent Connections service selection remain unfinished. Development releases need
-a `cloudUrl` in their release file, or `--cloud-url` pointing to a running cloud service.
+without bundling an identity server. The installer defaults to `https://cloud.clawscarf.com`;
+a release's `cloudUrl` or `--cloud-url` can select staging. Connections can be enabled
+independently of hosted or custom OIDC login.
 There is no token-only fallback when cloud configuration is missing.
 
 A fresh team installation passed normal Docker network allocation, persistent startup,
@@ -23,8 +23,8 @@ left the server running. Earlier retained-state checks also preserved native app
 worker files and revoked credentials across stop/start.
 
 These are local macOS arm64 checks, not a published-release or public deployment test.
-Other provider routes and real Connections account OAuth remain unverified. Connections
-activation has only used a fixture catalog; that fixture is not a distributable catalog.
+Real Outlook linking, reconnect, execution and revocation passed with the local cloud
+service. Fresh installation against the deployed cloud remains under verification.
 
 ## Development release
 
@@ -81,8 +81,9 @@ Choose a recipe, then review its editable settings. **Accept settings and contin
 is the first menu action. The Models section selects the default model, provider and
 reasoning level from the release catalog; the summary shows those choices before asking
 for an **LLM API key**. Advanced settings can import a model catalog or use an existing
-LiteLLM gateway. Connections defaults to off; when enabled, select its backend. A local
-backend uses the release's packaged catalog, never a catalog-directory question.
+LiteLLM gateway. Connections defaults to off. Enabling it uses ClawScarf Cloud;
+the installer asks for cloud owner approval only when a registration is needed.
+Provider credentials and the connector catalog stay in the cloud.
 Account linking and teammate enrollment remain separate, deferred application work.
 
 **Esc** discards unsaved section edits and returns to its parent. At the recipe picker,
@@ -358,26 +359,34 @@ setup. `complete` accepts the OAuth receipt in a private file for noninteractive
 remaining account operations. `disconnect` also removes inactive entries. Lists
 support `--cursor`, and `list --all` includes disconnected history. Use `--json` for
 machine-readable results. Account linking is application management, not installation.
-These commands require the companion's cloud adapter; installer broker selection
-and removal of the previous local broker remain in M7.
+The installer configures the companion's cloud adapter and the native plugin together:
 
-The existing runtime configuration commands below are separate from account management.
+- `{"mode":"disabled"}` makes no broker calls and exposes no Connections UI/tools.
+- `{"mode":"hosted"}` enables cloud Connections. Hosted login shares its registration
+  when both use the same cloud. With company OIDC, the owner authorizes a separate
+  Connections registration; teammates continue using the company's login.
 
-- `{"mode":"disabled"}` omits the broker and native tool configuration.
-- `{"mode":"external","brokerUrl":"https://broker.example.com","credentialFile":"secrets/connections-key"}`
-  initializes the plugin against an existing broker; optional `caFile` supplies trust.
-  Supply an installation-scoped broker token, not a Composio project key.
-- `{"mode":"local","projectId":"YOUR_PROJECT","apiKeyFile":"secrets/composio-key","catalogDirectory":"catalog"}`
-  enables the existing companion service and its schema/catalog. Preparation issues
-  the initial scoped runtime credential once and configures the plugin on a fresh
-  native volume. Composio credentials stay in the companion. Repeated preparation
-  never replaces an existing credential or reactivates a revoked one.
+`cloudUrl` and `registrationFile` can be supplied explicitly. The menu retains these
+settings when disabling Connections, so re-enabling reuses its existing account and
+credentials. Do not delete or replace registration files to retry a failed operation.
+Native administrator authority is required for account management. The plugin uses a
+separate scoped runtime key and exposes search/describe/call tools. Provider keys never
+enter the installation. Account linking happens after login in native Connections.
 
-Use the [catalog importer](../../services/connections/README.md) to prepare catalog
-files. Installation does not contact Composio or connect anybody's account. The
-provider project callback still must match the deployed Connections URL, and account
-OAuth is a subsequent human action. The plugin exposes the existing three
-search/describe/call tools; agent grants remain managed through Connections.
+For an unattended retained change that first enables cloud services, save the candidate
+as installation.json in a private candidate directory, then run:
+
+```sh
+clawscarf configure --directory ./candidate --cloud-credential-file /private/cloud-owner-key
+clawscarf settings plan --config ./candidate/installation.json
+clawscarf settings apply --config ./candidate/installation.json --fingerprint PREVIEW_FINGERPRINT --yes
+```
+
+Planning itself does not register accounts.
+The interactive settings menu performs this same registration before its preview.
+
+Superseded local broker internals are being removed under M7; the public installation
+contract no longer selects them.
 
 ### Packs
 
@@ -460,7 +469,7 @@ Supported changes:
   Bundled LiteLLM keeps the existing scoped key and changes its model permissions
   without unblocking it or extending expiry. Missing keys are not recreated.
   Individual native agent overrides and unrelated OpenClaw settings are preserved.
-- Connections enable/disable and credentials for the same broker/project. Disabled
+- Connections enable/disable for the same cloud registration. Disabled
   stops the backend capability and native plugin; accounts, grants and credentials
   remain stored. Re-enabling does not reactivate revoked credentials. The selected
   broker network rule is applied on start without replacing other OpenShell rules.

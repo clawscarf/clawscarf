@@ -1,4 +1,4 @@
-import { cloudUrlSchema } from "../cloud/url.js";
+import { cloudUrlSchema, defaultCloudUrl } from "../cloud/url.js";
 import { z } from "zod";
 import { modelSchema } from "../models/configuration.js";
 import { recipesSchema } from "../installation/recipes/definition.js";
@@ -15,7 +15,7 @@ const file = z.strictObject({ file: z.string().min(1), sha256: digest });
 /** Release metadata is build output, not deployment state or customer configuration. */
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  cloudUrl: cloudUrlSchema.optional(),
+  cloudUrl: cloudUrlSchema.default(defaultCloudUrl),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
   recipes: recipesSchema,
   packs: z

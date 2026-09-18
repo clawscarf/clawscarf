@@ -10,7 +10,10 @@ import {
   getAccount,
 } from "../../services/cloud/generated/sdk.gen.js";
 import { cloudUrlSchema } from "./url.js";
-import { installationSchema } from "../installation/configuration.js";
+import {
+  installationSchema,
+  type InstallationConfiguration,
+} from "../installation/configuration.js";
 import { readInputFile, readJson } from "../installation/files.js";
 import { writePrivate, ensurePrivateFile } from "../deployment/state.js";
 import { InstallationError } from "../installation/errors.js";
@@ -25,7 +28,7 @@ const registrationSchema = z.strictObject({
   request: z.strictObject({
     reference: z.uuid(),
     name: z.string().min(1),
-    origin: cloudUrlSchema,
+    origin: cloudUrlSchema.nullable(),
     managementSecret: z.string().min(43),
     runtimeSecret: z.string().min(43),
   }),
@@ -39,25 +42,53 @@ export async function readHostedRegistration(file: string) {
   );
 }
 
-/** Persist intent before dispatch; retries reuse the same reference and keys. */
-export async function registerHostedLogin(
+/** Hosted login and Connections share registration only when they use the same service. */
+function connectionsRegistration(config: InstallationConfiguration) {
+  if (config.connections.mode !== "hosted") return undefined;
+  return config.access.mode === "hosted" &&
+    config.access.cloudUrl === config.connections.cloudUrl
+    ? config.access
+    : config.connections;
+}
+
+export async function registerCloudServices(
   configFile: string,
   authorize: (cloudUrl: string) => Promise<string>,
 ) {
   const config = installationSchema.parse(await readJson(configFile));
-  if (config.access.mode !== "hosted") return;
-  const access = config.access;
-  if (!access.cloudUrl)
-    throw new InstallationError(
-      "unavailable",
-      "This development release has no cloud URL. Supply --cloud-url when configuring it, or configure your own OIDC provider.",
+  const connections = connectionsRegistration(config);
+  const selections = [
+    ...(config.access.mode === "hosted"
+      ? [{ ...config.access, login: true }]
+      : []),
+    ...(connections && connections !== config.access
+      ? [{ ...connections, login: false }]
+      : []),
+  ];
+  for (const selection of selections) {
+    const origin = selection.login
+      ? config.exposure.mode === "https"
+        ? config.exposure.applicationOrigin
+        : `http://127.0.0.1:${String(config.exposure.applicationPort)}`
+      : null;
+    await registerService(
+      resolve(dirname(configFile), selection.registrationFile),
+      selection.cloudUrl,
+      config.name,
+      origin,
+      authorize,
     );
-  const cloudUrl = cloudUrlSchema.parse(access.cloudUrl);
-  const origin =
-    config.exposure.mode === "https"
-      ? config.exposure.applicationOrigin
-      : `http://127.0.0.1:${String(config.exposure.applicationPort)}`;
-  const path = resolve(dirname(configFile), access.registrationFile);
+  }
+}
+
+/** Persist intent before dispatch; retries reuse the same reference and keys. */
+async function registerService(
+  path: string,
+  cloudUrl: string,
+  name: string,
+  origin: string | null,
+  authorize: (cloudUrl: string) => Promise<string>,
+) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const unlock = await lockfile.lock(dirname(path), {
     lockfilePath: path + ".lock",
@@ -78,7 +109,7 @@ export async function registerHostedLogin(
         cloudUrl,
         request: {
           reference: randomUUID(),
-          name: config.name,
+          name,
           origin,
           managementSecret: randomBytes(32).toString("base64url"),
           runtimeSecret: randomBytes(32).toString("base64url"),
@@ -89,7 +120,7 @@ export async function registerHostedLogin(
     if (
       registration.cloudUrl !== cloudUrl ||
       registration.request.origin !== origin ||
-      registration.request.name !== config.name
+      registration.request.name !== name
     )
       throw new InstallationError(
         "change_unsupported",
@@ -157,12 +188,13 @@ export async function registerHostedLogin(
         );
       registration.installationId = installation.id;
       await writePrivate(path, JSON.stringify(registration));
-      if (installation.oidcState !== "ready")
+      if (origin && installation.oidcState !== "ready")
         throw new InstallationError(
           "unavailable",
           `Hosted login registration is ${installation.oidcState}. No new client will be allocated; contact the cloud operator.`,
         );
     }
+    if (!origin) return;
     const result = await getInstallationIdentity({
       client,
       auth: registration.request.managementSecret,
@@ -205,5 +237,43 @@ export async function hostedOidc(file: string) {
     issuer: registration.identity.issuer,
     clientId: registration.identity.clientId,
     clientSecretFile,
+  };
+}
+
+export async function hostedConnections(
+  config: InstallationConfiguration,
+  configFile: string,
+) {
+  const selected = connectionsRegistration(config);
+  if (!selected) return undefined;
+  const file = resolve(dirname(configFile), selected.registrationFile);
+  const registration = await readHostedRegistration(file);
+  const origin =
+    selected === config.access
+      ? config.exposure.mode === "https"
+        ? config.exposure.applicationOrigin
+        : `http://127.0.0.1:${String(config.exposure.applicationPort)}`
+      : null;
+  if (
+    !registration.installationId ||
+    registration.cloudUrl !== selected.cloudUrl ||
+    registration.request.name !== config.name ||
+    registration.request.origin !== origin
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "Connections registration is incomplete or belongs to another cloud service.",
+    );
+  const managementKeyFile = file + ".management-key";
+  const credentialFile = file + ".runtime-key";
+  await ensurePrivateFile(
+    managementKeyFile,
+    registration.request.managementSecret,
+  );
+  await ensurePrivateFile(credentialFile, registration.request.runtimeSecret);
+  return {
+    brokerUrl: `${registration.cloudUrl}/api/connections`,
+    managementKeyFile,
+    credentialFile,
   };
 }

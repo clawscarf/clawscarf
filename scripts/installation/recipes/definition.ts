@@ -14,6 +14,7 @@ export const recipeSchema = z.strictObject({
   defaults: z.strictObject({
     resources: installationSchema.shape.resources,
     browser: installationSchema.shape.browser,
+    connections: z.strictObject({ enabled: z.boolean() }).optional(),
   }),
   models: gatewayRoutesSchema,
   packs: z

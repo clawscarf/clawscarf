@@ -82,21 +82,28 @@ export function recipeConfiguration(
       mode: "hosted",
       administratorName: "Administrator",
       registrationFile: "./secrets/hosted-login.json",
-      ...((context.cloudUrl ?? context.release.cloudUrl)
-        ? { cloudUrl: context.cloudUrl ?? context.release.cloudUrl }
-        : {}),
+      cloudUrl: context.cloudUrl ?? context.release.cloudUrl,
     },
     resources: {
       gateway: { cpu: "2", memory: "2Gi" },
       worker: { cpu: "2", memory: "2Gi" },
     },
     browser: { enabled: false },
-    connections: { mode: "disabled" },
+    connections: {
+      mode: recipe?.defaults.connections?.enabled ? "hosted" : "disabled",
+      cloudUrl: context.cloudUrl ?? context.release.cloudUrl,
+      registrationFile: "./secrets/connections-registration.json",
+    },
     packs: (recipe?.packs ?? []).map((pack) => ({
       directory: resolve(dirname(context.releaseFile), "packs", pack.id),
       members: [...pack.members],
     })),
-    ...recipe?.defaults,
+    ...(recipe
+      ? {
+          resources: recipe.defaults.resources,
+          browser: recipe.defaults.browser,
+        }
+      : {}),
     ...(recipe
       ? { recipe: { id: recipe.id, release: context.release.version } }
       : {}),

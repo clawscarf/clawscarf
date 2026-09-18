@@ -89,7 +89,8 @@ export async function applyConnectionSettings(
   config.services.companion.volumes = config.services.companion.volumes.filter(
     (value) => value !== mount,
   );
-  if (loaded?.mode === "local") config.services.companion.volumes.push(mount);
+  if (loaded?.mode === "local" || loaded?.managementKey)
+    config.services.companion.volumes.push(mount);
   await writePrivate(file, JSON.stringify(config));
   const rule =
     initialRuntimePolicy("network_policies: {}", undefined, undefined, endpoint)

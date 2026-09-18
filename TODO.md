@@ -6,7 +6,7 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 Selected design: [hosted login and Connections](docs/cloud-services.md). Stages in order;
 payment integration and privately operated broker packaging come later.
-Cloud staging/production are deployed. Development releases still supply or override the cloud URL; installer integration remains M7.
+Cloud staging/production are deployed. The installer defaults to the production cloud; releases or `--cloud-url` can select staging. M7 integration is in progress.
 
 Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughout.
 
@@ -15,8 +15,7 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
       disabled/empty Connections, and remove superseded token-login and local broker/UI paths.
 - [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
       journeys with native Connections, multiple installations, tenant isolation and quota/revocation
-      failures. Verify the cloud promotion workflow (build passed; deployment credentials configured);
-      initial Vercel deployments pass startup checks. Update actual status and clean up disposable infrastructure.
+      failures. Cloud build/promotion passed staging and production; full hosted acceptance remains. Update actual status and clean up disposable infrastructure.
 
 ## Installer and releases
 

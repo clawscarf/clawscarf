@@ -1,8 +1,7 @@
-import { cloudUrlSchema } from "../cloud/url.js";
+import { cloudUrlSchema, defaultCloudUrl } from "../cloud/url.js";
 import { z } from "zod";
 import { localInput } from "../deployment/configuration.js";
 const path = z.string().min(1);
-const disabled = z.strictObject({ mode: z.literal("disabled") });
 const resources = z.strictObject({
   cpu: localInput.shape.cpu,
   memory: localInput.shape.memory,
@@ -45,7 +44,7 @@ export const installationSchema = z
     access: z.discriminatedUnion("mode", [
       z.strictObject({
         mode: z.literal("hosted"),
-        cloudUrl: cloudUrlSchema.optional(),
+        cloudUrl: cloudUrlSchema.default(defaultCloudUrl),
         registrationFile: path.default("./secrets/hosted-login.json"),
         administratorName: localInput.shape.administratorName,
       }),
@@ -65,21 +64,11 @@ export const installationSchema = z
       externalLiteLlmSchema,
       bundledLiteLlmSchema,
     ]),
-    connections: z.discriminatedUnion("mode", [
-      disabled,
-      z.strictObject({
-        mode: z.literal("external"),
-        brokerUrl: z.string(),
-        credentialFile: path,
-        caFile: path.optional(),
-      }),
-      z.strictObject({
-        mode: z.literal("local"),
-        projectId: z.string().min(1),
-        apiKeyFile: path,
-        catalogDirectory: path,
-      }),
-    ]),
+    connections: z.strictObject({
+      mode: z.enum(["disabled", "hosted"]),
+      cloudUrl: cloudUrlSchema.default(defaultCloudUrl),
+      registrationFile: path.default("./secrets/connections-registration.json"),
+    }),
     packOperator: z
       .strictObject({
         pythonExecutable: path,

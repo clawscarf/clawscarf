@@ -62,7 +62,7 @@ export function installationMenu(
     row(
       "connections",
       "Connections",
-      config.connections.mode === "disabled" ? "Off" : config.connections.mode,
+      config.connections.mode === "disabled" ? "Off" : "On",
     ),
     row(
       "packs",
@@ -97,14 +97,6 @@ export function installationMenu(
           ["review", "models", "connections", "packs"].includes(value),
         ),
         { value: "model-credentials", label: "Change LLM API keys" },
-        ...(config.connections.mode === "disabled"
-          ? []
-          : [
-              {
-                value: "connection-credentials",
-                label: "Change Connections backend key",
-              },
-            ]),
       ]
     : choices;
 }

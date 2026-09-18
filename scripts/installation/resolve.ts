@@ -1,4 +1,4 @@
-import { hostedOidc } from "../cloud/registration.js";
+import { hostedOidc, hostedConnections } from "../cloud/registration.js";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
@@ -130,6 +130,7 @@ export async function resolveInstallation(
           )),
         }
       : config.access;
+  const cloudConnections = await hostedConnections(config, configFile);
   const input: LocalInput = parseLocalInput({
     name: config.name,
     administratorName: access.administratorName,
@@ -238,24 +239,15 @@ export async function resolveInstallation(
           },
         }
       : {}),
-    ...(config.connections.mode === "local"
-      ? {
-          connections: {
-            mode: "local",
-            projectId: config.connections.projectId,
-            apiKeyFile: await inputFile(config.connections.apiKeyFile, true),
-            catalogDirectory: path(config.connections.catalogDirectory),
-          },
-        }
-      : {}),
-    ...(config.connections.mode === "external"
+    ...(cloudConnections
       ? {
           connections: {
             mode: "external",
-            brokerUrl: config.connections.brokerUrl,
-            ...(config.connections.caFile
-              ? { caFile: await inputFile(config.connections.caFile, false) }
-              : {}),
+            brokerUrl: cloudConnections.brokerUrl,
+            managementKeyFile: await inputFile(
+              cloudConnections.managementKeyFile,
+              true,
+            ),
           },
         }
       : {}),
@@ -271,10 +263,9 @@ export async function resolveInstallation(
   if (connections?.mode === "local")
     for (const [name, bytes] of connections.files)
       inputs[`catalog:${name}`] = fingerprint(bytes);
-  const connectorCredentialFile =
-    config.connections.mode === "external"
-      ? await inputFile(config.connections.credentialFile, true)
-      : undefined;
+  const connectorCredentialFile = cloudConnections
+    ? await inputFile(cloudConnections.credentialFile, true)
+    : undefined;
   if (connectorCredentialFile)
     await readInitialConnectionToken(connectorCredentialFile);
   const members = new Set<string>();

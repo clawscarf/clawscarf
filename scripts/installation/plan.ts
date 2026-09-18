@@ -25,7 +25,7 @@ export const planSchema = z.strictObject({
   browser: z.boolean(),
   capabilities: z.strictObject({
     models: z.enum(["external", "litellm"]),
-    connections: z.enum(["disabled", "external", "local"]),
+    connections: z.enum(["disabled", "hosted"]),
     packs: z.array(
       z.strictObject({ directory: z.string(), members: z.array(z.string()) }),
     ),

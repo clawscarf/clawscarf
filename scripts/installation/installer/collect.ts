@@ -20,10 +20,7 @@ import {
 import type { InstallerPrompts } from "./prompts.js";
 import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
 import { collectAccess, collectExposure } from "./sections/access.js";
-import {
-  collectConnections,
-  collectConnectionCredentials,
-} from "./sections/connections.js";
+import { collectConnections } from "./sections/connections.js";
 import { collectModels, collectModelCredentials } from "./sections/models.js";
 import { collectPacks, collectPackInputs } from "./sections/packs.js";
 import { readJson } from "../files.js";
@@ -194,7 +191,11 @@ export async function collectInstallation(
           case "access":
             config = {
               ...config,
-              ...(await collectAccess(ui, config)),
+              ...(await collectAccess(
+                ui,
+                config,
+                context.cloudUrl ?? context.release.cloudUrl,
+              )),
             };
             break;
           case "models":
@@ -221,27 +222,10 @@ export async function collectInstallation(
               inputs,
             );
             break;
-          case "connection-credentials":
-            config.connections = await collectConnectionCredentials(
-              ui,
-              config.connections.mode === "local"
-                ? { ...config.connections, apiKeyFile: "" }
-                : config.connections.mode === "external"
-                  ? { ...config.connections, credentialFile: "" }
-                  : config.connections,
-              inputs,
-            );
-            break;
           case "connections":
             config.connections = await collectConnections(
               ui,
               config.connections,
-              context.release.connectorCatalogDirectory
-                ? resolve(
-                    dirname(context.releaseFile),
-                    context.release.connectorCatalogDirectory,
-                  )
-                : undefined,
             );
             break;
           case "advanced-models": {
@@ -336,19 +320,18 @@ export async function collectInstallation(
                 "OIDC client secret",
                 "oidc-client-secret",
               );
-            config.connections = await collectConnectionCredentials(
-              ui,
-              config.connections,
-              inputs,
-            );
             config = { ...config, ...(await collectPackInputs(ui, config)) };
             if (config.access.mode === "hosted" && !options.existing) {
               config.access.registrationFile = resolve(
                 directory,
                 "secrets/hosted-login.json",
               );
-              config.access.cloudUrl ??=
-                context.cloudUrl ?? context.release.cloudUrl;
+            }
+            if (!options.existing) {
+              config.connections.registrationFile = resolve(
+                directory,
+                "secrets/connections-registration.json",
+              );
             }
             const parsed = installationSchema.parse(config);
             assertReleaseCapabilities(context, parsed);

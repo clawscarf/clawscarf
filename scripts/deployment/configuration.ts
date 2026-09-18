@@ -101,6 +101,7 @@ export const connectionsInputSchema = z.discriminatedUnion("mode", [
   z.strictObject({
     mode: z.literal("external"),
     brokerUrl: connectionsBrokerUrlSchema,
+    managementKeyFile: absolutePath.optional(),
     caFile: absolutePath.optional(),
   }),
 ]);
@@ -376,6 +377,15 @@ export function generateLocalConfiguration(options: {
 export function companionConfiguration(input: LocalInput) {
   return {
     accessConfigurationFile: "/run/clawscarf/access.json",
+    ...(input.connections?.mode === "external" &&
+    input.connections.managementKeyFile
+      ? {
+          cloudConnections: {
+            url: new URL(input.connections.brokerUrl).origin,
+            managementKeyFile: "/run/clawscarf/connections/management-key",
+          },
+        }
+      : {}),
     ...(input.connections?.mode === "local"
       ? {
           connections: {

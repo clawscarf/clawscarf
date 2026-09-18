@@ -53,6 +53,7 @@ export type InitialConnections =
   | {
       mode: "external";
       endpoint: InitialConnectionsEndpoint;
+      managementKey?: string;
     };
 
 export async function readInitialConnectionToken(path: string) {
@@ -186,7 +187,17 @@ export async function loadInitialConnections(
             await readRegular(checked.caFile, false, maximumCertificateBytes),
           )
         : undefined;
-      return { mode: "external", endpoint: endpoint(checked.brokerUrl, ca) };
+      return {
+        mode: "external",
+        endpoint: endpoint(checked.brokerUrl, ca),
+        ...(checked.managementKeyFile
+          ? {
+              managementKey: await readInitialConnectionToken(
+                checked.managementKeyFile,
+              ),
+            }
+          : {}),
+      };
     }
     const apiKey = await readRegular(checked.apiKeyFile, true, 65536);
     if (!apiKey.toString("utf8").trim()) throw Error("Empty API key");
@@ -270,6 +281,8 @@ export async function prepareInitialConnections(
     ],
     ["endpoint.json", endpointBytes],
   ]);
+  if (loaded.mode === "external" && loaded.managementKey)
+    expected.set("management-key", Buffer.from(loaded.managementKey));
   if (loaded.mode === "local") {
     expected.set("api-key", loaded.apiKey);
     for (const [path, bytes] of loaded.files)

@@ -8,17 +8,16 @@ tree passed native member denial, open-session revocation and rejected reentry, 
 OIDC handover/rejoining regressions. Logout requests fresh authentication on the next sign-in;
 WorkOS Connect currently has no logout endpoint in discovery, so this does not end its
 provider-wide session. Installer registration now defaults to hosted login and persists account-bound requests
-and credentials for retry. Custom OIDC bypasses registration. A fresh automatic installer
+and credentials for retry. Custom OIDC with Connections disabled bypasses registration. A fresh automatic installer
 journey passed device approval, registration, administrator sign-in, native People and a
 real GPT-6 Astra / medium response. Expired administrator setup must return the owner to
 the installer for a fresh private link, never an ordinary unadmitted login. Cloud Connections broker/API and quota enforcement are implemented and tested locally
 with PostgreSQL and a controlled provider. Native Connections UI/CLI and its
 administrator-checking adapter are implemented. Real Outlook consent, reconnect, read-only
 execution and disconnect/revocation passed locally. The native remote skill-path issue,
-installer selection and full hosted acceptance remain pending. Separate staging/production
+full hosted acceptance remains pending. Installer selection now enables the hosted broker independently of login; reconfiguration acceptance and superseded-path removal remain M7. Separate staging/production
 Vercel deployments with Neon databases pass startup and identity-discovery checks;
-the cloud build passed and project-scoped promotion credentials are configured, but the
-promotion workflow remains unverified. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+the same successful build passed staging and production promotion, including isolated deployment checks and public deployment-ID verification. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).

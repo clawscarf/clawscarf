@@ -1,5 +1,5 @@
-import { registerHostedLogin } from "../../cloud/registration.js";
-import { authorizeCloud } from "../../cloud/login.js";
+import { registerCloudServices } from "../../cloud/registration.js";
+import { registerWithBrowser } from "./cloud.js";
 import { savedSetup } from "../configure.js";
 import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
@@ -29,7 +29,7 @@ const operations = {
   apply: applyInstallation,
   start: startInstallation,
   administrator: administratorSetup,
-  register: registerHostedLogin,
+  register: registerCloudServices,
 };
 export async function installFromAnswers(
   options: InstallOptions,
@@ -73,23 +73,7 @@ export async function installFromAnswers(
   const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
   try {
-    await task("Setting up sign-in", (signal) =>
-      operator.register(configFile, (url) =>
-        authorizeCloud(
-          url,
-          (link, code) => {
-            ui.note(
-              `${terminalLink(link)}\n\nApproval code: ${code}`,
-              styleText(
-                ["bold", "yellow"],
-                "ACTION REQUIRED — Sign in to ClawScarf",
-              ),
-            );
-          },
-          signal,
-        ),
-      ),
-    );
+    await registerWithBrowser(configFile, ui, task, operator.register);
     const plan = await task("Checking installation settings", () =>
       operator.plan(configFile),
     );

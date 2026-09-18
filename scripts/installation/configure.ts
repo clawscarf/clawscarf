@@ -1,4 +1,4 @@
-import { registerHostedLogin } from "../cloud/registration.js";
+import { registerCloudServices } from "../cloud/registration.js";
 import { packRequirements } from "./requirements.js";
 import { InstallationError } from "./errors.js";
 import { dirname, resolve } from "node:path";
@@ -39,16 +39,9 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
         config.models.upstreamEnvironmentFile,
       );
   }
-  if (config.connections.mode === "local") {
-    config.connections.apiKeyFile = path(config.connections.apiKeyFile);
-    config.connections.catalogDirectory = path(
-      config.connections.catalogDirectory,
-    );
-  } else if (config.connections.mode === "external") {
-    config.connections.credentialFile = path(config.connections.credentialFile);
-    if (config.connections.caFile)
-      config.connections.caFile = path(config.connections.caFile);
-  }
+  config.connections.registrationFile = path(
+    config.connections.registrationFile,
+  );
   for (const pack of config.packs) {
     pack.directory = path(pack.directory);
     if (pack.bindingsFile) pack.bindingsFile = path(pack.bindingsFile);
@@ -80,7 +73,7 @@ export async function configureInstallation(
   };
   const saved = await savedSetup(options);
   if (saved) {
-    await registerHostedLogin(saved.configFile, authorize);
+    await registerCloudServices(saved.configFile, authorize);
     return { state: "configured", configFile: saved.configFile };
   }
   if (!options.recipe)
@@ -100,6 +93,10 @@ export async function configureInstallation(
       options.directory,
       "secrets/hosted-login.json",
     );
+  draft.connections.registrationFile = resolve(
+    options.directory,
+    "secrets/connections-registration.json",
+  );
   if (!draft.models)
     throw new InstallationError(
       "invalid_configuration",
@@ -115,7 +112,7 @@ export async function configureInstallation(
     config,
     inputs,
   );
-  await registerHostedLogin(configFile, authorize);
+  await registerCloudServices(configFile, authorize);
   return {
     state: "configured",
     configFile,
