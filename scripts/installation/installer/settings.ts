@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { setupContext } from "../setup.js";
-import { validateSelections } from "../configure.js";
+import {
+  configurationChanges,
+  resolveConfigurationInputs,
+  validateSelections,
+} from "../configure.js";
 import { registerWithBrowser, registerUnattended } from "./cloud.js";
 import { randomUUID } from "node:crypto";
 import { rm, readFile } from "node:fs/promises";
@@ -39,9 +43,23 @@ export async function editInstallationSettings(
   const settingsFile = join(directory, "settings.json");
   const before = await readFile(settingsFile, "utf8");
   const config = installationSchema.parse(JSON.parse(before));
-  const pending = z
-    .object({ settingsCandidate: z.string().optional() })
-    .parse(await readJson(join(directory, "prepared.json"))).settingsCandidate;
+  const record = z
+    .object({
+      settingsCandidate: z.string().optional(),
+      settingsReapply: z.enum(["models", "connections"]).optional(),
+    })
+    .parse(await readJson(join(directory, "prepared.json")));
+  const pending = record.settingsCandidate;
+  if (
+    record.settingsReapply &&
+    options.reapply &&
+    record.settingsReapply !== options.reapply
+  )
+    throw new InstallationError(
+      "change_unsupported",
+      "Resume the pending change before selecting another capability.",
+    );
+  const reapply = options.reapply ?? record.settingsReapply;
   if (
     pending &&
     (dirname(dirname(pending)) !== directory ||
@@ -106,6 +124,7 @@ export async function editInstallationSettings(
           .object({
             ownerId: z.string(),
             settingsCandidate: z.string().optional(),
+            settingsReapply: z.enum(["models", "connections"]).optional(),
             settingsPending: z.string().optional(),
           })
           .parse(await readJson(join(directory, "prepared.json")));
@@ -124,14 +143,31 @@ export async function editInstallationSettings(
       });
       return { state: "cancelled" as const };
     }
+    if (
+      !pending &&
+      !reapply &&
+      !Object.values(
+        await configurationChanges(
+          config,
+          resolveConfigurationInputs(
+            installationSchema.parse(await readJson(candidate)),
+            dirname(candidate),
+          ),
+        ),
+      ).some(Boolean)
+    )
+      return { state: "unchanged" as const };
     authorizing = candidate;
     if (options.nonInteractive)
       await registerUnattended(candidate, options.cloudCredentialFile);
     else await registerWithBrowser(candidate, ui, task);
     authorizing = undefined;
-    const plan = await planSettingsChange(candidate);
+    const plan = await planSettingsChange(candidate, reapply);
     ui.note(
-      `Reapply models and selected Connections settings. Keep individual model overrides and unrelated native settings.
+      `Change: ${Object.entries(plan.scopes)
+        .filter(([, changed]) => changed)
+        .map(([name]) => name)
+        .join(", ")}. Keep unrelated native settings.
 Connections: ${plan.changes.connections.from} → ${plan.changes.connections.to}
 Packs: ${plan.changes.packs.selected.join(", ") || "none"}${plan.changes.packs.removed.length ? "\nRemove pack agents (including native-owned workspace/session data): " + plan.changes.packs.removed.join(", ") : ""}
 The server must stop. Pack changes finish at the next start.`,
@@ -162,7 +198,7 @@ The server must stop. Pack changes finish at the next start.`,
       });
     }
     await task("Applying settings", () =>
-      reconfigureInstallation(candidate, plan.fingerprint),
+      reconfigureInstallation(candidate, plan.fingerprint, reapply),
     );
     // Only our preceding accepted menu draft is retired. Never remove user-supplied inputs.
     const previousInputs = dirname(config.models.configurationFile);
@@ -202,6 +238,7 @@ The server must stop. Pack changes finish at the next start.`,
           .object({
             ownerId: z.string(),
             settingsCandidate: z.string().optional(),
+            settingsReapply: z.enum(["models", "connections"]).optional(),
             settingsPending: z.string().optional(),
           })
           .parse(await readJson(join(directory, "prepared.json")));
@@ -212,7 +249,11 @@ The server must stop. Pack changes finish at the next start.`,
           );
         await writePrivate(
           join(directory, "prepared.json"),
-          JSON.stringify({ ...prepared, settingsCandidate: candidate }),
+          JSON.stringify({
+            ...prepared,
+            settingsCandidate: candidate,
+            ...(reapply ? { settingsReapply: reapply } : {}),
+          }),
         );
         retained = true;
       });

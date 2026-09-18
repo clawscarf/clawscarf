@@ -35,6 +35,7 @@ export async function launchLocal(
   z.strictObject({
     ownerId: z.literal(state.ownerId),
     settingsCandidate: z.string().optional(),
+    settingsReapply: z.enum(["models", "connections"]).optional(),
   }).parse(
     JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
   );

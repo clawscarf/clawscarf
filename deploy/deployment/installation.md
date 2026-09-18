@@ -184,6 +184,12 @@ Release, identity, login, addresses, resources and execution protection stay fix
 model gateway ownership or moving broker accounts is a separate deployment change and is
 rejected here.
 
+Unchanged settings leave the running server alone. Changed capabilities are applied
+independently: changing Connections or packs does not reset model defaults. To deliberately
+restore managed model or Connections settings after native edits, use
+`configure --directory /path/to/team --reapply models` (or `connections`). Review
+and confirmation still apply. Interrupted changes retain that explicit selection.
+
 Ordinary `start` does not reapply configuration. Model changes retain the scoped gateway
 key without restoring revoked authority; individual native agent overrides are preserved.
 Disabling Connections preserves its cloud accounts and grants. Re-enabling does not restore

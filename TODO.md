@@ -4,7 +4,6 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## CLI cleanup — selected
 
-- [ ] Apply only changed capabilities; unchanged configuration must not restart services.
 - [ ] Return actionable, sanitized CLI errors.
 - [ ] Share authenticated HTTP handling between People and Connections.
 - [ ] Resolve recipe models from the release catalog instead of duplicating definitions.

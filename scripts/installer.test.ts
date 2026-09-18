@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { test, type TestContext } from "node:test";
@@ -15,7 +16,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
 import { collectInstallation } from "./installation/installer/collect.js";
 import { saveConfiguration } from "./installation/save.js";
 import {
@@ -1605,5 +1606,80 @@ await test(
       operators,
     );
     assert.equal(resumed.state, "prepared");
+  },
+);
+
+await test(
+  "unchanged retained selections do not contact cloud or Docker; copies compare by content",
+  local,
+  async (t) => {
+    const { configurationChanges, resolveConfigurationInputs } =
+      await import("./installation/configure.js");
+    const { editInstallationSettings } =
+      await import("./installation/installer/settings.js");
+    const { unattendedPrompts } =
+      await import("./installation/installer/prompts.js");
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const file = await saveConfiguration(
+      first.directory,
+      first.config,
+      first.inputs,
+    );
+    const state = join(f.directory, "state");
+    await mkdir(state);
+    const accepted = {
+      ...resolveConfigurationInputs(
+        installationSchema.parse(await readJson(file)),
+        first.directory,
+      ),
+      stateDirectory: state,
+    };
+    await writeFile(join(state, "settings.json"), JSON.stringify(accepted));
+    await writeFile(
+      join(state, "prepared.json"),
+      JSON.stringify({ ownerId: randomUUID() }),
+    );
+    assert.deepEqual(
+      await editInstallationSettings(state, unattendedPrompts, {
+        nonInteractive: true,
+        yes: true,
+      }),
+      { state: "unchanged" },
+    );
+    const copiedFile = await saveConfiguration(
+      join(state, "candidate"),
+      accepted,
+      undefined,
+      true,
+    );
+    const copied = resolveConfigurationInputs(
+      installationSchema.parse(await readJson(copiedFile)),
+      dirname(copiedFile),
+    );
+    assert.deepEqual(await configurationChanges(accepted, copied), {
+      models: false,
+      connections: false,
+      packs: false,
+    });
+    copied.connections.mode = "hosted";
+    assert.deepEqual(await configurationChanges(accepted, copied), {
+      models: false,
+      connections: true,
+      packs: false,
+    });
+    copied.models = { ...copied.models };
+    if (copied.models.mode === "litellm") {
+      await writeFile(
+        copied.models.upstreamEnvironmentFile,
+        "PROVIDER_KEY=changed\n",
+        { mode: 0o600 },
+      );
+      assert.deepEqual(await configurationChanges(accepted, copied), {
+        models: true,
+        connections: true,
+        packs: false,
+      });
+    }
   },
 );

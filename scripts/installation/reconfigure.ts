@@ -5,7 +5,10 @@ import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { compose } from "../deployment/compose.js";
 import { setRuntimeCredentialModels } from "../models/credentials.js";
-import { resolveConfigurationInputs } from "./configure.js";
+import {
+  configurationChanges,
+  resolveConfigurationInputs,
+} from "./configure.js";
 import { ModelConfigurationError } from "../../runtime/model-contract.js";
 import {
   loadGatewayConfiguration,
@@ -37,7 +40,10 @@ function unsupported(message: string): never {
 }
 
 /** Deliberately bounded: initial preparation is never used to replace retained state. */
-export async function planSettingsChange(configFile: string) {
+export async function planSettingsChange(
+  configFile: string,
+  reapply?: "models" | "connections",
+) {
   const config = installationSchema.parse(await readJson(configFile));
   const directory = resolve(
     dirname(resolve(configFile)),
@@ -119,6 +125,7 @@ export async function planSettingsChange(configFile: string) {
       ownerId: z.literal(state.ownerId),
       settingsPending: z.string().optional(),
       settingsCandidate: z.string().optional(),
+      settingsReapply: z.enum(["models", "connections"]).optional(),
     })
     .parse(await readJson(join(directory, "prepared.json")));
   if (
@@ -128,11 +135,23 @@ export async function planSettingsChange(configFile: string) {
     unsupported(
       "Finish the pending settings change with its original candidate before selecting another configuration.",
     );
+  if (pending.settingsReapply && reapply && pending.settingsReapply !== reapply)
+    unsupported(
+      "Resume the pending change before selecting another capability to reapply.",
+    );
+  reapply ??= pending.settingsReapply;
+  const scopes = await configurationChanges(
+    installationSchema.parse(await readJson(join(directory, "settings.json"))),
+    resolveConfigurationInputs(config, dirname(resolve(configFile))),
+  );
+  if (reapply) scopes[reapply] = true;
   return {
     directory,
     state,
     desired,
     previousEndpoint,
+    scopes,
+    reapply,
     changes: {
       models: modelConfiguration
         ? {
@@ -161,6 +180,8 @@ export async function planSettingsChange(configFile: string) {
     },
     fingerprint: fingerprint(
       JSON.stringify({
+        scopes,
+        reapply,
         desired: desired.fingerprint,
         state,
         previousPacks,
@@ -176,16 +197,19 @@ export async function planSettingsChange(configFile: string) {
 export async function reconfigureInstallation(
   configFile: string,
   expectedFingerprint: string,
+  reapply?: "models" | "connections",
 ) {
-  const planned = await planSettingsChange(configFile);
+  const planned = await planSettingsChange(configFile, reapply);
   return withInstallationLock(planned.directory, async () => {
-    const checked = await planSettingsChange(configFile);
+    const checked = await planSettingsChange(configFile, reapply);
     if (checked.fingerprint !== expectedFingerprint)
       throw new InstallationError(
         "stale_plan",
         "Settings changed after preview. Review them again.",
       );
-    const { directory, state, desired } = checked;
+    const { directory, state, desired, scopes } = checked;
+    if (!checked.resuming && !Object.values(scopes).some(Boolean))
+      return { state: "unchanged", restartRequired: false, directory };
     await requireNoUpgrade(directory);
     const names = resourceNames(state);
     for (const filter of [
@@ -246,13 +270,14 @@ export async function reconfigureInstallation(
         baseUrl: models.configuration.baseUrl,
       };
     // Check the packaged helper and native validation before changing retained service files.
-    await configureStoppedRuntimeModels({
-      image: state.input.runtimeImage,
-      volume: names.volume,
-      configuration: models.configuration,
-      credential: models.credential,
-      apply: false,
-    });
+    if (scopes.models)
+      await configureStoppedRuntimeModels({
+        image: state.input.runtimeImage,
+        volume: names.volume,
+        configuration: models.configuration,
+        credential: models.credential,
+        apply: false,
+      });
     // Startup already requires this exact prepared record. An interrupted mutation must not announce readiness.
     await writePrivate(
       prepared,
@@ -260,48 +285,54 @@ export async function reconfigureInstallation(
         ownerId: state.ownerId,
         settingsPending: desired.fingerprint,
         settingsCandidate: resolve(configFile),
+        ...(checked.reapply ? { settingsReapply: checked.reapply } : {}),
       }),
     );
     let stage = "model gateway configuration";
     try {
-      await prepareModelGateway(
-        directory,
-        { ...state, input: desired.input },
-        { replaceConfiguration: true },
-      );
-      if (gateway && loaded)
-        try {
-          stage = "model credential permissions";
-          await compose(directory, [
-            "up",
-            "-d",
-            "--wait",
-            "--wait-timeout",
-            "120",
-            "models",
-          ]);
-          await setRuntimeCredentialModels({
-            origin: `https://127.0.0.1:${String(gateway.port)}`,
-            masterKeyFile: join(directory, "private/models/master-key"),
-            keyFile: join(directory, "private/models/runtime-key"),
-            caFile: join(directory, "private/management-ca.pem"),
-            models: loaded.configuration.models
-              .filter((model) => model.enabled)
-              .map((model) => model.id),
-          });
-        } finally {
-          await compose(directory, ["stop", "models", "models-database"]);
-        }
-      stage = "native model configuration";
-      await configureStoppedRuntimeModels({
-        image: state.input.runtimeImage,
-        volume: names.volume,
-        configuration: models.configuration,
-        credential: models.credential,
-        apply: true,
-      });
+      if (scopes.models) {
+        await prepareModelGateway(
+          directory,
+          { ...state, input: desired.input },
+          { replaceConfiguration: true },
+        );
+        if (gateway && loaded)
+          try {
+            stage = "model credential permissions";
+            await compose(directory, [
+              "up",
+              "-d",
+              "--wait",
+              "--wait-timeout",
+              "120",
+              "models",
+            ]);
+            await setRuntimeCredentialModels({
+              origin: `https://127.0.0.1:${String(gateway.port)}`,
+              masterKeyFile: join(directory, "private/models/master-key"),
+              keyFile: join(directory, "private/models/runtime-key"),
+              caFile: join(directory, "private/management-ca.pem"),
+              models: loaded.configuration.models
+                .filter((model) => model.enabled)
+                .map((model) => model.id),
+            });
+          } finally {
+            await compose(directory, ["stop", "models", "models-database"]);
+          }
+        stage = "native model configuration";
+        await configureStoppedRuntimeModels({
+          image: state.input.runtimeImage,
+          volume: names.volume,
+          configuration: models.configuration,
+          credential: models.credential,
+          apply: true,
+        });
+      }
       stage = "Connections configuration";
-      if (state.input.connections || desired.input.connections)
+      if (
+        scopes.connections &&
+        (state.input.connections || desired.input.connections)
+      )
         await applyConnectionSettings(
           directory,
           { ...state, input: desired.input },
@@ -309,10 +340,11 @@ export async function reconfigureInstallation(
           desired.connectorCredentialFile,
         );
       stage = "accepted settings";
-      await writePrivate(
-        join(directory, "private/model-bootstrap.json"),
-        JSON.stringify(models),
-      );
+      if (scopes.models)
+        await writePrivate(
+          join(directory, "private/model-bootstrap.json"),
+          JSON.stringify(models),
+        );
       await writePrivate(
         join(directory, "packs.json"),
         JSON.stringify(desired.packSelection),

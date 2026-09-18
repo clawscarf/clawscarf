@@ -74,6 +74,7 @@ export type ConfigureOptions = SetupOptions &
     start?: boolean;
     cloudCredentialFile?: string;
     json?: boolean;
+    reapply?: "models" | "connections";
   };
 
 export function installationOptions(command: Command) {

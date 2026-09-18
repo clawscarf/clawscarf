@@ -3,7 +3,7 @@ import { peopleCommand } from "../people.js";
 import { confirmDeletion, deleteInstallation } from "./delete.js";
 import { writeResult } from "../output.js";
 import { createDevelopmentRelease } from "../release/create.js";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { z } from "zod";
 import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -54,6 +54,12 @@ export function installationCommand() {
     .option(
       "--yes",
       "Approve changes to an existing installation, including a restart",
+    )
+    .addOption(
+      new Option(
+        "--reapply <capability>",
+        "Explicitly restore selected managed settings on an existing installation",
+      ).choices(["models", "connections"]),
     )
     .option("--start", "Start after configuration")
     .option("--no-start", "Leave the installation stopped")

@@ -47,6 +47,11 @@ export async function installFromAnswers(
       ui.note(message, "Startup");
     }),
 ) {
+  if (options.reapply)
+    throw new InstallationError(
+      "invalid_configuration",
+      "--reapply requires an existing installation.",
+    );
   const saved = await savedSetup(options);
   if (saved) rejectNewSelections(options);
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
@@ -240,6 +245,11 @@ export async function runConfiguration(options: InstallOptions) {
   }
   const ui = options.nonInteractive ? unattendedPrompts : terminalPrompts;
   try {
+    if (options.reapply)
+      throw new InstallationError(
+        "invalid_configuration",
+        "--reapply requires an existing installation.",
+      );
     const saved = await savedSetup(options);
     const state = saved
       ? resolve(dirname(saved.configFile), saved.config.stateDirectory)
@@ -289,7 +299,9 @@ export async function runConfiguration(options: InstallOptions) {
             ? result.ready
               ? "ClawScarf is ready."
               : "ClawScarf needs attention. Check status for details."
-            : "Configuration saved. Server stopped.",
+            : result.state === "unchanged"
+              ? "No changes. Server left as it was."
+              : "Configuration saved. Server stopped.",
         );
     }
     return result;

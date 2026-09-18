@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { setupContext, assertReleaseCapabilities } from "./setup.js";
-import { readJson } from "./files.js";
+import { readJson, readInputFile, fingerprint } from "./files.js";
+import { isDeepStrictEqual } from "node:util";
 import { SetupInputs } from "./save.js";
 import { installationSchema, type InstallationDraft } from "./configuration.js";
 import { InstallationError } from "./errors.js";
@@ -55,6 +56,11 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
 
 /** Collect the same choices as the menu without prompting or writing any files. */
 export async function prepareConfiguration(options: ConfigureOptions) {
+  if (options.reapply)
+    throw new InstallationError(
+      "invalid_configuration",
+      "--reapply requires an existing installation.",
+    );
   if (!options.directory || !options.recipe)
     throw new InstallationError(
       "invalid_configuration",
@@ -137,4 +143,40 @@ export function rejectNewSelections(options: ConfigureOptions) {
       "change_unsupported",
       "Setup is unfinished. Resume with configure --directory before changing selections.",
     );
+}
+
+/** Compare accepted contents, not the private copy paths created by the menu. */
+export async function configurationChanges(
+  before: import("./configuration.js").InstallationConfiguration,
+  after: import("./configuration.js").InstallationConfiguration,
+) {
+  const secret = async (path?: string) =>
+    path ? fingerprint(await readInputFile(path, true)) : undefined;
+  const models = async (config: typeof before) => ({
+    mode: config.models.mode,
+    catalog: await readJson(config.models.configurationFile),
+    key: await secret(
+      config.models.mode === "litellm"
+        ? config.models.upstreamEnvironmentFile
+        : config.models.credentialFile,
+    ),
+    ca:
+      config.models.mode === "external" && config.models.caFile
+        ? fingerprint(await readInputFile(config.models.caFile))
+        : undefined,
+  });
+  const packs = async (config: typeof before) => ({
+    operator: config.packOperator,
+    selections: await Promise.all(
+      config.packs.map(async ({ bindingsFile, ...pack }) => ({
+        ...pack,
+        bindings: bindingsFile ? await readJson(bindingsFile) : undefined,
+      })),
+    ),
+  });
+  return {
+    models: !isDeepStrictEqual(await models(before), await models(after)),
+    connections: !isDeepStrictEqual(before.connections, after.connections),
+    packs: !isDeepStrictEqual(await packs(before), await packs(after)),
+  };
 }

@@ -216,7 +216,6 @@ await test(
       join(directory, "state/prepared.json"),
       JSON.stringify({ ownerId: retained.ownerId }),
     );
-    const changedSettings = await planSettingsChange(path);
     // The public command must recover its private candidate without requiring a file argument.
     const { saveConfiguration } = await import("./installation/save.js");
     const { resolveConfigurationInputs } =
@@ -237,6 +236,17 @@ await test(
       join(stateDirectory, "settings.json"),
       JSON.stringify(accepted),
     );
+    const changedSettings = await planSettingsChange(path);
+    assert.deepEqual(changedSettings.scopes, {
+      models: false,
+      connections: false,
+      packs: false,
+    });
+    assert.deepEqual((await planSettingsChange(path, "models")).scopes, {
+      models: true,
+      connections: false,
+      packs: false,
+    });
     const candidate = await saveConfiguration(
       join(stateDirectory, `.settings-${randomUUID()}`),
       accepted,
