@@ -15,7 +15,7 @@ Use the [existing-code map](docs/cloud-services.md#reuse-and-new-work) throughou
       disabled/empty Connections, and remove superseded token-login and local broker/UI paths.
 - [ ] **M8 — Verify and deploy the combined slice.** Run the complete hosted-login and custom-OIDC
       journeys with native Connections, multiple installations, tenant isolation and quota/revocation
-      failures. Finish the cloud CI deployment credential and verify build/promotion workflows;
+      failures. Verify the cloud promotion workflow (build passed; deployment credentials configured);
       initial Vercel deployments pass startup checks. Update actual status and clean up disposable infrastructure.
 
 ## Installer and releases

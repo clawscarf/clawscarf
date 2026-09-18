@@ -17,7 +17,8 @@ administrator-checking adapter are implemented. Real Outlook consent, reconnect,
 execution and disconnect/revocation passed locally. The native remote skill-path issue,
 installer selection and full hosted acceptance remain pending. Separate staging/production
 Vercel deployments with Neon databases pass startup and identity-discovery checks;
-automated promotion is awaiting its deployment credential. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
+the cloud build passed and project-scoped promotion credentials are configured, but the
+promotion workflow remains unverified. [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
 are owned by that repository; the implementation sequence is owned only by
 [TODO.md](../TODO.md#hosted-login-and-native-connections).
