@@ -164,13 +164,27 @@ export async function editInstallationSettings(
     authorizing = undefined;
     const plan = await planSettingsChange(candidate, reapply);
     ui.note(
-      `Change: ${Object.entries(plan.scopes)
-        .filter(([, changed]) => changed)
-        .map(([name]) => name)
-        .join(", ")}. Keep unrelated native settings.
-Connections: ${plan.changes.connections.from} → ${plan.changes.connections.to}
-Packs: ${plan.changes.packs.selected.join(", ") || "none"}${plan.changes.packs.removed.length ? "\nRemove pack agents (including native-owned workspace/session data): " + plan.changes.packs.removed.join(", ") : ""}
-The server must stop. Pack changes finish at the next start.`,
+      [
+        ...(plan.scopes.models && plan.changes.models
+          ? [
+              `Model: ${plan.changes.models.default} · ${plan.changes.models.reasoning}`,
+            ]
+          : []),
+        ...(plan.scopes.connections
+          ? [
+              `Connections: ${plan.changes.connections.to === "disabled" ? "Off" : "On"}`,
+            ]
+          : []),
+        ...(plan.scopes.packs
+          ? [`Packs: ${plan.changes.packs.selected.join(", ") || "None"}`]
+          : []),
+        ...(plan.changes.packs.removed.length
+          ? [
+              `Remove pack agents and native-owned data: ${plan.changes.packs.removed.join(", ")}`,
+            ]
+          : []),
+        "The server will stop to apply these changes.",
+      ].join("\n"),
       "Review change",
     );
     if (

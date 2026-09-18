@@ -9,7 +9,7 @@ import { writeResult } from "./output.js";
 
 export function connectionCommands(command: Command, program: Command) {
   command
-    .description("Manage connections and their native integration")
+    .description("Manage connected accounts and their agent access")
     .option("--origin <url>", "Installation origin")
     .option("--session-file <path>", "Private signed-in administrator session");
   const output = (value: unknown, text: string) => {
