@@ -131,7 +131,7 @@ await test(
         images: {
           postgres: postgresImage,
           ...Object.fromEntries(
-            ["gateway", "companion", "relay", "openshellClient"].map((name) => [
+            ["gateway", "companion", "openshellClient"].map((name) => [
               name,
               "sha256:" + "a".repeat(64),
             ]),

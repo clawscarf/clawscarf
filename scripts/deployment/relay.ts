@@ -1,16 +1,12 @@
 import { chmod, lstat, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { z } from "zod";
-import { observedRelayAddress } from "./networks.js";
-import { LocalSetupError, run } from "./process.js";
+import { LocalSetupError } from "./process.js";
 import type { LocalState } from "./state.js";
 
 export const runtimeRelayHost = "runtime.clawscarf.internal";
 
 /** Fixed browser TCP destination; authentication remains end-to-end. */
-export function relayConfiguration(state: LocalState, address: string) {
-  z.ipv4().parse(address);
-  return `global
+export const browserRelayConfiguration = `global
   maxconn 256
   nbthread 1
 
@@ -28,16 +24,11 @@ resolvers docker
   timeout resolve 1s
   timeout retry 1s
   hold valid 10s
-${
-  state.input.browser
-    ? `
+
 listen browser
   bind :9223
   server browser browser:9223 resolvers docker init-addr libc,none
-`
-    : ""
-}`;
-}
+`;
 
 async function verifyFile(path: string, expected: string) {
   const metadata = await lstat(path);
@@ -50,24 +41,14 @@ async function verifyFile(path: string, expected: string) {
   )
     throw new LocalSetupError(
       "configuration_changed",
-      "The prepared runtime relay differs from its owned network and fixed destinations.",
+      "The prepared browser relay differs from its fixed destination.",
     );
 }
 
-export async function prepareRelay(
-  directory: string,
-  state: LocalState,
-  command: typeof run = run,
-) {
+export async function prepareRelay(directory: string, state: LocalState) {
   if (!state.input.relayImage) return undefined;
-  const address = await observedRelayAddress(directory, state, command);
-  if (!address)
-    throw new LocalSetupError(
-      "network_unprepared",
-      "The runtime relay network is not prepared.",
-    );
-  const path = join(directory, "private/runtime-relay.cfg");
-  const content = relayConfiguration(state, address);
+  const path = join(directory, "private/browser-relay.cfg");
+  const content = browserRelayConfiguration;
   try {
     await verifyFile(path, content);
   } catch (error) {
@@ -76,24 +57,16 @@ export async function prepareRelay(
     await writeFile(path, content, { flag: "wx", mode: 0o444 });
     await chmod(path, 0o444);
   }
-  return address;
 }
 
 /** Starting a deployment observes its policy; it never repairs changed configuration. */
 export async function verifyRelayConfiguration(
   directory: string,
   state: LocalState,
-  command: typeof run = run,
 ) {
   if (!state.input.relayImage) return;
-  const address = await observedRelayAddress(directory, state, command);
-  if (!address)
-    throw new LocalSetupError(
-      "network_unprepared",
-      "The runtime relay network is not prepared.",
-    );
   await verifyFile(
-    join(directory, "private/runtime-relay.cfg"),
-    relayConfiguration(state, address),
+    join(directory, "private/browser-relay.cfg"),
+    browserRelayConfiguration,
   );
 }

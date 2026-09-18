@@ -181,7 +181,8 @@ Lobster children pass filesystem, controller-key, Docker-socket and egress-denia
 checks. The uploaded and edited files survive OpenShell stop/start. Each run deletes
 its own sandbox and volume.
 
-The model is a deterministic loopback fixture that requests real native tool calls.
+The test derives role, workspace and execution settings from the shipped native
+preset. Its model is a deterministic loopback fixture that requests real native tool calls.
 The fixture permits shell execution with `tools.exec.mode: "full"`; the product
 preset retains `"auto"`. These checks establish native execution and file placement,
 not model quality, a real inference route, browser file transfer or a complete

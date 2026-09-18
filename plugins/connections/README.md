@@ -68,8 +68,8 @@ trusted-runtime context, not cryptographically verified per-human authorization.
 The private [configuration helper](src/configuration.ts) adds a scoped environment
 SecretRef and package path through OpenClaw's public mutation SDK. It preserves
 unrelated edits, explicit disablement, allow/deny lists and per-agent overrides.
-An explicit configure request may add the three tools to sandbox `alsoAllow` when
-there is no explicit sandbox allow list. Observation uses the public snapshot API
+Tool policies remain administrator-owned; configuring Connections does not change
+them. Observation uses the public snapshot API
 with observation disabled, isolated environment resolution and `core-only` plugin
 validation. This validates native core settings and checks the stored Connections
 entry, SecretRef, provider, package path and enable policy without resolving plugin

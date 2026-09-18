@@ -13,8 +13,8 @@ reusable agent packs. Run it on infrastructure you control.
 The installer defaults to ClawScarf hosted login, with customer OIDC as an override.
 Connections is independently optional and uses its native OpenClaw page and cloud broker.
 Cloud staging and production are deployed through build/promotion. Real Outlook linking,
-reconnect, tool execution and revocation passed locally. Fresh hosted installation and
-retained reconfiguration against the deployed cloud remain in [TODO](TODO.md).
+reconnect, tool execution and revocation passed locally. The current runtime's
+verification and remaining integration limits are described below.
 
 ## What it contains
 

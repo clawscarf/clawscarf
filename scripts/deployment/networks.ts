@@ -22,13 +22,11 @@ const receiptSchema = intentSchema
   .extend({
     id: networkId,
     isolated: browserAddressSchema.optional(),
-    relay: browserAddressSchema.optional(),
   })
   .refine(
     (receipt) =>
       ["browser", "machine"].includes(receipt.purpose) ===
-        (receipt.isolated !== undefined) &&
-      (receipt.purpose === "runtime" || receipt.relay === undefined),
+      (receipt.isolated !== undefined),
   );
 type Intent = z.infer<typeof intentSchema>;
 const emptyOptions = z.record(z.string(), z.never()).nullable();
@@ -159,11 +157,7 @@ function equalIntent(actual: Intent, expected: Intent) {
     actual.name === expected.name
   );
 }
-async function records(
-  directory: string,
-  intent: Intent,
-  reserveRelay = false,
-) {
+async function records(directory: string, intent: Intent) {
   const base = join(directory, "private", `network-${intent.purpose}`);
   const intentPath = `${base}-create.json`;
   const receiptPath = `${base}-receipt.json`;
@@ -179,8 +173,7 @@ async function records(
     if (
       !parsed.success ||
       !equalIntent(parsed.data, intent) ||
-      pending === undefined ||
-      (parsed.data.relay !== undefined) !== reserveRelay
+      pending === undefined
     )
       changed();
     receipt = parsed.data;
@@ -188,11 +181,7 @@ async function records(
   return { pending: pending !== undefined, receipt, intentPath, receiptPath };
 }
 
-async function observe(
-  intent: Intent,
-  command: typeof run,
-  reserveRelay = false,
-) {
+async function observe(intent: Intent, command: typeof run) {
   try {
     const output = await command("docker", [
       "network",
@@ -229,12 +218,7 @@ async function observe(
     const browser = ["browser", "machine"].includes(intent.purpose)
       ? browserInspectedSchema.safeParse(raw)
       : undefined;
-    const relay = reserveRelay
-      ? inspectedSchema
-          .extend({ IPAM: browserInspectedSchema.shape.IPAM })
-          .safeParse(raw)
-      : undefined;
-    const result = browser ?? relay ?? inspectedSchema.safeParse(raw);
+    const result = browser ?? inspectedSchema.safeParse(raw);
     if (!result.success) changed();
     const network = result.data;
     if (
@@ -249,9 +233,6 @@ async function observe(
       id: network.Id,
       ...(browser?.success
         ? { isolated: reservedAddress(browser.data.IPAM.Config[0]) }
-        : {}),
-      ...(relay?.success
-        ? { relay: reservedAddress(relay.data.IPAM.Config[0]) }
         : {}),
     };
   } catch (error) {
@@ -300,17 +281,14 @@ export async function ensureLocalNetworks(
   command: typeof run = run,
 ) {
   for (const intent of intents(state)) {
-    const reserveRelay =
-      intent.purpose === "runtime" && Boolean(state.input.relayImage);
-    const saved = await records(directory, intent, reserveRelay);
-    let observed = await observe(intent, command, reserveRelay);
+    const saved = await records(directory, intent);
+    let observed = await observe(intent, command);
     let id = observed?.id;
     if (!id && saved.pending) uncertain(intent.purpose);
     if (
       saved.receipt &&
       (id !== saved.receipt.id ||
-        !isDeepStrictEqual(observed?.isolated, saved.receipt.isolated) ||
-        !isDeepStrictEqual(observed?.relay, saved.receipt.relay))
+        !isDeepStrictEqual(observed?.isolated, saved.receipt.isolated))
     )
       changed();
     if (id && !saved.pending) changed();
@@ -342,7 +320,7 @@ export async function ensureLocalNetworks(
       } catch {
         // A lost response may follow allocation. Reconcile exact observed ownership only.
       }
-      observed = await observe(intent, command, reserveRelay);
+      observed = await observe(intent, command);
       id = observed?.id;
       if (!id) uncertain(intent.purpose);
       if (returnedId !== undefined && returnedId !== id) changed();
@@ -354,7 +332,6 @@ export async function ensureLocalNetworks(
           ...intent,
           id,
           ...(observed?.isolated ? { isolated: observed.isolated } : {}),
-          ...(observed?.relay ? { relay: observed.relay } : {}),
         }) + "\n",
       );
   }
@@ -367,20 +344,17 @@ export async function verifyLocalNetworks(
   command: typeof run = run,
 ) {
   for (const intent of intents(state)) {
-    const reserveRelay =
-      intent.purpose === "runtime" && Boolean(state.input.relayImage);
-    const saved = await records(directory, intent, reserveRelay);
+    const saved = await records(directory, intent);
     if (!saved.receipt)
       throw new LocalSetupError(
         "network_unprepared",
         "Required network reservations are not confirmed. Inspect and resume preparation before starting this installation.",
       );
-    const observed = await observe(intent, command, reserveRelay);
+    const observed = await observe(intent, command);
     if (!observed) uncertain(intent.purpose);
     if (
       observed.id !== saved.receipt.id ||
-      !isDeepStrictEqual(observed.isolated, saved.receipt.isolated) ||
-      !isDeepStrictEqual(observed.relay, saved.receipt.relay)
+      !isDeepStrictEqual(observed.isolated, saved.receipt.isolated)
     )
       changed();
   }
@@ -409,32 +383,6 @@ export async function observedBrowserAddress(
   )
     changed();
   return observed.isolated.address;
-}
-
-/** Observe the runtime-only relay address before binding SSH or admitting native traffic. */
-export async function observedRelayAddress(
-  directory: string,
-  state: LocalState,
-  command: typeof run = run,
-): Promise<string | undefined> {
-  if (!state.input.relayImage) return undefined;
-  const intent = intents(state).find((value) => value.purpose === "runtime");
-  if (!intent) changed();
-  const saved = await records(directory, intent, true);
-  if (!saved.receipt)
-    throw new LocalSetupError(
-      "network_unprepared",
-      "The runtime relay network reservation is not confirmed. Resume preparation before configuring native access.",
-    );
-  const observed = await observe(intent, command, true);
-  if (!observed) uncertain(intent.purpose);
-  if (
-    observed.id !== saved.receipt.id ||
-    !observed.relay ||
-    !isDeepStrictEqual(observed.relay, saved.receipt.relay)
-  )
-    changed();
-  return observed.relay.address;
 }
 
 /** Separate private bridge: only the browser node, its ingress and DNS attach. */

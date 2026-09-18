@@ -17,7 +17,6 @@ import {
   verifyLocalNetworks,
   observedBrowserAddress,
   observedBrowserMachineAddresses,
-  observedRelayAddress,
 } from "../../scripts/deployment/networks.js";
 import { LocalSetupError } from "../../scripts/deployment/process.js";
 import {
@@ -524,130 +523,6 @@ await test("browser address follows a private Docker subnet of a different size 
     await observedBrowserAddress(f.directory, configured, command),
     "10.75.2.30",
   );
-});
-
-await test("runtime relay pins its own static address independently of the isolated browser and observes it without mutations", async (t) => {
-  const f = await fixture(t);
-  const configured = browserState();
-  const command: typeof f.command = async (executable, args) => {
-    const result = await f.command(executable, args);
-    if (args[1] === "create" && args.at(-1) === expected("runtime").name) {
-      const observed = f.networks.get(result);
-      assert.ok(observed);
-      observed.IPAM.Config = [{ Subnet: "10.76.2.0/27", Gateway: "10.76.2.1" }];
-    }
-    return result;
-  };
-  await ensureLocalNetworks(f.directory, configured, command);
-  assert.equal(
-    await observedRelayAddress(f.directory, configured, command),
-    "10.76.2.30",
-  );
-  assert.equal(
-    await observedBrowserAddress(f.directory, configured, command),
-    "172.29.0.254",
-  );
-  assert.deepEqual(
-    JSON.parse(
-      await readFile(
-        join(f.directory, "private/network-runtime-receipt.json"),
-        "utf8",
-      ),
-    ),
-    {
-      ...expected("runtime"),
-      id: "2".repeat(64),
-      relay: {
-        subnet: "10.76.2.0/27",
-        gateway: "10.76.2.1",
-        address: "10.76.2.30",
-      },
-    },
-  );
-  await verifyLocalNetworks(f.directory, configured, command);
-  await ensureLocalNetworks(f.directory, configured, command);
-  assert.equal(f.creates.length, 4);
-  f.commands.length = 0;
-  assert.equal(
-    await observedRelayAddress(f.directory, state, command),
-    undefined,
-  );
-  assert.deepEqual(f.commands, []);
-});
-
-await test("runtime relay rejects changed network topology, IPAM or receipt instead of rebinding SSH", async (t) => {
-  const f = await fixture(t);
-  const configured = browserState();
-  await ensureLocalNetworks(f.directory, configured, f.command);
-  const id = "2".repeat(64);
-  for (const change of [
-    { Internal: true },
-    { Attachable: false },
-    { EnableIPv6: true },
-    { Options: { "com.docker.network.bridge.gateway_mode_ipv4": "isolated" } },
-    {
-      IPAM: {
-        Driver: "default",
-        Options: null,
-        Config: [{ Subnet: "10.75.0.0/16", Gateway: "10.75.0.1" }],
-      },
-    },
-    {
-      IPAM: {
-        Driver: "default",
-        Options: null,
-        Config: [{ Subnet: "172.29.0.0/24", Gateway: "172.29.0.254" }],
-      },
-    },
-    {
-      IPAM: {
-        Driver: "default",
-        Options: null,
-        Config: [
-          {
-            Subnet: "172.29.0.0/24",
-            Gateway: "172.29.0.1",
-            IPRange: "172.29.0.128/25",
-          },
-        ],
-      },
-    },
-  ]) {
-    f.networks.set(id, Object.assign(network("runtime", id), change));
-    await assert.rejects(
-      observedRelayAddress(f.directory, configured, f.command),
-      code("network_identity_changed"),
-    );
-    await assert.rejects(
-      verifyLocalNetworks(f.directory, configured, f.command),
-      code("network_identity_changed"),
-    );
-  }
-  f.networks.set(id, network("runtime", id));
-  const path = join(f.directory, "private/network-runtime-receipt.json");
-  for (const relay of [
-    undefined,
-    { subnet: "172.29.0.0/24", gateway: "172.29.0.1", address: "172.29.0.253" },
-  ]) {
-    await writeFile(
-      path,
-      JSON.stringify({ ...expected("runtime"), id, relay }),
-    );
-    await assert.rejects(
-      observedRelayAddress(f.directory, configured, f.command),
-      code("network_identity_changed"),
-    );
-    await assert.rejects(
-      ensureLocalNetworks(f.directory, configured, f.command),
-      code("network_identity_changed"),
-    );
-  }
-  await rm(path);
-  await assert.rejects(
-    observedRelayAddress(f.directory, configured, f.command),
-    code("network_unprepared"),
-  );
-  assert.equal(f.creates.length, 4);
 });
 
 await test("machine addresses are independently pinned and never reallocated after receipt drift", async (t) => {

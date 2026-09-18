@@ -15,7 +15,10 @@ const WebSocket = createRequire("/app/package.json")("ws");
 
 // Runs inside a disposable OpenShell runtime. The only model is a loopback fixture:
 // it proves native upload/tool/transport plumbing, not model quality or inference egress.
-const workspace = "/home/node/.openclaw/workspace";
+const preset = JSON.parse(
+  await readFile("/home/node/team-runtime-preset.json", "utf8"),
+);
+const workspace = preset.agents.defaults.workspace;
 const state = "/home/node/.openclaw";
 const nonce = "team-runtime-proof-" + process.pid;
 const adminIdentity = "clawscarf:proof-admin";
@@ -85,52 +88,28 @@ await writeFile(
   join(state, "openclaw.json"),
   JSON.stringify({
     gateway: {
-      mode: "local",
-      bind: "loopback",
-      port: 18789,
-      trustedProxies: ["127.0.0.1"],
-      publicOrigin: endpoint,
-      controlUi: { allowedOrigins: [endpoint] },
+      ...preset.gateway,
       auth: {
-        mode: "trusted-proxy",
+        ...preset.gateway.auth,
         trustedProxy: {
-          userHeader: "x-openclaw-user",
-          requiredHeaders: ["x-forwarded-proto", "x-forwarded-host"],
+          ...preset.gateway.auth.trustedProxy,
           allowUsers: [adminIdentity, memberIdentity],
-          allowLoopback: true,
         },
         identityScopes: {
-          [adminIdentity]: ["operator.admin"],
+          ...preset.gateway.auth.identityScopes,
           [memberIdentity]: ["operator.read", "operator.write"],
-        },
-      },
-      roles: {
-        default: "admin",
-        definitions: {
-          admin: {
-            agents: "*",
-            scopes: ["operator.admin"],
-            sessions: { others: "write" },
-          },
-          member: {
-            agents: "*",
-            scopes: ["operator.read", "operator.write", "operator.talk"],
-            sessions: { others: "none" },
-            sandbox: "inherit",
-          },
         },
       },
       tools: { allow: ["exec", "read", "write", "edit", "pdf", "lobster"] },
     },
     agents: {
       defaults: {
-        workspace,
-        sandbox: { mode: "off" },
+        ...preset.agents.defaults,
         model: { primary: "fixture/proof" },
         pdfModel: { primary: "fixture/proof" },
       },
     },
-    tools: { alsoAllow: ["lobster"], exec: { host: "gateway", mode: "full" } },
+    tools: { ...preset.tools, exec: { ...preset.tools.exec, mode: "full" } },
     plugins: {
       allow: ["lobster", "document-extract"],
       load: {

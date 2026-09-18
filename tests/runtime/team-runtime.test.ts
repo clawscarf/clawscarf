@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { promisify } from "node:util";
+import { initialConfiguration } from "../../runtime/configuration.js";
 const execute = promisify(execFile);
 
 await test(
@@ -97,6 +98,18 @@ await test(
         "node",
         "-e",
         "setInterval(()=>{},1000)",
+      ]);
+      const preset = initialConfiguration({
+        publicOrigin: "http://127.0.0.1:18789",
+        widgetOrigin: "http://127.0.0.1:18790",
+        administratorIdentity: "clawscarf:proof-admin",
+        standaloneNavigation: false,
+      });
+      await inside([
+        "node",
+        "-e",
+        "require('node:fs').writeFileSync('/home/node/team-runtime-preset.json',process.argv[1])",
+        JSON.stringify(preset),
       ]);
       const source = await readFile(
         new URL("./team-runtime-probe.mjs", import.meta.url),

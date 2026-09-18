@@ -15,7 +15,6 @@ export function composeConfiguration(
   state: LocalState,
   directory: string,
   browserAddress?: string,
-  relayAddress?: string,
   browserMachine?: { addresses: BrowserMachineAddresses; fingerprint: string },
 ) {
   const { input, ownerId } = state;
@@ -26,8 +25,6 @@ export function composeConfiguration(
     throw Error(
       "The isolated browser address and prepared native node are required.",
     );
-  if (input.relayImage && !relayAddress)
-    throw Error("The runtime relay address is required.");
   const constrained = {
     read_only: true,
     cap_drop: ["ALL"],
@@ -92,14 +89,12 @@ export function composeConfiguration(
               user: "1000:1000",
               networks: {
                 runtime: {
-                  ipv4_address: relayAddress,
                   aliases: ["runtime.clawscarf.internal"],
                 },
                 ...(input.browser ? { browser: {} } : {}),
               },
-              extra_hosts: ["host.docker.internal:host-gateway"],
               volumes: [
-                `${join(privateDirectory, "runtime-relay.cfg")}:/usr/local/etc/haproxy/haproxy.cfg:ro`,
+                `${join(privateDirectory, "browser-relay.cfg")}:/usr/local/etc/haproxy/haproxy.cfg:ro`,
               ],
               ...(input.browser
                 ? {

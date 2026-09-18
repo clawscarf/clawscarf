@@ -38,7 +38,9 @@ Replace sandbox/gateway names with the selected deployment. The launcher selects
 the existing native state and CLI. Configure its [model gateway](../deploy/models/README.md)
 first; the pack does not install or request provider credentials. Native Claws are
 experimental: the explicit environment flag opts into that upstream capability.
-Keep the Gateway running for native removal, including monitor cleanup. Plans and
+Native removal requires a running Gateway and CLI authentication for monitor cleanup,
+even when the pack declares no monitors. Removal under the product's trusted-proxy
+login has an unresolved authentication issue in [TODO.md](../TODO.md). Plans and
 workspaces are written to the persistent home volume, never the image.
 
 For development with a local OpenClaw **2026.9.4** installation, invoke
@@ -149,17 +151,18 @@ per-agent isolation when agents share an executable. It never changes policy.
 
 [Lifecycle checks](../tests/packs/lifecycle.test.ts) cover source changes, model
 readiness changes and source-link rejection. The [native test](../tests/packs/native.test.ts)
-uses the pinned vanilla OpenClaw CLI and Gateway for both agents. It deliberately
-uses a copied fixture without the model prerequisite to qualify ownership and file
-preservation independently of live inference. The packaged tool also completed inspect, add/apply, status, update/apply and
-remove/apply for both unmodified research-pack members inside a disposable pinned
-OpenShell runtime with the configured-model prerequisite enabled; edited identities
-and unrelated files survived removal. This qualifies native lifecycle and model
-configuration readiness, not agent research quality. [Operator binding checks](../tests/packs/connections.test.ts) cover current session,
+uses the pinned vanilla OpenClaw CLI and a token-authenticated Gateway for both agents.
+It deliberately uses a copied fixture without the model prerequisite to qualify
+ownership and file preservation independently of live inference. This does not
+qualify removal through the product's trusted-proxy login or agent research quality.
+[Operator binding checks](../tests/packs/connections.test.ts) cover current session,
 exact grants and revision drift. [Transport checks](../tests/packs/transport.test.ts)
 cover UUID dispatch and uncertain failure without replay. The optional
 [OpenShell binding test](../tests/packs/openshell.test.ts) uses controlled account HTTP
-with real SDK/native package ownership; this is not external OAuth/tool qualification.
+with real SDK/native package ownership on one runtime. It requires
+`CLAWSCARF_TEST_PACK_SANDBOX`, the controller/SDK settings and an already-running
+Gateway with native CLI authentication. Its token-authenticated fixture does not
+qualify trusted-proxy removal, external OAuth or connector execution.
 [Policy checks](../tests/packs/policy.test.ts) cover loaded acknowledgment and drift.
 [Execution-target checks](../tests/packs/execution-target.test.ts) use controlled operator
 processes to verify unified runtime dispatch, missing binaries, denied policy

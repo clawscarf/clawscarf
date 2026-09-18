@@ -70,7 +70,9 @@ Build inputs follow the [release schema](../scripts/release/definition.ts), exce
 `tools.openshell.cli` and `gateway` are source executable paths and `packs` is an
 array of source directories. `images.openshellClient` is the exact built
 [forwarding image](../deploy/images/README.md#openshell-forwarding-image); the upstream
-controller image is pinned in the [component manifest](components.json). Paths resolve
+controller image is pinned in the [component manifest](components.json).
+`images.browser` and `images.relay` are optional together; incomplete browser image
+sets fail validation before the installer offers the capability. Paths resolve
 relative to the input file. The builder
 embeds recipe objects supplied in `recipes`; the default model catalog comes from
 [deploy/models/catalog.json](../deploy/models/catalog.json). An optional

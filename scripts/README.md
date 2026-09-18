@@ -90,12 +90,10 @@ CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.
 CLAWSCARF_TEST_COMPANION_PACKAGE=1 pnpm exec tsx --test scripts/package-companion.test.ts
 ```
 
-The archive also passed retained-installation preparation and startup
-through verified native administrator access from an extracted directory outside
-the checkout. Its migrations, policy and component helpers were resolved
-from that archive; the pinned images and controller binaries remained external inputs.
-This packaging check is separate from a clean-machine runtime installation and
-does not qualify a published release or an upgrade.
+These packaging checks do not establish complete installation/startup acceptance
+with the current team runtime. That journey, clean-machine release installation and
+published release upgrades remain unqualified; the current runtime evidence is in
+the [OpenShell guide](../deploy/openshell/README.md#repeatable-boundary-and-retention-check).
 
 ## Provenance
 

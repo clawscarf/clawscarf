@@ -14,16 +14,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  relayConfiguration,
+  browserRelayConfiguration,
   prepareRelay,
   verifyRelayConfiguration,
 } from "../../scripts/deployment/relay.js";
 import { parseLocalInput } from "../../scripts/deployment/configuration.js";
-import {
-  resourceNames,
-  type LocalState,
-} from "../../scripts/deployment/state.js";
-import { LocalSetupError, type run } from "../../scripts/deployment/process.js";
+import type { LocalState } from "../../scripts/deployment/state.js";
+import { LocalSetupError } from "../../scripts/deployment/process.js";
 
 function state(browser = true): LocalState {
   return {
@@ -74,117 +71,41 @@ async function fixture(t: TestContext) {
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, "private"), { mode: 0o700 });
   const installation = state();
-  const intent = {
-    ownerId: installation.ownerId,
-    purpose: "runtime",
-    name: resourceNames(installation).sandbox,
-  };
-  const id = "a".repeat(64);
-  for (const [suffix, value] of [
-    ["create", intent],
-    [
-      "receipt",
-      {
-        ...intent,
-        id,
-        relay: {
-          subnet: "10.76.2.0/27",
-          gateway: "10.76.2.1",
-          address: "10.76.2.30",
-        },
-      },
-    ],
-  ] as const)
-    await writeFile(
-      join(directory, "private", `network-runtime-${suffix}.json`),
-      JSON.stringify(value),
-      { mode: 0o600 },
-    );
-  const command: typeof run = (executable, args) => {
-    assert.equal(executable, "docker");
-    assert.equal(args[0], "network");
-    if (args[1] === "ls")
-      return Promise.resolve(JSON.stringify({ id, name: intent.name }));
-    assert.equal(
-      args[1],
-      "inspect",
-      "Relay verification must not mutate Docker",
-    );
-    return Promise.resolve(
-      JSON.stringify({
-        Id: id,
-        Name: intent.name,
-        Driver: "bridge",
-        Scope: "local",
-        Internal: false,
-        Ingress: false,
-        Attachable: true,
-        EnableIPv6: false,
-        Options: null,
-        Labels: {
-          "clawscarf.installation": installation.ownerId,
-          "clawscarf.network-purpose": "runtime",
-        },
-        IPAM: {
-          Driver: "default",
-          Options: null,
-          Config: [{ Subnet: "10.76.2.0/27", Gateway: "10.76.2.1" }],
-        },
-      }),
-    );
-  };
-  return { directory, installation, command };
+  return { directory, installation };
 }
 
-await test("relay defines only the selected browser destination", () => {
-  const both = relayConfiguration(state(), "10.76.2.30");
-  assert.match(
-    both,
-    /listen browser\n {2}bind :9223\n {2}server browser browser:9223 /,
+await test("relay defines only a fixed browser destination", () => {
+  assert.deepEqual(
+    [...browserRelayConfiguration.matchAll(/^ {2}bind (.+)$/gm)].map(
+      (match) => match[1],
+    ),
+    [":9223"],
   );
-  assert.doesNotMatch(both, /bind (?:\*|0\.0\.0\.0)?:2222/);
-  assert.doesNotMatch(
-    both,
-    /mode http|http-request|http-response|socks|forwardfor/i,
-  );
-  assert.doesNotMatch(
-    relayConfiguration(state(true), "10.76.2.30"),
-    /listen execution|:2222|host\.docker\.internal/,
+  assert.deepEqual(
+    [...browserRelayConfiguration.matchAll(/^ {2}server (.+)$/gm)].map(
+      (match) => match[1],
+    ),
+    ["browser browser:9223 resolvers docker init-addr libc,none"],
   );
   assert.doesNotMatch(
-    relayConfiguration(state(false), "10.76.2.30"),
-    /listen browser|:9223/,
-  );
-  assert.throws(() =>
-    relayConfiguration(state(), "10.76.2.30\n {2}bind :2222"),
+    browserRelayConfiguration,
+    /mode http|http-request|http-response|socks|forwardfor|host\.docker\.internal/i,
   );
 });
 
-await test("relay preparation is optional and observes its owned runtime address without allocating resources", async (t) => {
+await test("relay preparation is optional and retains its immutable fixed configuration", async (t) => {
   const f = await fixture(t);
-  const noCommand: typeof run = () => {
-    throw Error("Unexpected Docker command");
-  };
-  assert.equal(
-    await prepareRelay("/does-not-exist", state(false), noCommand),
-    undefined,
-  );
-  await verifyRelayConfiguration("/does-not-exist", state(false), noCommand);
+  await prepareRelay("/does-not-exist", state(false));
+  await verifyRelayConfiguration("/does-not-exist", state(false));
   const previous = process.umask(0o077);
   try {
-    assert.equal(
-      await prepareRelay(f.directory, f.installation, f.command),
-      "10.76.2.30",
-    );
-    const path = join(f.directory, "private/runtime-relay.cfg");
+    await prepareRelay(f.directory, f.installation);
+    const path = join(f.directory, "private/browser-relay.cfg");
     assert.equal((await lstat(path)).mode & 0o777, 0o444);
-    const content = await readFile(path, "utf8");
-    await verifyRelayConfiguration(f.directory, f.installation, f.command);
-    assert.equal(
-      await prepareRelay(f.directory, f.installation, f.command),
-      "10.76.2.30",
-    );
-    assert.equal(await readFile(path, "utf8"), content);
+    assert.equal(await readFile(path, "utf8"), browserRelayConfiguration);
+    await verifyRelayConfiguration(f.directory, f.installation);
+    await prepareRelay(f.directory, f.installation);
+    assert.equal(await readFile(path, "utf8"), browserRelayConfiguration);
   } finally {
     process.umask(previous);
   }
@@ -192,8 +113,8 @@ await test("relay preparation is optional and observes its owned runtime address
 
 await test("relay restart refuses a substituted destination or substituted configuration without repair", async (t) => {
   const f = await fixture(t);
-  await prepareRelay(f.directory, f.installation, f.command);
-  const path = join(f.directory, "private/runtime-relay.cfg");
+  await prepareRelay(f.directory, f.installation);
+  const path = join(f.directory, "private/browser-relay.cfg");
   const original = await readFile(path, "utf8");
   const broadened = original.replace(
     "server browser browser:9223",
@@ -204,20 +125,17 @@ await test("relay restart refuses a substituted destination or substituted confi
   await writeFile(path, broadened);
   await chmod(path, 0o444);
   await assert.rejects(
-    verifyRelayConfiguration(f.directory, f.installation, f.command),
+    verifyRelayConfiguration(f.directory, f.installation),
     changed,
   );
-  await assert.rejects(
-    prepareRelay(f.directory, f.installation, f.command),
-    changed,
-  );
+  await assert.rejects(prepareRelay(f.directory, f.installation), changed);
   assert.equal(await readFile(path, "utf8"), broadened);
   await rm(path);
   const alternate = join(f.directory, "private/other-relay.cfg");
   await writeFile(alternate, original, { mode: 0o444 });
   await symlink(alternate, path);
   await assert.rejects(
-    verifyRelayConfiguration(f.directory, f.installation, f.command),
+    verifyRelayConfiguration(f.directory, f.installation),
     changed,
   );
 });

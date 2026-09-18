@@ -9,6 +9,7 @@ import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { WebSocket } from "undici";
+import { browserRelayConfiguration } from "../../scripts/deployment/relay.js";
 
 async function docker(args: string[], input?: string): Promise<string> {
   return await new Promise((accept, reject) => {
@@ -289,7 +290,6 @@ await test(
         network,
       ]);
       const runtimeCidr = await subnet();
-      const runtimeRelayIp = runtimeCidr.replace(".0/24", ".2");
       await allocateResource(directory, resources, "network", runtimeNetwork, [
         "network",
         "create",
@@ -376,8 +376,6 @@ await test(
         relay,
         "--network",
         runtimeNetwork,
-        "--ip",
-        runtimeRelayIp,
         ...hardened,
         "-p",
         "127.0.0.1::9223",
@@ -388,48 +386,9 @@ await test(
       await docker(["network", "connect", "--ip", relayIp, network, relay]);
       await writeFile(
         join(directory, "haproxy.cfg"),
-        `global
-  maxconn 32
-
-defaults
-  mode tcp
-  timeout connect 5s
-  timeout client 1h
-  timeout server 1h
-
-resolvers docker
-  nameserver docker 127.0.0.11:53
-  timeout resolve 1s
-  timeout retry 1s
-  hold valid 1s
-
-listen browser
-  bind :9223
-  server browser browser:9223 resolvers docker init-addr libc,none
-
-listen execution
-  bind ${runtimeRelayIp}:2222
-  server worker ${hostIp}:${String(listener.port)}
-`,
+        browserRelayConfiguration,
       );
       await docker(["start", relay]);
-      assert.equal(
-        await docker([
-          "run",
-          "--rm",
-          "--network",
-          runtimeNetwork,
-          "--entrypoint",
-          "node",
-          browserImage,
-          "-e",
-          socketProbe,
-          runtimeRelayIp,
-          "2222",
-        ]),
-        "host-baseline",
-        "SSH relay preserves the fixed upstream byte stream",
-      );
       await allocateResource(directory, resources, "container", browser, [
         "run",
         "-d",

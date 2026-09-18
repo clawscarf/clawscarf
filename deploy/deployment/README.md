@@ -73,8 +73,9 @@ reconciles the matching owned network and records its ID. An absent network afte
 recorded attempt remains uncertain and requires operator inspection; it is never
 blindly allocated again. A partial setup retains its first network if reserving the
 second fails. Foreign, unlabeled, replaced or ambiguous networks are rejected, not
-adopted or deleted. An optional browser adds separate isolated browser and machine bridges. Owned receipts pin their
-address and the relay address on the runtime network from Docker-selected subnets.
+adopted or deleted. An optional browser adds separate isolated browser and machine
+bridges. Owned receipts pin the browser and node-machine addresses from
+Docker-selected subnets.
 No subnet ranges are hardcoded and no other projects are pruned.
 
 Preparation starts its own digest-pinned PostgreSQL container and owns separate
@@ -178,7 +179,7 @@ broker-account journey remains unchecked in [TODO.md](../../TODO.md).
 ## Shared browser
 
 The optional `browser` input composes the [Chromium image](../execution/browser/README.md)
-with the [fixed runtime relay and public-web proxy](../execution/network/README.md):
+with the [fixed browser relay and public-web proxy](../execution/network/README.md):
 
 ```json
 {
@@ -318,8 +319,9 @@ report their own stage; they are not inferred from Docker error wording.
 ## Runtime upgrade
 
 The `upgrade` command replaces stopped compute while retaining its named home volume.
-Real replacement and interruption/resumption have passed on macOS arm64. This is a
-local operator path, not a qualified cross-platform release upgrade.
+Replacement and interruption/resumption have component regressions. Live acceptance
+has not been rerun with the current team runtime. This is a local operator path,
+not a qualified cross-platform release upgrade.
 It requires an exact replacement image with the ClawScarf startup gate and the pinned
 Python SDK environment from [pack setup](../../packs/README.md). It does not upgrade
 the controller, companion or database, and it does not back up or roll back data.
@@ -385,12 +387,10 @@ Run the bridge protocol regressions with the same pinned Python environment:
 /absolute/operator-python/bin/python -m unittest discover -s tests/deployment -p 'upgrade_rpc_test.py'
 ```
 
-The real replacement retained native configuration and a workspace marker, blocked
-Gateway startup before restoration, and resumed without another allocation. Normal
-startup afterward verified administrator authority through Gateway. This check used
-the same pinned OpenClaw version in a rebuilt runtime; it does not establish migration
-compatibility with a different upstream version. Browser interaction after replacement,
-Linux and upgrades from published release artifacts remain unqualified.
+The current unit regressions cover retained configuration/volume ownership, gated
+startup and interrupted replacement without another allocation. Live replacement of
+the current team runtime, changed-upstream-version compatibility, browser interaction
+after replacement, Linux and upgrades from published release artifacts remain unqualified.
 
 ## Allocation acceptance
 

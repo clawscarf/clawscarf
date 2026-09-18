@@ -19,8 +19,11 @@ this staging deployment. Disposable servers, provider accounts and login clients
 
 Staging and production run the same promoted cloud artifact. Production passed deployment
 health, identity and deployment-ID checks; the complete browser journey above ran against
-staging. This does not establish Linux/WSL or public-HTTPS installation acceptance. The
-upstream remote skill-path and browser-routing issues remain separately in [TODO.md](../TODO.md).
+staging. These installation checks preceded the single-runtime execution model; they
+have not been repeated with it. Current runtime verification is in the
+[OpenShell guide](../deploy/openshell/README.md#repeatable-boundary-and-retention-check).
+Linux/WSL and public-HTTPS installation acceptance remain unqualified. The
+owner-managed upstream browser-routing issue remains in [TODO.md](../TODO.md).
 A device-approval session edge case remains in TODO: the provider page can require an
 intervening cloud sign-in before accepting its pending code. WorkOS Connect supplies no logout endpoint; sign-out revokes the installation session and
 requests fresh authentication on the next sign-in.

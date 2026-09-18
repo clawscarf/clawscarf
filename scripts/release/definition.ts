@@ -43,17 +43,26 @@ export const releaseSchema = z.strictObject({
     .optional(),
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
   platforms: z.array(z.literal("darwin-arm64")).min(1).max(1),
-  images: z.strictObject({
-    postgres: z.literal(postgresImage),
-    gateway: image,
-    companion: image,
-    openshellClient: image,
-    relay: image.optional(),
-    models: z.literal(liteLlmImage).optional(),
-    browser: z
-      .strictObject({ chromium: image, node: image, dns: image, egress: image })
-      .optional(),
-  }),
+  images: z
+    .strictObject({
+      postgres: z.literal(postgresImage),
+      gateway: image,
+      companion: image,
+      openshellClient: image,
+      relay: image.optional(),
+      models: z.literal(liteLlmImage).optional(),
+      browser: z
+        .strictObject({
+          chromium: image,
+          node: image,
+          dns: image,
+          egress: image,
+        })
+        .optional(),
+    })
+    .refine((images) => Boolean(images.browser) === Boolean(images.relay), {
+      message: "Browser and relay images must be supplied together.",
+    }),
   tools: z.strictObject({
     openshell: z.strictObject({
       version: z.string().min(1),

@@ -112,7 +112,7 @@ export async function prepareLocal(
   const browserMachine = browser
     ? await prepareBrowserNode(directory, state, browser.token)
     : undefined;
-  const relayAddress = await prepareRelay(directory, state);
+  await prepareRelay(directory, state);
   const names = resourceNames(state);
   await prepareTeamFiles(privateDirectory, teamMaterials);
   await ensureOwnedVolume(names.databaseVolume, state.ownerId);
@@ -126,13 +126,7 @@ export async function prepareLocal(
   await ensurePrivateFile(
     join(directory, "compose.json"),
     JSON.stringify(
-      composeConfiguration(
-        state,
-        directory,
-        browser?.address,
-        relayAddress,
-        browserMachine,
-      ),
+      composeConfiguration(state, directory, browser?.address, browserMachine),
       null,
       2,
     ),

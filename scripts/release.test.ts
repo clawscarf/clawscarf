@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
+import { releaseSchema } from "./release/definition.js";
 import { createDevelopmentRelease } from "./release/create.js";
 import { loadRecipes } from "./installation/recipes/load.js";
 import { setupContext, recipeConfiguration } from "./installation/setup.js";
@@ -42,7 +43,7 @@ await test("release bundles survive relocation without source files and reject m
       postgres: postgresImage,
       models: liteLlmImage,
       ...Object.fromEntries(
-        ["gateway", "companion", "relay", "openshellClient"].map((key) => [
+        ["gateway", "companion", "openshellClient"].map((key) => [
           key,
           "sha256:" + "a".repeat(64),
         ]),
@@ -122,5 +123,24 @@ await test("release bundles survive relocation without source files and reject m
   await assert.rejects(
     verifyReleasePacks(release, releaseFile),
     /does not match its digest/,
+  );
+});
+
+await test("release browser capability requires its complete browser and relay image set", () => {
+  const image = `sha256:${"a".repeat(64)}`;
+  const base = {
+    postgres: postgresImage,
+    gateway: image,
+    companion: image,
+    openshellClient: image,
+  };
+  const browser = { chromium: image, node: image, dns: image, egress: image };
+  const schema = releaseSchema.shape.images;
+  schema.parse(base);
+  schema.parse({ ...base, browser, relay: image });
+  assert.throws(() => schema.parse({ ...base, browser }), /supplied together/);
+  assert.throws(
+    () => schema.parse({ ...base, relay: image }),
+    /supplied together/,
   );
 });

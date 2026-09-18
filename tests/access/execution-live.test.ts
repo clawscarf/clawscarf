@@ -326,7 +326,7 @@ await test(
           },
           { name: "undeclared-public-egress", host: "1.1.1.1", port: 443 },
         ];
-        const script = `import os,json,socket,pathlib\n${probe.kind === "member" ? `pathlib.Path(${JSON.stringify(toolFile)}).write_text(${JSON.stringify(nonce)})\n` : ""}result={'nonce':${JSON.stringify(nonce)},'uid':os.getuid(),'cwd':str(pathlib.Path.cwd()),'marker':${JSON.stringify(proofPath)},'nativeConfigurationVisible':pathlib.Path('/home/node/.openclaw/clawscarf-installation.json').exists(),'endpoints':[]}\nfor endpoint in json.loads(${JSON.stringify(JSON.stringify(endpoints))}):\n try:\n  connection=socket.create_connection((endpoint['host'],endpoint['port']),timeout=2);connection.close();connected=True\n except OSError:\n  connected=False\n result['endpoints'].append({'name':endpoint['name'],'connected':connected})\npathlib.Path(${JSON.stringify(proofPath)}).write_text(json.dumps(result))\nprint(pathlib.Path(${JSON.stringify(proofPath)}).read_text())\n`;
+        const script = `import os,json,socket,pathlib\nresult={'nonce':${JSON.stringify(nonce)},'uid':os.getuid(),'cwd':str(pathlib.Path.cwd()),'marker':${JSON.stringify(proofPath)},'nativeConfigurationVisible':pathlib.Path('/home/node/.openclaw/clawscarf-installation.json').exists(),'endpoints':[]}\nfor endpoint in json.loads(${JSON.stringify(JSON.stringify(endpoints))}):\n try:\n  connection=socket.create_connection((endpoint['host'],endpoint['port']),timeout=2);connection.close();connected=True\n except OSError:\n  connected=False\n result['endpoints'].append({'name':endpoint['name'],'connected':connected})\npathlib.Path(${JSON.stringify(proofPath)}).write_text(json.dumps(result))\nprint(pathlib.Path(${JSON.stringify(proofPath)}).read_text())\n`;
         await run(
           "docker",
           [
@@ -367,12 +367,24 @@ await test(
           ),
           "The native execution probe must return a tool result",
         );
+        const writeCalls = calls.filter(
+          (call) =>
+            call.name === "write" &&
+            JSON.stringify(call.arguments).includes(toolFile),
+        );
+        assert.ok(
+          results.some(
+            (message) =>
+              writeCalls.some((call) => call.id === message.toolCallId) &&
+              message.isError !== true,
+          ),
+          "Native write must create the shared file for both roles",
+        );
         const readCalls = calls.filter(
           (call) =>
             call.id !== probeCall?.id &&
-            ["read", "exec"].includes(call.name) &&
-            (JSON.stringify(call.arguments).includes(toolFile) ||
-              JSON.stringify(call.arguments).includes(marker)),
+            call.name === "read" &&
+            JSON.stringify(call.arguments).includes(toolFile),
         );
         assert.ok(
           results.some(
@@ -409,20 +421,6 @@ await test(
           ]),
           nonce,
           "The native tool file must exist with the exact content in the runtime",
-        );
-        assert.equal(
-          (
-            await run("docker", [
-              "exec",
-              gatewayBinding.containerId,
-              "node",
-              "-e",
-              "process.stdout.write(String(require('node:fs').existsSync(process.argv[1])))",
-              proofPath,
-            ])
-          ).trim(),
-          "true",
-          "The execution marker must be on the Gateway filesystem",
         );
         t.diagnostic(
           `${probe.kind}: native tools used the owned UID1000 runtime; all three forbidden TCP destinations failed.`,

@@ -4,8 +4,9 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Installer and releases
 
-- [ ] Fix native pack removal when an attached automation requires Gateway authentication
-      under trusted-proxy login; verify removal on a retained installation without bypassing ownership checks.
+- [ ] Fix native pack removal under trusted-proxy login: monitor cleanup requires Gateway
+      authentication even when the pack declares no monitors. Verify removal on the protected
+      team runtime without bypassing ownership checks.
 - [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
       platform archives with checksums/license notices.
       Keep recipes and packs together as defined in the [release guide](release/README.md).

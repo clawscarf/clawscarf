@@ -290,8 +290,6 @@ await test("OIDC on loopback needs no TLS files and never publishes public liste
       input,
     },
     "/private/team",
-    undefined,
-    "172.30.0.2",
   );
   assert.ok(
     compose.services.companion?.ports.every((port) =>

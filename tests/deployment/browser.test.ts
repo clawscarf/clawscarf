@@ -100,7 +100,6 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     installation,
     "/private/browser-test",
     "10.75.2.30",
-    "10.76.2.30",
     {
       addresses: {
         node: "10.77.2.30",
@@ -135,12 +134,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     false,
   );
   assert.throws(() =>
-    composeConfiguration(
-      installation,
-      "/private/browser-test",
-      "10.75.2.30",
-      "10.76.2.30",
-    ),
+    composeConfiguration(installation, "/private/browser-test", "10.75.2.30"),
   );
   const service = compose.services.browser;
   const relay = compose.services["browser-relay"];
@@ -161,11 +155,11 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     assert.equal("network_mode" in container, false);
   }
   assert.deepEqual(relay.networks.runtime, {
-    ipv4_address: "10.76.2.30",
     aliases: ["runtime.clawscarf.internal"],
   });
+  assert.equal("extra_hosts" in relay, false);
   assert.deepEqual(relay.volumes, [
-    "/private/browser-test/private/runtime-relay.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro",
+    "/private/browser-test/private/browser-relay.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro",
   ]);
   assert.equal(service.user, "1000:1000");
   assert.ok(
@@ -215,20 +209,14 @@ await test("browser profile retains a scoped credential without granting Gateway
   assert.deepEqual(policy.network_policies, {});
   assert.ok(
     !JSON.stringify(
-      composeConfiguration(
-        state(),
-        "/private/browser-test",
-        "10.75.2.30",
-        "10.76.2.30",
-        {
-          addresses: {
-            node: "10.77.2.30",
-            ingress: "10.77.2.29",
-            dns: "10.77.2.28",
-          },
-          fingerprint: "ab".repeat(32),
+      composeConfiguration(state(), "/private/browser-test", "10.75.2.30", {
+        addresses: {
+          node: "10.77.2.30",
+          ingress: "10.77.2.29",
+          dns: "10.77.2.28",
         },
-      ),
+        fingerprint: "ab".repeat(32),
+      }),
     ).includes(token),
   );
 });

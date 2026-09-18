@@ -14,9 +14,7 @@ import { packSchema } from "../../scripts/packs/model.js";
 await test(
   "operator bindings install as native owned files on the exact OpenShell runtime",
   {
-    skip:
-      !process.env.CLAWSCARF_TEST_PACK_SANDBOX ||
-      !process.env.CLAWSCARF_TEST_PACK_WORKER,
+    skip: !process.env.CLAWSCARF_TEST_PACK_SANDBOX,
     timeout: 240000,
   },
   async () => {

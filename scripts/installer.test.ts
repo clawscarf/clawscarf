@@ -142,7 +142,6 @@ async function fixture(t: TestContext) {
         gateway: image,
         companion: image,
         openshellClient: image,
-        relay: image,
       },
       tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
     }),

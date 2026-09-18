@@ -30,12 +30,7 @@ await test("controller authority stays outside the application and forwarding pu
       },
     }),
   };
-  const configuration = composeConfiguration(
-    state,
-    "/private/team",
-    undefined,
-    "172.30.0.2",
-  );
+  const configuration = composeConfiguration(state, "/private/team");
   const { controller, application, widgets } = configuration.services;
   assert.equal("execution" in configuration.services, false);
   assert.ok(

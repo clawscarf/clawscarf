@@ -27,19 +27,19 @@ private profile/token volumes and lifecycle. Required service wiring:
 | ------------- | --------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
 | Browser       | Isolated browser network only; alias `browser`                        | 9223              | `CLAWSCARF_BROWSER_PROXY_SERVER=http://browser-egress:3128`; existing browser token/profile settings |
 | Egress        | Isolated browser network plus outbound bridge; alias `browser-egress` | 3128, unpublished | Read-only `/etc/squid/browser-source.acl`, containing the browser's exact IPv4 `/32`                 |
-| Runtime relay | Owned runtime network; also isolated browser network when enabled     | 9223 for CDP      | Read-only generated `/usr/local/etc/haproxy/haproxy.cfg`; alias `runtime.clawscarf.internal`         |
+| Browser relay | Owned runtime network plus isolated browser network                   | 9223 for CDP      | Read-only generated `/usr/local/etc/haproxy/haproxy.cfg`; alias `runtime.clawscarf.internal`         |
 
 The relay has one upstream, `browser:9223`; CDP is published on operator loopback
 for readiness. No relay service is needed when the browser is disabled. The relay
-never joins the companion network and has no worker/SSH listener.
+never joins the companion network. Its runtime-network attachment permits Docker
+loopback port publication; it needs no reserved address or Docker-host alias.
 
 The generated configuration uses native Docker DNS resolution (`127.0.0.11:53`)
 with `resolvers` and `init-addr libc,none` for the browser backend, allowing the
 browser container to start later or change address. Fixed listeners do not accept
 a destination from clients. CDP byte streams pass through unchanged.
-OpenShell policies target the ordinary relay DNS name and exact listener port;
-policy DNS supplies synthetic addresses and enforces the native caller binary.
-Reserved Docker host aliases are not used as native client targets.
+The Gateway has no direct CDP egress grant. Native browser operations use the
+paired browser node, which connects to Chromium on the isolated browser network.
 
 The browser must not attach to another network. IPv6 is disabled on the
 browser network; the Squid IPv6 ACL also filters destinations resolved by the
@@ -63,10 +63,10 @@ From the repository root:
 
 ```sh
 docker build -f deploy/execution/network/Dockerfile.egress -t clawscarf-browser-egress:local .
-docker build -f deploy/execution/network/Dockerfile.relay -t clawscarf-runtime-relay:local .
+docker build -f deploy/execution/network/Dockerfile.relay -t clawscarf-browser-relay:local .
 CLAWSCARF_TEST_BROWSER_IMAGE=clawscarf-browser:local \
 CLAWSCARF_TEST_BROWSER_EGRESS_IMAGE=clawscarf-browser-egress:local \
-CLAWSCARF_TEST_BROWSER_RELAY_IMAGE=clawscarf-runtime-relay:local \
+CLAWSCARF_TEST_BROWSER_RELAY_IMAGE=clawscarf-browser-relay:local \
 node --import tsx --test tests/runtime/browser-network.test.ts
 ```
 
@@ -77,8 +77,8 @@ ordinary container before testing denial from the isolated browser.
 
 The repeatable test covers actual Chromium/CDP, public HTTPS, direct host/metadata
 denial, private and mixed-address DNS fixtures, unresolved names, restricted
-ports, relay authentication, fixed SSH byte transport, browser denial of the SSH
-listener and retained profiles. DNS rebinding across changing
+ports, relay authentication, absence of an SSH listener and retained profiles.
+The relay uses the same fixed configuration as the deployment operator. DNS rebinding across changing
 authoritative answers and IPv6-enabled deployment remain unqualified; neither
 is claimed by static host fixtures. This packaging is not yet evidence of the
 assembled local distribution or a published release.

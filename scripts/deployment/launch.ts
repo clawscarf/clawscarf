@@ -118,13 +118,11 @@ export async function launchLocal(
       ]);
       check();
     }
-    if (state.input.relayImage) {
+    if (state.input.browser) {
       report("Starting browser relay…");
       await compose(directory, ["up", "-d", "browser-relay"]);
-      if (state.input.browser) {
-        const browserPort = state.input.browser.port;
-        await waitFor(() => verifyBrowserListener(directory, browserPort));
-      }
+      const browserPort = state.input.browser.port;
+      await waitFor(() => verifyBrowserListener(directory, browserPort));
     }
     report("Starting OpenClaw…");
     const runtime = await ensureRuntime(directory, state, env);
@@ -168,7 +166,7 @@ export async function launchLocal(
   }
 }
 
-/** Stop entry first, then owned sandboxes, and only then their controller. */
+/** Stop entry first, then the owned runtime, and only then its controller. */
 export async function stopLocal(directory: string) {
   const state = await readState(directory);
   const controller = join(directory, "controller");
@@ -187,7 +185,7 @@ export async function stopLocal(directory: string) {
       ? ["browser-node", "browser-node-ingress", "browser-node-dns"]
       : []),
   ]);
-  // A stopped controller must be available to observe and stop its owned sandboxes.
+  // A stopped controller must be available to observe and stop its owned runtime.
   await compose(directory, ["up", "-d", "controller"]);
   const deadline = Date.now() + 30_000;
   for (;;) {
