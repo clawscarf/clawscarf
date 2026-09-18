@@ -5,129 +5,32 @@ LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
 No external hosting control plane or billing hook is required.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
-For a new local installation, [initial model setup](../deployment/README.md#initial-model-setup)
-combines this configuration, a scoped runtime key and its network permission before
-first startup. Existing installations use the explicit configuration commands below.
-Fresh setup and explicit configuration share the model/default mapping, including
-an optional `thinkingDefault`. Omitted thinking settings preserve native defaults.
+## Configuration and credentials
 
-For bundled models in a new complete installation, use the
-[unified LiteLLM selection](../deployment/installation.md#models). It owns the private
-TLS listener, separate model database, initial scoped key and start/stop lifecycle.
-The component commands below remain available for explicit model operations; their
-full configuration includes the endpoint, unlike the unified route-only input.
+Use `clawscarf configure --directory /path/to/team` for initial setup and later
+changes. The [installation guide](../deployment/installation.md#models) lists the
+model, provider, reasoning and credential options. Bundled LiteLLM owns its private
+TLS listener, database and scoped runtime key. An existing LiteLLM gateway uses
+its operator-provided endpoint, runtime key and optional CA.
 
-## Configure OpenClaw
+[configuration.ts](../../scripts/models/configuration.ts) maps selected routes to
+LiteLLM and native OpenClaw settings. The [runtime helper](../../runtime/models.ts)
+validates those settings before applying them to the stopped, owned home volume.
+It preserves unrelated providers, fallback settings and per-agent overrides. Existing
+conversations may retain their model selection. Provider secrets and LiteLLM's master
+key stay outside OpenClaw; the runtime receives only a scoped `llm_api` key through
+a private file SecretRef. Public CA trust is combined with OpenShell's inherited CA.
 
-Copy [config.example.json](config.example.json) to private deployment configuration.
-Set `mode` to `external` for an existing gateway or `litellm` for the companion.
-Describe the actual offered models and capabilities; the example is illustrative,
-not a supported-model catalog. `route` belongs only to LiteLLM: its model identifier
-uses LiteLLM's provider prefix and its key is an environment-variable name.
-Disabled models are excluded. A null `defaultModel` preserves the current default.
+The helper returns structured rejection or uncertain outcomes. No uncertain write
+is automatically replayed. Interrupted settings changes keep the server stopped
+until explicitly resumed through `configure`.
 
-For the OpenShell deployment, run the host command from this checkout with its
-Node/pnpm dependencies. Select the controller's isolated XDG configuration as in
-[controller setup](../openshell/README.md#contributor-controller-setup). The runtime
-image contains the compiled [configuration helper](../../runtime/models.ts) and its
-pinned Zod validation dependency;
-it does not need this checkout or pnpm. Supply a scoped runtime key, never a
-LiteLLM master or upstream-provider key:
-
-```sh
-pnpm clawscarf models configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem
-pnpm clawscarf models configure-runtime --config /private/models.json --openshell /absolute/path/to/openshell --gateway clawscarf --sandbox team --key-file /private/runtime-key --ca-file /private/gateway-ca.pem --yes
-```
-
-Omit `--ca-file` for a gateway with a publicly trusted certificate. The controller
-transports the scoped key through authenticated exec stdin; it is never a command
-argument. The helper writes a private credential generation in persistent runtime
-state and configures a native file SecretRef. The public CA is stored separately for the canonical launcher. Gateway restarts
-and operator commands use the same file-backed credential without token environment
-injection. The launcher combines this CA with any inherited `NODE_EXTRA_CA_CERTS`
-bundle, including OpenShell's proxy CA, and supplies the combined file to Node.
-Public bundles are stored by content digest under `clawscarf-models/trust`; repeated
-startup reuses the same bundle, and changed certificates produce a new one.
-Unreadable inherited trust or a mismatched existing bundle stops startup.
-This extends trust for the Node process, not only this provider, and preserves
-certificate verification. A new or changed
-CA requires an explicit Gateway restart. Applying without `--ca-file` removes this
-configured CA file; operator-provided environment trust remains untouched.
-
-For an already installed native CLI on the machine running the host tooling,
-`configure --config /private/models.json --openclaw openclaw [--yes]` is also
-available. That mode uses `CLAWSCARF_MODEL_TOKEN` in both the CLI and Gateway process;
-it is not the OpenShell deployment command.
-
-The first command validates without writing. The second uses one native OpenClaw
-2026.9.4 config batch to replace the `clawscarf` provider and its credential
-reference, and optionally select the default model. It preserves other providers,
-fallbacks, per-agent overrides and unrelated configuration. Existing sessions may
-retain their selected model; this command does not rewrite conversations. Native
-config validation/reload owns runtime activation. Check the effective model in
-OpenClaw before using it. Repeating the confirmed command deliberately reapplies
-those same selected settings; there is no background configuration controller.
-The runtime helper validates a strict request and returns structured outcomes.
-Running OpenShell and stopped-volume commands share the same bounded subprocess
-protocol; only their invocation differs.
-Invalid input/state, unavailable execution and rejected validation are distinct
-from an uncertain apply. Lost or malformed execution responses remain uncertain
-after dispatch; the controller never retries a mutation automatically.
-Dry-run leaves native configuration unchanged and removes its temporary credential.
-A confirmed or uncertain apply retains its private credential generation; previous
-generations are retained because a live Gateway may still be using them while it
-reloads. After effective native verification, revoke the old key explicitly through
-LiteLLM. Credential-file cleanup is an operator task; it is not inferred from CLI
-success.
-
-`{"mode":"disabled"}` makes the tool perform no calls or writes. It does not delete
-user configuration or revoke an already-issued key. Revoke the key explicitly when
-retiring gateway access, then select another model in OpenClaw.
-
-## Bundled LiteLLM
-
-[compose.yaml](compose.yaml) pins the donor's LiteLLM image. It exposes only a
-loopback port. A container/OpenShell runtime needs an explicitly authorized private
-network route to that endpoint; container loopback is not host loopback. Public
-TLS ingress and OpenShell policy are deployment concerns, not implicit changes made
-by the model command. Do not expose the management API publicly.
-
-Create a private configuration directory and a dedicated LiteLLM database on your
-Postgres server. LiteLLM owns its schema and migrations; do not share its database
-with Access/Connections tables. Copy [gateway.env.example](gateway.env.example)
-to that directory as `gateway.env`, mode 0600, and replace every example value.
-`LITELLM_MASTER_KEY` is the administrator key; `LITELLM_SALT_KEY` is stable encryption
-material. Both and upstream provider credentials stay in this companion only.
-
-```sh
-pnpm clawscarf models render --config /private/models.json --output /private/gateway/models.json
-CLAWSCARF_MODELS_DIRECTORY=/private/gateway docker compose -f deploy/models/compose.yaml up -d
-```
-
-The renderer writes JSON (accepted as YAML by LiteLLM), includes enabled routes and
-secret environment references, and refuses to overwrite existing output. Change
-routes by rendering reviewed replacement configuration and restarting the companion.
-No automatic gateway request retries or provider fallback are configured; native OpenClaw retains its own retry policy.
-
-Use LiteLLM's built-in key management to issue a runtime key limited to the enabled
-model IDs. Put the administrator key alone in a separate private file for the CLI:
-
-```sh
-pnpm clawscarf models issue-key --config /private/models.json --origin http://127.0.0.1:14000 --master-key-file /private/master-key --output /private/runtime-key
-pnpm clawscarf models revoke-key --origin http://127.0.0.1:14000 --master-key-file /private/master-key --key-file /private/runtime-key --yes
-```
-
-Both credential commands accept `--ca-file /private/management-ca.pem` for a
-private HTTPS management endpoint. The option adds explicit CA trust for that
-command; certificate and hostname verification remain enabled. Omit it for
-publicly trusted HTTPS or the loopback HTTP component example above.
-
-Issued keys have LiteLLM's `llm_api` type: inference only, with no administration
-access. The output file is created mode 0600 without overwrite; secrets never print.
-For rotation, issue a new key, replace the runtime secret, then revoke the old key.
-A lost issuance response is uncertain: inspect/revoke the orphan in LiteLLM's
-operator interface before repeating. No mutation is automatically replayed.
-This is one trusted team's gateway, not a per-person spending or billing system.
+[compose.yaml](compose.yaml) pins LiteLLM and exposes its API only on loopback.
+[compose.tls.yaml](compose.tls.yaml) adds private TLS for the protected runtime.
+LiteLLM owns its separate database and migrations. Its management API must not be
+publicly exposed. Key administration, including revocation, uses LiteLLM's own API.
+Normal configuration updates only the existing key's model permissions; it never
+renews, unblocks or replaces that key.
 
 ## Verification and provenance
 
@@ -139,16 +42,12 @@ LiteLLM's own virtual-key authorization replaces that deployment-specific hook.
 See upstream [virtual keys](https://docs.litellm.ai/docs/proxy/virtual_keys) and
 [native LiteLLM provider](https://docs.openclaw.ai/providers/litellm).
 
-[Credential CLI tests](../../tests/models/credentials.test.ts) exercise issuance and
-revocation against a local HTTPS server: missing CA trust fails before either
-request, explicit trust succeeds, and scoped credentials do not print.
+[Credential tests](../../tests/models/credentials.test.ts) exercise issuance against a local HTTPS server: missing CA trust fails before
+a request and explicit trust succeeds.
 [Runtime failure tests](../../tests/models/runtime-errors.test.ts) cover strict
 input validation, definite dry-run failure, missing executables, uncertain applies,
 credential retention and structured failure transport without replay.
 
-[Native tests](../../tests/models/native.test.ts) passed against OpenClaw 2026.9.4:
-validation without writes, atomic application, customer provider/default fallback
-and agent override preservation, and disabled configuration.
 [Gateway tests](../../tests/models/gateway.test.ts) passed against the pinned
 LiteLLM image and real Postgres, with a controlled upstream: discovery, text and
 tool responses, streaming, upstream failure without replay, model/management denial
@@ -185,10 +84,6 @@ installation, not a production model default. The actual browser path is qualifi
 for that administrator configuration; member execution and release-artifact
 clean-machine acceptance remain separate.
 
-```sh
-CLAWSCARF_TEST_NATIVE_MODELS=1 pnpm exec tsx --test tests/models/native.test.ts
-```
-
 For isolated gateway tests, render [gateway.fixture.json](../../tests/models/gateway.fixture.json)
 as its generated route configuration, set `TEST_PROVIDER_KEY=test-provider` in its private environment,
 and use a dedicated test database/master key. Start it with the Compose file on
@@ -221,8 +116,8 @@ Compose overlay and the isolated test database. Run
 [the controlled upstream](../../tests/models/native-upstream.mjs) on host port 14001.
 In a disposable OpenShell runtime, initialize normal native configuration with the
 read tool enabled and a workspace file named model-proof.txt containing
-`controlled native tool result`. Use `configure-runtime` above with the private
-fixture configuration, scoped runtime key and public CA. The
+`controlled native tool result`. Use `clawscarf configure` with the private fixture catalog, gateway URL,
+scoped runtime key and public CA. The
 [probe](../../tests/models/openshell-probe.mjs) invokes the shipped canonical
 launcher without injecting a model token or replacing inherited CA trust: the key comes from its
 native file SecretRef and the launcher combines the configured public CA with

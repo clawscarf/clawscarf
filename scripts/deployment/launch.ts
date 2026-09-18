@@ -3,7 +3,6 @@ import { verifyRuntimeImage } from "./images.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
 import { verifyBrowserNode } from "./browser-node.js";
 import { verifyRelayConfiguration } from "./relay.js";
-import { requireNoConnectionsChange } from "./connections-runtime.js";
 import {
   verifyBrowserListener,
   verifyBrowserConfiguration,
@@ -53,7 +52,6 @@ export async function launchLocal(
   };
   const name = resourceNames(state).sandbox;
   await requireNoUpgrade(directory);
-  await requireNoConnectionsChange(directory, state.ownerId);
   await verifyRuntimeImage(state.input.runtimeImage);
   await verifyLocalExecutables(state);
   await verifyLocalPorts(state);

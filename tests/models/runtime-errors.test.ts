@@ -11,14 +11,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { configure, parseInput } from "../../runtime/models.js";
-import { nativeAssignments } from "../../scripts/models/configuration.js";
-import { loadConfiguration } from "../../scripts/models/native.js";
 import {
-  configureRuntimeModels,
-  configureStoppedRuntimeModels,
-} from "../../scripts/models/runtime.js";
-const configuration = await loadConfiguration(
-  "deploy/models/config.example.json",
+  nativeAssignments,
+  configurationSchema,
+} from "../../scripts/models/configuration.js";
+import { configureStoppedRuntimeModels } from "../../scripts/models/runtime.js";
+const configuration = configurationSchema.parse(
+  JSON.parse(await readFile("deploy/models/config.example.json", "utf8")),
 );
 const input = {
   assignments: nativeAssignments(configuration),
@@ -95,59 +94,22 @@ await test("native validation failure is definitive; failed apply remains uncert
   }
 });
 
-await test("controller preserves structured model failures and never replays an uncertain apply", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "clawscarf-model-protocol-"));
-  try {
-    const keyFile = join(directory, "key");
-    await writeFile(keyFile, "sk-runtime");
-    const executable = join(directory, "openshell");
-    for (const [wire, expected] of [
-      [JSON.stringify({ ok: false, error: "invalid_input" }), "invalid_input"],
-      [
-        JSON.stringify({ ok: false, error: "validation_rejected" }),
-        "validation_rejected",
-      ],
-      [
-        JSON.stringify({ ok: false, error: "outcome_unknown" }),
-        "outcome_unknown",
-      ],
-      [
-        JSON.stringify({ ok: false, error: "unknown-vendor-secret" }),
-        "outcome_unknown",
-      ],
-      ["", "outcome_unknown"],
-    ]) {
-      const calls = join(directory, "calls");
-      await rm(calls, { force: true });
-      await writeFile(
-        executable,
-        `#!${process.execPath}\nimport {appendFileSync} from 'node:fs'; for await (const chunk of process.stdin) {} appendFileSync(${JSON.stringify(calls)}, 'x'); process.stdout.write(${JSON.stringify(wire)}); process.exitCode = 1;`,
-        { mode: 0o700 },
-      );
-      await assert.rejects(
-        configureRuntimeModels({
-          configuration,
-          keyFile,
-          openshell: executable,
-          gateway: "team",
-          sandbox: "team",
-          apply: true,
-        }),
-        { code: expected },
-      );
-      assert.equal(await readFile(calls, "utf8"), "x");
-    }
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
 await test("stopped model helper preserves definitive failures and treats missing packaging as preflight failure", async () => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-stopped-models-"));
   const oldPath = process.env.PATH;
   try {
     process.env.PATH = `${directory}:${oldPath ?? ""}`;
     for (const [wire, apply, expected] of [
+      [
+        JSON.stringify({ ok: false, error: "invalid_input" }),
+        true,
+        "invalid_input",
+      ],
+      [
+        JSON.stringify({ ok: false, error: "unknown-vendor-secret" }),
+        true,
+        "outcome_unknown",
+      ],
       [
         JSON.stringify({ ok: false, error: "validation_rejected" }),
         true,

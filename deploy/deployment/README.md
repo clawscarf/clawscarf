@@ -144,14 +144,9 @@ Stop the installation, then start only its private controller:
 docker compose -f .local/my-team/compose.json up -d controller
 ```
 
-For an installation created through `configure`, apply the scoped credential and
-prepared broker endpoint using its installation directory (not the private state folder):
-
-```sh
-pnpm clawscarf connections configure --directory /absolute/my-team \
-  --credential-file /private/connections-token --yes
-pnpm clawscarf connections observe --directory /absolute/my-team
-```
+For an installation created through `configure`, change Connections using
+`clawscarf configure --directory /absolute/my-team --connections` or
+`--no-connections`. The installer handles its scoped cloud credential.
 
 Configuration requires stopped, verified compute and exclusive access to its owned
 home volume. It retains the expected credential privately outside the companion's

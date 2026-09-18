@@ -14,52 +14,20 @@ with workspace-only file tools. It requires the configured default model; it doe
 not install network tools, accounts or a provider. Its agents remain independent;
 a person supplies material and transfers a draft for review.
 
-## Inspect and operate
+## Select and change packs
 
-The runtime image ships the pack tool and the included pack. No repository checkout,
-package installation or second OpenClaw is required inside it. For an existing
-OpenShell installation, use authenticated operator execution:
+Use `clawscarf configure --directory /path/to/team` to select release packs and
+members. Noninteractive callers use `--pack <id:member,member>` and optional
+`--pack-bindings <id=file>`. `--no-packs` removes all selected members. Changes
+are reviewed before the server stops; native application finishes at startup.
 
-```sh
-# Use the controller configuration selected during installation.
-pack() {
-  openshell sandbox exec --name clawscarf --gateway clawscarf \
-    --env OPENCLAW_EXPERIMENTAL_CLAWS=1 -- /app/clawscarf/bin/packs "$@"
-}
-pack inspect /app/clawscarf/packs/research-team
-pack add /app/clawscarf/packs/research-team \
-  --member researcher --workspace /home/node/workspaces/researcher \
-  --plan /home/node/researcher-plan.json
-pack apply /home/node/researcher-plan.json --yes
-pack status researcher
-```
+The installation operator calls OpenClaw's native Claws preview/apply operations.
+It preserves edited and unmanaged files, checks plan integrity and does not replay
+uncertain mutations. Removing an agent remains destructive. Native monitor cleanup
+under trusted-proxy login has an unresolved authentication issue in [TODO.md](../TODO.md).
 
-Replace sandbox/gateway names with the selected deployment. The launcher selects
-the existing native state and CLI. Configure its [model gateway](../deploy/models/README.md)
-first; the pack does not install or request provider credentials. Native Claws are
-experimental: the explicit environment flag opts into that upstream capability.
-Native removal requires a running Gateway and CLI authentication for monitor cleanup,
-even when the pack declares no monitors. Removal under the product's trusted-proxy
-login has an unresolved authentication issue in [TODO.md](../TODO.md). Plans and
-workspaces are written to the persistent home volume, never the image.
-
-For development with a local OpenClaw **2026.9.4** installation, invoke
-`pnpm clawscarf packs` in place of `pack`, using the normal native
-`OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH`. That source command is not required
-inside the packaged runtime.
-
-Review the entire plan before `apply`. Repeat the preview/apply pair for `reviewer`.
-Each member has its own native plan because installing one agent changes the next
-agent's observed configuration. There is no misleading atomic multi-agent promise.
-Use `update` or `remove` in place of `add` for explicit reapplication or removal.
-Plans include native capability changes and integrity, selected prerequisites and
-pack source digest. Apply rechecks them and rejects drift. No force-removal options
-or automatic mutation retries are exposed. Native removal preserves edited and
-unmanaged workspace files; removal of an agent is still a destructive action.
-
-Use the native `openclaw claws build <member-directory> --out <artifact.tgz>`
-command to build individual portable packages. No ClawScarf-specific agent format
-is required by a consumer of those packages.
+The private runtime helper only inspects packaged source. Individual portable Claws
+can be built with native `openclaw claws build <member-directory> --out <artifact.tgz>`.
 
 ## Requirements and bindings
 
@@ -68,32 +36,11 @@ and network requirements. `configured-default` checks native model configuration
 and credential readiness, not a successful inference. It never sets a provider or
 copies keys. Required binaries, network policy, native Claws commands, model readiness and
 owned files are checked on the same protected team runtime.
-Local runtime pack commands cannot qualify execution requirements; use the operator
-with the protected runtime target for those packs.
-
-For connection-dependent packs, operate from the controller machine. Install the
-released official OpenShell Python SDK using the [hashed dependency lock](../scripts/packs/requirements.txt):
-
-```sh
-uv venv --python 3.12 .local/pack-operator
-uv pip sync --python .local/pack-operator/bin/python scripts/packs/requirements.txt
-export OPENCLAW_EXPERIMENTAL_CLAWS=1
-pnpm clawscarf packs --sandbox clawscarf --gateway clawscarf \
-  --python .local/pack-operator/bin/python \
-  add /path/to/pack --member assistant --workspace /home/node/workspaces/assistant \
-  --bindings /private/bindings.json --plan /private/assistant-plan.json
-pnpm clawscarf packs --sandbox clawscarf --gateway clawscarf \
-  --python .local/pack-operator/bin/python \
-  apply /private/assistant-plan.json --bindings /private/bindings.json --yes
-```
-
-Use `--openshell` for a non-default CLI path. The [operator bridge](../scripts/packs/transport.py)
-uses official OpenShell **0.0.116** `SandboxClient` with the controller's existing
-TLS/OIDC configuration. It records the runtime UUID in the preview and
-dispatches every operation to that target. Reusing a deleted sandbox's name cannot redirect a mutation. No controller or browser
-credentials are copied to the runtime. The built operator artifact preserves this
-helper beside its compiled CLI; Python and its SDK environment stay on the operator
-machine. The runtime command deliberately omits remote and browser-binding options.
+The operator uses the official OpenShell SDK through its [transport](../scripts/packs/transport.py),
+with the controller's existing TLS credentials. Supply its Python environment using
+`--pack-python`; dependencies are pinned in [requirements.txt](../scripts/packs/requirements.txt).
+Operations target the recorded runtime UUID, so replacing a sandbox under the same
+name cannot redirect a mutation. Browser/controller credentials remain outside it.
 
 A binding file contains:
 
@@ -111,7 +58,7 @@ account ID/type, current account state and grant for the target agent using the
 administrator's current session. Missing selected-agent grants block preview;
 never widen access automatically. Initial installation can use an existing account
 already available to all agents. Once the pack exists, restrict that account to its
-agent and use update/apply. An account restricted to a not-yet-created agent needs
+agent and reconfigure the pack. An account restricted to a not-yet-created agent needs
 an explicit two-stage setup; this command does not invent pre-admission grants. The target plugin's configured broker must match the explicit `brokerUrl`. `origin`
 is the administrator-facing management origin; these may differ in a local
 composition (for example, localhost versus a private runtime hostname). This is

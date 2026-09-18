@@ -361,18 +361,10 @@ await test("concurrent operators cannot mutate the same installation", async (t)
   await withInstallationLock(state, async () => {
     const { startInstallation } = await import("./installation/lifecycle.js");
     const { upgradeLocal } = await import("./deployment/upgrade.js");
-    const { operateConnectionsRuntime } =
-      await import("./deployment/connections-runtime.js");
     for (const operation of [
       () => withInstallationLock(state, () => Promise.resolve(undefined)),
       () => startInstallation(state, () => {}),
       () => upgradeLocal(state, "unused", "unused", () => {}),
-      () => operateConnectionsRuntime(state, { kind: "observe" }),
-      () =>
-        operateConnectionsRuntime(state, {
-          kind: "configure",
-          credentialFile: "unused",
-        }),
     ])
       await assert.rejects(operation(), { code: "operation_busy" });
   });

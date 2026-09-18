@@ -5,11 +5,8 @@ import { once } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  issueRuntimeCredential,
-  revokeRuntimeCredential,
-} from "../../scripts/models/credentials.js";
-import { loadConfiguration } from "../../scripts/models/native.js";
+import { issueRuntimeCredential } from "../../scripts/models/credentials.js";
+import { configurationSchema } from "../../scripts/models/configuration.js";
 await test(
   "pinned LiteLLM virtual keys scope inference, reject administration and revoke",
   {
@@ -105,8 +102,10 @@ await test(
         origin,
         masterKeyFile,
         output: keyFile,
-        configuration: await loadConfiguration(
-          "deploy/models/config.example.json",
+        configuration: configurationSchema.parse(
+          JSON.parse(
+            await readFile("deploy/models/config.example.json", "utf8"),
+          ),
         ),
       });
       const key = (await readFile(keyFile, "utf8")).trim();
@@ -188,7 +187,19 @@ await test(
       });
       assert.equal(failed.status, 503);
       assert.equal(calls, 4);
-      await revokeRuntimeCredential({ origin, masterKeyFile, keyFile });
+      assert.equal(
+        (
+          await fetch(`${origin}/key/delete`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${(await readFile(masterKeyFile, "utf8")).trim()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ keys: [key] }),
+          })
+        ).ok,
+        true,
+      );
       const revoked = await fetch(`${origin}/v1/models`, { headers });
       assert.ok([401, 403].includes(revoked.status));
     } finally {

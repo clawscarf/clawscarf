@@ -58,35 +58,6 @@ export async function issueRuntimeCredential(input: {
     throw Error("Runtime key was stored, but local credential cleanup failed.");
 }
 
-export async function revokeRuntimeCredential(input: {
-  origin: string;
-  masterKeyFile: string;
-  keyFile: string;
-  caFile?: string;
-}) {
-  const key = (await readFile(input.keyFile, "utf8")).trim();
-  const client = await managementClient(input);
-  try {
-    if (!key.startsWith("sk-") || key === client.masterKey)
-      throw Error("Supply distinct administrator and runtime credentials.");
-    const response = await client.request("/key/delete", {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(30000),
-      headers: {
-        Authorization: `Bearer ${client.masterKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ keys: [key] }),
-    });
-    await response.body?.cancel();
-    if (!response.ok)
-      throw Error("LiteLLM credential revocation was rejected.");
-  } finally {
-    await client.close();
-  }
-}
-
 async function managementClient(input: {
   origin: string;
   masterKeyFile: string;

@@ -1,6 +1,16 @@
-import { packsCommand } from "./packs/command.js";
+import { Command } from "commander";
+import { NativeClaws } from "./packs/native.js";
+import { inspectPack } from "./packs/lifecycle.js";
 
-await packsCommand()
-  .name("clawscarf-packs")
-  .option("--json", "Print machine-readable results")
+// Private runtime helper used by the installation operator.
+await new Command("clawscarf-packs")
+  .command("inspect <directory>")
+  .requiredOption("--json")
+  .action(async (directory: string) => {
+    console.log(
+      JSON.stringify(
+        await inspectPack(directory, new NativeClaws("openclaw", false)),
+      ),
+    );
+  })
   .parseAsync();

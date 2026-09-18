@@ -2,16 +2,10 @@ import { connectionCommands } from "../connections.js";
 import { peopleCommand } from "../people.js";
 import { confirmDeletion, deleteInstallation } from "./delete.js";
 import { writeResult } from "../output.js";
-import { modelsCommand } from "../models/command.js";
-import { packsCommand } from "../packs/command.js";
-import {
-  configurationInput,
-  initialConfiguration,
-} from "../../runtime/configuration.js";
 import { createDevelopmentRelease } from "../release/create.js";
 import { Command } from "commander";
 import { z } from "zod";
-import { readFile, writeFile, access } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { installationSchema } from "./configuration.js";
 import { readJson } from "./files.js";
@@ -24,7 +18,6 @@ import { doctorInstallation } from "./doctor.js";
 import { localLogNames } from "../deployment/logs.js";
 import { upgradeLocal } from "../deployment/upgrade.js";
 import { setupContext, type SetupOptions } from "./setup.js";
-import { operateConnectionsRuntime } from "../deployment/connections-runtime.js";
 import { progress } from "./installer/prompts.js";
 import { runConfiguration } from "./installer/run.js";
 import { installationOptions, type ConfigureOptions } from "./options.js";
@@ -231,56 +224,8 @@ export function installationCommand() {
     );
   const connections = program
     .command("connections")
-    .description(
-      "Observe or explicitly configure the stopped native Connections integration",
-    );
+    .description("Manage connected accounts and their agent access");
   connectionCommands(connections, program);
-  withLocation(connections.command("observe")).action(
-    async (options: LocationOptions) => {
-      output(
-        await operateConnectionsRuntime(await resolveLocation(options), {
-          kind: "observe",
-        }),
-      );
-    },
-  );
-  withLocation(connections.command("configure"))
-    .requiredOption(
-      "--credential-file <path>",
-      "Private file containing the scoped broker token",
-    )
-    .requiredOption(
-      "--yes",
-      "Replace only the Connections endpoint and credential; preserve native disablement and other settings",
-    )
-    .action(async (options: LocationOptions & { credentialFile: string }) => {
-      output(
-        await operateConnectionsRuntime(await resolveLocation(options), {
-          kind: "configure",
-          credentialFile: options.credentialFile,
-        }),
-      );
-    });
-  program.addCommand(modelsCommand());
-  program.addCommand(packsCommand());
-  program
-    .command("config")
-    .description("Render native configuration from an explicit preset")
-    .command("render-native")
-    .requiredOption("--input <file>", "Preset JSON")
-    .requiredOption("--output <file>", "New native configuration file")
-    .action(async (options: { input: string; output: string }) => {
-      const config = initialConfiguration(
-        configurationInput.parse(
-          JSON.parse(await readFile(options.input, "utf8")),
-        ),
-      );
-      await writeFile(options.output, JSON.stringify(config, null, 2) + "\n", {
-        flag: "wx",
-        mode: 0o600,
-      });
-      output({ state: "created", file: options.output });
-    });
   return program;
 }
 

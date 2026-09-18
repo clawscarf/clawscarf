@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { promisify } from "node:util";
 import { ensureCertificates } from "../../scripts/deployment/certificates.js";
-const execute = promisify(execFile);
+import { issueRuntimeCredential } from "../../scripts/models/credentials.js";
+import { configurationSchema } from "../../scripts/models/configuration.js";
 
-await test("credential CLI issues and revokes over private TLS only with the trusted CA", async () => {
+await test("credential operator issues over private TLS only with the trusted CA", async () => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-model-tls-"));
   await ensureCertificates(directory);
   const requests: {
@@ -52,49 +51,26 @@ await test("credential CLI issues and revokes over private TLS only with the tru
     const master = join(directory, "master");
     const output = join(directory, "runtime");
     await writeFile(master, "sk-master-secret", { mode: 0o600 });
-    const common = ["--origin", origin, "--master-key-file", master];
-    const issue = [
-      "--import",
-      "tsx",
-      "scripts/clawscarf.ts",
-      "models",
-      "issue-key",
-      "--config",
-      "deploy/models/config.example.json",
-      "--output",
+    const input = {
+      origin,
+      masterKeyFile: master,
       output,
-      ...common,
-    ];
-    await assert.rejects(execute(process.execPath, issue));
+      configuration: configurationSchema.parse(
+        JSON.parse(await readFile("deploy/models/config.example.json", "utf8")),
+      ),
+    };
+    await assert.rejects(issueRuntimeCredential(input));
     assert.equal(requests.length, 0);
-    const trust = ["--ca-file", join(directory, "management-ca.pem")];
-    const result = await execute(process.execPath, [...issue, ...trust]);
-    assert.ok(!result.stdout.includes("sk-"));
+    await issueRuntimeCredential({
+      ...input,
+      caFile: join(directory, "management-ca.pem"),
+    });
     assert.equal((await readFile(output, "utf8")).trim(), "sk-scoped-runtime");
-    const revoke = [
-      "--import",
-      "tsx",
-      "scripts/clawscarf.ts",
-      "models",
-      "revoke-key",
-      ...common,
-      "--key-file",
-      output,
-      "--yes",
-    ];
-    await assert.rejects(execute(process.execPath, revoke));
-    assert.equal(requests.length, 1);
-    await execute(process.execPath, [...revoke, ...trust]);
     assert.deepEqual(requests, [
       {
         path: "/key/generate",
         authorization: "Bearer sk-master-secret",
         body: { models: ["team-model"], key_type: "llm_api" },
-      },
-      {
-        path: "/key/delete",
-        authorization: "Bearer sk-master-secret",
-        body: { keys: ["sk-scoped-runtime"] },
       },
     ]);
   } finally {

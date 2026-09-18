@@ -4,43 +4,7 @@ import {
   type ModelState,
 } from "../../runtime/model-contract.js";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
 import { nativeAssignments, type ModelConfiguration } from "./configuration.js";
-export async function configureRuntimeModels(options: {
-  configuration: ModelConfiguration;
-  openshell: string;
-  sandbox: string;
-  gateway: string;
-  keyFile: string;
-  caFile?: string;
-  apply: boolean;
-}) {
-  const assignments = nativeAssignments(options.configuration);
-  if (!assignments.length) return "disabled";
-  const token = (await readFile(options.keyFile, "utf8")).trim();
-  if (!token || token.length > 65536)
-    throw new ModelConfigurationError("invalid_input");
-  const ca = options.caFile ? await readFile(options.caFile, "utf8") : null;
-  return runModelHelper(
-    options.openshell,
-    [
-      "sandbox",
-      "exec",
-      "--name",
-      options.sandbox,
-      "--gateway",
-      options.gateway,
-      "--no-tty",
-      "--timeout",
-      "45",
-      "--",
-      "node",
-      "/app/clawscarf/models-main.js",
-    ],
-    { assignments, token, ca, apply: options.apply },
-  );
-}
-
 /** Use the same packaged native helper while its owned home volume is stopped. */
 export async function configureStoppedRuntimeModels(options: {
   image: string;
@@ -84,7 +48,7 @@ export async function configureStoppedRuntimeModels(options: {
   );
 }
 
-/** Both transports use one bounded protocol and the same failure semantics. */
+/** Preserve structured helper failures and never replay an uncertain apply. */
 function runModelHelper(
   executable: string,
   args: string[],

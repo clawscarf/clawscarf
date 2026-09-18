@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { promisify } from "node:util";
@@ -16,7 +16,7 @@ const cli = (...args: string[]) =>
     env: commandEnvironment,
   });
 
-await test("linked development command resolves its checkout and preserves caller-relative paths", async (t) => {
+await test("linked development command resolves its checkout", async (t) => {
   const directory = await mkdtemp("/tmp/clawscarf-linked-cli-");
   t.after(() => rm(directory, { recursive: true, force: true }));
   const launcher = join(directory, "clawscarf");
@@ -25,30 +25,6 @@ await test("linked development command resolves its checkout and preserves calle
     cwd: directory,
   });
   assert.match(stdout, /Usage: clawscarf/);
-  const config = {
-    publicOrigin: "http://localhost:18800",
-    widgetOrigin: "http://localhost:18802",
-    administratorIdentity: "clawscarf:linked-test",
-  };
-  await writeFile(join(directory, "input.json"), JSON.stringify(config));
-  await execute(
-    process.execPath,
-    [
-      launcher,
-      "config",
-      "render-native",
-      "--input",
-      "input.json",
-      "--output",
-      "native.json",
-      "--json",
-    ],
-    { cwd: directory },
-  );
-  assert.match(
-    await readFile(join(directory, "native.json"), "utf8"),
-    /http:\/\/localhost:18800/,
-  );
 });
 
 await test("CLI status use readable output or explicit JSON without issuing credentials", async (t) => {
@@ -141,8 +117,6 @@ else process.exit(1);
     ["configure"],
     ["logs", "--service", "controller"],
     ["upgrade", "--runtime-image", "unused", "--python", "unused", "--yes"],
-    ["connections", "observe"],
-    ["connections", "configure", "--credential-file", "unused", "--yes"],
   ]) {
     await assert.rejects(
       cli(...command, "--directory", root, "--state", directory, "--json"),
@@ -166,27 +140,8 @@ else process.exit(1);
   assert.match(pending.stdout, /administrator --issue/);
 });
 
-await test("CLI JSON covers nested commands and errors; file outputs remain JSON", async (t) => {
-  const root = await mkdtemp("/tmp/clawscarf-cli-");
-  t.after(() => rm(root, { recursive: true, force: true }));
+await test("CLI errors support human and JSON output", async () => {
   for (const json of [false, true]) {
-    const output = join(root, json ? "machine.json" : "human.json");
-    const result = await cli(
-      "models",
-      "render",
-      "--config",
-      "deploy/models/config.example.json",
-      "--output",
-      output,
-      ...(json ? ["--json"] : []),
-    );
-    if (json)
-      assert.deepEqual(JSON.parse(result.stdout), {
-        state: "created",
-        file: output,
-      });
-    else assert.equal(result.stdout, "Gateway configuration written.\n");
-    assert.ok(JSON.parse(await readFile(output, "utf8")));
     await assert.rejects(
       cli("status", ...(json ? ["--json"] : [])),
       (error: unknown) => {
@@ -229,9 +184,20 @@ await test("CLI deletion refuses missing confirmations without touching an insta
 });
 
 await test("one configure entry point; removed commands and input aliases fail visibly", async () => {
-  for (const name of ["install", "settings", "validate", "plan", "apply"]) {
+  for (const name of [
+    "install",
+    "settings",
+    "validate",
+    "plan",
+    "apply",
+    "models",
+    "packs",
+    "config",
+  ]) {
     await assert.rejects(cli(name), /unknown command/);
   }
+  for (const name of ["configure", "observe"])
+    await assert.rejects(cli("connections", name), /unknown command/);
   for (const flag of ["--settings", "--recipes", "--state"]) {
     await assert.rejects(cli("configure", flag, "unused"), /unknown option/);
   }
