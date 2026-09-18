@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
@@ -30,11 +31,11 @@ const inputSchema = releaseSchema.extend({
 async function tool(source: string, destination: string, file: string) {
   const stat = await lstat(source);
   if (!stat.isFile() || !(stat.mode & 0o111))
-    throw Error("Release tools must be regular executable files.");
+    throw new OperatorError("Release tools must be regular executable files.");
   await copyFile(source, destination);
   const hash = createHash("sha256");
   for await (const bytes of createReadStream(destination)) {
-    if (!Buffer.isBuffer(bytes)) throw Error("Invalid file stream");
+    if (!Buffer.isBuffer(bytes)) throw new OperatorError("Invalid file stream");
     hash.update(bytes);
   }
   return { file, sha256: hash.digest("hex") };
@@ -70,7 +71,7 @@ export async function createDevelopmentRelease(options: {
     for (const source of input.packs) {
       const pack = await openPack(resolve(directory, source));
       if (packs.some((entry) => entry.id === pack.manifest.id))
-        throw Error(`Duplicate release pack: ${pack.manifest.id}`);
+        throw new OperatorError(`Duplicate release pack: ${pack.manifest.id}`);
       await cp(pack.root, join(output, "packs", pack.manifest.id), {
         recursive: true,
       });

@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { run } from "./process.js";
 export async function ensureOwnedVolume(name: string, ownerId: string) {
   const listed = (
@@ -23,5 +24,7 @@ export async function ensureOwnedVolume(name: string, ownerId: string) {
     ])
   ).trim();
   if (label !== ownerId)
-    throw Error("A volume with this name belongs to a different installation.");
+    throw new OperatorError(
+      "A volume with this name belongs to a different installation.",
+    );
 }

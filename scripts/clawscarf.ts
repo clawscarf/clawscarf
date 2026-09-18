@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { OperatorError } from "./errors.js";
 import { ModelConfigurationError } from "../runtime/model-contract.js";
 import { CommanderError } from "commander";
 import { ZodError } from "zod";
@@ -18,6 +19,7 @@ try {
 } catch (error) {
   if (error instanceof CommanderError && error.exitCode === 0) process.exit(0);
   const known =
+    error instanceof OperatorError ||
     error instanceof InstallationError ||
     error instanceof LocalSetupError ||
     error instanceof LocalDatabaseError ||
@@ -31,11 +33,32 @@ try {
     typeof error.detail === "string"
       ? { code: error.code, detail: error.detail }
       : null;
+  const fileFailure =
+    error instanceof Error &&
+    "code" in error &&
+    "path" in error &&
+    typeof error.path === "string" &&
+    typeof error.code === "string" &&
+    [
+      "ENOENT",
+      "ENOTDIR",
+      "EACCES",
+      "EPERM",
+      "EEXIST",
+      "ELOOP",
+      "ENOSPC",
+    ].includes(error.code)
+      ? {
+          code: error.code,
+          detail: `File operation failed (${error.code}): ${JSON.stringify(error.path)}. Check the path, permissions and available disk space.`,
+        }
+      : undefined;
   const failure = {
     ...(error instanceof LocalSetupError && error.commandFailure
       ? { command: error.commandFailure }
       : {}),
     code:
+      fileFailure?.code ??
       remote?.code ??
       (error instanceof InstallerCancelled
         ? "cancelled"
@@ -47,6 +70,7 @@ try {
               ? "invalid_arguments"
               : "operation_failed"),
     detail:
+      fileFailure?.detail ??
       remote?.detail ??
       (error instanceof InstallerCancelled
         ? "Cancelled. Saved files and any running installation are retained."

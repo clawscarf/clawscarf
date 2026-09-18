@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { readFile, realpath } from "node:fs/promises";
 import { sep } from "node:path";
 import { z } from "zod";
@@ -20,15 +21,17 @@ export async function verifyConnections(
   const connections: PackPlan["requirements"]["connections"] = [];
   if (member.requirements.connections.length) {
     if (!member.connectionFile)
-      throw Error(
+      throw new OperatorError(
         "A connection-dependent member must declare its native-owned connectionFile.",
       );
     if (!native.supportsConnectionBindings)
-      throw Error(
+      throw new OperatorError(
         "Connection-dependent packs require operator-side verification; do not copy administrator sessions into this runtime.",
       );
     if (!bindingsFile)
-      throw Error("This pack requires explicit connection bindings.");
+      throw new OperatorError(
+        "This pack requires explicit connection bindings.",
+      );
     const bindings = bindingsSchema.parse(
       JSON.parse(await readFile(bindingsFile, "utf8")),
     );
@@ -40,28 +43,31 @@ export async function verifyConnections(
       origin.hash ||
       origin.pathname !== "/"
     )
-      throw Error(
+      throw new OperatorError(
         "Management origin must not contain credentials, path, query or fragment.",
       );
     if (
       origin.protocol !== "https:" &&
       !["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname)
     )
-      throw Error("Connection bindings require HTTPS or a loopback origin.");
+      throw new OperatorError(
+        "Connection bindings require HTTPS or a loopback origin.",
+      );
     const broker = await native.brokerUrl();
     if (broker !== bindings.brokerUrl.replace(/\/$/, ""))
-      throw Error(
+      throw new OperatorError(
         "Connection bindings do not match the target runtime broker.",
       );
     for (const privatePath of [bindingsFile, bindings.sessionFile]) {
       const path = await realpath(privatePath);
       if (path === sourceRoot || path.startsWith(sourceRoot + sep))
-        throw Error(
+        throw new OperatorError(
           "Keep connection bindings and administrator sessions outside the pack source.",
         );
     }
     const cookie = (await readFile(bindings.sessionFile, "utf8")).trim();
-    if (!/^[A-Za-z0-9_-]+$/.test(cookie)) throw Error("Invalid session file.");
+    if (!/^[A-Za-z0-9_-]+$/.test(cookie))
+      throw new OperatorError("Invalid session file.");
     const client = createClient({
       baseUrl: origin.origin,
       redirect: "error",
@@ -69,7 +75,8 @@ export async function verifyConnections(
     });
     for (const required of member.requirements.connections) {
       const id = bindings.connections[required.slot];
-      if (!id) throw Error(`Missing connection binding: ${required.slot}`);
+      if (!id)
+        throw new OperatorError(`Missing connection binding: ${required.slot}`);
       const { data } = await getConnection({
         client,
         path: { connectionId: id },
@@ -100,7 +107,7 @@ export async function verifyConnections(
         (account.grant.mode === "selected" &&
           !account.grant.agentIds.includes(member.id))
       )
-        throw Error(
+        throw new OperatorError(
           `Connection binding is unavailable for ${member.id}: ${required.slot}`,
         );
       if (
@@ -108,7 +115,9 @@ export async function verifyConnections(
           (connection) => connection.serverId !== account.serverId,
         )
       )
-        throw Error("Pack account bindings must belong to one server.");
+        throw new OperatorError(
+          "Pack account bindings must belong to one server.",
+        );
       connections.push({
         slot: required.slot,
         serverId: account.serverId,

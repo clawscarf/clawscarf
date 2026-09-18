@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { controllerServices } from "./controller-compose.js";
 import {
   browserNodeServices,
@@ -22,7 +23,7 @@ export function composeConfiguration(
   const privateDirectory = join(directory, "private");
   const labels = { "clawscarf.installation": ownerId };
   if (input.browser && (!browserAddress || !browserMachine))
-    throw Error(
+    throw new OperatorError(
       "The isolated browser address and prepared native node are required.",
     );
   const constrained = {

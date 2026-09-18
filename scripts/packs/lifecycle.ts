@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
@@ -58,7 +59,7 @@ export async function planPack(
   const member = source.manifest.members.find(
     (item) => item.id === input.member,
   );
-  if (!member) throw Error("Unknown pack member.");
+  if (!member) throw new OperatorError("Unknown pack member.");
   const verified =
     input.operation === "remove"
       ? { model: null, connections: [], network: null }
@@ -111,7 +112,7 @@ export async function planPack(
     validated.summary?.blocked ||
     validated.diagnostics?.some((item) => item.level === "error")
   )
-    throw Error(
+    throw new OperatorError(
       "Native Claw plan is blocked; inspect it with openclaw claws before applying.",
     );
   return planSchema.parse({
@@ -135,10 +136,10 @@ export async function applyPack(
 ) {
   const plan = planSchema.parse(value);
   if (!isDeepStrictEqual(await native.target(), plan.target))
-    throw Error("Pack target changed; review a new plan.");
+    throw new OperatorError("Pack target changed; review a new plan.");
   const source = await openPack(plan.pack);
   if (source.digest !== plan.packDigest)
-    throw Error("Pack sources changed; review a new plan.");
+    throw new OperatorError("Pack sources changed; review a new plan.");
   const fresh = await planPack(
     {
       directory: source.root,
@@ -156,11 +157,13 @@ export async function applyPack(
     fresh.planIntegrity !== plan.planIntegrity ||
     !isDeepStrictEqual(fresh.requirements, plan.requirements)
   )
-    throw Error("Native state or requirements changed; review a new plan.");
+    throw new OperatorError(
+      "Native state or requirements changed; review a new plan.",
+    );
   const member = source.manifest.members.find(
     (item) => item.id === plan.member,
   );
-  if (!member) throw Error("Pack member disappeared.");
+  if (!member) throw new OperatorError("Pack member disappeared.");
   return native.run([
     ...argumentsFor(plan.operation, plan.targetPack, member, plan.workspace),
     "--yes",

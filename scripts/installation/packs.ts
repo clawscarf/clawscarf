@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
@@ -43,7 +44,9 @@ export async function activatePacks(
   );
   if (!selection.packs.length && !files.length) return [];
   if (!selection.python)
-    throw Error("Pack operator is required while removing retained packs.");
+    throw new OperatorError(
+      "Pack operator is required while removing retained packs.",
+    );
   const state = await readState(directory);
   const controller = join(directory, "controller");
   const gateway = resourceNames(state).sandbox;
@@ -73,7 +76,7 @@ export async function activatePacks(
       await readJson(join(receipts, member + "-plan.json")),
     );
     if (previous.member !== member)
-      throw Error("Pack receipt identity changed.");
+      throw new OperatorError("Pack receipt identity changed.");
     operations.push({
       member,
       remove: true,
@@ -117,7 +120,7 @@ export async function activatePacks(
           operation = remove ? "remove" : "update";
         } else {
           attempted = true;
-          throw Error(
+          throw new OperatorError(
             "A pack mutation has an unconfirmed outcome. Inspect native Claws before an explicit change; startup will not repeat it.",
           );
         }
@@ -135,7 +138,7 @@ export async function activatePacks(
           fingerprint(await readFile(pack.bindingsFile)) !==
             pack.bindingsDigest)
       )
-        throw Error(
+        throw new OperatorError(
           "Selected pack inputs changed. Review a new installation plan.",
         );
       report(

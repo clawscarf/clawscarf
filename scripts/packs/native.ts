@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -24,7 +25,7 @@ export class NativeClaws {
   }
   async run(args: readonly string[]): Promise<unknown> {
     if (process.env.OPENCLAW_EXPERIMENTAL_CLAWS !== "1")
-      throw Error(
+      throw new OperatorError(
         "Set OPENCLAW_EXPERIMENTAL_CLAWS=1 to acknowledge the experimental native Claws contract.",
       );
     const { stdout } = await execute(this.executable, [...args], {
@@ -40,13 +41,15 @@ export class NativeClaws {
       timeout: 10000,
     });
     if (!/\b2026\.9\.4\b/.test(stdout))
-      throw Error("Packs require the pinned OpenClaw 2026.9.4 release.");
+      throw new OperatorError(
+        "Packs require the pinned OpenClaw 2026.9.4 release.",
+      );
   }
   network(
     requirements: readonly NetworkRequirement[],
   ): Promise<PolicyProof | null> {
     if (requirements.length)
-      throw Error(
+      throw new OperatorError(
         "Network-dependent packs require a verified OpenShell target policy.",
       );
     return Promise.resolve(null);
@@ -59,7 +62,7 @@ export class NativeClaws {
       "--json",
     ]);
     if (enabled !== true)
-      throw Error("The target Connections plugin is not enabled.");
+      throw new OperatorError("The target Connections plugin is not enabled.");
     return z
       .url()
       .parse(

@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { X509Certificate } from "node:crypto";
@@ -27,10 +28,10 @@ export async function loadInitialModels(input: LocalInput["models"]) {
       JSON.parse(await readFile(input.configurationFile, "utf8")),
     );
     if (config.mode === "disabled" || config.defaultModel === null)
-      throw Error("An initial default is required.");
+      throw new OperatorError("An initial default is required.");
     const endpoint = new URL(config.baseUrl);
     if (endpoint.protocol !== "https:")
-      throw Error("The runtime requires an HTTPS model gateway.");
+      throw new OperatorError("The runtime requires an HTTPS model gateway.");
     const network = networkRequirementSchema.parse({
       host: endpoint.hostname,
       port: Number(endpoint.port || "443"),

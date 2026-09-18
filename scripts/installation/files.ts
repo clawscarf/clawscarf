@@ -30,5 +30,14 @@ export async function readInputFile(
   }
 }
 export async function readJson(path: string): Promise<unknown> {
-  return JSON.parse((await readInputFile(path)).toString("utf8"));
+  const input = await readInputFile(path);
+  try {
+    return JSON.parse(input.toString("utf8"));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new InstallationError(
+      "invalid_configuration",
+      `Invalid JSON in ${JSON.stringify(path)}.`,
+    );
+  }
 }

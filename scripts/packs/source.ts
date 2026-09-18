@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { createHash } from "node:crypto";
 import {
   lstat,
@@ -24,16 +25,18 @@ export async function openPack(directory: string) {
     new Set(manifest.members.map((item) => item.id)).size !==
     manifest.members.length
   )
-    throw Error("Pack member IDs must be unique.");
+    throw new OperatorError("Pack member IDs must be unique.");
   for (const member of manifest.members) {
     if (
       new Set(member.requirements.connections.map((item) => item.slot)).size !==
       member.requirements.connections.length
     )
-      throw Error("Connection slots must be unique within a member.");
+      throw new OperatorError(
+        "Connection slots must be unique within a member.",
+      );
     const source = await realpath(resolve(root, member.source));
     if (!source.startsWith(root + sep))
-      throw Error("Claw source must remain inside its pack.");
+      throw new OperatorError("Claw source must remain inside its pack.");
   }
   const digest = createHash("sha256");
   let size = 0;
@@ -43,14 +46,14 @@ export async function openPack(directory: string) {
       metadata.isSymbolicLink() ||
       (metadata.nlink > 1 && !metadata.isDirectory())
     )
-      throw Error("Pack sources cannot use linked files.");
+      throw new OperatorError("Pack sources cannot use linked files.");
     if (metadata.isDirectory()) {
       for (const item of (await readdir(path)).sort())
         await visit(join(path, item));
       return;
     }
     if (!metadata.isFile() || (size += metadata.size) > 8 * 1024 * 1024)
-      throw Error(
+      throw new OperatorError(
         "Pack source exceeds the 8 MiB limit or is not a regular file.",
       );
     digest.update(
@@ -77,10 +80,11 @@ export async function prepareSource(
   if (!connections.length)
     return native.source(source.root, source.digest, existing);
   if ((await native.target()).kind !== "openshell")
-    throw Error(
+    throw new OperatorError(
       "Connection file installation requires operator-side OpenShell execution.",
     );
-  if (!member.connectionFile) throw Error("Connection file is not declared.");
+  if (!member.connectionFile)
+    throw new OperatorError("Connection file is not declared.");
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-pack-bound-"));
   try {
     await cp(source.root, directory, { recursive: true });
@@ -127,7 +131,7 @@ export async function prepareSource(
         (file) => file.source === member.connectionFile,
       )
     )
-      throw Error(
+      throw new OperatorError(
         "connectionFile must be declared in the native Claw workspace.files; its ownership cannot be inferred.",
       );
     return target;

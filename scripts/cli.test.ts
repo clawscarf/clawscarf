@@ -221,3 +221,28 @@ await test("one configure entry point; removed commands and input aliases fail v
   const { selectionSchema } = await import("./installation/options.js");
   assert.equal(selectionSchema.parse(command.opts()).packs, undefined);
 });
+
+await test("file and JSON failures identify the input without disclosing its contents", async (t) => {
+  const directory = await mkdtemp("/tmp/cs-cli-errors-");
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const value of [undefined, '{"secret":"sk-do-not-print"']) {
+    if (value) await writeFile(join(directory, "installation.json"), value);
+    await assert.rejects(
+      cli("status", "--directory", directory, "--json"),
+      (error: unknown) => {
+        assert.ok(
+          error instanceof Error &&
+            "stderr" in error &&
+            typeof error.stderr === "string",
+        );
+        const result: unknown = JSON.parse(error.stderr);
+        assert.partialDeepStrictEqual(result, {
+          code: value ? "invalid_configuration" : "ENOENT",
+        });
+        assert.match(error.stderr, /installation.json/);
+        assert.doesNotMatch(error.stderr, /sk-do-not-print/);
+        return true;
+      },
+    );
+  }
+});

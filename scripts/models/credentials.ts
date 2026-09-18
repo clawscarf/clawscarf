@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { open, readFile, unlink } from "node:fs/promises";
@@ -12,7 +13,7 @@ export async function issueRuntimeCredential(input: {
   caFile?: string;
 }) {
   if (input.configuration.mode !== "litellm")
-    throw Error("Key provisioning requires bundled LiteLLM mode.");
+    throw new OperatorError("Key provisioning requires bundled LiteLLM mode.");
   const client = await managementClient(input);
   const output = await open(input.output, "wx", 0o600).catch(
     async (error: unknown) => {
@@ -40,7 +41,7 @@ export async function issueRuntimeCredential(input: {
     });
     if (!response.ok) {
       await response.body?.cancel();
-      throw Error("LiteLLM credential provisioning was rejected.");
+      throw new OperatorError("LiteLLM credential provisioning was rejected.");
     }
     const body: unknown = await response.json();
     const result = z.object({ key: z.string().startsWith("sk-") }).parse(body);
@@ -55,7 +56,9 @@ export async function issueRuntimeCredential(input: {
     ]);
   }
   if (cleanup.some((result) => result.status === "rejected"))
-    throw Error("Runtime key was stored, but local credential cleanup failed.");
+    throw new OperatorError(
+      "Runtime key was stored, but local credential cleanup failed.",
+    );
 }
 
 async function managementClient(input: {
@@ -70,10 +73,10 @@ async function managementClient(input: {
     origin.password ||
     !["http:", "https:"].includes(origin.protocol)
   )
-    throw Error("Use the private LiteLLM management origin.");
+    throw new OperatorError("Use the private LiteLLM management origin.");
   const masterKey = (await readFile(input.masterKeyFile, "utf8")).trim();
   if (!masterKey.startsWith("sk-"))
-    throw Error("Invalid LiteLLM management credential.");
+    throw new OperatorError("Invalid LiteLLM management credential.");
   const dispatcher = input.caFile
     ? new Agent({ connect: { ca: await readFile(input.caFile, "utf8") } })
     : undefined;
@@ -103,7 +106,9 @@ export async function setRuntimeCredentialModels(input: {
   const client = await managementClient(input);
   try {
     if (!key.startsWith("sk-") || key === client.masterKey)
-      throw Error("Supply distinct administrator and runtime credentials.");
+      throw new OperatorError(
+        "Supply distinct administrator and runtime credentials.",
+      );
     const headers = {
       Authorization: `Bearer ${client.masterKey}`,
       "Content-Type": "application/json",
@@ -119,7 +124,7 @@ export async function setRuntimeCredentialModels(input: {
       );
       if (!response.ok) {
         await response.body?.cancel();
-        throw Error(
+        throw new OperatorError(
           "The retained model credential could not be verified. It will not be replaced.",
         );
       }
@@ -145,14 +150,14 @@ export async function setRuntimeCredentialModels(input: {
     });
     await response.body?.cancel();
     if (!response.ok)
-      throw Error("LiteLLM rejected the model permission change.");
+      throw new OperatorError("LiteLLM rejected the model permission change.");
     const after = await observe();
     if (
       !isDeepStrictEqual(after.models, models) ||
       after.blocked !== previous.blocked ||
       after.expires !== previous.expires
     )
-      throw Error(
+      throw new OperatorError(
         "The model permission change was not confirmed. Observe the key before another explicit apply.",
       );
   } finally {

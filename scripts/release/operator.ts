@@ -49,6 +49,8 @@ const payload = [
   "generated/http/client",
   "generated/http/core",
   "scripts/clawscarf.js",
+  "scripts/output.js",
+  "scripts/errors.js",
   "scripts/people.js",
   "scripts/connections.js",
   "scripts/cloud",

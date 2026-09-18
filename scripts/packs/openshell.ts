@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -43,7 +44,8 @@ export class OpenShellClaws extends NativeClaws {
   private boundTarget: Extract<PackTarget, { kind: "openshell" }> | undefined;
   private async exec(command: readonly string[], stdin?: Buffer) {
     if (!this.boundTarget) await this.target();
-    if (!this.boundTarget) throw Error("An observed target is required.");
+    if (!this.boundTarget)
+      throw new OperatorError("An observed target is required.");
     const child = execute(
       this.options.python,
       [fileURLToPath(new URL("./transport.py", import.meta.url))],
@@ -76,7 +78,7 @@ export class OpenShellClaws extends NativeClaws {
       ),
     );
     if (gateway.name !== this.options.sandbox)
-      throw Error("Unexpected sandbox identity.");
+      throw new OperatorError("Unexpected sandbox identity.");
     const target = {
       kind: "openshell" as const,
       gateway: this.options.gateway,
@@ -84,13 +86,15 @@ export class OpenShellClaws extends NativeClaws {
       sandboxId: gateway.id,
     };
     if (this.boundTarget && this.boundTarget.sandboxId !== target.sandboxId)
-      throw Error("Sandbox identity changed; create a new pack preview.");
+      throw new OperatorError(
+        "Sandbox identity changed; create a new pack preview.",
+      );
     this.boundTarget = target;
     return target;
   }
   override async version() {
     if ((this.options.env ?? process.env).OPENCLAW_EXPERIMENTAL_CLAWS !== "1")
-      throw Error(
+      throw new OperatorError(
         "Set OPENCLAW_EXPERIMENTAL_CLAWS=1 to acknowledge the experimental native Claws contract.",
       );
     const stdout = await this.exec([
@@ -98,7 +102,9 @@ export class OpenShellClaws extends NativeClaws {
       "--version",
     ]);
     if (!/\b2026\.9\.4\b/.test(stdout))
-      throw Error("Packs require the pinned OpenClaw 2026.9.4 release.");
+      throw new OperatorError(
+        "Packs require the pinned OpenClaw 2026.9.4 release.",
+      );
   }
   override async run(args: readonly string[]): Promise<unknown> {
     return JSON.parse(
@@ -116,7 +122,7 @@ export class OpenShellClaws extends NativeClaws {
         ])
       ).trim();
     if (!/^\/home\/node\/\.clawscarf-pack-[A-Za-z0-9]+$/.test(targetRoot))
-      throw Error("Invalid pack staging directory.");
+      throw new OperatorError("Invalid pack staging directory.");
     if (!existing) {
       const directory = await mkdtemp(join(tmpdir(), "clawscarf-pack-upload-"));
       try {
@@ -145,7 +151,7 @@ export class OpenShellClaws extends NativeClaws {
         ),
       );
     if (observed.digest !== digest)
-      throw Error(
+      throw new OperatorError(
         "Target pack differs from reviewed source; create a new preview.",
       );
     return targetRoot;
@@ -154,7 +160,7 @@ export class OpenShellClaws extends NativeClaws {
     if (!requirements.length) return null;
     const target = await this.target();
     if (target.kind !== "openshell")
-      throw Error("An OpenShell target is required.");
+      throw new OperatorError("An OpenShell target is required.");
     for (const requirement of requirements) {
       await this.exec([
         "/usr/local/bin/node",

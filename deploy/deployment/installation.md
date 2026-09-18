@@ -260,3 +260,8 @@ through the native CLI under trusted-proxy login. The agent is retained and the 
 reported. Browser routing has its documented upstream limitation. Linux/WSL, clean-machine
 release installation, complete release upgrades, external ingress and directory-backed
 hosting storage remain unfinished. [TODO.md](../../TODO.md) owns the open work.
+
+CLI failures identify deliberate configuration errors and file paths without echoing
+file contents, provider responses or subprocess output. `--json` keeps the same
+error code and detail on stderr. Unknown failures remain sanitized; mutations are
+never retried automatically.

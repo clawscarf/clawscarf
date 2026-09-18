@@ -1,3 +1,4 @@
+import { OperatorError } from "./errors.js";
 import { Command } from "commander";
 import { execFile } from "node:child_process";
 import {
@@ -37,7 +38,7 @@ const release = z
   .parse(releaseInput).openshell;
 function environment(directory: string) {
   if (Object.keys(process.env).some((name) => name.startsWith("OPENSHELL_")))
-    throw Error(
+    throw new OperatorError(
       "Unset OPENSHELL_* environment overrides; this controller uses its private configuration.",
     );
   return {
@@ -54,7 +55,7 @@ async function protect(directory: string) {
     if (entry.isDirectory()) await protect(path);
     else if (entry.isFile()) await chmod(path, 0o600);
     else
-      throw Error(
+      throw new OperatorError(
         "Controller state must not contain symlinks or special files.",
       );
   }
@@ -62,7 +63,9 @@ async function protect(directory: string) {
 async function verifyExecutable(path: string) {
   const { stdout } = await execute(path, ["--version"], { timeout: 10000 });
   if (!stdout.trim().split(/\s+/).includes(release.version))
-    throw Error(`Use the pinned OpenShell ${release.version} executable.`);
+    throw new OperatorError(
+      `Use the pinned OpenShell ${release.version} executable.`,
+    );
 }
 function toml(directory: string, settings: Settings) {
   const path = (value: string) => JSON.stringify(join(directory, "tls", value));
@@ -155,7 +158,7 @@ command
         ["client/tls.key", "tls.key"],
       ]) {
         if (!source || !destination)
-          throw Error("Invalid certificate mapping.");
+          throw new OperatorError("Invalid certificate mapping.");
         await copyFile(join(directory, "tls", source), join(mtls, destination));
       }
       await writeFile(

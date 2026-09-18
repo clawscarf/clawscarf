@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { constants } from "node:fs";
 import { createHash, X509Certificate } from "node:crypto";
 import {
@@ -74,7 +75,7 @@ async function readRegular(
   maximumBytes: number,
 ) {
   if (!(await lstat(path)).isFile())
-    throw Error("Configuration must be a regular file");
+    throw new OperatorError("Configuration must be a regular file");
   const file = await open(
     path,
     constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
@@ -89,10 +90,10 @@ async function readRegular(
           metadata.nlink !== 1 ||
           (metadata.mode & 0o077) !== 0))
     )
-      throw Error("Invalid configuration file");
+      throw new OperatorError("Invalid configuration file");
     const bytes = await file.readFile();
     if (bytes.length > maximumBytes)
-      throw Error("Configuration file exceeds its size limit");
+      throw new OperatorError("Configuration file exceeds its size limit");
     return bytes;
   } finally {
     await file.close();
@@ -109,7 +110,7 @@ async function tree(
     (privateFiles &&
       (metadata.uid !== process.getuid?.() || (metadata.mode & 0o077) !== 0))
   )
-    throw Error("Invalid configuration directory");
+    throw new OperatorError("Invalid configuration directory");
   const files = new Map<string, Buffer>();
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const relative = prefix + entry.name;
@@ -126,7 +127,10 @@ async function tree(
         relative,
         await readRegular(path, privateFiles, 128 * 1024 * 1024),
       );
-    else throw Error("Catalog entries must be regular files or directories");
+    else
+      throw new OperatorError(
+        "Catalog entries must be regular files or directories",
+      );
   }
   return files;
 }

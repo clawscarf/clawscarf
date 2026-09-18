@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import { initialConfiguration } from "../../runtime/configuration.js";
@@ -245,7 +246,7 @@ function mountedPrivateFile(
 ): string {
   absolutePath.parse(path);
   if (resolve(path) !== join(directory, name))
-    throw Error(
+    throw new OperatorError(
       `The local configuration requires ${name} in its private directory.`,
     );
   return `/run/clawscarf/${name}`;

@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { z } from "zod";
 export const modelSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/),
@@ -155,12 +156,15 @@ export function nativeModelDefaults(config: EnabledModelConfiguration) {
 }
 export function liteLlmConfiguration(config: ModelConfiguration) {
   if (config.mode !== "litellm")
-    throw Error("Select LiteLLM mode before rendering its configuration.");
+    throw new OperatorError(
+      "Select LiteLLM mode before rendering its configuration.",
+    );
   return {
     model_list: config.models
       .filter((model) => model.enabled)
       .map((model) => {
-        if (!model.route) throw Error("A LiteLLM route is required.");
+        if (!model.route)
+          throw new OperatorError("A LiteLLM route is required.");
         return {
           model_name: model.id,
           litellm_params: {

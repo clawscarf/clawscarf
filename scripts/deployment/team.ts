@@ -1,3 +1,4 @@
+import { OperatorError } from "../errors.js";
 import { createPrivateKey, X509Certificate } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 import { isIP } from "node:net";
@@ -19,10 +20,10 @@ export async function readTeamMaterials(team: LocalInput["team"]) {
         info.uid !== process.getuid?.() ||
         (info.mode & 0o077) !== 0
       )
-        throw Error("Private operator file required.");
+        throw new OperatorError("Private operator file required.");
     }
     const secret = (await readFile(team.clientSecretFile, "utf8")).trim();
-    if (!secret) throw Error("OIDC secret is empty.");
+    if (!secret) throw new OperatorError("OIDC secret is empty.");
     if (!team.certificateFile || !team.keyFile) return { secret };
     const certificate = await readFile(team.certificateFile);
     const key = await readFile(team.keyFile);
@@ -33,11 +34,11 @@ export async function readTeamMaterials(team: LocalInput["team"]) {
       Date.parse(cert.validFrom) > Date.now() ||
       Date.parse(cert.validTo) <= Date.now()
     )
-      throw Error("Invalid TLS or OIDC material.");
+      throw new OperatorError("Invalid TLS or OIDC material.");
     for (const origin of [team.origin, team.widgetOrigin]) {
       const host = new URL(origin).hostname.replace(/^\[|\]$/g, "");
       if (!(isIP(host) ? cert.checkIP(host) : cert.checkHost(host)))
-        throw Error("Certificate name mismatch.");
+        throw new OperatorError("Certificate name mismatch.");
     }
     return { certificate, key, secret };
   } catch {
