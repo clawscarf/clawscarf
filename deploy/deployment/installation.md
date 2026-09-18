@@ -71,12 +71,16 @@ Hosted login defaults to `https://cloud.clawscarf.com`. The
 development `--cloud-url` override can select staging. Connections independently uses
 that cloud unless `--connections-cloud-url` selects another service.
 
-For hosted login, configuration shows a clickable `cloud.clawscarf.com/setup` link.
+For hosted login, interactive configuration opens the browser and shows a clickable
+`cloud.clawscarf.com/setup` link with the approval code to compare on the website.
 Sign in or create an account, then approve this installation in the browser and return
 to the terminal. That verified identity becomes this installation's first administrator.
 The CLI starts the server and verifies native administrator access; there is no second
 administrator sign-in. Closing the terminal preserves pending approval for the next
 `configure --directory` invocation. An expired approval can be retried with a fresh link.
+Once the installation is ready, configuration opens OpenClaw and prints its URL and
+management commands. If automatic browser opening fails, use the printed link.
+Noninteractive configuration never opens a browser.
 
 For staging, select it when creating a **separate installation**:
 

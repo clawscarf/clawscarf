@@ -18,14 +18,15 @@ export function registerWithBrowser(
     register(configFile, (url, file, administrator) =>
       authorizeCloud(url, file, {
         wait: true,
-        present: (link, _code, expiresAt) => {
+        present: async (link, code, expiresAt) => {
           ui.note(
-            `${administrator ? "Sign in or create an account to set up this installation and become its first administrator." : "Sign in or create an account to authorize the selected cloud services."}\n\n${terminalLink(link)}\n\nExpires at ${expiresAt}. Return to this terminal after approval.`,
+            `${administrator ? "Sign in or create an account to set up this installation and become its first administrator." : "Sign in or create an account to authorize the selected cloud services."}\n\n${terminalLink(link)}\n\nApproval code: ${code} — check that it matches the website.\n\nExpires at ${expiresAt}. Return to this terminal after approval.`,
             styleText(
               ["bold", "yellow"],
               "ACTION REQUIRED — Sign in to ClawScarf",
             ),
           );
+          await ui.openBrowser(link);
         },
         signal,
       }),

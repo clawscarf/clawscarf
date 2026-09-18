@@ -59,6 +59,11 @@ await test("cancelling progress settles the current operation and prevents conti
 
 class Answers implements InstallerPrompts {
   notes: string[] = [];
+  opened: string[] = [];
+  openBrowser(url: string) {
+    this.opened.push(url);
+    return Promise.resolve();
+  }
   questions: string[] = [];
   constructor(
     private values: Record<string, string | string[] | boolean>,
@@ -567,8 +572,11 @@ await test(
                   "login-complete",
                 ],
         );
+        if (nonInteractive) assert.deepEqual(ui.opened, []);
         if (!fail && !nonInteractive) {
           assert.equal(links, 2);
+          assert.equal(ui.opened.length, 2);
+          assert.ok(ui.opened.every((url) => url.endsWith("setup=fixture")));
           assert.ok(
             ui.notes.some((note) =>
               note.includes("/_clawscarf/login?setup=fixture"),

@@ -41,7 +41,11 @@ export async function authorizeCloud(
   file: string,
   options: {
     wait: boolean;
-    present?: (url: string, code: string, expiresAt: string) => void;
+    present?: (
+      url: string,
+      code: string,
+      expiresAt: string,
+    ) => void | Promise<void>;
     signal?: AbortSignal;
   },
 ) {
@@ -124,7 +128,7 @@ export async function authorizeCloud(
         Math.ceil((pending.nextPollAt - Date.now()) / 1000),
       ),
     });
-  options.present?.(
+  await options.present?.(
     url.href,
     pending.userCode,
     new Date(pending.expiresAt).toISOString(),

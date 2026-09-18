@@ -147,12 +147,11 @@ export async function installFromAnswers(
       config.exposure.mode === "https"
         ? config.exposure.applicationOrigin
         : `http://127.0.0.1:${String(config.exposure.applicationPort)}`;
-    ui.note(terminalLink(origin), "OpenClaw");
-    ui.note(
-      `Status: clawscarf status --directory ${quote(directory)}\nStop: clawscarf stop --directory ${quote(directory)}`,
-      "Commands",
-    );
-    return { ...withVerifiedAdministrator(started), directory };
+    return {
+      ...withVerifiedAdministrator(started),
+      directory,
+      applicationUrl: origin,
+    };
   } catch (error) {
     if (error instanceof CloudAuthorizationRequired)
       return {
@@ -216,6 +215,7 @@ async function browserSignIn(
       `ClawScarf has started. Open this private link in your browser to sign in, then return here.\n\n${terminalLink(link.url)}\n\nExpires at ${link.expiresAt}.`,
       styleText(["bold", "yellow"], "ACTION REQUIRED — Administrator sign-in"),
     );
+    await ui.openBrowser(link.url);
     const complete = await task(
       "Waiting for administrator sign-in",
       async (signal) => {
@@ -305,17 +305,27 @@ export async function runConfiguration(options: InstallOptions) {
       result = withVerifiedAdministrator(result);
     }
     if (!options.nonInteractive) {
+      const applicationUrl =
+        "applicationUrl" in result && typeof result.applicationUrl === "string"
+          ? result.applicationUrl
+          : saved
+            ? saved.config.exposure.mode === "https"
+              ? saved.config.exposure.applicationOrigin
+              : `http://127.0.0.1:${String(saved.config.exposure.applicationPort)}`
+            : undefined;
       if (result.state === "cancelled") clack.cancel("Cancelled.");
       else
         clack.outro(
           "ready" in result
             ? result.ready
-              ? "ClawScarf is ready."
+              ? `ClawScarf is ready.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}\n\nManage this installation:\n  clawscarf status --directory ${quote(options.directory ?? defaultInstallationDirectory)}\n  clawscarf stop --directory ${quote(options.directory ?? defaultInstallationDirectory)}`
               : "ClawScarf needs attention. Check status for details."
             : result.state === "unchanged"
               ? "No changes. Server left as it was."
               : "Configuration saved. Server stopped.",
         );
+      if ("ready" in result && result.ready && applicationUrl)
+        await ui.openBrowser(applicationUrl);
     }
     return result;
   } catch (error) {

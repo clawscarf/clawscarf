@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { Key } from "node:readline";
 import * as clack from "@clack/prompts";
 import { InstallationError } from "../errors.js";
@@ -24,6 +26,7 @@ export interface InstallerPrompts {
   multiselect(message: string, choices: Choice[]): Promise<string[]>;
   confirm(message: string, initial?: boolean): Promise<boolean>;
   note(message: string, title: string): void;
+  openBrowser(url: string): Promise<void>;
 }
 
 async function answer<T>(work: () => Promise<T | symbol>): Promise<T> {
@@ -84,6 +87,19 @@ export const terminalPrompts: InstallerPrompts = {
     return answer<boolean>(() => clack.confirm({ message, initialValue }));
   },
   note: clack.note,
+  async openBrowser(url) {
+    try {
+      await promisify(execFile)(
+        process.platform === "darwin" ? "open" : "xdg-open",
+        [url],
+        { timeout: 5000 },
+      );
+    } catch {
+      process.stderr.write(
+        "Could not open a browser. Open the link above manually.\n",
+      );
+    }
+  },
 };
 
 export function requireTerminal() {
@@ -140,6 +156,7 @@ export async function progress<T>(
 
 /** No unattended operation may fall through into an interactive question. */
 export const unattendedPrompts: InstallerPrompts = {
+  openBrowser: () => Promise.resolve(),
   text: missing,
   password: missing,
   select: missing,
