@@ -27,7 +27,8 @@ Open work only. Select a task before implementing; this list does not authorize 
 - [ ] **Owner will take this upstream as a separate task.** OpenClaw 2026.9.4
       routes an omitted browser target to the configured node, but its tool guidance
       advertises `host`; an explicit `host` selects the protected Gateway and fails
-      public DNS preflight. `allowHostControl: false` also blocks node browsing.
+      public DNS preflight. This still applies with the single team runtime: the browser
+      node remains separate and Gateway browser egress is not granted.
       Reproduce with `gateway.nodes.browser: { mode: "manual", node: "<paired node>" }`:
       compare omitted target, `target: "node"` and `target: "host"`. Expected: guidance
       matches effective routing, with explicit targets and sandbox policy preserved.

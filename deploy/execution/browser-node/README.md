@@ -171,6 +171,22 @@ tab and is not a general installation default. No native patches, tool/RPC rewri
 prompt overrides or weaker confinement are shipped to hide this mismatch. Ordinary
 model-driven browser acceptance must be rerun after the supported correction.
 
+The single team runtime does not fix this routing mismatch. The current preset turns
+the inner agent sandbox off and gives members its inherited policy; upstream therefore
+passes `allowHostBrowserControl: true`. The `allowHostControl: false` restriction above
+is not an active blocker in that preset, but explicit `host` still bypasses the paired
+node. OpenShell still denies Gateway public DNS/direct CDP, while the browser node and
+Chromium retain their separate networks. Moving shell execution into the Gateway's
+runtime changes neither of those browser paths.
+
+A focused check against the runtime's exact OpenClaw commit
+`7bc487d39dc9e059bb9b19ea08152883022f83fe` exercised the native routing modules with
+controlled node/configuration adapters: omitted and explicit `node` selected the pinned
+node, explicit `host` bypassed it, missing-node routing failed visibly, and guidance
+still advertised `host`. This is source-level routing evidence, not a new live browser
+or real-model acceptance run. The separate browser network/ingress regressions passed;
+they do not establish correct model-selected routing or workspace/browser file transfer.
+
 Pinned upstream sources:
 
 - [Node CLI and lifecycle entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/cli/node-cli/register.ts)
@@ -179,8 +195,9 @@ Pinned upstream sources:
   and [native issuance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/infra/device-bootstrap.ts).
 - [Trusted-proxy attribution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/ingress-attribution.ts)
   and [authentication](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/auth.ts).
-- [Browser target guidance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/browser-tool.ts)
-  and [node routing](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/browser-tool.routing.ts).
+- [Browser target guidance](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/src/browser-tool.ts),
+  [node routing](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/src/browser-tool.routing.ts)
+  and [agent sandbox browser policy](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/agents/agent-tools.ts).
 - [Native node execution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/node-host/invoke-system-run.ts)
   and [browser proxy](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/node-host/invoke-browser.ts).
 
