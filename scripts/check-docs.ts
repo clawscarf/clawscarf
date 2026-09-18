@@ -39,7 +39,11 @@ export async function checkDocuments(root: string, files: readonly string[]) {
     const report = (message: string) => failures.push(`${file}: ${message}`);
     const command = (value: string) => {
       const name = /^pnpm\s+(?:run\s+)?([\w:-]+)/.exec(value.trim())?.[1];
-      if (name && !["install", "exec"].includes(name) && !scripts.has(name))
+      if (
+        name &&
+        !["install", "exec", "link", "add"].includes(name) &&
+        !scripts.has(name)
+      )
         report(`unknown pnpm script "${name}"`);
     };
     await Promise.all(

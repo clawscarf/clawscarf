@@ -7,7 +7,8 @@ terminal installer covers initial setup. Required LiteLLM, optional Connections 
 are wired into initial preparation and startup.
 
 The installed command and all terminal command suggestions use `clawscarf`.
-The `pnpm clawscarf` examples below are for running this unreleased source checkout.
+For this source checkout, [link the development command](../../scripts/README.md#development-command)
+to run `clawscarf` directly. The `pnpm clawscarf` examples below also work without linking.
 
 The selected [hosted-services design](../../docs/cloud-services.md) replaces token-only
 evaluation login with hosted OIDC by default and customer OIDC as the alternative,

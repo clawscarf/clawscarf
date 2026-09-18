@@ -3,8 +3,8 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { initializeState } from "./deployment/state.js";
@@ -12,11 +12,44 @@ import { initializeState } from "./deployment/state.js";
 const execute = promisify(execFile);
 let commandEnvironment: NodeJS.ProcessEnv | undefined;
 const cli = (...args: string[]) =>
-  execute(
+  execute(process.execPath, ["scripts/clawscarf.mjs", ...args], {
+    env: commandEnvironment,
+  });
+
+await test("linked development command resolves its checkout and preserves caller-relative paths", async (t) => {
+  const directory = await mkdtemp("/tmp/clawscarf-linked-cli-");
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const launcher = join(directory, "clawscarf");
+  await symlink(resolve("scripts/clawscarf.mjs"), launcher);
+  const { stdout } = await execute(process.execPath, [launcher, "--help"], {
+    cwd: directory,
+  });
+  assert.match(stdout, /Usage: clawscarf/);
+  const config = {
+    publicOrigin: "http://localhost:18800",
+    widgetOrigin: "http://localhost:18802",
+    administratorIdentity: "clawscarf:linked-test",
+  };
+  await writeFile(join(directory, "input.json"), JSON.stringify(config));
+  await execute(
     process.execPath,
-    ["--import", "tsx", "scripts/clawscarf.ts", ...args],
-    { env: commandEnvironment },
+    [
+      launcher,
+      "config",
+      "render-native",
+      "--input",
+      "input.json",
+      "--output",
+      "native.json",
+      "--json",
+    ],
+    { cwd: directory },
   );
+  assert.match(
+    await readFile(join(directory, "native.json"), "utf8"),
+    /http:\/\/localhost:18800/,
+  );
+});
 
 await test("CLI status use readable output or explicit JSON without issuing credentials", async (t) => {
   const root = await mkdtemp("/tmp/clawscarf-cli-");

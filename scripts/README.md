@@ -55,7 +55,36 @@ modules collect feature-specific answers; shared prompts render the revisitable 
 `configure` uses the same defaults/writer without terminal prompts; `install` calls the
 same plan/doctor/apply/start functions. Neither has a separate provisioning engine.
 Recipes are bundled release data from [deploy/recipes](../deploy/recipes/README.md).
-Run `pnpm clawscarf install --release /absolute/clawscarf-release.json` during development.
+Run `clawscarf install --release /absolute/clawscarf-release.json` after linking the
+development command below.
+
+## Development command
+
+After installing the checkout's dependencies, expose its CLI on your PATH:
+
+```sh
+pnpm link
+clawscarf --help
+```
+
+pnpm's global binary directory must be on your PATH. If you already use a different
+user binary directory, select it with `pnpm link --config.global-bin-dir="$HOME/.local/bin"`.
+The command uses Node from your PATH, which must meet the version requirement above.
+To bind only this command to a specific Node installation, use an editable dependency
+with an explicit interpreter instead:
+
+```sh
+pnpm add --global --config.global-bin-dir="$HOME/.local/bin" \
+  --config.node-exec-path=/absolute/path/to/node "link:$PWD"
+```
+
+The linked [launcher](clawscarf.mjs) runs this checkout's TypeScript source with its
+local dependencies from any working directory. CLI source edits take effect on the
+next invocation without rebuilding or relinking. Relative command arguments resolve
+from the caller's directory. `pnpm clawscarf` uses the same launcher without a global link.
+Changes to container contents still require rebuilding the affected images.
+The [operator archive](#operator-archive) continues to ship compiled JavaScript and
+does not need this development launcher or tsx.
 
 ## Operator archive
 

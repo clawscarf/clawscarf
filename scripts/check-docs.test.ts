@@ -22,7 +22,7 @@ async function fixture(files: Record<string, string>) {
 await test("documentation checks resolve nested links, reference links, encoded paths and formatted duplicate headings", async () => {
   const f = await fixture({
     "README.md":
-      "[guide](docs/guide.md#repeat-1)\n\n[code][source]\n\n[source]: src/server.ts\n\n```sh\npnpm check\npnpm run build\npnpm install --frozen-lockfile\npnpm exec playwright install chromium\n```\n",
+      "[guide](docs/guide.md#repeat-1)\n\n[code][source]\n\n[source]: src/server.ts\n\n```sh\npnpm check\npnpm run build\npnpm install --frozen-lockfile\npnpm exec playwright install chromium\npnpm link\npnpm add --global link:.\n```\n",
     "docs/guide.md":
       "# **Repeat**\n\n# Repeat\n\n[home](../README.md)\n\n[spaces](a%20file.md#file)\n\n`pnpm build`\n\n```ts\n// example.ts is sample code, not a source reference.\n```\n",
     "docs/a file.md": "# File\n",

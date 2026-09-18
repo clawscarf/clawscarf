@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "clawscarf": "scripts/clawscarf.mjs"
+  },
   "engines": {
     "node": ">=24.16.0 <25 || >=26.1.0"
   },
@@ -32,7 +35,7 @@
     "access:plugin:build": "npm --prefix plugins/access run build",
     "access:plugin:check": "npm --prefix plugins/access run check && npm --prefix plugins/access run validate",
     "companion:start": "node --import tsx apps/companion/entry.ts",
-    "clawscarf": "node --import tsx scripts/clawscarf.ts",
+    "clawscarf": "node scripts/clawscarf.mjs",
     "http:generate": "node --import tsx scripts/generate-http.ts",
     "cloud:generate": "openapi-ts -f scripts/cloud-api.config.ts",
     "connections:management:generate": "openapi-ts -f scripts/connection-management-api.config.ts"
