@@ -1,5 +1,8 @@
 # Native configuration
 
+The [curation review](curation.md) distinguishes existing configuration from
+proposed changes to OpenClaw packaging, UI and backend capabilities.
+
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset used internally by installation.

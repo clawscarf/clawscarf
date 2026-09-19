@@ -99,6 +99,8 @@ runtime. The native runtime check above is its current integration evidence.
 [TODO.md](TODO.md) contains only open work and future decisions. Native Lobster is
 a required capability. Built-in plugin/skill curation and removal of ClawHub mentions
 are a separate selected direction; this execution-model change does not implement them.
+The [OpenClaw curation review](runtime/curation.md) records configuration limits,
+UI/backend ownership, packaging choices and downstream patch considerations.
 
 ## Installation management
 
