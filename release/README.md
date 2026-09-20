@@ -14,9 +14,10 @@ Recipes and packs ship with the CLI; there is no separate registry or dependency
 The [model catalog](../deploy/models/catalog.json) is also a CLI asset. Recipe IDs select
 catalog entries; model protocols and limits have one definition.
 
-## Current development use
+## Published and development use
 
 ```sh
+npm install -g @clawscarf/cli@next
 clawscarf configure
 # Or use staging for hosted login and Connections:
 clawscarf configure --cloud-url https://cloud-staging.clawscarf.com
@@ -96,22 +97,29 @@ Repository setup:
 
 - GHCR image packages must be publicly readable; a private candidate digest is not
   usable by an unauthenticated installer. The build uses GitHub's scoped job token.
-- The GitHub `release` environment exists and restricts deployment to `main`.
-  The npm organization `@clawscarf` exists. Its first package publication still needs
-  npm authentication; a browser login alone does not authenticate the CLI.
-- npm requires the package to exist before configuring trusted publishing. Publish
-  the first tested tarball using the owner's authenticated npm CLI, then configure
-  `@clawscarf/cli` for repository `clawscarf/clawscarf`, workflow
+- The GitHub `release` environment restricts deployment to `main`. The npm
+  organization `@clawscarf` owns the public `@clawscarf/cli` package.
+- npm trusted publishing is configured for repository `clawscarf/clawscarf`, workflow
   [publish-release.yml](../.github/workflows/publish-release.yml), environment `release`.
-  Subsequent publication uses that workflow's short-lived identity rather than a stored npm token.
-- Check transitive notices/source obligations before distributing the first images.
+  The first tested tarball was published using the owner's authenticated npm CLI because
+  npm requires a package to exist before configuring trust. Subsequent publication
+  uses the workflow's short-lived identity rather than a stored npm token. That next
+  workflow publication has not yet been exercised.
+- Transitive notices/source review remains open in [TODO.md](../TODO.md).
   Debian copyright files remain in the images; runtime assets include upstream notices
   and the image build exports its network-tool sources. Those files are not a claim of
   a completed license audit. Pinned Debian packages still depend on mirror retention.
 
-The candidate workflow has passed its checks, compiled archive test and all eight image
-builds. No npm/GitHub release has been published. Public image access, the fresh installation
-journey and publication remain in [TODO.md](../TODO.md).
+[Candidate 35524428880](https://github.com/clawscarf/clawscarf/actions/runs/35524428880)
+passed its checks, compiled archive test and all eight image builds. The same artifacts
+are available in the [0.1.0-alpha.1 GitHub prerelease](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.1).
+The identical CLI tarball is published as `@clawscarf/cli@0.1.0-alpha.1`, tagged `next`.
+All eight GHCR images were verified anonymously readable by digest. The packaged CLI
+passed fresh setup on the development Mac, staging hosted administrator login, real
+GPT-6 Astra inference and stop/start with retained chat history. Published tool URLs
+passed download and SHA-256 verification. Disposable installation containers, volumes
+and networks were deleted afterward. This does not establish a newly provisioned
+host, production first-time signup, Linux/WSL or changed-version upgrades.
 
 ## Assemble runtime artifacts
 

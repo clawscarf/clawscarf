@@ -9,6 +9,17 @@ registry images by digest. Local development image IDs cannot be downloaded. The
 package is named `@clawscarf/cli` and exposes the `clawscarf` command. Development archives
 remain private; the release candidate builder makes the package publishable. [Release contents](README.md) defines the publication model.
 
+## Install from npm
+
+```sh
+npm install -g @clawscarf/cli@next
+clawscarf configure
+```
+
+The `next` tag selects the current alpha. Use an exact version instead when needed.
+npm installs the CLI dependencies; runtime images and tools are fetched during setup.
+See [release contents](README.md) for supported platforms and verification.
+
 ## Run the archive
 
 Verify the archive against its accompanying `SHA256SUMS`, then extract it into a new

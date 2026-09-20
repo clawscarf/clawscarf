@@ -5,11 +5,6 @@ Open work only. Select a task before implementing; this list does not authorize 
 ## Installer and releases
 
 - [ ] Verify first-time production signup through email verification and installer resume.
-
-- [ ] Finish the first [release candidate](.github/workflows/build-release.yml):
-      enable public GHCR access, authenticate the initial npm publication and configure trusted
-      publishing; verify a fresh installation through administrator login, real inference and stop/start.
-      Then publish the same tested artifacts. macOS arm64 is the current supported target.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite
       for optional pack operations. The basic Team server recipe selects no packs.

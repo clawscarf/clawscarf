@@ -5,9 +5,11 @@ commands are `start`, `stop`, `status` and `logs`. All use the same `--directory
 The CLI manages its saved configuration; users do not write installation JSON or
 run separate validation, preview and apply commands.
 
-This is a developer preview for macOS arm64 with Docker Desktop. Published downloads
-remain unfinished. [Link the development command](../../scripts/README.md#development-command)
-and prepare the runtime artifacts selected by the [recipe](../../recipes/README.md) before configuring a server.
+This is an alpha for macOS arm64 with Docker Desktop and Node 24.16+ (24.x) or 26.1+.
+Install the published CLI with `npm install -g @clawscarf/cli@next`. Its bundled
+[recipes](../../recipes/README.md) download pinned runtime tools and images.
+Contributors can instead [link the development command](../../scripts/README.md#development-command)
+and build the development runtime.
 For a new installation, the CLI checks macOS/architecture, Docker and Compose before
 asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
 then checked again during preparation and startup.
@@ -281,8 +283,9 @@ Real Outlook linking, reconnect, execution and revocation passed locally.
 Native pack removal uses the runtime’s private local Gateway credential for automation
 cleanup under trusted-proxy login, preserving ownership checks. Removal after Gateway
 restart passed in the protected runtime. Browser routing has its documented upstream
-limitation. Linux/WSL, clean-machine
-release installation, complete release upgrades, external ingress and directory-backed
+limitation. The first packaged release passed a fresh installation and retained-state
+restart on the development Mac. Linux/WSL, newly provisioned hosts, complete release
+upgrades, external ingress and directory-backed
 hosting storage remain unfinished. [TODO.md](../../TODO.md) owns the open work.
 
 CLI failures identify deliberate configuration errors and file paths without echoing

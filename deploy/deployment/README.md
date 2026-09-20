@@ -258,7 +258,8 @@ subsequent model or network-policy commands. OpenShell reported the exact Node-o
 gateway policy effective. A deliberate native model-name edit, conversation and browser
 session survived repeat preparation and CLI stop/start with the compiled operator.
 Regression tests cover invalid inputs, private credentials, unchanged-input requirements
-and atomic initialization failures. Release-artifact clean-machine acceptance remains open.
+and atomic initialization failures. The first packaged release also passed a fresh
+installation on the development Mac; a newly provisioned host remains untested.
 
 ## Run and stop
 

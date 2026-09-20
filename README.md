@@ -8,7 +8,7 @@ reusable agent packs. Run it on infrastructure you control.
 
 > **Developer preview.** OIDC login, model/tool use and retained-state restart
 > have passed on macOS arm64 with Docker Desktop. This is not yet a qualified
-> production release or a downloadable one-command installation.
+> production release. The first alpha is available through npm and GitHub Releases.
 
 The installer defaults to ClawScarf hosted login, with customer OIDC as an override.
 Connections is independently optional and uses its native OpenClaw page and cloud broker.
@@ -52,10 +52,17 @@ already made inside the runtime. Different untrusted teams need separate install
 
 ## Run the preview
 
-Follow [contributor setup and builds](scripts/README.md), then the
-[installation CLI guide](deploy/deployment/installation.md). The current path requires source
-builds, the pinned controller tools, **macOS arm64 and Docker Desktop**. Check the
+Requires **macOS arm64, Docker Desktop and Node 24.16+ (24.x) or 26.1+**.
+
+```sh
+npm install -g @clawscarf/cli@next
+clawscarf configure
+```
+
+The alpha package includes recipes and downloads their pinned runtime tools/images.
+See the [installation CLI guide](deploy/deployment/installation.md) and
 [measured footprint](deploy/openshell/README.md#development-footprint) before starting.
+For source builds, use [contributor setup](scripts/README.md).
 
 Loopback installations need no public DNS or VM allocation. Hosted login requires a
 ClawScarf account; custom OIDC works independently of the cloud. HTTPS exposure is
@@ -78,8 +85,7 @@ outbound traffic denied. That policy is not a blanket network policy for every c
   automatic OIDC registration, persistent startup, private administrator claim through
   WorkOS, native People and a real GPT-6 Astra / medium browser response.
 - The assembled team profile passed local Dex browser login, enrollment, handover,
-  revocation, bookmarks, widgets and hooks. Public deployment and release-artifact
-  acceptance remain unqualified.
+  revocation, bookmarks, widgets and hooks. Public deployment remains unverified.
 - Connections has broker/protocol and native plugin tests. Initial unified activation passed with a fixture catalog.
   Real Outlook linking, execution, reconnect and revocation passed locally. Disabled operation works
   without provider credentials or a Connections schema.
@@ -90,11 +96,12 @@ outbound traffic denied. That policy is not a blanket network policy for every c
   component acceptance. Ordinary model-selected browsing has an owner-managed upstream
   routing bug. The team runtime retains OpenShell; Chromium retains its own sandbox.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
-  tests. Changed-upstream-version upgrades, clean-machine release installation,
-  Linux/WSL and automated backups are unfinished.
+  tests. Changed-upstream-version upgrades, Linux/WSL and automated backups are unfinished.
 
-The complete installer/login/real-model journey has not been rerun with the single
-runtime. The native runtime check above is its current integration evidence.
+The `0.1.0-alpha.1` packaged CLI passed a fresh installation on the development Mac:
+staging hosted login, native administrator setup, a real GPT-6 Astra response and
+stop/start with retained chat history. Published runtime downloads passed checksum
+verification separately. This was not a newly provisioned host.
 
 [TODO.md](TODO.md) contains only open work and future decisions. Native Lobster is
 a required capability. Built-in plugin/skill curation and removal of ClawHub mentions
@@ -112,9 +119,9 @@ The menu reviews settings before credentials, starts persistently on macOS when 
 the private OIDC administrator claim. The same `configure` command changes
 retained models, Connections and pack selections, interactively or with explicit flags; the installation
 guide records the supported changes. [Recipes](recipes/README.md) ship with the CLI and pack files; each pins a reusable
-[runtime release](release/README.md) containing exact images and tools. npm/GitHub/GHCR
-publication is not complete. Release candidates and verified runtime downloads are
-implemented; the first published, clean-machine release remains in [TODO.md](TODO.md).
+[runtime release](release/README.md) containing exact images and tools.
+[0.1.0-alpha.1](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.1)
+is published through npm, GitHub Releases and public GHCR images.
 The bundled [Account and People plugin](plugins/access/README.md) renders inside OpenClaw.
 Administrators invite people using copyable links, assign native roles and remove access.
 The external Access companion enforces admission and revocation. Connections remains

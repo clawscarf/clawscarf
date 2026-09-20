@@ -121,10 +121,11 @@ CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.
 CLAWSCARF_TEST_COMPANION_PACKAGE=1 pnpm exec tsx --test scripts/package-companion.test.ts
 ```
 
-These packaging checks do not establish complete installation/startup acceptance
-with the current team runtime. That journey, clean-machine release installation and
-published release upgrades remain unqualified; the current runtime evidence is in
-the [OpenShell guide](../deploy/openshell/README.md#repeatable-boundary-and-retention-check).
+These packaging checks alone do not establish installation/startup acceptance.
+The first candidate also passed a fresh installation, hosted administrator login,
+real inference and retained-state restart on the development Mac; see
+[release verification](../release/README.md#build-and-publish). Published release
+upgrades and a newly provisioned host remain untested.
 
 ## Provenance
 
