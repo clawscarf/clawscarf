@@ -31,7 +31,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && openclaw plugins build --root .",
-    "validate": "openclaw plugins validate --root . && openclaw plugins build --root . --check"
+    "validate": "npm run build && openclaw plugins validate --root ."
   },
   "openclaw": {
     "extensions": [
