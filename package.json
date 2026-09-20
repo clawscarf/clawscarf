@@ -13,7 +13,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build": "rm -rf dist && tsc -b tsconfig.sdk.json && tsc -p tsconfig.build.json && node --import tsx scripts/build-operator.ts && node --import tsx scripts/build-companion.ts && pnpm connectors:plugin:build && pnpm access:plugin:build",
-    "check": "pnpm format:check && pnpm codegen:check && pnpm typecheck && pnpm lint && pnpm architecture:check && pnpm docs:check && pnpm test && pnpm connectors:plugin:check && pnpm access:plugin:check",
+    "check": "pnpm format:check && pnpm codegen:check && pnpm typecheck && pnpm connectors:plugin:check && pnpm access:plugin:check && pnpm lint && pnpm architecture:check && pnpm docs:check && pnpm test",
     "typecheck": "tsc -b tsconfig.sdk.json && tsc --noEmit",
     "lint": "eslint ui apps scripts services tests runtime deploy/execution plugins/access/src plugins/connections/src plugins/connections/tests plugins/connections/scripts eslint.config.mjs .dependency-cruiser.cjs",
     "docs:check": "node --import tsx scripts/check-docs.ts",
