@@ -84,7 +84,10 @@ with an exact version, such as `0.1.0-alpha.1`. It:
 
 The [image builder](../scripts/release/build-images.sh) and
 [candidate assembler](../scripts/release/candidate.ts) contain the build commands;
-Actions supplies runners and registry credentials. The source recipe pins the development
+GitHub Actions orchestrates the build and supplies registry credentials. Image builds
+and Linux installation checks use Depot ARM64/x86-64 runners; macOS checks and packaging
+use GitHub-hosted runners. The Depot Managed Runners app connects the ClawScarf organization
+to the RAW Labs Depot organization. The source recipe pins the development
 runtime. Packaging resolves that same runtime to the candidate's immutable definition;
 it does not make recipes select latest. The first release uses the same CLI/runtime
 version. Recipe versions remain independent; bump them when defaults, pack selection
