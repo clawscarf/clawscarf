@@ -14,8 +14,7 @@ password database is bundled with the installation.
 The implementation contains a session service, Postgres persistence, generated
 OpenAPI handlers/client, a native streaming reverse proxy and the unified `clawscarf people` commands. Native enrollment has REST, CLI and a People page. Administrator proof and team
 preparation, member enrollment, member administrator denial and administrator
-self-revocation pass against native OpenClaw 2026.9.4. The assembled [team profile](../../deploy/deployment/README.md#team-profile)
-also has Dex/browser enrollment and handover acceptance. The native Account/People pages
+self-revocation pass against native OpenClaw 2026.9.4. The native Account/People pages
 have passed a two-person browser flow with a signed local OIDC provider and vanilla
 OpenClaw 2026.9.4, including invitations, role handover and revoked-session denial.
 External company-provider configuration must still be verified for each deployment.
@@ -204,8 +203,8 @@ profile displays the configured administrator name. A real native regression als
 verifies 40 concurrent authenticated page requests, member enrollment, explicit
 administrator promotion, self-revocation and
 closure of an already-open Gateway connection while preserving another administrator.
-See the [assembled team acceptance](../../deploy/deployment/README.md#team-profile)
-for browser login, enrollment and two-tab revocation through a separate Dex provider.
+See the [deployment team profile](../../deploy/deployment/README.md#team-profile)
+for OIDC, listener and TLS configuration.
 The configured runtime must not be reachable by untrusted
 callers bypassing ingress. Application and widget origins must be distinct; widget
 requests retain native capability authorization rather than receiving user identity.
