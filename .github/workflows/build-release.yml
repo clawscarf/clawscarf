@@ -51,6 +51,17 @@ jobs:
           node-version: 24.19.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Stop the runner's older Docker engine
+        run: sudo systemctl stop docker.service docker.socket
+      - name: Set up Docker 29
+        id: docker
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
+        with:
+          version: v29.5.3
+      - name: Expose the test engine at the standard local socket
+        env:
+          DOCKER_SOCKET: ${{ steps.docker.outputs.sock }}
+        run: sudo ln -sf "${DOCKER_SOCKET#unix://}" /var/run/docker.sock
       - name: Authenticate to GHCR
         env:
           REGISTRY_TOKEN: ${{ github.token }}

@@ -87,7 +87,9 @@ The [image builder](../scripts/release/build-images.sh) and
 GitHub Actions orchestrates the build and supplies registry credentials. Image builds
 and Linux installation checks use Depot ARM64/x86-64 runners; macOS checks and packaging
 use GitHub-hosted runners. The Depot Managed Runners app connects the ClawScarf organization
-to the RAW Labs Depot organization. The source recipe pins the development
+to the RAW Labs Depot organization. The image job installs Docker 29.5.3 on its
+disposable runner for the network features required by installations.
+The source recipe pins the development
 runtime. Packaging resolves that same runtime to the candidate's immutable definition;
 it does not make recipes select latest. The first release uses the same CLI/runtime
 version. Recipe versions remain independent; bump them when defaults, pack selection
