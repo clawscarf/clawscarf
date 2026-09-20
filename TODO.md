@@ -6,9 +6,9 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 - [ ] Verify first-time production signup through email verification and installer resume.
 
-- [ ] Run the [release candidate workflow](.github/workflows/build-release.yml) from `main`;
-      verify public GHCR access, npm ownership/trusted publishing and the first complete
-      clean-machine installation through administrator login, real inference and stop/start.
+- [ ] Finish the first [release candidate](.github/workflows/build-release.yml):
+      enable public GHCR access, authenticate the initial npm publication and configure trusted
+      publishing; verify a fresh installation through administrator login, real inference and stop/start.
       Then publish the same tested artifacts. macOS arm64 is the current supported target.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite

@@ -92,20 +92,26 @@ GitHub Release and publishes the already-built npm tarball. It never rebuilds im
 or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Repeating
 a GitHub upload is allowed only when the existing checksums match exactly.
 
-Repository setup before first publication:
+Repository setup:
 
 - GHCR image packages must be publicly readable; a private candidate digest is not
   usable by an unauthenticated installer. The build uses GitHub's scoped job token.
-- Configure the GitHub `release` environment and npm trusted publishing for
-  `@clawscarf/cli`, repository `clawscarf/clawscarf`, workflow [publish-release.yml](../.github/workflows/publish-release.yml),
-  environment `release`. npm ownership/initial package setup is separate from code.
+- The GitHub `release` environment exists and restricts deployment to `main`.
+  The npm organization `@clawscarf` exists. Its first package publication still needs
+  npm authentication; a browser login alone does not authenticate the CLI.
+- npm requires the package to exist before configuring trusted publishing. Publish
+  the first tested tarball using the owner's authenticated npm CLI, then configure
+  `@clawscarf/cli` for repository `clawscarf/clawscarf`, workflow
+  [publish-release.yml](../.github/workflows/publish-release.yml), environment `release`.
+  Subsequent publication uses that workflow's short-lived identity rather than a stored npm token.
 - Check transitive notices/source obligations before distributing the first images.
   Debian copyright files remain in the images; runtime assets include upstream notices
   and the image build exports its network-tool sources. Those files are not a claim of
   a completed license audit. Pinned Debian packages still depend on mirror retention.
 
-No npm/GitHub release has been published by adding these workflows. The first Actions
-run, clean-machine journey, registry access and publication remain in [TODO.md](../TODO.md).
+The candidate workflow has passed its checks, compiled archive test and all eight image
+builds. No npm/GitHub release has been published. Public image access, the fresh installation
+journey and publication remain in [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 
