@@ -3,7 +3,7 @@ import { hostedOidc, hostedConnections } from "../cloud/registration.js";
 import { dirname, resolve, join } from "node:path";
 import { loadGatewayConfiguration } from "../deployment/model-gateway.js";
 import { createServer } from "node:net";
-import { releaseSchema } from "../release/definition.js";
+import { releaseSchema, releaseTools } from "../release/definition.js";
 import {
   parseLocalInput,
   type LocalInput,
@@ -73,10 +73,11 @@ export async function resolveInstallation(
       "This release does not support this host platform.",
     );
   const toolBase = dirname(releasePath);
-  const cli = resolve(toolBase, release.tools.openshell.cli.file);
-  const gateway = resolve(toolBase, release.tools.openshell.gateway.file);
-  await verifyReleaseTool(cli, release.tools.openshell.cli.sha256);
-  await verifyReleaseTool(gateway, release.tools.openshell.gateway.sha256);
+  const tools = releaseTools(release);
+  const cli = resolve(toolBase, tools.cli.file);
+  const gateway = resolve(toolBase, tools.gateway.file);
+  await verifyReleaseTool(cli, tools.cli.sha256);
+  await verifyReleaseTool(gateway, tools.gateway.sha256);
   const [
     controller,
     management,

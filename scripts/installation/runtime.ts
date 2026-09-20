@@ -9,7 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { releaseSchema } from "../release/definition.js";
+import { releaseSchema, releaseTools } from "../release/definition.js";
 import { readJson, verifyReleaseTool } from "./files.js";
 import { InstallationError } from "./errors.js";
 
@@ -19,7 +19,7 @@ export async function retainRuntime(source: string, directory: string) {
   const target = join(directory, "runtime");
   await mkdir(join(target, "tools"), { recursive: true, mode: 0o700 });
   for (const name of ["cli", "gateway"] as const) {
-    const tool = release.tools.openshell[name];
+    const tool = releaseTools(release)[name];
     const original = resolve(dirname(source), tool.file);
     tool.file = `tools/openshell${name === "gateway" ? "-gateway" : ""}`;
     try {
@@ -56,7 +56,7 @@ export async function acquireRuntimeTools(
   const release = releaseSchema.parse(await readJson(releaseFile));
   for (const name of ["cli", "gateway"] as const) {
     options.signal?.throwIfAborted();
-    const tool = release.tools.openshell[name];
+    const tool = releaseTools(release)[name];
     const file = resolve(dirname(releaseFile), tool.file);
     try {
       await verifyReleaseTool(file, tool.sha256);

@@ -115,7 +115,7 @@ await test("external Connections retains only endpoint and CA, never reads provi
       0o777,
     0o600,
   );
-  const compose = composeConfiguration(f.state, f.directory);
+  const compose = composeConfiguration(f.state, f.directory, "172.30.0.254");
   assert.equal(
     compose.services.companion.volumes.some((path) =>
       path.includes("/connections"),

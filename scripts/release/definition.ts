@@ -21,12 +21,18 @@ const file = z.strictObject({
     }, "Tool downloads require HTTPS without credentials.")
     .optional(),
 });
+export const hostPlatformSchema = z.enum([
+  "darwin-arm64",
+  "linux-arm64",
+  "linux-x64",
+]);
+const tool = z.union([file, z.partialRecord(hostPlatformSchema, file)]);
 /** Pinned runtime metadata, independent of recipe defaults and deployment state. */
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
-  platforms: z.array(z.literal("darwin-arm64")).min(1).max(1),
+  platforms: z.array(hostPlatformSchema).min(1),
   images: z
     .strictObject({
       postgres: z.literal(postgresImage),
@@ -50,9 +56,35 @@ export const releaseSchema = z.strictObject({
   tools: z.strictObject({
     openshell: z.strictObject({
       version: z.string().min(1),
-      cli: file,
-      gateway: file,
+      cli: tool,
+      gateway: tool,
     }),
   }),
 });
 export type Release = z.infer<typeof releaseSchema>;
+
+/** Single-platform development bundles and multi-platform published bundles share resolution. */
+export function releaseTools(
+  release: Release,
+  platform = `${process.platform}-${process.arch}`,
+) {
+  const host = hostPlatformSchema.parse(platform);
+  if (!release.platforms.includes(host))
+    throw new Error(`Runtime ${release.version} does not include ${host}.`);
+  const select = (value: z.infer<typeof tool>) => {
+    if ("file" in value) {
+      if (release.platforms.length !== 1)
+        throw new Error(
+          "Multi-platform runtimes require a tool for each platform.",
+        );
+      return value;
+    }
+    const selected = value[host];
+    if (!selected) throw new Error(`Missing runtime tool for ${host}.`);
+    return selected;
+  };
+  return {
+    cli: select(release.tools.openshell.cli),
+    gateway: select(release.tools.openshell.gateway),
+  };
+}

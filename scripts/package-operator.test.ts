@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
+import { releaseTools } from "./release/definition.js";
 import { packageOperator } from "./release/operator.js";
 import { postgresImage } from "./deployment/images.js";
 
@@ -222,7 +223,8 @@ await test(
     delete runtime.images.browser;
     delete runtime.images.relay;
     for (const name of ["cli", "gateway"] as const)
-      runtime.tools.openshell[name].url = `https://example.test/${name}`;
+      releaseTools(runtime, "darwin-arm64")[name].url =
+        `https://example.test/${name}`;
     const file = join(directory, "runtime.json");
     await writeFile(file, JSON.stringify(runtime));
     const archive = await packageOperator(

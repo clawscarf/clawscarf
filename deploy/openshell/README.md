@@ -98,8 +98,12 @@ These listeners bind host loopback. The first reaches OpenClaw; the second reach
 its separate widget sandbox. Each command remains running for the lifetime of its
 forward. Stop the process to close its listener; restart forwards after replacing
 compute. They neither initialize state nor replace session authorization.
-The access companion targets these host listeners through `host.docker.internal`
-on Docker Desktop. Linux host routing needs separate qualification.
+The installation CLI runs forwards as Compose services. The companion reaches
+`application` and `widgets` through private Compose DNS. The OpenShell controller
+uses an explicit address on the owned runtime bridge for sandbox callbacks; its
+forwarders use the private `controller.clawscarf.internal` name. Bundled LiteLLM
+is reachable at `models.clawscarf.internal` over authenticated TLS. This avoids
+Docker Desktop-specific routing while keeping published ports on loopback.
 Public application access and the widget origin go through the
 [access companion](../../services/access/README.md), never directly to these listeners.
 

@@ -29,6 +29,10 @@ export function modelGatewayServices(directory: string, state: LocalState) {
     },
     models: {
       image: input.image,
+      networks: {
+        default: {},
+        runtime: { aliases: ["models.clawscarf.internal"] },
+      },
       init: true,
       read_only: true,
       cap_drop: ["ALL"],

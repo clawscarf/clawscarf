@@ -96,6 +96,7 @@ await test("team generation publishes TLS browser ports only and keeps identity 
       input,
     },
     "/private/team",
+    "172.30.0.254",
   );
   assert.deepEqual(compose.services.companion.ports, [
     "0.0.0.0:18443:18800",

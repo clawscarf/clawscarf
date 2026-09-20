@@ -235,8 +235,8 @@ export function parseLocalInput(value: unknown): LocalInput {
   return localInput.parse(value);
 }
 
-export function managementOrigin(input: Pick<LocalInput, "ports">): string {
-  return `https://host.docker.internal:${String(input.ports.management)}`;
+export function managementOrigin(): string {
+  return "https://localhost:18801";
 }
 
 function mountedPrivateFile(
@@ -307,10 +307,10 @@ export function generateLocalConfiguration(options: {
       port: 18801,
     },
     runtime: {
-      origin: `http://host.docker.internal:${String(input.ports.native)}`,
-      managementOrigin: managementOrigin(input),
+      origin: `http://application:${String(input.ports.native)}`,
+      managementOrigin: managementOrigin(),
       widgetOrigin,
-      widgetUpstream: `http://host.docker.internal:${String(input.ports.nativeWidgets)}`,
+      widgetUpstream: `http://widgets:${String(input.ports.nativeWidgets)}`,
     },
     ...(input.team.certificateFile
       ? {

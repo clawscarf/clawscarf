@@ -2,8 +2,7 @@
 
 Use the [installation CLI](installation.md) for a team installation. This document describes lower-level developer commands and the generated local configuration consumed by that CLI. Component-only examples deliberately omit parts of the product and are not alternative installation recipes.
 
-This operator path assembles the existing components for local evaluation on macOS
-arm64 with Docker Desktop. `prepareLocal` initializes private configuration, the database
+This operator path assembles the existing components on macOS arm64 and Linux arm64/x86-64 (including WSL2) with Docker and Compose. `prepareLocal` initializes private configuration, the database
 and native volume. `launchLocal` starts Docker services and protected runtimes, checks readiness, then returns. Fresh startup, native administrator
 browser login, a configured model/tool interaction and retained-state restart have
 passed. The [terminal installer](installation.md#terminal-installer) collects a unified
@@ -97,8 +96,8 @@ store. Its private key and the session-encryption key remain in the private dire
 
 Repeat preparation with the same input to reuse completed state. Existing configuration
 edits and partial TLS material are rejected without replacement. The private certificate
-includes `host.docker.internal`; management uses the published host port to preserve
-native client-address attribution. Preparation and an identical second run passed
+includes localhost and the private model service name; companion management uses
+its own loopback listener. Application and widget forwards use Compose DNS. Preparation and an identical second run passed
 against fresh local Docker/Postgres resources. Tests cover retained keys, foreign state
 and database privilege denials. Controller staging errors require operator inspection.
 Preparation never runs database migrations on API startup.
@@ -388,7 +387,7 @@ Run the bridge protocol regressions with the same pinned Python environment:
 The current unit regressions cover retained configuration/volume ownership, gated
 startup and interrupted replacement without another allocation. Live replacement of
 the current team runtime, changed-upstream-version compatibility, browser interaction
-after replacement, Linux and upgrades from published release artifacts remain unqualified.
+after replacement and upgrades between published runtime versions remain unverified.
 
 ## Allocation acceptance
 
@@ -420,7 +419,7 @@ live owned-network test used explicitly chosen, nonoverlapping test subnets.
 A new installation can include a `team` block in the same input file. This configures
 company OIDC and direct HTTPS on the Access companion; it does not create an identity
 provider. Existing local identities cannot silently become team identities. Platform
-support remains macOS arm64 with Docker Desktop while Linux qualification is open.
+support follows the selected runtime platform list. Windows runs the Linux CLI inside WSL2.
 
 ```json
 {

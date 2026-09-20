@@ -28,7 +28,15 @@ jobs:
       - run: CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 node --import tsx --test scripts/package-operator.test.ts
   images:
     needs: check
-    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+          - arch: amd64
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     permissions:
       contents: read
@@ -48,17 +56,55 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
         run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - run: bash scripts/release/build-images.sh .local/release-images
+        env:
+          IMAGE_ARCH: ${{ matrix.arch }}
+      - name: Verify installation on Linux Docker
+        run: CLAWSCARF_TEST_PLATFORM_IMAGES=.local/release-images/images.json node --import tsx --test tests/deployment/platform-live.test.ts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: runtime-images
+          name: runtime-images-${{ matrix.arch }}
           path: |
             .local/release-images/images.json
             .local/release-images/network-sources.tgz
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
-  package:
+  manifests:
     needs: images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: runtime-images-*
+          path: images
+      - name: Publish multi-architecture image indexes
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          mkdir combined
+          echo '{}' > combined/images.json
+          for name in $(jq -r 'keys[]' images/runtime-images-arm64/images.json); do
+            image="ghcr.io/${GITHUB_REPOSITORY,,}/$name:build-$GITHUB_RUN_ID"
+            arm="$(jq -er --arg name "$name" '.[$name]' images/runtime-images-arm64/images.json)"
+            amd="$(jq -er --arg name "$name" '.[$name]' images/runtime-images-amd64/images.json)"
+            docker buildx imagetools create -t "$image" "$arm" "$amd"
+            digest="$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er .digest)"
+            jq --arg name "$name" --arg image "${image%:*}@$digest" '. + {($name): $image}' combined/images.json > combined/next.json
+            mv combined/next.json combined/images.json
+          done
+          cp images/runtime-images-arm64/network-sources.tgz combined/network-sources.tgz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: runtime-images
+          path: combined/
+          if-no-files-found: error
+  package:
+    needs: manifests
     runs-on: macos-14
     timeout-minutes: 20
     steps:

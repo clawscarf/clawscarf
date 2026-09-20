@@ -3,7 +3,11 @@ import { openshellGatewayImage } from "./images.js";
 import { resourceNames, type LocalState } from "./state.js";
 
 /** OpenShell alone receives Docker authority. Forwarders receive only client credentials. */
-export function controllerServices(directory: string, state: LocalState) {
+export function controllerServices(
+  directory: string,
+  state: LocalState,
+  address: string,
+) {
   const controller = join(directory, "controller");
   const { input } = state;
   const name = resourceNames(state).sandbox;
@@ -22,7 +26,6 @@ export function controllerServices(directory: string, state: LocalState) {
       XDG_DATA_HOME: "/tmp/data",
     },
     volumes: [`${join(controller, "config")}:/controller/config:ro`],
-    extra_hosts: ["host.openshell.internal:host-gateway"],
     command: [
       "forward",
       "start",
@@ -31,7 +34,7 @@ export function controllerServices(directory: string, state: LocalState) {
       "--gateway",
       name,
       "--gateway-endpoint",
-      `https://host.openshell.internal:${String(input.ports.controller)}`,
+      `https://controller.clawscarf.internal:${String(input.ports.controller)}`,
     ],
     ports: [`127.0.0.1:${String(port)}:${String(port)}`],
   });
@@ -39,6 +42,10 @@ export function controllerServices(directory: string, state: LocalState) {
     controller: {
       image: openshellGatewayImage,
       user: "0:0",
+      networks: {
+        default: { aliases: ["controller.clawscarf.internal"] },
+        runtime: { ipv4_address: address },
+      },
       command: ["--config", join(controller, "gateway.toml")],
       environment: {
         XDG_CONFIG_HOME: join(controller, "config"),
@@ -52,7 +59,6 @@ export function controllerServices(directory: string, state: LocalState) {
         "/var/run/docker.sock:/var/run/docker.sock",
       ],
       ports: [`127.0.0.1:${String(port)}:${String(port)}`],
-      extra_hosts: ["host.openshell.internal:host-gateway"],
     },
     application: forward(name, input.ports.native),
     widgets: forward(name, input.ports.nativeWidgets),

@@ -19,6 +19,7 @@ const settingsSchema = z.strictObject({
   port: z.number().int().min(1024).max(65535),
   gateway: z.string().min(1),
   cli: z.string().min(1),
+  hostGatewayIp: z.ipv4().optional(),
 });
 type Settings = z.infer<typeof settingsSchema>;
 const releaseInput: unknown = JSON.parse(
@@ -93,6 +94,7 @@ gateway_id = ${JSON.stringify(settings.name)}
 ttl_secs = 0
 [openshell.drivers.docker]
 network_name = ${JSON.stringify(settings.name)}
+${settings.hostGatewayIp ? `host_gateway_ip = ${JSON.stringify(settings.hostGatewayIp)}` : ""}
 sandbox_namespace = ${JSON.stringify(settings.name)}
 supervisor_image = ${JSON.stringify(release.supervisorImage)}
 image_pull_policy = "IfNotPresent"
@@ -109,6 +111,10 @@ command
   .requiredOption("--directory <path>", "New private controller directory")
   .requiredOption("--gateway <path>", "Verified openshell-gateway executable")
   .requiredOption("--cli <path>", "Verified openshell executable")
+  .option(
+    "--host-gateway-ip <address>",
+    "Controller address on the runtime bridge",
+  )
   .option("--name <name>", "Isolated controller name", "clawscarf")
   .option("--port <port>", "Loopback controller port", "17671")
   .action(
@@ -118,6 +124,7 @@ command
       cli: string;
       name: string;
       port: string;
+      hostGatewayIp?: string;
     }) => {
       const directory = resolve(options.directory);
       const env = environment(directory);
@@ -126,6 +133,7 @@ command
         port: Number(options.port),
         gateway: resolve(options.gateway),
         cli: resolve(options.cli),
+        hostGatewayIp: options.hostGatewayIp,
       });
       await verifyExecutable(settings.gateway);
       await verifyExecutable(settings.cli);
@@ -142,6 +150,8 @@ command
           "localhost",
           "--server-san",
           "host.openshell.internal",
+          "--server-san",
+          "controller.clawscarf.internal",
         ],
         { timeout: 30000 },
       );

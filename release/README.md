@@ -34,7 +34,10 @@ locally built Docker image IDs and checksum-pinned OpenShell tools under ignored
 published, clean-machine release**. Definitions belong in the tracked directories
 above. Compiled images, binaries and test artifacts are not source definitions.
 
-The current platform is macOS arm64 with Docker Desktop. Setup validates the host,
+Published candidates include macOS arm64 and Linux arm64/x86-64 tools, with Linux
+container images for both architectures. Windows uses the Linux CLI inside WSL2;
+Docker Desktop must expose its Linux engine to that distribution. Intel Mac is blocked
+by the pinned upstream OpenShell release lacking a Darwin x86-64 executable. Setup validates the host,
 tools and ports; it pulls registry images by digest and downloads missing runtime tools
 when their definition supplies an HTTPS URL and SHA-256. It cannot recover a missing
 local development image ID. See the
@@ -67,10 +70,13 @@ silently replaced. Docker verifies image digests. No start command resolves late
 with an exact version, such as `0.1.0-alpha.1`. It:
 
 1. Runs checks and tests the compiled operator outside the checkout on macOS arm64.
-2. Builds the pinned OpenClaw source and ClawScarf images on Linux arm64, checks
-   runtime capabilities and the Chromium sandbox, and pushes candidate images to GHCR.
+2. Builds the pinned OpenClaw source and ClawScarf images on Linux arm64 and x86-64,
+   checks runtime capabilities and the Chromium sandbox, then starts a protected
+   installation with private LiteLLM networking and verifies stop/start retention.
+   It publishes image indexes containing both architectures to GHCR.
 3. Downloads checksum-pinned OpenShell tools, records the image digests, and assembles
-   the runtime archive, individual executable assets, npm CLI, checksums and notices.
+   one runtime archive per host platform, individual executable assets, npm CLI,
+   checksums and notices.
 4. Installs the resulting npm archive into a temporary prefix and checks its CLI/catalog.
 
 The [image builder](../scripts/release/build-images.sh) and

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CI-only image build. GITHUB_TOKEN registry login belongs to the workflow.
 set -euo pipefail
-: "${GITHUB_REPOSITORY:?}" "${GITHUB_SHA:?}" "${GITHUB_RUN_ID:?}"
+: "${GITHUB_REPOSITORY:?}" "${GITHUB_SHA:?}" "${GITHUB_RUN_ID:?}" "${IMAGE_ARCH:?}"
 output="${1:?output directory}"
 mkdir -p "$output"
 revision="$(jq -er '.openclaw.sourceRevision' release/components.json)"
@@ -19,7 +19,7 @@ docker build --build-arg "GIT_COMMIT=$revision" \
 rm -rf "$upstream"
 echo '{}' > "$output/images.json"
 while read -r name dockerfile; do
-  image="ghcr.io/${GITHUB_REPOSITORY,,}/$name:build-$GITHUB_RUN_ID"
+  image="ghcr.io/${GITHUB_REPOSITORY,,}/$name:build-$GITHUB_RUN_ID-$IMAGE_ARCH"
   docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
     --label "org.opencontainers.image.revision=$GITHUB_SHA" \
     --build-arg "OPENCLAW_IMAGE=$base" --build-arg "NODE_IMAGE=$node" \

@@ -12,12 +12,28 @@
       "darwin-arm64": {
         "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-aarch64-apple-darwin.tar.gz",
         "sha256": "e582f2374053bebac8e6aaeb4a369931b7d4bb97bd55055e2c02e85502627e22"
+      },
+      "linux-arm64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "7a949c48d1e000cd280869eea1e203e24816b9cfefc575b68a8b72b939cb3f43"
+      },
+      "linux-x64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "4fb4476d80a1875a0b83547ec3aba999cf0a2e2d75f95f2f709b622e2103520e"
       }
     },
     "gateway": {
       "darwin-arm64": {
         "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-gateway-aarch64-apple-darwin.tar.gz",
         "sha256": "f192d3d737c125264e13ef73458541df2ca6a9eb2fa599736a7f2587d5d2ce8d"
+      },
+      "linux-arm64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-gateway-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "292c379193a339220234ffea585350901468bb8f4076e2076bc074e8ed18974b"
+      },
+      "linux-x64": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-gateway-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "59c6da724eae7a00c28826f9191efbdf4fbaa5c768afdc8dea6a80a949ebcc89"
       }
     },
     "gatewayImage": "ghcr.io/nvidia/openshell/gateway:0.0.116@sha256:05cf77bbb022a739aed6f22daa0e7e164415f4ab273b5f84319e46d91eb8f645"

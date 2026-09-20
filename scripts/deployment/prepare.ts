@@ -22,7 +22,7 @@ import {
   withInitialModels,
   type InitialModels,
 } from "./models.js";
-import { ensureLocalNetworks } from "./networks.js";
+import { ensureLocalNetworks, observedControllerAddress } from "./networks.js";
 import { nodeEntrypoint } from "./entrypoint.js";
 import { ensureCertificates } from "./certificates.js";
 import { z } from "zod";
@@ -57,10 +57,13 @@ export async function prepareLocal(
   const input = parseLocalInput(inputValue);
   const connections = await loadInitialConnections(input.connections);
   const teamMaterials = await readTeamMaterials(input.team);
-  if (process.platform !== "darwin" || process.arch !== "arm64")
+  if (
+    !["darwin", "linux"].includes(process.platform) ||
+    !["arm64", "x64"].includes(process.arch)
+  )
     throw new LocalSetupError(
       "platform_unqualified",
-      "This local assembly currently requires macOS arm64 with Docker Desktop; other platforms need qualification.",
+      "Use macOS or Linux (including WSL2) with Linux Docker containers.",
     );
   for (const image of [
     input.runtimeImage,
@@ -112,6 +115,7 @@ export async function prepareLocal(
   );
   await prepareModelGateway(directory, state);
   await ensureLocalNetworks(directory, state);
+  const controllerAddress = await observedControllerAddress(directory, state);
   const browser = await prepareBrowser(directory, state);
   const browserMachine = browser
     ? await prepareBrowserNode(directory, state, browser.token)
@@ -130,7 +134,13 @@ export async function prepareLocal(
   await ensurePrivateFile(
     join(directory, "compose.json"),
     JSON.stringify(
-      composeConfiguration(state, directory, browser?.address, browserMachine),
+      composeConfiguration(
+        state,
+        directory,
+        controllerAddress,
+        browser?.address,
+        browserMachine,
+      ),
       null,
       2,
     ),
@@ -224,6 +234,8 @@ export async function prepareLocal(
       input.openshellGateway,
       "--cli",
       input.openshellCli,
+      "--host-gateway-ip",
+      controllerAddress,
       "--name",
       names.sandbox,
       "--port",

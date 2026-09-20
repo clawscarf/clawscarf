@@ -19,10 +19,13 @@ import { InstallationError } from "./errors.js";
 
 /** No configuration, credentials or cloud account is needed for these checks. */
 export async function checkHost(command: typeof run = run) {
-  if (process.platform !== "darwin" || process.arch !== "arm64")
+  if (
+    !["darwin", "linux"].includes(process.platform) ||
+    !["arm64", "x64"].includes(process.arch)
+  )
     throw new InstallationError(
       "unsupported_platform",
-      "This release requires macOS on Apple Silicon with Docker Desktop.",
+      "Use macOS or Linux (including WSL2), with an ARM64 or x86-64 processor and Linux Docker containers. Run the Windows CLI inside WSL2.",
     );
   let os: string;
   try {
@@ -35,8 +38,8 @@ export async function checkHost(command: typeof run = run) {
     throw new InstallationError(
       "unavailable",
       missing
-        ? "Docker is not installed or is not on PATH. Install Docker Desktop, start it, then run configure again."
-        : "Cannot reach Docker. Start Docker Desktop and wait until it is running, then try again.",
+        ? "Docker is not installed or is not on PATH. Install Docker Engine with Compose or Docker Desktop, then run configure again."
+        : "Cannot reach Docker. Start Docker and check that your user can access its socket, then try again.",
     );
   }
   if (os.trim() !== "linux")
@@ -49,7 +52,7 @@ export async function checkHost(command: typeof run = run) {
   } catch {
     throw new InstallationError(
       "unavailable",
-      "Docker Compose is unavailable. Install or update Docker Desktop, then try again.",
+      "Docker Compose is unavailable. Install the Docker Compose plugin or update Docker Desktop, then try again.",
     );
   }
 }

@@ -120,8 +120,9 @@ await test("local preparation retains private identity/secrets and rejects forei
     await writeFile(join(other, "keep"), "data");
     await assert.rejects(initializeState(other, input));
     assert.equal(await readFile(join(other, "keep"), "utf8"), "data");
-    const composed = composeConfiguration(state, directory);
+    const composed = composeConfiguration(state, directory, "172.30.0.254");
     assert.deepEqual(composed.networks, {
+      runtime: { external: true, name: names.sandbox },
       default: {
         external: true,
         name: `clawscarf-${state.ownerId.replaceAll("-", "").slice(0, 12)}_default`,
@@ -153,6 +154,7 @@ await test("local preparation retains private identity/secrets and rejects forei
         },
       },
       directory,
+      "172.30.0.254",
     );
     assert.ok(
       enabled.services.companion.volumes.includes(

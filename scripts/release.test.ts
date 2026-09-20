@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
-import { releaseSchema } from "./release/definition.js";
+import { releaseSchema, releaseTools } from "./release/definition.js";
 import { createDevelopmentRelease } from "./release/create.js";
 import { setupContext, recipeConfiguration } from "./installation/setup.js";
 import { verifyReleaseTool } from "./installation/files.js";
@@ -54,7 +54,7 @@ await test("runtime artifacts relocate independently of recipes and reject alter
   const moved = join(directory, "moved");
   await rename(options.outputDirectory, moved);
   await rm(join(directory, "tool"));
-  const tool = release.tools.openshell.cli;
+  const tool = releaseTools(release, "darwin-arm64").cli;
   await verifyReleaseTool(join(moved, tool.file), tool.sha256);
   assert.ok(!JSON.stringify(release).includes(directory));
   if (process.platform === "darwin" && process.arch === "arm64") {
@@ -122,5 +122,72 @@ await test("release browser capability requires its complete browser and relay i
   assert.throws(
     () => schema.parse({ ...base, relay: image }),
     /supplied together/,
+  );
+});
+
+await test("release tools select exact host artifacts and reject incomplete cross-platform bundles", () => {
+  const tool = (host: string) => ({
+    file: `tools/${host}/openshell`,
+    sha256: "a".repeat(64),
+  });
+  const release = releaseSchema.parse({
+    schemaVersion: 1,
+    version: "0.1.0-test",
+    sourceRevision: "a".repeat(40),
+    platforms: ["darwin-arm64", "linux-arm64", "linux-x64"],
+    images: {
+      postgres: postgresImage,
+      gateway: `sha256:${"a".repeat(64)}`,
+      companion: `sha256:${"a".repeat(64)}`,
+      openshellClient: `sha256:${"a".repeat(64)}`,
+    },
+    tools: {
+      openshell: {
+        version: "0.0.116",
+        cli: {
+          "darwin-arm64": tool("darwin-arm64"),
+          "linux-arm64": tool("linux-arm64"),
+          "linux-x64": tool("linux-x64"),
+        },
+        gateway: {
+          "darwin-arm64": tool("darwin-arm64"),
+          "linux-arm64": tool("linux-arm64"),
+          "linux-x64": tool("linux-x64"),
+        },
+      },
+    },
+  });
+  for (const host of release.platforms)
+    assert.equal(
+      releaseTools(release, host).cli.file,
+      `tools/${host}/openshell`,
+    );
+  assert.throws(() => releaseTools(release, "win32-x64"));
+  assert.throws(
+    () =>
+      releaseTools(
+        {
+          ...release,
+          tools: { openshell: { ...release.tools.openshell, cli: {} } },
+        },
+        "linux-x64",
+      ),
+    /Missing runtime tool/,
+  );
+  assert.throws(
+    () =>
+      releaseTools(
+        {
+          ...release,
+          tools: {
+            openshell: {
+              ...release.tools.openshell,
+              cli: tool("darwin-arm64"),
+            },
+          },
+        },
+        "linux-x64",
+      ),
+    /Multi-platform/,
   );
 });

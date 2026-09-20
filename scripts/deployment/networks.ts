@@ -415,3 +415,27 @@ export async function observedBrowserMachineAddresses(
   if ([ingress, dns].includes(observed.isolated.gateway ?? "")) changed();
   return { node: observed.isolated.address, ingress, dns };
 }
+
+/** Stable address on the owned runtime bridge for the containerized OpenShell controller. */
+export async function observedControllerAddress(
+  directory: string,
+  state: LocalState,
+) {
+  await verifyLocalNetworks(directory, state);
+  const configs = z
+    .array(z.object({ Subnet: z.string(), Gateway: z.string() }))
+    .parse(
+      JSON.parse(
+        await run("docker", [
+          "network",
+          "inspect",
+          resourceNames(state).sandbox,
+          "--format",
+          "{{json .IPAM.Config}}",
+        ]),
+      ),
+    );
+  const config = configs.find((item) => isIP(item.Gateway) === 4);
+  if (!config) changed();
+  return reservedAddress(config).address;
+}

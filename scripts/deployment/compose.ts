@@ -15,6 +15,7 @@ import { postgresImage } from "./images.js";
 export function composeConfiguration(
   state: LocalState,
   directory: string,
+  controllerAddress: string,
   browserAddress?: string,
   browserMachine?: { addresses: BrowserMachineAddresses; fingerprint: string },
 ) {
@@ -36,7 +37,7 @@ export function composeConfiguration(
   const configuration = {
     name: names.project,
     services: {
-      ...controllerServices(directory, state),
+      ...controllerServices(directory, state, controllerAddress),
       ...modelGatewayServices(directory, state),
       ...(input.browser && browserAddress && browserMachine
         ? browserNodeServices(state, directory, browserAddress, browserMachine)
@@ -168,9 +169,7 @@ export function composeConfiguration(
       },
     },
     networks: {
-      ...(input.relayImage
-        ? { runtime: { external: true, name: names.sandbox } }
-        : {}),
+      runtime: { external: true, name: names.sandbox },
       default: { external: true, name: `${names.project}_default` },
       ...(input.browser
         ? {

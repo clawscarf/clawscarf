@@ -4,6 +4,11 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Installer and releases
 
+- [ ] Add Linux ARM64/x86-64 and Windows through WSL2 installation support: package
+      matching OpenShell tools and multi-architecture images, replace Docker Desktop-only
+      routing, and verify configure/login/inference/stop/start/deletion. Replace the
+      hardcoded macOS gate with release/platform requirements. Check Intel Mac upstream
+      tool availability separately; the pinned OpenShell release supplies no Intel Mac binaries.
 - [ ] Verify first-time production signup through email verification and installer resume.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite
@@ -45,8 +50,8 @@ Open work only. Select a task before implementing; this list does not authorize 
       usage separate from software licensing and any future AI-credit accounting.
 - [ ] Make ClawScarf easier to embed into a hosting product: define and qualify generic external
       ingress and directory-backed storage for hosting products built on top.
-- [ ] Qualify Linux/WSL, changed-upstream-version upgrades and external hosting
-      adoption, including persistent mounts, UID mapping, external identity/model/broker
+- [ ] Qualify changed-upstream-version upgrades and external hosting adoption,
+      including persistent mounts, UID mapping, external identity/model/broker
       ownership, source-bound authorization and revocation.
 - [ ] Define backups/recovery and stronger cross-tool policy/auditing separately.
       Retained volumes are not backups. Website, billing and fleet work remain separate.

@@ -118,7 +118,7 @@ export async function prepareModelGateway(
     join(root, "native.json"),
     JSON.stringify({
       ...loaded.configuration,
-      baseUrl: `https://host.docker.internal:${String(input.port)}/v1`,
+      baseUrl: "https://models.clawscarf.internal:4000/v1",
     }),
   );
 }

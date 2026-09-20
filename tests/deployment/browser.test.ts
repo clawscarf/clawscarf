@@ -74,6 +74,7 @@ await test("optional browser creates no service, volume, network, native policy 
   const compose = composeConfiguration(
     installation,
     "/nonexistent/browser-test",
+    "172.30.0.254",
   );
   assert.deepEqual(Object.keys(compose.services).sort(), [
     "application",
@@ -82,7 +83,7 @@ await test("optional browser creates no service, volume, network, native policy 
     "postgres",
     "widgets",
   ]);
-  assert.deepEqual(Object.keys(compose.networks), ["default"]);
+  assert.deepEqual(Object.keys(compose.networks), ["runtime", "default"]);
   assert.deepEqual(Object.keys(compose.volumes), ["database"]);
   assert.equal(
     await prepareBrowser("/nonexistent/browser-test", installation),
@@ -99,6 +100,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
   const compose = composeConfiguration(
     installation,
     "/private/browser-test",
+    "172.30.0.254",
     "10.75.2.30",
     {
       addresses: {
@@ -134,7 +136,12 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     false,
   );
   assert.throws(() =>
-    composeConfiguration(installation, "/private/browser-test", "10.75.2.30"),
+    composeConfiguration(
+      installation,
+      "/private/browser-test",
+      "172.30.0.254",
+      "10.75.2.30",
+    ),
   );
   const service = compose.services.browser;
   const relay = compose.services["browser-relay"];
@@ -184,7 +191,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
     name: `${resourceNames(installation).project}_browser`,
   });
   assert.throws(() =>
-    composeConfiguration(installation, "/private/browser-test"),
+    composeConfiguration(installation, "/private/browser-test", "172.30.0.254"),
   );
 });
 
@@ -209,14 +216,20 @@ await test("browser profile retains a scoped credential without granting Gateway
   assert.deepEqual(policy.network_policies, {});
   assert.ok(
     !JSON.stringify(
-      composeConfiguration(state(), "/private/browser-test", "10.75.2.30", {
-        addresses: {
-          node: "10.77.2.30",
-          ingress: "10.77.2.29",
-          dns: "10.77.2.28",
+      composeConfiguration(
+        state(),
+        "/private/browser-test",
+        "172.30.0.254",
+        "10.75.2.30",
+        {
+          addresses: {
+            node: "10.77.2.30",
+            ingress: "10.77.2.29",
+            dns: "10.77.2.28",
+          },
+          fingerprint: "ab".repeat(32),
         },
-        fingerprint: "ab".repeat(32),
-      }),
+      ),
     ).includes(token),
   );
 });

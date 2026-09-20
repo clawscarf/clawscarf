@@ -179,17 +179,11 @@ await test("generated configuration separates public, container and native liste
   assert.equal(result.access.port, 18800);
   assert.equal(
     result.access.runtime.managementOrigin,
-    "https://host.docker.internal:19001",
+    "https://localhost:18801",
   );
   assert.equal(result.access.managementTls?.port, 18801);
-  assert.equal(
-    result.access.runtime.origin,
-    "http://host.docker.internal:19789",
-  );
-  assert.equal(
-    result.access.runtime.widgetUpstream,
-    "http://host.docker.internal:19790",
-  );
+  assert.equal(result.access.runtime.origin, "http://application:19789");
+  assert.equal(result.access.runtime.widgetUpstream, "http://widgets:19790");
   assert.equal(result.access.runtime.widgetOrigin, "http://127.0.0.1:19002");
   assert.equal(result.native.gateway.port, 19789);
   assert.equal(result.native.mcp.apps.sandboxPort, 19790);
@@ -290,6 +284,7 @@ await test("OIDC on loopback needs no TLS files and never publishes public liste
       input,
     },
     "/private/team",
+    "172.30.0.254",
   );
   assert.ok(
     compose.services.companion?.ports.every((port) =>

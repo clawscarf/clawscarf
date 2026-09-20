@@ -30,8 +30,13 @@ await test("controller authority stays outside the application and forwarding pu
       },
     }),
   };
-  const configuration = composeConfiguration(state, "/private/team");
+  const configuration = composeConfiguration(
+    state,
+    "/private/team",
+    "172.30.0.254",
+  );
   const { controller, application, widgets } = configuration.services;
+  assert.equal(controller.networks.runtime.ipv4_address, "172.30.0.254");
   assert.equal("execution" in configuration.services, false);
   assert.ok(
     controller.volumes.includes("/var/run/docker.sock:/var/run/docker.sock"),
@@ -47,7 +52,7 @@ await test("controller authority stays outside the application and forwarding pu
     ]);
     assert.ok(forward.ports.every((port) => port.startsWith("127.0.0.1:")));
     assert.ok(
-      forward.command.includes("https://host.openshell.internal:17671"),
+      forward.command.includes("https://controller.clawscarf.internal:17671"),
     );
     assert.ok(!forward.command.includes("--gateway-insecure"));
     assert.equal(forward.read_only, true);

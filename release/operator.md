@@ -39,7 +39,8 @@ Dependencies are installed from the included frozen lockfile. Its root importer
 contains only the production dependencies referenced by the staged operator;
 publisher and browser dependencies are omitted. Locked transitive versions are retained.
 No TypeScript compiler, contributor source or build step is needed to run the commands.
-The current local assembly supports macOS arm64 with Docker Desktop only.
+Platform support is determined by the selected runtime definition. Published candidates
+include macOS arm64 and Linux arm64/x86-64 tools; Windows runs the Linux CLI inside WSL2.
 
 The installer reviews recipe settings before credentials, prepares the installation,
 and offers **Start now**. It starts Docker services and protected OpenShell containers, then exits; closing

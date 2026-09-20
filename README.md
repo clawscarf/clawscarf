@@ -52,7 +52,10 @@ already made inside the runtime. Different untrusted teams need separate install
 
 ## Run the preview
 
-Requires **macOS arm64, Docker Desktop and Node 24.16+ (24.x) or 26.1+**.
+Requires **macOS Apple Silicon or Linux ARM64/x86-64 (including Windows through WSL2)**,
+Docker with Compose and Node 24.16+ (24.x) or 26.1+. On Windows, install and run the CLI
+inside WSL2 with Docker Desktop WSL integration enabled. Native Windows and Intel Mac
+are unsupported; pinned OpenShell does not provide an Intel Mac executable.
 
 ```sh
 npm install -g @clawscarf/cli@next
@@ -96,7 +99,7 @@ outbound traffic denied. That policy is not a blanket network policy for every c
   component acceptance. Ordinary model-selected browsing has an owner-managed upstream
   routing bug. The team runtime retains OpenShell; Chromium retains its own sandbox.
 - Local stopped-runtime replacement preserves the owned volume and has interruption
-  tests. Changed-upstream-version upgrades, Linux/WSL and automated backups are unfinished.
+  tests. Changed-upstream-version upgrades and automated backups are unfinished.
 
 The `0.1.0-alpha.1` packaged CLI passed a fresh installation on the development Mac:
 staging hosted login, native administrator setup, a real GPT-6 Astra response and
@@ -115,7 +118,7 @@ The [installation CLI](deploy/deployment/installation.md) is the public configur
 lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
 defaults for initial configuration. The [component guide](deploy/deployment/README.md) covers internal
 developer operations; it is not a second supported installation format.
-The menu reviews settings before credentials, starts persistently on macOS when selected, and provides
+The menu reviews settings before credentials, starts persistently when selected, and provides
 the private OIDC administrator claim. The same `configure` command changes
 retained models, Connections and pack selections, interactively or with explicit flags; the installation
 guide records the supported changes. [Recipes](recipes/README.md) ship with the CLI and pack files; each pins a reusable

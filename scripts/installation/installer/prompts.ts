@@ -90,7 +90,11 @@ export const terminalPrompts: InstallerPrompts = {
   async openBrowser(url) {
     try {
       await promisify(execFile)(
-        process.platform === "darwin" ? "open" : "xdg-open",
+        process.platform === "darwin"
+          ? "open"
+          : process.env.WSL_DISTRO_NAME
+            ? "explorer.exe"
+            : "xdg-open",
         [url],
         { timeout: 5000 },
       );

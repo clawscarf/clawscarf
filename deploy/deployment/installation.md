@@ -5,12 +5,16 @@ commands are `start`, `stop`, `status` and `logs`. All use the same `--directory
 The CLI manages its saved configuration; users do not write installation JSON or
 run separate validation, preview and apply commands.
 
-This is an alpha for macOS arm64 with Docker Desktop and Node 24.16+ (24.x) or 26.1+.
+This alpha runs on macOS arm64 and Linux arm64/x86-64, including Windows through
+WSL2. Use Docker Desktop on macOS, Docker Engine with Compose on Linux, or Docker
+Desktop with WSL2 integration on Windows. Install Node 24.16+ (24.x) or 26.1+ and
+the CLI inside WSL2, and keep the installation directory in its Linux filesystem.
+Native Windows and Intel Mac are unsupported: pinned OpenShell supplies no Intel Mac tool.
 Install the published CLI with `npm install -g @clawscarf/cli@next`. Its bundled
 [recipes](../../recipes/README.md) download pinned runtime tools and images.
 Contributors can instead [link the development command](../../scripts/README.md#development-command)
 and build the development runtime.
-For a new installation, the CLI checks macOS/architecture, Docker and Compose before
+For a new installation, the CLI checks the host platform, Docker and Compose before
 asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
 then checked again during preparation and startup.
 
@@ -284,7 +288,7 @@ Native pack removal uses the runtime’s private local Gateway credential for au
 cleanup under trusted-proxy login, preserving ownership checks. Removal after Gateway
 restart passed in the protected runtime. Browser routing has its documented upstream
 limitation. The first packaged release passed a fresh installation and retained-state
-restart on the development Mac. Linux/WSL, newly provisioned hosts, complete release
+restart on the development Mac. Windows WSL2 end-to-end verification, newly provisioned hosts, complete release
 upgrades, external ingress and directory-backed
 hosting storage remain unfinished. [TODO.md](../../TODO.md) owns the open work.
 

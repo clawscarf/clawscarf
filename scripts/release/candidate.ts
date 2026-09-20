@@ -4,7 +4,7 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Command } from "commander";
 import { z } from "zod";
-import { releaseSchema } from "./definition.js";
+import { releaseSchema, hostPlatformSchema } from "./definition.js";
 import { packageOperator } from "./operator.js";
 import { liteLlmImage, postgresImage } from "../deployment/images.js";
 
@@ -47,36 +47,42 @@ await new Command("build-release-candidate")
       await mkdir(tools);
       const downloads: Record<
         string,
-        { file: string; sha256: string; url: string }
-      > = {};
-      for (const name of ["cli", "gateway"] as const) {
-        const pin = pins.openshell[name]["darwin-arm64"];
-        if (!pin) throw Error("Missing darwin-arm64 OpenShell pin.");
-        const response = await fetch(pin.url, {
-          signal: AbortSignal.timeout(300_000),
-        });
-        if (!response.ok) throw Error(`Cannot download OpenShell ${name}.`);
-        const bytes = Buffer.from(await response.arrayBuffer());
-        if (sha256(bytes) !== pin.sha256)
-          throw Error(`OpenShell ${name} archive checksum mismatch.`);
-        const archive = join(tools, `${name}.tgz`);
-        await writeFile(archive, bytes);
-        const binary = name === "cli" ? "openshell" : "openshell-gateway";
-        execFileSync("tar", ["-xzf", archive, "-C", tools, binary]);
-        await rm(archive);
-        const asset = `${binary}-darwin-arm64`;
-        await cp(join(tools, binary), join(output, asset));
-        downloads[name] = {
-          file: `tools/${binary}`,
-          sha256: sha256(await readFile(join(tools, binary))),
-          url: `https://github.com/clawscarf/clawscarf/releases/download/v${version}/${asset}`,
-        };
+        Record<string, { file: string; sha256: string; url: string }>
+      > = { cli: {}, gateway: {} };
+      const platforms = hostPlatformSchema.options;
+      for (const platform of platforms) {
+        const platformTools = join(tools, platform);
+        await mkdir(platformTools);
+        for (const name of ["cli", "gateway"] as const) {
+          const pin = pins.openshell[name][platform];
+          if (!pin) throw Error(`Missing ${platform} OpenShell ${name} pin.`);
+          const response = await fetch(pin.url, {
+            signal: AbortSignal.timeout(300_000),
+          });
+          if (!response.ok)
+            throw Error(`Cannot download OpenShell ${name} for ${platform}.`);
+          const bytes = Buffer.from(await response.arrayBuffer());
+          if (sha256(bytes) !== pin.sha256)
+            throw Error(`OpenShell ${name} archive checksum mismatch.`);
+          const archive = join(platformTools, `${name}.tgz`);
+          await writeFile(archive, bytes);
+          const binary = name === "cli" ? "openshell" : "openshell-gateway";
+          execFileSync("tar", ["-xzf", archive, "-C", platformTools, binary]);
+          await rm(archive);
+          const asset = `${binary}-${platform}`;
+          await cp(join(platformTools, binary), join(output, asset));
+          (downloads[name] ??= {})[platform] = {
+            file: `tools/${platform}/${binary}`,
+            sha256: sha256(await readFile(join(platformTools, binary))),
+            url: `https://github.com/clawscarf/clawscarf/releases/download/v${version}/${asset}`,
+          };
+        }
       }
       const runtime = releaseSchema.parse({
         schemaVersion: 1,
         version,
         sourceRevision: revision,
-        platforms: ["darwin-arm64"],
+        platforms,
         images: {
           postgres: postgresImage,
           models: liteLlmImage,
@@ -113,18 +119,19 @@ await new Command("build-release-candidate")
         join(root, "scripts/packs/requirements.txt"),
         join(output, "pack-requirements.txt"),
       );
-      execFileSync("tar", [
-        "-czf",
-        join(output, `clawscarf-runtime-${version}-darwin-arm64.tgz`),
-        "-C",
-        output,
-        "tools",
-        "clawscarf-release.json",
-        "LICENSE",
-        "THIRD_PARTY_NOTICES.md",
-        "licenses",
-        "pack-requirements.txt",
-      ]);
+      for (const platform of platforms)
+        execFileSync("tar", [
+          "-czf",
+          join(output, `clawscarf-runtime-${version}-${platform}.tgz`),
+          "-C",
+          output,
+          `tools/${platform}`,
+          "clawscarf-release.json",
+          "LICENSE",
+          "THIRD_PARTY_NOTICES.md",
+          "licenses",
+          "pack-requirements.txt",
+        ]);
       const operator = await packageOperator(
         root,
         join(output, "operator"),

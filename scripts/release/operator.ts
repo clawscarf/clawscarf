@@ -1,4 +1,4 @@
-import { releaseSchema } from "./definition.js";
+import { releaseSchema, releaseTools } from "./definition.js";
 import { recipeSchema } from "../installation/recipes/definition.js";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -104,8 +104,10 @@ export async function packageOperator(
     if (runtime) {
       if (
         JSON.stringify(runtime.images).includes('"sha256:') ||
-        !runtime.tools.openshell.cli.url ||
-        !runtime.tools.openshell.gateway.url
+        runtime.platforms.some((platform) => {
+          const tools = releaseTools(runtime, platform);
+          return !tools.cli.url || !tools.gateway.url;
+        })
       )
         throw Error(
           "Published runtimes require registry digests and downloadable tools.",

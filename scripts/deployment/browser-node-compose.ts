@@ -50,7 +50,6 @@ export function browserNodeServices(
       image: state.input.relayImage,
       user: String(process.getuid?.() ?? 1000),
       networks: { machine: { ipv4_address: addresses.ingress }, default: {} },
-      extra_hosts: ["host.docker.internal:host-gateway"],
       environment: {
         CLAWSCARF_NODE_INGRESS_ADDRESS: addresses.ingress,
         CLAWSCARF_NODE_GATEWAY_PORT: String(state.input.ports.native),
