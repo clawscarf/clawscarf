@@ -1,6 +1,7 @@
 # TODO
 
 Open work only. Select a task before implementing; this list does not authorize continuation.
+This list covers the open-source ClawScarf distribution. Cloud-service work belongs in its own repository.
 
 ## Installer and releases
 
@@ -9,17 +10,16 @@ Open work only. Select a task before implementing; this list does not authorize 
       runtime startup, private model routing, stop/start and deletion.
 - [ ] Add Intel Mac support when compatible upstream OpenShell tools are available;
       the pinned release supplies no Intel Mac binaries.
-- [ ] Verify first-time production signup through email verification and installer resume.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite
       for optional pack operations. The basic Team server recipe selects no packs.
 
 ## Upgrade decision
 
-- [ ] Decide whether to retain the custom local replacement/upgrade feature or defer it.
-      Its [upgrade implementation](scripts/deployment/upgrade.ts), state and Python helper total
-      580 lines, with additional startup-gate code/tests. The gate exists for this workflow;
-      removing it alone would break replacement. Retained-volume startup remains required.
+- [ ] Decide how installed servers should move to a new ClawScarf release while keeping
+      their data and configuration. Review the existing [runtime replacement](deploy/deployment/README.md#runtime-upgrade)
+      before deciding what to reuse or remove; it replaces only the OpenClaw runtime,
+      not the other services. Ordinary stop/start must continue to preserve data.
 
 ## Owner-managed browser issue — DO NOT PICK UP AUTOMATICALLY
 
@@ -37,21 +37,15 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Future decisions
 
-- [ ] Add a document-workflow recipe when selected; choose its packs and verify the
-      workflow. The Team server recipe supplies the basic team server only.
 - [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
       Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
       Native Lobster is required. Use the [curation findings](runtime/curation.md)
       for the candidate base, retained administrator paths and implementation order.
       Qualify the exact image inventory before removing packages; preserve native ownership.
-- [ ] Package privately operated Connections against the same broker contract, independent of
-      our hosted identity/billing services. The separation is part of the selected cloud design.
-- [ ] Add payment integration to the cloud allowance policy when selected; keep connector
-      usage separate from software licensing and any future AI-credit accounting.
 - [ ] Make ClawScarf easier to embed into a hosting product: define and qualify generic external
       ingress and directory-backed storage for hosting products built on top.
 - [ ] Qualify changed-upstream-version upgrades and external hosting adoption,
       including persistent mounts, UID mapping, external identity/model/broker
       ownership, source-bound authorization and revocation.
 - [ ] Define backups/recovery and stronger cross-tool policy/auditing separately.
-      Retained volumes are not backups. Website, billing and fleet work remain separate.
+      Retained volumes are not backups.
