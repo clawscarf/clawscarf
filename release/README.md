@@ -52,7 +52,8 @@ Release candidates contain:
 
 - npm `@clawscarf/cli`: compiled CLI, recipes, pack files, model catalog and runtime
   definitions. No Docker images or large OpenShell executables in npm.
-- GitHub Releases: versioned runtime tool archives, checksums and required notices.
+- GitHub Releases: standalone CLI archives with a private Node runtime and installed
+  dependencies, an installer, runtime tool archives, checksums and required notices.
 - GHCR: runtime/companion images referenced by immutable registry digest.
 
 Installing a newer CLI supplies newer recipes. Each recipe still selects an exact
@@ -81,6 +82,20 @@ with an exact version, such as `0.1.0-alpha.1`. It:
    one runtime archive per host platform, individual executable assets, npm CLI,
    checksums and notices.
 4. Installs the resulting npm archive into a temporary prefix and checks its CLI/catalog.
+5. Builds standalone CLI archives on macOS ARM64 and Linux ARM64/x86-64 using the
+   same npm payload and frozen production dependency lockfile. Downloads Node using
+   the checksums in [components.json](components.json), retains its license, and
+   tests the installer and packaged CLI with system Node deliberately unavailable.
+   Only after all three platform checks pass does it assemble `release-candidate`.
+
+[Standalone packaging](../scripts/release/standalone.ts) adds a private Node executable
+and a small launcher; it does not change the CLI implementation. The
+[installer](install.sh) is versioned with each release and downloads only that
+version's archive, verifies SHA-256, and installs under `~/.local` by default.
+`--prefix` selects another absolute directory. It never installs a host service,
+changes system Node, edits shell profiles or needs sudo. To upgrade the CLI, run
+the newer release's installer; it switches the command and retains the old version.
+Runtime upgrades and installation data are separate from CLI installation.
 
 The [image builder](../scripts/release/build-images.sh) and
 [candidate assembler](../scripts/release/candidate.ts) contain the build commands;

@@ -7,12 +7,20 @@ run separate validation, preview and apply commands.
 
 This alpha runs on macOS arm64 and Linux arm64/x86-64, including Windows through
 WSL2 (experimental). Use Docker Desktop on macOS, Docker Engine with Compose on Linux, or Docker
-Desktop with WSL2 integration on Windows. Install Node 24.16+ (24.x) or 26.1+ and
-the CLI inside WSL2, and keep the installation directory in its Linux filesystem.
+Desktop with WSL2 integration on Windows. Install the CLI inside WSL2 and keep
+the installation directory in its Linux filesystem.
 Use Docker 29+ (automatic subnet allocation with fixed service addresses); Linux also requires glibc 2.28+ and the normal local Docker socket.
 OpenShell’s mandatory filesystem protection must be available in the Docker host kernel.
 Native Windows and Intel Mac are unsupported: pinned OpenShell supplies no Intel Mac tool.
-Install the published CLI with `npm install -g @clawscarf/cli@next`. Its bundled
+Use the [standalone installer](../../README.md#get-started), which bundles Node and
+the CLI dependencies. It installs under `~/.local` without changing your system Node
+or shell profile; add `~/.local/bin` to PATH. Pass `--prefix /absolute/directory` to
+the downloaded installer to change this location. Running a newer release's installer
+updates the command while retaining the previous CLI version under `lib/clawscarf/`.
+It does not upgrade an existing server or change its data.
+
+Alternatively, use `npm install -g @clawscarf/cli@next` with your own Node 24.16+
+(24.x) or 26.1+. Both distributions run the same CLI. Its bundled
 [recipes](../../recipes/README.md) download pinned runtime tools and images.
 Contributors can instead [link the development command](../../scripts/README.md#development-command)
 and build the development runtime.

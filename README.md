@@ -11,7 +11,8 @@ models, connected accounts, and execution protected by NVIDIA OpenShell.
 ## Get started
 
 ```sh
-npm install -g @clawscarf/cli@next
+curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.3/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
 
@@ -21,11 +22,25 @@ The terminal setup walks you through it, downloads the runtime, and opens OpenCl
 in your browser. Your sign-in becomes the first administrator account. No checkout,
 Docker configuration files or separate OpenClaw installation required.
 
-You’ll need **Docker Engine 29+ with Compose** (or Docker Desktop), **Node.js 24.16+
-within 24.x or 26.1+**, and an **API key for your chosen model provider**.
+You’ll need **Docker Engine 29+ with Compose** (or Docker Desktop) and an **API key
+for your chosen model provider**. The CLI includes its own Node runtime.
 Available for **macOS Apple Silicon and Linux ARM64/x86-64**; Windows runs through
-**WSL2, currently experimental**. The `next` tag installs the current alpha.
+**WSL2, currently experimental**. Add `~/.local/bin` to your shell's PATH to keep
+the command available in new terminals. The installer requires no sudo.
 [Full platform requirements →](deploy/deployment/installation.md)
+
+<details>
+<summary>Prefer npm?</summary>
+
+```sh
+npm install -g @clawscarf/cli@next
+clawscarf configure
+```
+
+This alternative uses your own Node installation: Node 24.16+ within 24.x or 26.1+.
+The `next` tag installs the current alpha.
+
+</details>
 
 ## Make it your team’s workspace
 

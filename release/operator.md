@@ -20,10 +20,24 @@ The `next` tag selects the current alpha. Use an exact version instead when need
 npm installs the CLI dependencies; runtime images and tools are fetched during setup.
 See [release contents](README.md) for supported platforms and verification.
 
-## Run the archive
+## Standalone download
+
+Standalone CLI archives include Node and installed dependencies. Download the archive
+for your platform and its `SHA256SUMS` from the same GitHub Release. The release's
+[installer](install.sh) selects the correct archive, verifies it and installs
+`clawscarf` under `~/.local/bin`. It accepts `--prefix /absolute/directory`.
+No system Node, npm or pnpm is required. These archives are separate from both the
+npm package and the runtime-tool archives.
+
+The layout is `clawscarf/` containing the launcher, `node/bin/node`, Node's LICENSE,
+and `package/` with the CLI, dependencies and catalogs. You can also verify and
+extract the archive yourself, then run `./clawscarf/clawscarf configure`.
+Moving the whole directory preserves the bundled runtime and dependencies.
+
+## Run the JavaScript archive
 
 Verify the archive against its accompanying `SHA256SUMS`, then extract it into a new
-directory. Use Node 24.16 or later in the Node 24 line, or Node 26.1 or later, and
+directory. Unlike the standalone download, this requires Node 24.16 or later in the Node 24 line, or Node 26.1 or later, and
 pnpm 10.33.0. In the extracted `package` directory:
 
 ```sh

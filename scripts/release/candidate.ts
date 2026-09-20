@@ -141,6 +141,13 @@ await new Command("build-release-candidate")
       await rm(join(output, "operator"), { recursive: true });
       await rm(tools, { recursive: true });
       await rm(join(output, "licenses"), { recursive: true });
+      await writeFile(
+        join(output, "install.sh"),
+        (await readFile(join(root, "release/install.sh"), "utf8")).replace(
+          "@VERSION@",
+          version,
+        ),
+      );
       const sums = [];
       for (const entry of (await readdir(output)).sort())
         sums.push(`${sha256(await readFile(join(output, entry)))}  ${entry}`);
