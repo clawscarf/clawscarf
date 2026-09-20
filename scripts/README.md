@@ -11,8 +11,8 @@ pnpm build
 pnpm check
 ```
 
-The root build compiles repository tooling, companion TypeScript and the Connections
-and Access plugins and the standalone Connections browser surface; it does not produce an OpenClaw runtime image.
+The root build compiles repository tooling, companion TypeScript and the native
+Connections and Access plugins; it does not produce an OpenClaw runtime image.
 Plugin packages own their separate SDK dependency, build and acceptance commands.
 Connections configuration tests use private copies of plugin metadata and source entry files,
 so they do not depend on compiled plugin output being present during a build. Compiled
@@ -103,7 +103,9 @@ lockfile, required migrations/policies/SDK clients, browser seccomp profile, nat
 browser-node helpers/private-ingress configuration, Python transport and notices; it
 excludes companion servers, contributor tooling and installation state. It does not
 download images, include provider credentials, publish a release or build missing
-components. Its README links to the included [archive instructions](../release/operator.md).
+components. The package uses the root README, with documentation links pointing to
+GitHub so they work on npm. Detailed [archive instructions](../release/operator.md)
+are also included.
 The shared [runtime package writer](release/runtime-package.ts) builds operator and
 companion manifests/lockfile importers from their executable dependency closures.
 The publisher scans staged JavaScript imports, rejects missing relative modules,

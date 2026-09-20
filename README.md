@@ -1,135 +1,97 @@
 # ClawScarf 🧣
 
-**Run OpenClaw for your team, on infrastructure you control.**
+### OpenClaw, ready for your team.
 
-ClawScarf is an open-source distribution of [OpenClaw](https://github.com/openclaw/openclaw)
-with team login, protected execution, model configuration and optional connections
-to services such as Outlook. Install it from npm, follow the terminal setup, then
-work in OpenClaw’s own interface.
+Give your team a shared OpenClaw server—with individual logins, your choice of AI
+models, connected accounts, and execution protected by NVIDIA OpenShell.
+**Self-hosted. Open source. OpenClaw’s own interface.**
 
-- **Bring your team:** invite people, assign native OpenClaw roles and revoke access.
-- **Bring your model:** choose a provider and model, then supply your API key.
-- **Connect your accounts:** link external services and choose which agents can use them.
-- **Keep execution contained:** NVIDIA OpenShell protects the team runtime, including
-  its Gateway, plugins, shell commands and local tools.
-
-> **Alpha preview.** Available for macOS Apple Silicon and Linux ARM64/x86-64.
-> Windows users run the CLI inside WSL2; that path is experimental and has not been
-> tested on a Windows machine. Intel Mac tools are not available from the pinned upstream release.
+[Get started](#get-started) · [Installation guide](deploy/deployment/installation.md) · [Releases](https://github.com/clawscarf/clawscarf/releases) · [Contribute](CONTRIBUTING.md)
 
 ## Get started
-
-Have these ready:
-
-- **Docker Engine 29+ with Compose**, or Docker Desktop with Engine 29+, installed
-  and running Linux containers. See [platform requirements](deploy/deployment/installation.md)
-  for Linux and WSL2 prerequisites.
-- **Node.js** 24.16+ within the 24.x series, or 26.1+.
-- **An LLM provider API key.** The Team server recipe defaults to OpenAI GPT-6 Astra
-  with medium reasoning; you can choose another model/provider during setup.
-  Model usage is billed by your provider.
-
-Install the CLI and launch setup:
 
 ```sh
 npm install -g @clawscarf/cli@next
 clawscarf configure
 ```
 
-No repository checkout, recipe file or separate OpenClaw installation is needed.
-The CLI includes the recipe catalog and downloads the selected runtime’s tools and
-Docker images. The first installation can take several minutes.
+**Choose Team server. Pick a model. Sign in. Start your server.**
 
-1. Choose **Team server** and review its settings. Connections is enabled by default;
-   you can turn it off. Accept the settings, then enter the selected provider’s key.
-2. Follow the browser link to **sign in or create a ClawScarf account** and approve
-   the installation. That account becomes its first administrator. You can choose
-   your company’s OIDC provider instead during setup.
-3. Let setup start the server. It opens OpenClaw at **[http://127.0.0.1:18800](http://127.0.0.1:18800)**
-   by default. Start a chat, invite teammates through **People**, or link an account
-   through **Connections**.
+The terminal setup walks you through it, downloads the runtime, and opens OpenClaw
+in your browser. Your sign-in becomes the first administrator account. No checkout,
+Docker configuration files or separate OpenClaw installation required.
 
-The installation directory defaults to `~/clawscarf-team`. To choose another location,
-use `clawscarf configure --directory ~/my-team`. The server keeps running after the
-terminal closes; Docker must remain running.
+You’ll need **Docker Engine 29+ with Compose** (or Docker Desktop), **Node.js 24.16+
+within 24.x or 26.1+**, and an **API key for your chosen model provider**.
+Available for **macOS Apple Silicon and Linux ARM64/x86-64**; Windows runs through
+**WSL2, currently experimental**. The `next` tag installs the current alpha.
+[Full platform requirements →](deploy/deployment/installation.md)
 
-The default address is accessible only on your machine. To let teammates reach the
-server remotely, configure HTTPS and a reachable address using the
-[installation guide](deploy/deployment/installation.md). Hosted login does not make
-your local server publicly accessible.
+## Make it your team’s workspace
 
-## Manage your server
+| What you want to do                    | Where to do it                                                                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Start working with an agent**        | Open a chat in OpenClaw. Create and configure agents using its native settings.                                                                       |
+| **Bring in your teammates**            | Open **People**, create an invitation link, and assign native OpenClaw roles. Administrators can remove access there too.                             |
+| **Connect Outlook and other services** | Open **Connections**, link an account, and choose which agents can use it. Connections is included in Team server and can be turned off during setup. |
+| **Use your preferred models**          | Choose the provider, model and reasoning level in setup. Run `clawscarf configure` again to change them.                                              |
 
-These commands use the same default installation directory:
+The default recipe uses **GPT-6 Astra through OpenAI, with medium reasoning**.
+Choose another provider or model in the menu; usage is billed by your provider.
+Your provider API key stays outside OpenClaw, in the model gateway.
+
+Setup opens **[http://127.0.0.1:18800](http://127.0.0.1:18800)** by default.
+That address is local to your machine. To share the server with teammates, use a
+reachable HTTPS address; the [installation guide](deploy/deployment/installation.md#configuration-options)
+covers the public URL and company SSO settings.
+
+OpenShell applies filesystem and network policy to the whole OpenClaw runtime,
+including plugins, shell commands and local tools. Recipes bring login, models and
+optional Connections together in one setup; you keep OpenClaw’s native agents,
+conversations, skills and settings.
+
+## Everyday commands
 
 ```sh
-clawscarf status
-clawscarf stop
-clawscarf start
-clawscarf logs --service companion
-clawscarf configure
+clawscarf status       # Check the server
+clawscarf stop         # Stop it, keeping your data
+clawscarf start        # Start it again
+clawscarf configure    # Change its configuration
 ```
 
-`stop` preserves your data; `start` resumes the installation. Use `configure` to
-change model, Connections or pack settings.
+The default installation directory is `~/clawscarf-team`. Use
+`--directory ~/another-team` to create or manage a separate installation.
+Chats, files and settings survive stop/start. Closing the terminal leaves the server
+running; Docker must stay running while it is in use.
 
-If you chose a different directory, add `--directory ~/my-team` to each command.
-For scripts and coding agents, configuration choices are also available as explicit
-flags with `--non-interactive`; use `--json` for machine-readable output. See
-[CLI options and examples](deploy/deployment/installation.md#configure-without-prompts).
+For automation, the same configuration choices are available as command-line flags
+with `--non-interactive`, and commands support `--json`.
+[CLI reference and examples →](deploy/deployment/installation.md#configure-without-prompts)
 
-## How it fits together
+## Your server, your team
 
-OpenClaw owns agents, conversations, roles, tools and application settings. ClawScarf
-adds authenticated entry and session revocation, OpenShell runtime protection, and
-model routing through bundled or external LiteLLM. Provider keys stay outside OpenClaw.
-Account, People and optional Connections pages appear inside OpenClaw.
+An installation serves **one trusted team**: separate logins and roles, shared
+execution files and browser accounts. Native roles control application permissions;
+people allowed to run code share the Gateway’s authority. Use separate installations
+for teams that must be isolated from one another.
 
-Docker Compose runs the supporting services; OpenShell runs the protected OpenClaw
-container. The CLI manages them without installing a host daemon. Chats, files and
-settings persist across stop/start. **Persistence is not a backup**; automated backups
-and upgrades across upstream versions remain unfinished.
+Default login and optional Connections use **ClawScarf Cloud**. You can use your own
+OIDC provider and disable Connections to run without those hosted services. Original
+model-provider keys and Connections management credentials stay outside OpenClaw.
 
-Hosted login and the optional Connections broker use ClawScarf Cloud. Company OIDC
-works independently of hosted login, and Connections can be disabled entirely.
-[Recipes](recipes/README.md) supply editable defaults and pin the runtime version;
-optional [packs](packs/README.md) add groups of native agents, skills and workflows.
-Recipes always retain authenticated access and OpenShell protection.
+ClawScarf is in alpha. Browser automation is off by default while an upstream routing
+issue remains; retained data still needs backups. See the [security boundaries](deploy/openshell/README.md),
+[browser support](deploy/execution/browser-node/README.md) and [open work](TODO.md)
+for details.
 
-## Team and security boundaries
+## Explore and contribute
 
-Each installation is for **one trusted team**, with separate native identities and
-roles but shared execution files and browser accounts. Members permitted to execute
-code must be trusted with Gateway authority, including its runtime credentials.
-Native roles do not isolate hostile teammates from each other or from administrators;
-use separate installations for mutually untrusted teams.
+- **Using ClawScarf:** [Installation](deploy/deployment/installation.md) · [People](plugins/access/README.md) · [Connections](plugins/connections/README.md) · [Models](deploy/models/README.md)
+- **Customizing it:** [Recipes](recipes/README.md) · [Packs](packs/README.md) · [Runtime architecture](runtime/README.md)
+- **Helping build it:** [Contributing](CONTRIBUTING.md) · [Development setup](scripts/README.md) · [Report a bug](https://github.com/clawscarf/clawscarf/issues)
 
-Access, Docker/controller credentials, original model-provider keys and Connections
-management credentials remain outside the protected runtime. Revoking access stops
-entry and active authenticated connections; it cannot undo code already executed or
-changes already made inside the runtime.
-
-Browser automation is optional and off by default. Explicit browser-node use has
-passed tests, but automatic browser selection still has an upstream routing issue.
-See [browser support](deploy/execution/browser-node/README.md) and
-[OpenShell protection and limits](deploy/openshell/README.md) before enabling it.
-
-## Documentation and help
-
-- [Installation guide](deploy/deployment/installation.md): configuration, company SSO,
-  automation, lifecycle commands and deletion.
-- [Models](deploy/models/README.md), [People](plugins/access/README.md) and
-  [Connections](plugins/connections/README.md): feature configuration and behavior.
-- [Runtime architecture](runtime/README.md) and [service composition](apps/companion/README.md):
-  implementation and integration boundaries.
-- [Releases](https://github.com/clawscarf/clawscarf/releases) and [open work](TODO.md):
-  available downloads and remaining work.
-- [Report a bug](https://github.com/clawscarf/clawscarf/issues): include your CLI version,
-  operating system and relevant logs, with credentials removed.
-
-## Contributing and license
-
-See [contributor setup](scripts/README.md), [CONTRIBUTING.md](CONTRIBUTING.md) and
-[AGENTS.md](AGENTS.md). ClawScarf-owned code is [MIT licensed](LICENSE); bundled
-components retain their [licenses and attribution](THIRD_PARTY_NOTICES.md).
-ClawScarf is independent, not an official OpenClaw or NVIDIA distribution.
+Built on [OpenClaw](https://github.com/openclaw/openclaw),
+[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) and
+[LiteLLM](https://github.com/BerriAI/litellm).
+[MIT licensed](LICENSE), with [third-party notices](THIRD_PARTY_NOTICES.md).
+ClawScarf is an independent project.

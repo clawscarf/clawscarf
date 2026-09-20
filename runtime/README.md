@@ -157,5 +157,5 @@ persistent `/home/node` volume. A consumer with a separate data disk must mount 
 state there rather than on disposable compute storage. Preserve allocation/volume
 fencing, acting-user management, credential-generation verification, source-bound
 inference authorization and revocation. Controller policy stays outside the runtime.
-Linux artifacts and one complete hosted installation need qualification before a
-consumer switches. No existing deployment or consumer integration is changed here.
+Published releases include Linux artifacts. A hosting consumer still needs to test
+its own complete deployment against this contract before adoption.

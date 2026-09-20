@@ -2,35 +2,18 @@
 
 Hosted login, installation registration, the cloud Connections broker, native People/
 Connections pages and installer integration are implemented. The installer defaults to
-production; a release or `--cloud-url` can select staging. Hosted login and optional
+production; `--cloud-url` can select staging. Hosted login and optional
 Connections are independent. The installation has no token-only login, local broker or
 standalone Connections dashboard.
 
-Fresh macOS installations passed first-administrator login and GPT-6 Astra / medium
-responses using both hosted login and a separately configured OIDC client. Against the
-Vercel/Neon staging deployment, native Connections completed Outlook authorization and
-a read-only profile call. Retained enable/disable preserved native state and cloud account
-records; disabled Connections had no native page. Live checks covered installation
-isolation, credential-purpose separation, disconnect and credential revocation, including
-continued Account access after broker revocation. Real PostgreSQL regressions cover quota
-races, idempotency, cross-account denial, admission, invitations and session revocation.
-Earlier two-person WorkOS/native checks remain applicable; they were not repeated against
-this staging deployment. Disposable servers, provider accounts and login clients were cleaned up.
+Hosted setup starts at the cloud `/setup` page. Users sign in or create an account,
+approve the installation, then return to the terminal. The installer retains pending
+approval so interrupted setup can resume. The approved identity becomes the first
+administrator; there is no second setup login.
 
-Staging and production run the same promoted cloud artifact. Production passed deployment
-health, identity and deployment-ID checks; the complete browser journey above ran against
-staging. The current single-runtime installer additionally passed fresh hosted registration
-and native administrator verification, entry without a second login, and a real GPT-6
-Astra / medium response using the Responses API. Full new-account email verification
-in production and the earlier two-person/Connections journeys have not been repeated
-with this image. Current runtime verification is in the
-[OpenShell guide](../deploy/openshell/README.md#repeatable-boundary-and-retention-check).
-Linux/WSL and public-HTTPS installation acceptance remain unqualified. The
-owner-managed upstream browser-routing issue remains in [TODO.md](../TODO.md).
-Hosted setup starts at the cloud `/setup` page, which establishes an ordinary AuthKit
-signup/sign-in session before device approval. The installer persists the pending
-challenge and supports noninteractive action-required/resume results. WorkOS Connect supplies no logout endpoint; sign-out revokes the installation session and
-requests fresh authentication on the next sign-in.
+Deployment settings belong in the cloud runbook below. Release verification belongs
+in the [release guide](../release/README.md#build-and-publish); open work belongs in
+[TODO.md](../TODO.md).
 
 [Cloud usage and limits](https://github.com/clawscarf/clawscarf-cloud#registration-and-credentials)
 and the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md)
@@ -47,8 +30,8 @@ privately operated compatible service. Hosted login does not require Connections
 Customer OIDC plus our Connections does not require cloud accounts for teammates.
 The owner links a cloud account for service ownership; that does not replace the
 team's identities. Login availability never depends on connector credits or quotas.
-Keep the current recipe's Connections default disabled unless explicitly selected;
-enabling it can default to our service without requiring Composio setup by the user.
+The Team server recipe enables Connections by default. Users can disable it during
+setup; using the hosted broker requires no Composio developer account.
 
 | Deployment               | Login                                 | Connections ownership                           |
 | ------------------------ | ------------------------------------- | ----------------------------------------------- |
@@ -83,55 +66,6 @@ ClawScarf; use an explicit locally built artifact during development. No runtime
 checkout imports. Privately operating the broker must remain possible without WorkOS,
 Vercel or our cloud account being mandatory dependencies of its execution services.
 Packaging that private deployment is later work, not part of the first hosted launch.
-
-## Reuse and new work
-
-This checkout is the primary implementation source, including fixes already made here:
-
-- Retain [Access OIDC](../services/access/providers/oidc.ts), native authority checks,
-  administrator claim, admission/session storage and revocation regressions. Adapt the
-  issuer/client configuration; do not replace the ingress or People implementation.
-- The cloud owns [Connections services](https://github.com/clawscarf/clawscarf-cloud/tree/main/src/connections), their SQL,
-  provider adapters, catalog importer and targeted tests, scoped by installation credentials.
-- Retain the [runtime plugin](../plugins/connections/README.md) and generic tool behavior.
-  Both pages use [native plugin UI](../plugins/access/src/control-ui.ts).
-- Extend existing CLI configuration, setup and lifecycle operations. Do not introduce a
-  second installer, supervisor or recipe engine for hosted services.
-
-Other repositories are selective references: Kora Cloud for owner authentication and
-deployment enrollment, RawClaw for multi-installation credential/query scoping, and Hearth
-for generic Composio consent/callback behavior. Inspect actual source and tests before
-copying a needed part. Do not transplant Kora's licensing/subscription checks or RawClaw's
-VM lifecycle. Record copied source revision and licensing in notices; no donor imports or
-runtime dependency. Existing upstream libraries own OAuth/OIDC and native UI protocols.
-
-Concrete donor references (read-only local checkouts; not runtime dependencies):
-
-```text
-~/raw-labs/kora/kora-platform/cloud/apps/accounts/
-  src/auth/cloud-auth-provider.ts
-  src/services/activation-service.ts
-  src/services/managed-deployment-auth-service.ts
-  src/services/composio-client.ts
-  app/api/managed/integrations/connect/route.ts
-  app/api/managed/integrations/connect-callback/route.ts
-  vercel.json
-~/raw-labs/rawclaw/src/domains/connections/
-  repo/credential-store.ts
-  service/broker-service.ts
-~/raw-labs/hearth/src/providers/composio/
-  setup.ts
-  http-client.ts
-```
-
-Kora's deployment authentication includes license checks: reuse only the needed account,
-credential and scope handling, not that policy. ClawScarf's reviewed broker remains the
-primary source even where donors have similar code. Bring relevant regression cases with
-copied behavior rather than combining multiple parallel implementations.
-
-New code is limited to cloud registration/ownership, cloud composition and installation
-authorization, quota accounting, the local management adapter and native Connections UI.
-Provider integrations already present should not be rewritten for the repository move.
 
 ## Identity and installation registration
 
@@ -269,5 +203,5 @@ Choose concrete free limits before public exposure; do not silently ship unlimit
 ## Scope boundaries
 
 [TODO.md](../TODO.md) is the only backlog. Billing, private-broker packaging, VM SaaS,
-identity migration tooling, public release packaging and additional-platform acceptance
+identity migration tooling and additional-platform testing
 remain separate work. The owner-managed upstream browser issue is not an automatic task.

@@ -1,9 +1,9 @@
 # Runtime boundary
 
-The current candidate uses OpenShell's Docker driver. Its host-side gateway owns
+ClawScarf uses OpenShell's Docker driver. Its host-side gateway owns
 the container; Compose companions do not start a second copy of OpenClaw.
 Controller access uses mTLS. The application receives neither controller keys nor
-a Docker socket. This arrangement is under qualification, not a released guarantee.
+a Docker socket.
 
 [policy.yaml](policy.yaml) gives the process UID/GID 1000, read-only application
 software and a writable home/workspace. Landlock is a hard startup requirement.
@@ -43,7 +43,8 @@ Do not use a development build tag as a published release reference.
 The following commands have been exercised on macOS arm64 with Docker Desktop.
 They are component-level development commands, not the finished installer. Use
 the CLI and gateway archives recorded in the component manifest; verify each
-archive's SHA-256 before extracting its executable. Other platforms are unqualified.
+archive's SHA-256 before extracting its executable. For installation-level platform
+support, see the [installation guide](../deployment/installation.md).
 
 From the repository root, with its Node/pnpm dependencies installed:
 
@@ -79,9 +80,9 @@ export XDG_DATA_HOME="$PWD/.local/controller/data"
 Use native `sandbox stop` and `sandbox start` for retained compute. A sandbox in
 OpenShell's terminal Error phase may require explicit replacement rather than start;
 preserve and reattach its named volume. The current helper intentionally does not
-delete failed compute or volumes automatically. Access-companion configuration,
-native state initialization and model routing have their own owners and still need
-the combined clean-install qualification in [TODO.md](../../TODO.md).
+delete failed compute or volumes automatically. The installation CLI coordinates
+Access, native state initialization and model routing; these component commands
+do not replace it.
 
 ## Application transport
 

@@ -7,8 +7,7 @@ open work; [AGENTS.md](AGENTS.md) defines engineering and review conventions.
 Use the Node and pnpm versions in [package.json](package.json) and follow the
 [contributor setup and checks](scripts/README.md). The two plugin builds have their
 own locked development dependencies. Real database/native tests require the
-environments described in the component READMEs. Passing these checks does not
-establish that the distribution is ready to install.
+environments described in the component READMEs.
 
 Start with one concrete outcome and a small change. For reused work,
 copy the relevant implementation and regression tests, record its source revision,
@@ -22,4 +21,3 @@ Never include credentials, customer data or generated run logs.
 
 Useful early work includes runtime compatibility, identity and stream-revocation
 checks, realistic dependency definitions for packs, and concise operator documentation.
-A passing startup check alone is not a security or end-to-end acceptance result.

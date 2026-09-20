@@ -173,7 +173,10 @@ export async function packageOperator(
     );
     await writeFile(
       join(stage, "README.md"),
-      "# ClawScarf operator\n\nRead the [operator instructions](release/operator.md).\n",
+      (await readFile(join(root, "README.md"), "utf8")).replace(
+        /\]\((?!https?:\/\/|#)([^)]+)\)/g,
+        "](https://github.com/clawscarf/clawscarf/blob/main/$1)",
+      ),
     );
     const filename = `clawscarf-operator-${manifest.version}.tgz`;
     // A distribution archive retains its lockfile; npm packages intentionally omit it.
