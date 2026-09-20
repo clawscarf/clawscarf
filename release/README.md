@@ -117,23 +117,30 @@ Repository setup:
   [publish-release.yml](../.github/workflows/publish-release.yml), environment `release`.
   The first tested tarball was published using the owner's authenticated npm CLI because
   npm requires a package to exist before configuring trust. Subsequent publication
-  uses the workflow's short-lived identity rather than a stored npm token. That next
-  workflow publication has not yet been exercised.
+  uses the workflow's short-lived identity rather than a stored npm token; alpha.2
+  was published through that workflow successfully.
 - Transitive notices/source review remains open in [TODO.md](../TODO.md).
   Debian copyright files remain in the images; runtime assets include upstream notices
   and the image build exports its network-tool sources. Those files are not a claim of
   a completed license audit. Pinned Debian packages still depend on mirror retention.
 
-[Candidate 35524428880](https://github.com/clawscarf/clawscarf/actions/runs/35524428880)
-passed its checks, compiled archive test and all eight image builds. The same artifacts
-are available in the [0.1.0-alpha.1 GitHub prerelease](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.1).
-The identical CLI tarball is published as `@clawscarf/cli@0.1.0-alpha.1`, tagged `next`.
-All eight GHCR images were verified anonymously readable by digest. The packaged CLI
-passed fresh setup on the development Mac, staging hosted administrator login, real
-GPT-6 Astra inference and stop/start with retained chat history. Published tool URLs
-passed download and SHA-256 verification. Disposable installation containers, volumes
-and networks were deleted afterward. This does not establish a newly provisioned
-host, production first-time signup, Linux/WSL or changed-version upgrades.
+[Candidate 35532613602](https://github.com/clawscarf/clawscarf/actions/runs/35532613602)
+passed full checks, compiled archive installation and all eight image builds on
+native ARM64 and x86-64 Depot runners. The same artifacts are available in the
+[0.1.0-alpha.2 GitHub prerelease](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.2)
+and as `@clawscarf/cli@0.1.0-alpha.2`, tagged `next`.
+
+Both Linux architectures passed protected runtime startup, native WebSocket forwarding,
+authenticated TLS to the private model gateway, retained stop/start and deletion on
+Docker 29.5.3. The final ARM64 images also passed real GPT-6 Astra inference and retained
+restart on macOS Docker Desktop. Candidate downloads passed SHA-256 verification and
+the CLI tarball installed independently of the repository. Disposable test containers,
+volumes and networks were deleted afterward.
+
+Staging hosted administrator login and the packaged interactive setup previously
+passed on macOS with alpha.1. Hosted login and real provider inference on Linux,
+actual Windows/WSL2 installation, production first-time signup and changed-version
+upgrades remain unverified; see [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 

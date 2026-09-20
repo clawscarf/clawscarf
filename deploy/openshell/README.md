@@ -170,7 +170,10 @@ A marker under the home volume survives native `sandbox stop`/`sandbox start`.
 This proves retained-compute restart, not replacement/relink, backup restoration,
 Gateway crash consistency, browser isolation or isolation between team members.
 The current run passed on macOS arm64/Docker Desktop with OpenShell 0.0.116 and
-its Docker driver. Other platforms remain unqualified.
+its Docker driver. These specific isolation checks have not been repeated on Linux.
+The separate [platform installation test](../../tests/deployment/platform-live.test.ts)
+passes on native Linux ARM64/x86-64 with Docker 29: protected runtime startup,
+native forwarding, authenticated model-gateway TLS, retained restart and cleanup.
 
 The [native runtime test](../../tests/runtime/team-runtime.test.ts) starts the real
 Gateway in a separate disposable sandbox using the same controller and image:

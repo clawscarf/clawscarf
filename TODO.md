@@ -4,11 +4,11 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Installer and releases
 
-- [ ] Add Linux ARM64/x86-64 and Windows through WSL2 installation support: package
-      matching OpenShell tools and multi-architecture images, replace Docker Desktop-only
-      routing, and verify configure/login/inference/stop/start/deletion. Replace the
-      hardcoded macOS gate with release/platform requirements. Check Intel Mac upstream
-      tool availability separately; the pinned OpenShell release supplies no Intel Mac binaries.
+- [ ] Verify hosted login and real model inference on Linux ARM64/x86-64, and the full
+      installation journey on Windows through WSL2. Native Linux CI covers protected
+      runtime startup, private model routing, stop/start and deletion.
+- [ ] Add Intel Mac support when compatible upstream OpenShell tools are available;
+      the pinned release supplies no Intel Mac binaries.
 - [ ] Verify first-time production signup through email verification and installer resume.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite

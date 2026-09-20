@@ -13,15 +13,17 @@ work in OpenClaw’s own interface.
 - **Keep execution contained:** NVIDIA OpenShell protects the team runtime, including
   its Gateway, plugins, shell commands and local tools.
 
-> **Alpha preview.** The published `0.1.0-alpha.1` supports macOS Apple Silicon with
-> Docker Desktop. Linux ARM64/x86-64 and WSL2 support is being prepared for the next
-> alpha; it is not available in the published package yet.
+> **Alpha preview.** Available for macOS Apple Silicon and Linux ARM64/x86-64.
+> Windows users run the CLI inside WSL2; that path is experimental and has not been
+> tested on a Windows machine. Intel Mac tools are not available from the pinned upstream release.
 
 ## Get started
 
 Have these ready:
 
-- **Docker Desktop**, installed and running on an Apple Silicon Mac.
+- **Docker Engine 29+ with Compose**, or Docker Desktop with Engine 29+, installed
+  and running Linux containers. See [platform requirements](deploy/deployment/installation.md)
+  for Linux and WSL2 prerequisites.
 - **Node.js** 24.16+ within the 24.x series, or 26.1+.
 - **An LLM provider API key.** The Team server recipe defaults to OpenAI GPT-6 Astra
   with medium reasoning; you can choose another model/provider during setup.
