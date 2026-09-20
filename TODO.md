@@ -42,7 +42,8 @@ Open work only. Select a task before implementing; this list does not authorize 
 - [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
       Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
       Native Lobster is required. Use the [curation findings](runtime/curation.md)
-      to select configuration, packaging and source changes.
+      for the candidate base, retained administrator paths and implementation order.
+      Qualify the exact image inventory before removing packages; preserve native ownership.
 - [ ] Package privately operated Connections against the same broker contract, independent of
       our hosted identity/billing services. The separation is part of the selected cloud design.
 - [ ] Add payment integration to the cloud allowance policy when selected; keep connector
