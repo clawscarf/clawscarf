@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { z } from "zod";
 import { releaseSchema, hostPlatformSchema } from "./definition.js";
 import { packageOperator } from "./operator.js";
+import { verifyOpenClawSource } from "./openclaw-source.js";
 import { liteLlmImage, postgresImage } from "../deployment/images.js";
 
 const sha256 = (bytes: Buffer) =>
@@ -25,9 +26,20 @@ const pinsSchema = z.object({
 await new Command("build-release-candidate")
   .requiredOption("--version <version>", "Exact candidate version")
   .requiredOption("--images <file>", "Built and pushed image digests")
+  .requiredOption("--openclaw-source <file>", "Image build source provenance")
+  .requiredOption(
+    "--openclaw-patches <file>",
+    "Image build patch source archive",
+  )
   .requiredOption("--output <directory>", "New candidate directory")
   .action(
-    async (options: { version: string; images: string; output: string }) => {
+    async (options: {
+      version: string;
+      images: string;
+      openclawSource: string;
+      openclawPatches: string;
+      output: string;
+    }) => {
       const version = releaseSchema.shape.version.parse(options.version);
       const root = process.cwd();
       const output = resolve(options.output);
@@ -42,7 +54,14 @@ await new Command("build-release-candidate")
       const revision = execFileSync("git", ["rev-parse", "HEAD"], {
         encoding: "utf8",
       }).trim();
+      await verifyOpenClawSource(
+        root,
+        options.openclawSource,
+        options.openclawPatches,
+      );
       await mkdir(output);
+      await cp(options.openclawSource, join(output, "openclaw-source.json"));
+      await cp(options.openclawPatches, join(output, "openclaw-patches.tgz"));
       const tools = join(output, "tools");
       await mkdir(tools);
       const downloads: Record<
@@ -131,6 +150,8 @@ await new Command("build-release-candidate")
           "THIRD_PARTY_NOTICES.md",
           "licenses",
           "pack-requirements.txt",
+          "openclaw-source.json",
+          "openclaw-patches.tgz",
         ]);
       const operator = await packageOperator(
         root,

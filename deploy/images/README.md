@@ -1,8 +1,9 @@
 # Native runtime image
 
-[Dockerfile](Dockerfile) extends an unmodified upstream OpenClaw source build at
+[Dockerfile](Dockerfile) extends an OpenClaw source build based on
 [`7bc487d39dc9e059bb9b19ea08152883022f83fe`](https://github.com/openclaw/openclaw/commit/7bc487d39dc9e059bb9b19ea08152883022f83fe) with
-immutable runtime dependencies. Customer configuration, identities, model keys,
+the ordered ClawScarf [patch series](../../runtime/openclaw/README.md) and immutable
+runtime dependencies. Customer configuration, identities, model keys,
 connection credentials and writable state are initialized separately.
 This commit fixes optional tool arguments on custom Responses routes. Its package
 version is still 2026.9.4; the source revision distinguishes it from the published image.
@@ -13,22 +14,27 @@ use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.
 
 ```sh
-revision=7bc487d39dc9e059bb9b19ea08152883022f83fe
-mkdir -p .local/openclaw-source
-curl -fL "https://codeload.github.com/openclaw/openclaw/tar.gz/$revision" -o .local/openclaw-source.tar.gz
-tar -xzf .local/openclaw-source.tar.gz --strip-components=1 -C .local/openclaw-source
+node --import tsx scripts/openclaw-patches.ts prepare \
+  --directory .local/openclaw-source --provenance .local/openclaw-source.json
+revision="$(jq -er .revision .local/openclaw-source.json)"
+tree="$(jq -er .tree .local/openclaw-source.json)"
+base="clawscarf-openclaw:source-$tree"
 docker build --build-arg GIT_COMMIT="$revision" \
-  --build-arg OPENCLAW_BUILD_TIMESTAMP=2026-09-18T06:44:18Z \
+  --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(TZ=UTC git -C .local/openclaw-source show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" \
   --build-arg OPENCLAW_EXTENSIONS=codex \
-  -t "clawscarf-openclaw:$revision" .local/openclaw-source
-docker build --build-arg OPENCLAW_IMAGE="clawscarf-openclaw:$revision" \
+  -t "$base" .local/openclaw-source
+docker build --build-arg OPENCLAW_IMAGE="$base" \
   -f deploy/images/Dockerfile -t clawscarf-runtime:local .
 ```
 
-Use a fresh source directory. The upstream Dockerfile builds Gateway, native UI and
-its dependencies; no upstream source edits are applied. Release manifests use the
-resulting exact runtime image ID/digest, never the mutable local build tag. This
-source pin is reproducible input selection, not a promise of bit-identical output:
+Use a new source directory. Preparation fails if a patch cannot apply or the result
+differs from the patched Git tree pinned in [components.json](../../release/components.json).
+The upstream Dockerfile builds Gateway, native UI and its dependencies from that
+prepared source. Release manifests use the resulting exact runtime image ID/digest,
+never the local build tag. The release builder also records source/patch hashes in
+runtime image labels and publishes the corresponding source provenance and patch
+archive; see [release assembly](../../release/README.md#build-and-publish).
+These are reproducible source inputs, not a promise of bit-identical image output:
 the upstream Dockerfile also resolves system packages at build time.
 
 The image includes:
@@ -128,6 +134,10 @@ shell placement. Installing Chromium in the Gateway image does not qualify
 launching it inside OpenShell; see the limits below.
 
 ## Verified limits
+
+The image evidence below was established before introducing the patch series.
+Candidates built from the patched source must repeat the affected runtime checks;
+source regressions alone do not qualify rebuilt images.
 
 The image built on Linux arm64. On the current pinned OpenShell Docker driver and
 [policy](../openshell/policy.yaml), native plugin discovery loads both exact

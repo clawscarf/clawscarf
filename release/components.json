@@ -1,8 +1,8 @@
 {
   "openclaw": {
+    "sourceTree": "b4ea62c5851510a4914ac95878f6e657344e6caf",
     "version": "2026.9.4",
-    "sourceRevision": "7bc487d39dc9e059bb9b19ea08152883022f83fe",
-    "image": "clawscarf-openclaw:7bc487d39dc9e059bb9b19ea08152883022f83fe"
+    "sourceRevision": "7bc487d39dc9e059bb9b19ea08152883022f83fe"
   },
   "openshell": {
     "version": "0.0.116",

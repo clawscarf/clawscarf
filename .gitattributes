@@ -1,0 +1,3 @@
+# Git patch context lines encode a blank source line as one space.
+# Actual source whitespace is checked by git am --whitespace=error-all.
+runtime/openclaw/patches/*.patch whitespace=-blank-at-eol

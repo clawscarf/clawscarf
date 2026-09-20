@@ -1,0 +1,353 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Sun, 20 Sep 2026 23:34:43 +0200
+Subject: [PATCH] fix(browser): align tool guidance with configured routing
+
+ClawScarf-Patch: browser-routing-guidance
+---
+ docs/tools/browser/agent-tools.md             |  7 +-
+ extensions/browser/index.test.ts              | 60 +++++++++++++++++
+ extensions/browser/plugin-registration.ts     | 10 +--
+ .../browser/src/browser-tool-description.ts   | 30 +++++----
+ extensions/browser/src/browser-tool.test.ts   | 64 ++++++++++++++++---
+ extensions/browser/src/browser-tool.ts        | 12 ++--
+ 6 files changed, 150 insertions(+), 33 deletions(-)
+
+diff --git a/docs/tools/browser/agent-tools.md b/docs/tools/browser/agent-tools.md
+index 2955e40cca1087aa007aa07cc8876d16c6f9c69c..5a38582163f01021c87d86c66e99cd8e18e26992 100644
+--- a/docs/tools/browser/agent-tools.md
++++ b/docs/tools/browser/agent-tools.md
+@@ -34,9 +34,10 @@ How it maps:
+ - `browser` accepts:
+   - `profile` to choose a named browser profile (openclaw, chrome, or remote CDP).
+   - `target` (`sandbox` | `host` | `node`) to select where the browser lives.
+-  - In sandboxed sessions, `target: "host"` requires `agents.defaults.sandbox.browser.allowHostControl=true`.
+-  - If `target` is omitted: sandboxed sessions default to `sandbox`, non-sandbox sessions default to `host`.
+-  - Automatic routing prefers the host browser. If local browser capability is unavailable, it can use a single connected browser node. Explicit `target="node"`, a `node` selector, or a configured node pin overrides that preference; `target="host"` stays local.
++  - Omit `target` and `node` to use configured routing. When a sandbox browser bridge is available, managed profiles use it. Otherwise an enabled `gateway.nodes.browser.node` pin selects that node, including in manual routing mode; an unavailable pinned node fails rather than switching to the host.
++  - Without a pin, automatic routing prefers the host browser. If local browser capability is unavailable and Gateway routing is available, it can use a single connected browser node. Manual routing without a pin and disabled node routing use the host.
++  - Explicit `target="host"` selects the Gateway host and bypasses configured node routing. Explicit `target="node"` or a `node` selector requests node routing; `gateway.nodes.browser.mode="off"` rejects it.
++  - In sandboxed sessions, both host and node control require `agents.defaults.sandbox.browser.allowHostControl=true`. Existing-session profiles cannot use the sandbox browser.
+ 
+ This keeps the agent deterministic and avoids brittle selectors.
+ 
+diff --git a/extensions/browser/index.test.ts b/extensions/browser/index.test.ts
+index 7f43d93e16b9da4f4d8b7696eb01bdfc95e88b2b..440c1fecdc783c28993ef76c2b8f2ed3b2c6bd82 100644
+--- a/extensions/browser/index.test.ts
++++ b/extensions/browser/index.test.ts
+@@ -1,6 +1,7 @@
+ // Browser tests cover index plugin behavior.
+ import fs from "node:fs";
+ import path from "node:path";
++import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
+ import { createTestPluginApi } from "openclaw/plugin-sdk/plugin-test-api";
+ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+ import {
+@@ -262,6 +263,65 @@ describe("browser plugin", () => {
+     });
+   });
+ 
++  it.each<{
++    name: string;
++    policy?: NonNullable<NonNullable<OpenClawConfig["gateway"]>["nodes"]>["browser"];
++    browser?: { sandboxBridgeUrl?: string; allowHostControl?: boolean };
++    guidance: string;
++  }>([
++    {
++      name: "configured node",
++      policy: { node: "node-1" },
++      guidance: "Default: configured browser node.",
++    },
++    {
++      name: "manual node pin",
++      policy: { mode: "manual", node: "node-1" },
++      guidance: "Default: configured browser node.",
++    },
++    {
++      name: "node routing off",
++      policy: { mode: "off", node: "node-1" },
++      guidance: "Default: host.",
++    },
++    {
++      name: "manual routing without a pin",
++      policy: { mode: "manual" },
++      guidance: "Default: host.",
++    },
++    { name: "automatic routing", guidance: "Omit target and node to use configured routing" },
++    {
++      name: "sandbox before node pin",
++      policy: { node: "node-1" },
++      browser: { sandboxBridgeUrl: "http://127.0.0.1:9999" },
++      guidance: "Default: sandbox for managed profiles.",
++    },
++    {
++      name: "blocked host and node",
++      policy: { node: "node-1" },
++      browser: { allowHostControl: false },
++      guidance: "Host and node targets are blocked by sandbox policy.",
++    },
++  ])(
++    "advertises $name routing before loading the tool runtime",
++    ({ policy, browser, guidance }) => {
++      const { api, registerTool } = createApi();
++      registerBrowserPlugin(api);
++      const factory = mockCallArg(registerTool);
++      if (typeof factory !== "function") {
++        throw new Error("expected browser plugin to register a tool factory");
++      }
++      const tool = factory({
++        browser,
++        config: { gateway: { nodes: { browser: { mode: "off" } } } },
++        getRuntimeConfig: () => ({ gateway: { nodes: { browser: policy } } }),
++      });
++      expect(tool.description).toContain(guidance);
++      expect(tool.description).not.toContain("Prefer the host browser");
++      expect(runtimeApiMocks.createBrowserTool).not.toHaveBeenCalled();
++    },
++  );
++
+   it("passes runtime context needed for screenshot image understanding", async () => {
+     const { api, registerTool } = createApi();
+     registerBrowserPlugin(api);
+diff --git a/extensions/browser/plugin-registration.ts b/extensions/browser/plugin-registration.ts
+index de37f5106a7df1c760b8de0533c38ec0384df148..b8dea2e0d8259115e05ee852407d09375dcabc0b 100644
+--- a/extensions/browser/plugin-registration.ts
++++ b/extensions/browser/plugin-registration.ts
+@@ -108,9 +108,6 @@ function createLazyBrowserTool(
+   if (bindingResult && !bindingResult.ok) {
+     throw new Error(`invalid browser run binding: ${bindingResult.error}`);
+   }
+-  const targetDefault = opts?.sandboxBridgeUrl ? "sandbox" : "host";
+-  const hostHint =
+-    opts?.allowHostControl === false ? "Host target blocked by policy." : "Host target allowed.";
+   const boundProfile =
+     bindingResult?.ok && bindingResult.binding.target === "host"
+       ? resolveProfile(resolveBrowserConfig(config?.browser, config), bindingResult.binding.profile)
+@@ -124,7 +121,12 @@ function createLazyBrowserTool(
+     label: "Browser",
+     name: "browser",
+     resultContentSource: "network",
+-    description: describeBrowserTool({ targetDefault, hostHint, capabilities }),
++    description: describeBrowserTool({
++      config,
++      sandboxBridgeUrl: opts?.sandboxBridgeUrl,
++      allowHostControl: opts?.allowHostControl,
++      capabilities,
++    }),
+     parameters: createBrowserToolSchema(capabilities),
+     outputSchema: BrowserToolOutputSchema,
+     execute: async (toolCallId, args, signal, onUpdate) => {
+diff --git a/extensions/browser/src/browser-tool-description.ts b/extensions/browser/src/browser-tool-description.ts
+index 1c9cda9977ff2e4ea754e47d14e4ab6933c1a208..76b96f4532aee0c91b2312ca31cf3ca93d178798 100644
+--- a/extensions/browser/src/browser-tool-description.ts
++++ b/extensions/browser/src/browser-tool-description.ts
+@@ -1,11 +1,27 @@
++import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
+ import type { BrowserToolCapabilities } from "./browser-tool.schema.js";
+ 
+ /** Build the Browser tool guidance shared by lazy registration and runtime execution. */
+ export function describeBrowserTool(opts: {
+-  targetDefault: "sandbox" | "host";
+-  hostHint: string;
++  config?: OpenClawConfig;
++  sandboxBridgeUrl?: string;
++  allowHostControl?: boolean;
+   capabilities: BrowserToolCapabilities;
+ }): string {
++  const nodePolicy = opts.config?.gateway?.nodes?.browser;
++  const routingHint = opts.sandboxBridgeUrl?.trim()
++    ? "Default: sandbox for managed profiles. Omit target and node to use it."
++    : opts.allowHostControl === false
++      ? "No sandbox browser is available."
++      : nodePolicy?.mode !== "off" && nodePolicy?.node?.trim()
++        ? "Default: configured browser node. Omit target and node to use it. If it is unavailable, report the routing error rather than switching to host."
++        : nodePolicy?.mode === "off" || nodePolicy?.mode === "manual"
++          ? "Default: host. Omit target and node to use the host browser."
++          : "Omit target and node to use configured routing, which prefers an available host browser and can select a connected browser node when Gateway routing is available.";
++  const hostHint =
++    opts.allowHostControl === false
++      ? "Host and node targets are blocked by sandbox policy."
++      : 'Set target="host" only when you intend to use the Gateway host browser; it bypasses configured node routing. Select a node explicitly with target="node" or node=<id|name> when node routing is enabled.';
+   const actions = new Set(opts.capabilities.actions);
+   const evaluateEnabled = opts.capabilities.actKinds.includes("evaluate");
+   const lines = [
+@@ -23,9 +39,7 @@ export function describeBrowserTool(opts: {
+       : []),
+     `For Chrome MCP existing-session profiles, omit timeoutMs on act:type, hover, scrollIntoView, drag, select, and fill; that driver rejects per-call timeout overrides for those actions.${evaluateEnabled ? " act:evaluate supports timeoutMs." : ""}`,
+     ...(!opts.capabilities.tabBound
+-      ? [
+-          'Prefer the host browser; auto-route to a connected browser node only when the host has no usable browser capability. Select another location with target="node" or node=<id|name>; configured node pins also take precedence.',
+-        ]
++      ? [`target selects browser location (sandbox|host|node). ${routingHint}`, hostHint]
+       : []),
+     "When using refs from snapshot (e.g. e12), keep the same tab: prefer passing targetId from the snapshot response into subsequent actions (act/click/type/etc). For tab operations, targetId also accepts tabId handles (t1) and labels from action=tabs.",
+     "For multi-step browser work, login checks, stale refs, duplicate tabs, or Google Meet flows, use the bundled browser-automation skill when it is available.",
+@@ -60,12 +74,6 @@ export function describeBrowserTool(opts: {
+           "For file chooser uploads, pass the trigger ref with paths in the same upload call when available; use paths-only arming only when a later trigger is intentional. Use inputRef or element to set a file input directly.",
+         ]
+       : []),
+-    ...(!opts.capabilities.tabBound
+-      ? [
+-          `target selects browser location (sandbox|host|node). Default: ${opts.targetDefault}.`,
+-          opts.hostHint,
+-        ]
+-      : []),
+   ];
+   return lines.join(" ");
+ }
+diff --git a/extensions/browser/src/browser-tool.test.ts b/extensions/browser/src/browser-tool.test.ts
+index b8694a332130150cc94d492aac2a0211691cb9ca..9ec093524f78891a0f8f968a3d04de38e9c752c9 100644
+--- a/extensions/browser/src/browser-tool.test.ts
++++ b/extensions/browser/src/browser-tool.test.ts
+@@ -1602,11 +1602,18 @@ describe("browser tool snapshot maxChars", () => {
+ 
+   it.each([
+     ["target=node", { target: "node" }],
++    ["target=host", { target: "host" }],
+     ["an explicit node pin", { node: "node-1" }],
+     ["automatic node routing", {}],
+   ])("blocks %s when host control is disabled", async (_label, route) => {
+     mockSingleBrowserProxyNode();
++    configMocks.loadConfig.mockReturnValue({
++      browser: {},
++      gateway: { nodes: { browser: { node: "node-1" } } },
++    });
+     const tool = createBrowserTool({ allowHostControl: false });
++    expect(tool.description).toContain("Host and node targets are blocked by sandbox policy.");
++    expect(tool.description).not.toContain("Default: configured browser node.");
+ 
+     await expect(tool.execute?.("call-1", { action: "status", ...route })).rejects.toThrow(
+       /browser control is disabled by sandbox policy/i,
+@@ -2228,9 +2235,14 @@ describe("browser tool snapshot maxChars", () => {
+     expect(request.params?.timeoutMs).toBe(20_000);
+   });
+ 
+-  it("keeps sandbox bridge url when node proxy is available", async () => {
++  it("keeps sandbox bridge routing ahead of a configured node", async () => {
+     mockSingleBrowserProxyNode();
++    configMocks.loadConfig.mockReturnValue({
++      browser: {},
++      gateway: { nodes: { browser: { node: "node-1" } } },
++    });
+     const tool = createBrowserTool({ sandboxBridgeUrl: "http://127.0.0.1:9999" });
++    expect(tool.description).toContain("Default: sandbox for managed profiles.");
+     await tool.execute?.("call-1", { action: "status" });
+ 
+     const bridgeUrl = lastMockCallArg<string>(browserClientMocks.browserStatus, 0);
+@@ -2367,6 +2379,8 @@ describe("browser tool snapshot maxChars", () => {
+       gateway: { nodes: { browser: { node: "node-1" } } },
+     });
+     const tool = createBrowserTool();
++    expect(tool.description).toContain("Default: configured browser node.");
++    expect(tool.description).toContain("report the routing error rather than switching to host");
+ 
+     await expect(tool.execute?.("call-1", { action: "status" })).rejects.toThrow(
+       "No connected browser-capable nodes.",
+@@ -2375,18 +2389,42 @@ describe("browser tool snapshot maxChars", () => {
+     expect(gatewayMocks.callGatewayTool).not.toHaveBeenCalled();
+   });
+ 
+-  it("honors a configured browser node in manual routing mode", async () => {
++  it.each(["auto", "manual"] as const)(
++    "honors a configured browser node in %s routing mode",
++    async (mode) => {
++      mockSingleBrowserProxyNode();
++      browserHostAvailabilityMocks.isBrowserHostAvailable.mockReturnValue(true);
++      configMocks.loadConfig.mockReturnValue({
++        browser: {},
++        gateway: { nodes: { browser: { mode, node: "node-1" } } },
++      });
++
++      const tool = createBrowserTool();
++      expect(tool.description).toContain("Default: configured browser node.");
++      expect(tool.description).toContain("Omit target and node");
++      expect(tool.description).not.toContain("Prefer the host browser");
++      await tool.execute("call-1", { action: "status" });
++
++      expect(lastNodeInvokeCall().request.nodeId).toBe("node-1");
++      expect(browserClientMocks.browserStatus).not.toHaveBeenCalled();
++    },
++  );
++
++  it("keeps disabled node routing on the host despite a configured node", async () => {
+     mockSingleBrowserProxyNode();
+-    browserHostAvailabilityMocks.isBrowserHostAvailable.mockReturnValue(true);
+     configMocks.loadConfig.mockReturnValue({
+       browser: {},
+-      gateway: { nodes: { browser: { mode: "manual", node: "node-1" } } },
++      gateway: { nodes: { browser: { mode: "off", node: "node-1" } } },
+     });
+-
+-    await createBrowserTool().execute?.("call-1", { action: "status" });
+-
+-    expect(lastNodeInvokeCall().request.nodeId).toBe("node-1");
+-    expect(browserClientMocks.browserStatus).not.toHaveBeenCalled();
++    const tool = createBrowserTool();
++    expect(tool.description).toContain("Default: host.");
++    await tool.execute("host-status", { action: "status" });
++    expect(browserClientMocks.browserStatus).toHaveBeenCalledOnce();
++    await expect(tool.execute("node-status", { action: "status", target: "node" })).rejects.toThrow(
++      "Node browser proxy is disabled",
++    );
++    expect(nodesUtilsMocks.listNodes).not.toHaveBeenCalled();
++    expect(gatewayMocks.callGatewayTool).not.toHaveBeenCalled();
+   });
+ 
+   it('allows profile="user" with target="node"', async () => {
+@@ -2429,12 +2467,18 @@ describe("browser tool snapshot maxChars", () => {
+     expect(browserClientMocks.browserStatus).not.toHaveBeenCalled();
+   });
+ 
+-  it('keeps profile="user" on the host when target="host" is explicit', async () => {
++  it('keeps profile="user" on the host when target="host" overrides a configured node', async () => {
+     mockSingleBrowserProxyNode();
++    configMocks.loadConfig.mockReturnValue({
++      browser: {},
++      gateway: { nodes: { browser: { node: "node-1" } } },
++    });
+     setResolvedBrowserProfiles({
+       user: { driver: "existing-session", attachOnly: true, color: "#00AA00" },
+     });
+     const tool = createBrowserTool();
++    expect(tool.description).toContain('Set target="host" only when you intend');
++    expect(tool.description).toContain("it bypasses configured node routing");
+     await tool.execute?.("call-1", { action: "status", profile: "user", target: "host" });
+ 
+     const opts = lastMockCallArg<{ profile?: string }>(browserClientMocks.browserStatus, 1);
+diff --git a/extensions/browser/src/browser-tool.ts b/extensions/browser/src/browser-tool.ts
+index 8812b81ab4e4a64b0b895c676091d934e7dbd18b..cde039470ade0a63a72429ceb266056875995892 100644
+--- a/extensions/browser/src/browser-tool.ts
++++ b/extensions/browser/src/browser-tool.ts
+@@ -217,10 +217,10 @@ export function createBrowserTool(
+   if (bindingResult && !bindingResult.ok) {
+     throw new Error(`invalid browser run binding: ${bindingResult.error}`);
+   }
++  const config = getRuntimeConfig();
+   const capabilities =
+     opts?.toolCapabilities ??
+     (() => {
+-      const config = getRuntimeConfig();
+       const boundProfile =
+         bindingResult?.ok && bindingResult.binding.target === "host"
+           ? resolveProfile(
+@@ -236,14 +236,16 @@ export function createBrowserTool(
+           : {}),
+       });
+     })();
+-  const targetDefault = opts?.sandboxBridgeUrl ? "sandbox" : "host";
+-  const hostHint =
+-    opts?.allowHostControl === false ? "Host target blocked by policy." : "Host target allowed.";
+   return {
+     label: "Browser",
+     name: "browser",
+     resultContentSource: "network",
+-    description: describeBrowserTool({ targetDefault, hostHint, capabilities }),
++    description: describeBrowserTool({
++      config,
++      sandboxBridgeUrl: opts?.sandboxBridgeUrl,
++      allowHostControl: opts?.allowHostControl,
++      capabilities,
++    }),
+     parameters: createBrowserToolSchema(capabilities),
+     outputSchema: BrowserToolOutputSchema,
+     execute: async (_toolCallId, args, signal) => {

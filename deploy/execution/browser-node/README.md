@@ -2,8 +2,9 @@
 
 The [local operator](../../deployment/README.md#shared-browser) prepares, enrolls,
 starts and stops this optional controller. Prepared-stack startup and explicit native
-navigation passed locally. Ordinary model-selected browsing remains blocked by the
-[upstream routing bug](#upstream-browser-routing-bug), assigned to the owner separately.
+navigation passed locally. The downstream [routing guidance fix](#upstream-browser-routing-bug)
+is regression-tested in source; ordinary model-selected browsing with patched release
+images still needs qualification. The Team server recipe leaves browser disabled.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
@@ -152,42 +153,32 @@ startup refused to re-enroll the device and stopped its services with data retai
 
 ## Upstream browser routing bug
 
-**Owner-managed: do not implement or resume automatically.**
+The pinned upstream tool advertises `host` as the default even when an omitted
+target selects the configured browser node. An explicit `host` bypasses that node.
+The earlier live model trial selected `host` and hit Gateway DNS denial, whereas
+explicit `target=node` succeeded for members and administrators.
 
-Native routing has an upstream guidance mismatch. With a configured browser node,
-an omitted target selects that node; an explicit `host` selects Gateway-side control.
-The tool description nevertheless advertises `host` as the default. Disabling
-`allowHostControl` blocks node browsing too, so that setting cannot force a browser
-node. Three focused tests against checkout `29e149ccbf649ed2137ded6f4a857dc6eb2abbb6`
-confirmed these cases; the same branches exist in the pinned release and in upstream
-[`e1c2a0b476e1606f3099e8779833bd1b9f33c65c`](https://github.com/openclaw/openclaw/blob/e1c2a0b476e1606f3099e8779833bd1b9f33c65c/extensions/browser/src/browser-tool.ts).
-Merely updating to that commit would not fix the guidance. The earlier
-live model trial selected `host` and hit Gateway DNS denial, whereas explicit
-`target=node` succeeded for members and administrators.
+ClawScarf now maintains the [browser routing guidance patch](../../../runtime/openclaw/patches/browser-routing-guidance.patch)
+and its [regeneration instructions](../../../runtime/openclaw/patches/browser-routing-guidance.prompt.md).
+It corrects both lazy registration and the direct tool description to recommend
+omitting `target` and `node` for configured routing. Source regressions cover
+configured auto/manual node routing, unavailable-node failure, explicit host
+selection, sandbox precedence, blocked host/node control, disabled node routing
+and tab-bound guidance. The routing implementation is unchanged.
 
-The minimum upstream correction is to make tool guidance reflect the effective
-configured routing, while preserving explicit target semantics and sandbox policy.
-No supported installation-wide node-only target selector was found in the checked
-configuration/schema. A tab-bound browser run exists but requires a specific existing
-tab and is not a general installation default. No native patches, tool/RPC rewrites,
-prompt overrides or weaker confinement are shipped to hide this mismatch. Ordinary
-model-driven browser acceptance must be rerun after the supported correction.
+The patch is implemented and regression-tested, but has not been published in a
+ClawScarf release or submitted upstream. Ordinary model-selected member/admin
+browsing with the patched images remains unqualified; deterministic guidance and
+dispatch tests do not establish that journey or workspace/browser file transfer.
+The Team server recipe keeps browser disabled. Upstream submission remains an
+explicit owner decision.
 
-The single team runtime does not fix this routing mismatch. The current preset turns
-the inner agent sandbox off and gives members its inherited policy; upstream therefore
-passes `allowHostBrowserControl: true`. The `allowHostControl: false` restriction above
-is not an active blocker in that preset, but explicit `host` still bypasses the paired
-node. OpenShell still denies Gateway public DNS/direct CDP, while the browser node and
-Chromium retain their separate networks. Moving shell execution into the Gateway's
-runtime changes neither of those browser paths.
-
-A focused check against the runtime's exact OpenClaw commit
-`7bc487d39dc9e059bb9b19ea08152883022f83fe` exercised the native routing modules with
-controlled node/configuration adapters: omitted and explicit `node` selected the pinned
-node, explicit `host` bypassed it, missing-node routing failed visibly, and guidance
-still advertised `host`. This is source-level routing evidence, not a new live browser
-or real-model acceptance run. The separate browser network/ingress regressions passed;
-they do not establish correct model-selected routing or workspace/browser file transfer.
+The team runtime still denies Gateway public DNS/direct CDP; the browser node and
+Chromium retain their separate networks. Explicit host selection remains explicit,
+and an unavailable configured node still fails without host fallback. Sandbox
+`allowHostControl: false` blocks both host and node browsing; it is not a node-only
+selector. The current team preset disables the inner agent sandbox, so that
+restriction does not block its configured node.
 
 Pinned upstream sources:
 

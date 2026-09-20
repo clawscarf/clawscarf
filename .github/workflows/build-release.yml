@@ -77,6 +77,8 @@ jobs:
           path: |
             .local/release-images/images.json
             .local/release-images/network-sources.tgz
+            .local/release-images/openclaw-source.json
+            .local/release-images/openclaw-patches.tgz
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
@@ -96,6 +98,8 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          cmp images/runtime-images-arm64/openclaw-source.json images/runtime-images-amd64/openclaw-source.json
+          cmp images/runtime-images-arm64/openclaw-patches.tgz images/runtime-images-amd64/openclaw-patches.tgz
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           mkdir combined
           echo '{}' > combined/images.json
@@ -109,6 +113,8 @@ jobs:
             mv combined/next.json combined/images.json
           done
           cp images/runtime-images-arm64/network-sources.tgz combined/network-sources.tgz
+          cp images/runtime-images-arm64/openclaw-source.json combined/openclaw-source.json
+          cp images/runtime-images-arm64/openclaw-patches.tgz combined/openclaw-patches.tgz
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: runtime-images
@@ -138,7 +144,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          node --import tsx scripts/release/candidate.ts --version "$RELEASE_VERSION" --images .local/release-images/images.json --output .local/candidate
+          node --import tsx scripts/release/candidate.ts --version "$RELEASE_VERSION" --images .local/release-images/images.json --openclaw-source .local/release-images/openclaw-source.json --openclaw-patches .local/release-images/openclaw-patches.tgz --output .local/candidate
           cp .local/release-images/network-sources.tgz .local/candidate/
           cd .local/candidate
           shasum -a 256 network-sources.tgz >> SHA256SUMS

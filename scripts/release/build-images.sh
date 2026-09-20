@@ -4,24 +4,38 @@ set -euo pipefail
 : "${GITHUB_REPOSITORY:?}" "${GITHUB_SHA:?}" "${GITHUB_RUN_ID:?}" "${IMAGE_ARCH:?}"
 output="${1:?output directory}"
 mkdir -p "$output"
-revision="$(jq -er '.openclaw.sourceRevision' release/components.json)"
-base="$(jq -er '.openclaw.image' release/components.json)"
 node="$(jq -er '.companionNode.image' release/components.json)"
-upstream="$output/upstream"
-git init "$upstream"
-git -C "$upstream" remote add origin https://github.com/openclaw/openclaw.git
-git -C "$upstream" fetch --depth=1 origin "$revision"
-git -C "$upstream" checkout --detach FETCH_HEAD
-test "$(git -C "$upstream" rev-parse HEAD)" = "$revision"
+upstream="$output/openclaw-source"
+node --import tsx scripts/openclaw-patches.ts prepare --directory "$upstream" \
+  --provenance "$output/openclaw-source.json"
+revision="$(jq -er '.revision' "$output/openclaw-source.json")"
+upstream_revision="$(jq -er '.upstreamRevision' "$output/openclaw-source.json")"
+source_tree="$(jq -er '.tree' "$output/openclaw-source.json")"
+patch_set="$(jq -er '.patchSetSha256' "$output/openclaw-source.json")"
+base="clawscarf-openclaw:source-$source_tree"
+tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+  -cf - -C runtime/openclaw/patches . | gzip -n > "$output/openclaw-patches.tgz"
 docker build --build-arg "GIT_COMMIT=$revision" \
+  --label "org.opencontainers.image.revision=$revision" \
+  --label "io.clawscarf.openclaw.upstream-revision=$upstream_revision" \
+  --label "io.clawscarf.openclaw.source-tree=$source_tree" \
+  --label "io.clawscarf.openclaw.patch-set=$patch_set" \
   --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(TZ=UTC git -C "$upstream" show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" \
   --build-arg OPENCLAW_EXTENSIONS=codex -t "$base" "$upstream"
 rm -rf "$upstream"
 echo '{}' > "$output/images.json"
 while read -r name dockerfile; do
   image="ghcr.io/${GITHUB_REPOSITORY,,}/$name:build-$GITHUB_RUN_ID-$IMAGE_ARCH"
+  source_labels=()
+  if [[ "$name" == runtime ]]; then
+    source_labels+=(--label "io.clawscarf.openclaw.upstream-revision=$upstream_revision"
+      --label "io.clawscarf.openclaw.revision=$revision"
+      --label "io.clawscarf.openclaw.source-tree=$source_tree"
+      --label "io.clawscarf.openclaw.patch-set=$patch_set")
+  fi
   docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
     --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+    "${source_labels[@]}" \
     --build-arg "OPENCLAW_IMAGE=$base" --build-arg "NODE_IMAGE=$node" \
     -f "$dockerfile" -t "$image" .
   if [[ "$name" == runtime ]]; then
@@ -46,6 +60,7 @@ browser-egress deploy/execution/network/Dockerfile.egress
 browser-relay deploy/execution/network/Dockerfile.relay
 IMAGES
 # Retain the corresponding network-tool source offer with the binary release.
-docker build -f deploy/images/Dockerfile --target network-sources --output "type=local,dest=$output/network-sources" .
+docker build --build-arg "OPENCLAW_IMAGE=$base" -f deploy/images/Dockerfile \
+  --target network-sources --output "type=local,dest=$output/network-sources" .
 tar -czf "$output/network-sources.tgz" -C "$output/network-sources" .
 rm -rf "$output/network-sources"

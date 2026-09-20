@@ -53,7 +53,8 @@ Release candidates contain:
 - npm `@clawscarf/cli`: compiled CLI, recipes, pack files, model catalog and runtime
   definitions. No Docker images or large OpenShell executables in npm.
 - GitHub Releases: standalone CLI archives with a private Node runtime and installed
-  dependencies, an installer, runtime tool archives, checksums and required notices.
+  dependencies, an installer, runtime tool archives, checksums, required notices and
+  the OpenClaw source provenance and patch series used by the image build.
 - GHCR: runtime/companion images referenced by immutable registry digest.
 
 Installing a newer CLI supplies newer recipes. Each recipe still selects an exact
@@ -74,13 +75,17 @@ silently replaced. Docker verifies image digests. No start command resolves late
 with an exact version, such as `0.1.0-alpha.1`. It:
 
 1. Runs checks and tests the compiled operator outside the checkout on macOS arm64.
-2. Builds the pinned OpenClaw source and ClawScarf images on Linux arm64 and x86-64,
+2. Reconstructs OpenClaw from the pinned upstream commit and the ordered
+   [patch series](../runtime/openclaw/README.md), verifies the resulting source tree,
+   then builds ClawScarf images on Linux arm64 and x86-64,
    checks runtime capabilities and the Chromium sandbox, then starts a protected
    installation with private LiteLLM networking and verifies stop/start retention.
-   It publishes image indexes containing both architectures to GHCR.
+   Both architectures must report identical OpenClaw source provenance and patch
+   archives before it publishes image indexes containing both architectures to GHCR.
 3. Downloads checksum-pinned OpenShell tools, records the image digests, and assembles
    one runtime archive per host platform, individual executable assets, npm CLI,
-   checksums and notices.
+   checksums and notices. Candidate assembly verifies the image builds' patch archive
+   and provenance against this checkout before including them in the release.
 4. Installs the resulting npm archive into a temporary prefix and checks its CLI/catalog.
 5. Builds standalone CLI archives on macOS ARM64 and Linux ARM64/x86-64 using the
    same npm payload and frozen production dependency lockfile. Downloads Node using
@@ -104,6 +109,15 @@ and Linux installation checks use Depot ARM64/x86-64 runners; macOS checks and p
 use GitHub-hosted runners. The Depot Managed Runners app connects the ClawScarf organization
 to the RAW Labs Depot organization. The image job installs Docker 29.5.3 on its
 disposable runner for the network features required by installations.
+The generated source-provenance JSON records the upstream commit, reconstructed commit, source tree,
+ordered patch and intent hashes, and the complete patch-set digest.
+`openclaw-patches.tgz` contains the exact `series`, patches and their regeneration
+instructions. Both files are checksummed candidate assets and included in each runtime
+archive. The runtime definition's `sourceRevision` still identifies the ClawScarf
+commit, which owns those inputs; there is no second moving OpenClaw release branch.
+This provenance describes the Gateway source build; the separate browser-node image
+retains its upstream published image pin.
+See the [patch workflow](../runtime/openclaw/README.md) for editing and upgrading them.
 The source recipe pins the development
 runtime. Packaging resolves that same runtime to the candidate's immutable definition;
 it does not make recipes select latest. The first release uses the same CLI/runtime
@@ -113,8 +127,9 @@ or the selected runtime changes. Published definitions must not be overwritten.
 The `release-candidate` Actions artifact is the reviewable output. Download it and test
 a fresh supported installation, administrator login, real inference and stop/start
 before publication. GitHub's macOS runner does not provide our Docker Desktop journey;
-its packaging checks alone do not establish that journey. The browser-selection bug
-remains a separate, explicit limit; the Team server recipe leaves browser disabled.
+its packaging checks alone do not establish that journey. Model-selected browsing
+through the patched release images still needs qualification; the Team server recipe
+leaves browser disabled.
 
 [Publish release candidate](../.github/workflows/publish-release.yml) accepts a successful
 build run from `main`. It checks the source commit and artifact checksums, creates the

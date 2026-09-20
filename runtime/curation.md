@@ -21,7 +21,10 @@ document when changing the pin, packaging or preset.
 The evidence is source inspection of navigation, routes, settings, configuration,
 packaging and relevant backend handlers. It is not a live inventory of every
 installation, a screenshot review of every page, or acceptance of a curated image.
-No curation patches have been implemented by this review.
+The [maintained patch series](openclaw/README.md) now contains optional native
+marketplace availability and the separately owned browser-guidance fix. These are
+source changes with regression evidence, not a fully curated or published runtime.
+The broader dispositions and package selection below remain proposed.
 
 ## Intended product
 
@@ -536,9 +539,9 @@ points or supporting skills are removed:
 The reviewed team-runtime and installer baseline is integrated for release
 preparation. Curation remains separate work. Do not apply this design to the old
 worker arrangement and claim it verifies the unified runtime. No backward-compatibility or legacy-worker migration is part of this
-work. When implementation begins, update the product README and contributor rule
-that currently describe OpenClaw as vanilla to accurately allow the maintained
-curation patches while preserving native ownership of application state.
+work. The product README and contributor rules now allow maintained source patches
+while preserving native ownership of application state. The patch workflow does
+not itself implement the remaining curation slices.
 
 Marketplace tests must cover attempted catalog search/install/update and a
 successful explicit-source installation with no unwanted marketplace requests.
@@ -567,19 +570,19 @@ selection, and package selection. Each needs its own behavior and regression
 evidence. Upstream PRs can seek reusable configuration or plugin seams; ClawScarf
 must not depend on their acceptance to reproduce its release.
 
-Use a downstream Git branch/fork at the exact upstream pin as the initial
-source of truth. Its focused commits are the patches; record both upstream base
-and downstream revision in release provenance and build from the downstream
-revision. Also record the UI revision, package selection and resulting image
-digest. A separate UI build, if used, must be derived from the same source
-revision. A version label such as 2026.9.4 alone does not identify patched content.
+The [patch workflow](openclaw/README.md) now owns maintenance commands and release
+integration. Its canonical inputs are the pinned upstream revision, ordered Git
+mail patches, paired intent documents, and expected resulting source tree.
+Development checkouts are reconstructed from those inputs; Git or optional StGit
+edits their commits, then the exporter verifies exact replay before updating the
+saved series. Do not independently maintain a divergent fork as another release
+source. Upstream submission is optional and currently not requested.
 
-Do not maintain an independently edited patch-file series at the same time.
-Exporting a series for distribution tooling can be added later as a generated
-representation of the canonical commits. An upstream PR should correspond to a
-focused change; acceptance lets us drop that change on a later baseline, rather
-than becoming a prerequisite for our release. No fork, patch pipeline or curated
-release has been created by this documentation.
+Record the upstream base, reconstructed revision, source tree, patch-set digest
+and final image digest. A version label such as 2026.9.4 alone does not identify
+patched content. The release pipeline carries the source provenance and exact
+patch/intent archive. Published alpha.3 and existing installations predate these
+patches; new source packaging has not been published by this task.
 
 This is the useful part of the Linux-distribution analogy: upstream sources,
 downstream changes and packaging are explicit. Debian documents patch series in
@@ -606,6 +609,7 @@ browser enrollment must still work. Include disabled and enabled configurations
 when proposing upstream switches. Update provenance and licenses with packaged
 changes; retain upstream attribution even when promotional links are removed.
 
-These are criteria for future selected work, not checks already passed by this
-documentation. The current implementation remains the vanilla pinned runtime
-described in the [runtime guide](https://github.com/clawscarf/clawscarf/blob/30dbebc13d39e46b99c3fc06b4d69af93edaca80/runtime/README.md).
+These remain full-curation acceptance criteria. The initial two source patches
+do not establish that the complete proposed product surface or package selection
+is implemented. The [runtime guide](README.md) distinguishes current configuration,
+source patches and published behavior.

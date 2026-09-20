@@ -1,4 +1,4 @@
-ARG OPENCLAW_IMAGE=clawscarf-openclaw:7bc487d39dc9e059bb9b19ea08152883022f83fe
+ARG OPENCLAW_IMAGE
 FROM ${OPENCLAW_IMAGE} AS upstream
 
 FROM upstream AS network-tools

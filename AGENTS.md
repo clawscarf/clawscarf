@@ -21,7 +21,8 @@
 
 ## Product and security boundaries
 
-- Keep OpenClaw vanilla: it owns agents, roles, tools, conversations and native settings.
+- Maintain OpenClaw changes through the ordered patch series and paired intent documents
+  in runtime/openclaw. OpenClaw owns agents, roles, tools, conversations and native settings.
   Presets apply once; refresh observes. Explicit reapplication confirms selected changes
   and preserves unrelated edits. No duplicate role database or replacement dashboard.
 - One installation serves one trusted team with separate native identities/roles and

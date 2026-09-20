@@ -237,5 +237,5 @@ The optional [browser node](../execution/browser-node/README.md) and
 namespace operations that this OpenShell policy denies, so it retains its own
 sandbox and restricted [public-web proxy](../execution/network/README.md).
 The browser node retains immutable shell denial and scoped enrollment. The
-[owner-managed routing issue](../execution/browser-node/README.md#upstream-browser-routing-bug)
-remains outside this change.
+[downstream routing-guidance fix](../execution/browser-node/README.md#upstream-browser-routing-bug)
+preserves this boundary; live model-selected browser qualification remains pending.

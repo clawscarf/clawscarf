@@ -24,7 +24,9 @@ embedded third-party notices for each extracted component before publication.
 The runtime recipe references pinned OpenClaw and OpenShell artifacts in
 [release/components.json](release/components.json). The access adapter imports
 the published `@openclaw/gateway-client` package. Dependencies and their versions
-are recorded in lockfiles; upstream source is not vendored here.
+are recorded in lockfiles. The [downstream patch series](runtime/openclaw/README.md)
+contains selected source differences and context from MIT-licensed OpenClaw; it is
+not a complete vendored source tree.
 The terminal installer uses MIT-licensed `@clack/prompts` 1.8.1. It is installed
 from the operator lockfile and retains its upstream license with the dependency;
 the installer does not vendor or modify the prompt library.
@@ -33,8 +35,10 @@ Standalone CLI archives include the unmodified Node.js 24.19.0 executable from
 SHA-256 pins in [release/components.json](release/components.json). Each archive
 retains Node's complete upstream LICENSE, including its bundled third-party notices,
 at `node/LICENSE`. JavaScript dependencies retain their licenses in `node_modules`.
-The Gateway uses unmodified upstream commit `7bc487d39dc9e059bb9b19ea08152883022f83fe`;
-the [image build instructions](deploy/images/README.md) own source packaging.
+Gateway source builds apply the maintained patch series to upstream commit
+`7bc487d39dc9e059bb9b19ea08152883022f83fe`. Release provenance records the
+resulting tree and patch-set digest. Published alpha.3 predates these patches.
+The [image build instructions](deploy/images/README.md) own source packaging.
 OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/LICENSE)
 is MIT. NVIDIA NemoClaw's [license](https://github.com/NVIDIA/NemoClaw/blob/main/LICENSE)
 is Apache-2.0. Referencing their architecture is not incorporating their code.

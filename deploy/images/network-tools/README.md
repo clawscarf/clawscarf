@@ -48,10 +48,13 @@ them. A published binary release must include the corresponding source archives
 and this build script alongside its source distribution and retained notices.
 Build inputs and compiler packages remain outside the application image.
 
-Export the exact archives and build script from the same recipe for release:
+After building the [prepared OpenClaw base](../README.md), export the exact archives
+and build script from that same base for release:
 
 ```sh
-docker build -f deploy/images/Dockerfile --target network-sources \
+base="clawscarf-openclaw:source-$(jq -er .tree .local/openclaw-source.json)"
+docker build --build-arg OPENCLAW_IMAGE="$base" \
+  -f deploy/images/Dockerfile --target network-sources \
   --output type=local,dest=.local/release/network-tools-source .
 ```
 

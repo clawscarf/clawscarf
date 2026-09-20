@@ -1,7 +1,9 @@
 # Native configuration
 
 The [curation review](curation.md) distinguishes existing configuration from
-proposed changes to OpenClaw packaging, UI and backend capabilities.
+proposed changes to OpenClaw packaging, UI and backend capabilities. The
+[maintained source series](openclaw/README.md) currently adds optional marketplace
+availability and corrects browser-routing guidance; broader curation remains proposed.
 
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
@@ -34,7 +36,8 @@ Lobster is registered from the separately included official release directory.
 Lobster runs in its ordinary native context inside the outer OpenShell boundary. Chromium is
 configured headless with its sandbox required. The
 [separate browser image](../deploy/execution/browser/README.md) has component
-sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; ordinary model-selected routing has the owner-managed upstream issue in TODO.
+sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; the downstream guidance fix still needs ordinary model-selected deployment acceptance
+before browser is enabled by default; see [TODO.md](../TODO.md).
 Connections is bundled but disabled in the base preset. Selecting the capability enables
 its native page and scoped broker tools; disabling it removes both. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
@@ -47,7 +50,7 @@ Use it for the canonical Gateway command and operator CLI execution. It sets the
 persistent home/state defaults and SQLite temporary directory. For Gateway startup it
 creates and enters `/home/node/.openclaw/workspace`, matching the default native
 agent workspace on the retained home volume, before invoking the
-unmodified upstream executable. OpenShell operator execution does not inherit all
+OpenClaw executable built from the selected source and maintained patches. OpenShell operator execution does not inherit all
 Docker image environment variables, so image `ENV` alone is insufficient.
 The launcher also supplies OpenClaw's supported local password authentication for
 native CLI calls, including Claws automation cleanup. On first Gateway startup it
@@ -137,12 +140,12 @@ loaded; reenabling restores it. Skill disable/enable changes native eligibility,
 and these edits preserve unrelated configuration. This checks the image's native
 controls, not hot reload, menu hiding or shell authorization.
 
-OpenClaw 2026.9.4 still mounts its Plugins discovery surface independently of these
-loading controls. The public custom-page API adds pages; it does not remove core
-navigation. ClawHub/unselected browsing remains visible in this distribution;
-hiding is a future issue in [TODO.md](../TODO.md#future-decisions). Preserve
-vanilla OpenClaw, with no UI patch or injected CSS. Loading restrictions do not
-establish a curated browsing UI.
+The [marketplace patch](openclaw/patches/optional-marketplace.prompt.md) adds
+`marketplace.enabled: false` to suppress native discovery UI and reject its native
+catalog operations. It preserves explicit-source administration. The default remains
+enabled and this tooling slice does not change the preset; published alpha.3 has
+neither source patch. Package removal and wider UI curation remain separate work.
+Loading restrictions alone still do not establish a curated browsing UI.
 
 ## External hosting boundary
 

@@ -21,19 +21,14 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
       before deciding what to reuse or remove; it replaces only the OpenClaw runtime,
       not the other services. Ordinary stop/start must continue to preserve data.
 
-## Owner-managed browser issue — DO NOT PICK UP AUTOMATICALLY
+## Browser qualification
 
-- [ ] **Owner will take this upstream as a separate task.** OpenClaw 2026.9.4
-      routes an omitted browser target to the configured node, but its tool guidance
-      advertises `host`; an explicit `host` selects the protected Gateway and fails
-      public DNS preflight. This still applies with the single team runtime: the browser
-      node remains separate and Gateway browser egress is not granted.
-      Reproduce with `gateway.nodes.browser: { mode: "manual", node: "<paired node>" }`:
-      compare omitted target, `target: "node"` and `target: "host"`. Expected: guidance
-      matches effective routing, with explicit targets and sandbox policy preserved.
-      Evidence, pinned sources and limits are in the [browser integration report](deploy/execution/browser-node/README.md#upstream-browser-routing-bug).
-      Do not patch, report upstream, expand or resume this task automatically.
-      Ordinary model-selected member/admin browsing awaits that supported correction.
+- [ ] Qualify ordinary model-selected member/admin browsing with the downstream
+      [routing guidance fix](deploy/execution/browser-node/README.md#upstream-browser-routing-bug)
+      in exact release images, preserving explicit target semantics, unavailable-node
+      failure and network confinement. Source regressions pass; live model acceptance
+      and workspace/browser file transfer remain unverified. Keep the Team server recipe's
+      browser off until qualified. Upstream submission requires the owner's explicit request.
 
 ## Future decisions
 

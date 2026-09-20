@@ -96,8 +96,8 @@ Default login and optional Connections use **ClawScarf Cloud**. You can use your
 OIDC provider and disable Connections to run without those hosted services. Original
 model-provider keys and Connections management credentials stay outside OpenClaw.
 
-ClawScarf is in alpha. Browser automation is off by default while an upstream routing
-issue remains; retained data still needs backups. See the [security boundaries](deploy/openshell/README.md),
+ClawScarf is in alpha. Browser automation is off by default pending release
+qualification; retained data still needs backups. See the [security boundaries](deploy/openshell/README.md),
 [browser support](deploy/execution/browser-node/README.md) and [open work](TODO.md)
 for details.
 
@@ -106,6 +106,9 @@ for details.
 - **Using ClawScarf:** [Installation](deploy/deployment/installation.md) · [People](plugins/access/README.md) · [Connections](plugins/connections/README.md) · [Models](deploy/models/README.md)
 - **Customizing it:** [Recipes](recipes/README.md) · [Packs](packs/README.md) · [Runtime architecture](runtime/README.md)
 - **Helping build it:** [Contributing](CONTRIBUTING.md) · [Development setup](scripts/README.md) · [Report a bug](https://github.com/clawscarf/clawscarf/issues)
+
+Development maintains a small [OpenClaw patch series](runtime/openclaw/README.md)
+for selected fixes and optional capabilities. Published alpha.3 predates that series.
 
 Built on [OpenClaw](https://github.com/openclaw/openclaw),
 [NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) and
