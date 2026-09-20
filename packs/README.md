@@ -24,7 +24,9 @@ are reviewed before the server stops; native application finishes at startup.
 The installation operator calls OpenClaw's native Claws preview/apply operations.
 It preserves edited and unmanaged files, checks plan integrity and does not replay
 uncertain mutations. Removing an agent remains destructive. Native monitor cleanup
-under trusted-proxy login has an unresolved authentication issue in [TODO.md](../TODO.md).
+uses OpenClaw's direct-local password authentication supplied by the
+[runtime launcher](../runtime/README.md); trusted-proxy login remains in place for
+people. Retained installations need the updated runtime image and a Gateway restart.
 
 The private runtime helper only inspects packaged source. Individual portable Claws
 can be built with native `openclaw claws build <member-directory> --out <artifact.tgz>`.
@@ -98,10 +100,14 @@ per-agent isolation when agents share an executable. It never changes policy.
 
 [Lifecycle checks](../tests/packs/lifecycle.test.ts) cover source changes, model
 readiness changes and source-link rejection. The [native test](../tests/packs/native.test.ts)
-uses the pinned vanilla OpenClaw CLI and a token-authenticated Gateway for both agents.
-It deliberately uses a copied fixture without the model prerequisite to qualify
-ownership and file preservation independently of live inference. This does not
-qualify removal through the product's trusted-proxy login or agent research quality.
+uses vanilla OpenClaw with trusted-proxy auth and its local CLI password. It covers
+both an ordinary pack member and one with an owned automation, including removal
+after a Gateway restart, preservation of edited files and rejection of forwarded
+password authentication. The copied fixture omits the model prerequisite; no model
+inference is purchased. Set `CLAWSCARF_TEST_NATIVE_PACKS=1` to run it, optionally
+with `CLAWSCARF_TEST_OPENCLAW` pointing at the packaged runtime launcher. The same
+fixture has passed inside a disposable OpenShell runtime using the pinned upstream
+image plus the updated launcher.
 [Operator binding checks](../tests/packs/connections.test.ts) cover current session,
 exact grants and revision drift. [Transport checks](../tests/packs/transport.test.ts)
 cover UUID dispatch and uncertain failure without replay. The optional

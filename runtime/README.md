@@ -49,6 +49,16 @@ creates and enters `/home/node/.openclaw/workspace`, matching the default native
 agent workspace on the retained home volume, before invoking the
 unmodified upstream executable. OpenShell operator execution does not inherit all
 Docker image environment variables, so image `ENV` alone is insufficient.
+The launcher also supplies OpenClaw's supported local password authentication for
+native CLI calls, including Claws automation cleanup. On first Gateway startup it
+creates `clawscarf-gateway-password` in the private retained state directory; CLI
+calls and later starts reuse it. Invalid or exposed material fails closed. It is
+passed through the process environment, never command arguments or Docker settings.
+Explicit native password configuration remains authoritative. This is local runtime
+operator authority, not a person or another login route: upstream rejects password
+fallback for forwarded traffic, and Access still gates external admission/revocation.
+Execution inside the team runtime already holds Gateway authority.
+
 When model setup installs a private gateway's public CA, the launcher adds it to
 Node's process-wide trust through `NODE_EXTRA_CA_CERTS`. [trust.ts](trust.ts) combines
 optional model and Connections CAs with any inherited controller/operator CA

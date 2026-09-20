@@ -7,16 +7,19 @@ import { test } from "node:test";
 import { cp, mkdtemp, readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { gatewayPassword } from "../../runtime/gateway-password.js";
 import { NativeClaws } from "../../scripts/packs/native.js";
 import {
   inspectPack,
   planPack,
   applyPack,
 } from "../../scripts/packs/lifecycle.js";
+import { z } from "zod";
+import WebSocket from "ws";
 import { packSchema } from "../../scripts/packs/model.js";
 
 await test(
-  "two native Claws install/update/remove with exact consent and preserve edited user files",
+  "trusted-proxy pack removal cleans owned automation and preserves edited files",
   { skip: process.env.CLAWSCARF_TEST_NATIVE_PACKS !== "1", timeout: 180000 },
   async () => {
     const directory = await mkdtemp(join(tmpdir(), "clawscarf-packs-"));
@@ -29,6 +32,9 @@ await test(
     process.env.OPENCLAW_STATE_DIR = join(directory, "state");
     process.env.OPENCLAW_CONFIG_PATH = join(directory, "state/openclaw.json");
     process.env.OPENCLAW_EXPERIMENTAL_CLAWS = "1";
+    const previousPassword = process.env.OPENCLAW_GATEWAY_PASSWORD;
+    const previousToken = process.env.OPENCLAW_GATEWAY_TOKEN;
+    delete process.env.OPENCLAW_GATEWAY_TOKEN;
     let gateway: ReturnType<typeof spawn> | undefined;
     try {
       const reserve = createServer();
@@ -40,14 +46,27 @@ await test(
       await new Promise<void>((resolve, reject) =>
         reserve.close((error) => (error ? reject(error) : resolve())),
       );
-      await mkdir(join(directory, "state"), { recursive: true });
+      await mkdir(join(directory, "state"), { recursive: true, mode: 0o700 });
+      process.env.OPENCLAW_GATEWAY_PASSWORD = await gatewayPassword(
+        join(directory, "state"),
+        true,
+      );
       await writeFile(
         join(directory, "state/openclaw.json"),
         JSON.stringify({
           gateway: {
             mode: "local",
+            bind: "loopback",
             port,
-            auth: { mode: "token", token: "clawscarf-native-pack-test-token" },
+            trustedProxies: ["127.0.0.1"],
+            auth: {
+              mode: "trusted-proxy",
+              trustedProxy: {
+                userHeader: "x-openclaw-user",
+                requiredHeaders: ["x-forwarded-proto", "x-forwarded-host"],
+                allowLoopback: true,
+              },
+            },
           },
           agents: {
             defaults: { workspace: join(directory, "default-workspace") },
@@ -55,23 +74,117 @@ await test(
         }),
       );
       const executable = resolve(
-        "plugins/connections/node_modules/.bin/openclaw",
+        process.env.CLAWSCARF_TEST_OPENCLAW ??
+          "plugins/connections/node_modules/.bin/openclaw",
       );
-      gateway = spawn(executable, ["gateway", "run", "--allow-unconfigured"], {
-        env: process.env,
-        stdio: "ignore",
-      });
-      let ready = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        try {
-          ready = (await fetch(`http://127.0.0.1:${port}/health`)).ok;
-        } catch {
-          ready = false;
+      const password = process.env.OPENCLAW_GATEWAY_PASSWORD;
+      assert.ok(password);
+      if (process.env.CLAWSCARF_TEST_OPENCLAW)
+        delete process.env.OPENCLAW_GATEWAY_PASSWORD;
+      const startGateway = async () => {
+        gateway = spawn(
+          executable,
+          ["gateway", "run", "--allow-unconfigured"],
+          {
+            env: process.env,
+            stdio: ["ignore", "pipe", "pipe"],
+          },
+        );
+        let startup = "";
+        gateway.stdout?.on("data", (data: Buffer) => {
+          startup = (startup + data.toString()).slice(-4000);
+        });
+        gateway.stderr?.on("data", (data: Buffer) => {
+          startup = (startup + data.toString()).slice(-4000);
+        });
+        let ready = false;
+        for (let attempt = 0; attempt < 300; attempt++) {
+          try {
+            ready = (await fetch(`http://127.0.0.1:${port}/readyz`)).ok;
+          } catch {
+            ready = false;
+          }
+          if (ready) break;
+          await delay(100);
         }
-        if (ready) break;
-        await delay(100);
+        assert.ok(ready, "Native Gateway startup: " + startup);
+      };
+      await startGateway();
+      // A known local password must not authenticate forwarded/proxy-shaped traffic.
+      const reply = Promise.withResolvers<unknown>();
+      const client = new WebSocket(`ws://127.0.0.1:${port}`, {
+        headers: {
+          "x-forwarded-for": "203.0.113.10",
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "team.example",
+        },
+      });
+      const timeout = setTimeout(
+        () => reply.reject(Error("Native auth response timed out")),
+        10000,
+      );
+      client.on("error", reply.reject);
+      client.on("message", (data) => {
+        if (!Buffer.isBuffer(data)) {
+          reply.reject(Error("Unexpected native frame"));
+          return;
+        }
+        const message = z
+          .object({
+            type: z.string(),
+            event: z.string().optional(),
+            id: z.string().optional(),
+          })
+          .passthrough()
+          .parse(JSON.parse(data.toString()));
+        if (message.event === "connect.challenge")
+          client.send(
+            JSON.stringify({
+              type: "req",
+              id: "auth-check",
+              method: "connect",
+              params: {
+                minProtocol: 4,
+                maxProtocol: 4,
+                client: {
+                  id: "gateway-client",
+                  version: "test",
+                  platform: process.platform,
+                  mode: "backend",
+                },
+                role: "operator",
+                scopes: ["operator.admin"],
+                auth: { password },
+              },
+            }),
+          );
+        if (message.type === "res" && message.id === "auth-check")
+          reply.resolve(message);
+      });
+      try {
+        const rejected = await reply.promise;
+        const denied = z
+          .object({
+            ok: z.literal(false),
+            error: z.object({
+              details: z.object({
+                code: z.literal("AUTH_UNAUTHORIZED"),
+                authReason: z.literal("trusted_proxy_user_missing"),
+              }),
+            }),
+          })
+          .safeParse(rejected);
+        assert.ok(denied.success, JSON.stringify(rejected));
+      } finally {
+        clearTimeout(timeout);
+        client.terminate();
       }
-      assert.ok(ready, "Native Gateway startup");
+      const jobs = async (native: NativeClaws) =>
+        z
+          .object({
+            jobs: z.array(z.object({ agentId: z.string().optional() })),
+          })
+          .parse(await native.run(["cron", "list", "--all", "--json"])).jobs;
       await cp(resolve("packs/research-team"), source, { recursive: true });
       const manifest = packSchema.parse(
         JSON.parse(await readFile(join(source, "pack.json"), "utf8")),
@@ -80,10 +193,18 @@ await test(
       // still requires configured-default and is separately checked by its preflight.
       for (const member of manifest.members) member.requirements.model = "none";
       await writeFile(join(source, "pack.json"), JSON.stringify(manifest));
-      const native = new NativeClaws(
-        resolve("plugins/connections/node_modules/.bin/openclaw"),
-      );
+      const native = new NativeClaws(executable);
       assert.equal((await inspectPack(source, native)).members.length, 2);
+      const automated = manifest.members[0];
+      assert.ok(automated);
+      const claw = join(source, automated.source, "CLAW.md");
+      await writeFile(
+        claw,
+        (await readFile(claw, "utf8")).replace(
+          "cronJobs: []",
+          'cronJobs: [{id: annual-review, schedule: {cron: "0 0 1 1 *", timezone: UTC}, session: isolated, message: "Review documents", delivery: {mode: none}}]',
+        ),
+      );
       for (const member of manifest.members) {
         const input = {
           directory: source,
@@ -107,6 +228,19 @@ await test(
           native,
         );
         await applyPack(update, native);
+        if (member.id === automated.id) {
+          assert.ok(
+            (await jobs(native)).some((job) => job.agentId === member.id),
+          );
+          assert.ok(gateway);
+          gateway.kill("SIGTERM");
+          await once(gateway, "exit");
+          assert.equal(
+            await gatewayPassword(join(directory, "state"), false),
+            password,
+          );
+          await startGateway();
+        }
         await writeFile(
           join(input.workspace, "SOUL.md"),
           "Human-edited identity",
@@ -116,6 +250,10 @@ await test(
           native,
         );
         await applyPack(removal, native);
+        assert.equal(
+          (await jobs(native)).some((job) => job.agentId === member.id),
+          false,
+        );
         assert.equal(
           await readFile(join(input.workspace, "notes.txt"), "utf8"),
           "keep this human note",
@@ -131,6 +269,8 @@ await test(
         await once(gateway, "exit");
       }
       for (const [name, value] of [
+        ["OPENCLAW_GATEWAY_TOKEN", previousToken],
+        ["OPENCLAW_GATEWAY_PASSWORD", previousPassword],
         ["OPENCLAW_STATE_DIR", previous.state],
         ["OPENCLAW_CONFIG_PATH", previous.config],
         ["OPENCLAW_EXPERIMENTAL_CLAWS", previous.experimental],

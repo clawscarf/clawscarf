@@ -159,6 +159,10 @@ await test("launcher privately loads the token before exec without evaluating it
         join(root, "runtime/connections-credential-main.ts"),
       )
       .replaceAll(
+        "/app/clawscarf/gateway-password-main.js",
+        join(root, "runtime/gateway-password-main.ts"),
+      )
+      .replaceAll(
         "/app/clawscarf/trust-main.js",
         join(root, "runtime/trust-main.ts"),
       )

@@ -6,6 +6,10 @@ export SQLITE_TMPDIR="/tmp"
 if [ -n "${CLAWSCARF_START_GATE:-}" ]; then
   /usr/local/bin/node /app/clawscarf/start-gate-main.js
 fi
+if [ -z "${OPENCLAW_GATEWAY_PASSWORD:-}" ]; then
+  OPENCLAW_GATEWAY_PASSWORD="$(/usr/local/bin/node /app/clawscarf/gateway-password-main.js "${1:-}" "${2:-}")"
+  export OPENCLAW_GATEWAY_PASSWORD
+fi
 connections_token="$(/usr/local/bin/node /app/clawscarf/connections-credential-main.js)"
 if [ -n "$connections_token" ]; then
   CLAWSCARF_CONNECTIONS_TOKEN="$connections_token"

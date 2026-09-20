@@ -159,7 +159,9 @@ an omitted target selects that node; an explicit `host` selects Gateway-side con
 The tool description nevertheless advertises `host` as the default. Disabling
 `allowHostControl` blocks node browsing too, so that setting cannot force a browser
 node. Three focused tests against checkout `29e149ccbf649ed2137ded6f4a857dc6eb2abbb6`
-confirmed these cases; the same branches exist in the pinned release. The earlier
+confirmed these cases; the same branches exist in the pinned release and in upstream
+[`e1c2a0b476e1606f3099e8779833bd1b9f33c65c`](https://github.com/openclaw/openclaw/blob/e1c2a0b476e1606f3099e8779833bd1b9f33c65c/extensions/browser/src/browser-tool.ts).
+Merely updating to that commit would not fix the guidance. The earlier
 live model trial selected `host` and hit Gateway DNS denial, whereas explicit
 `target=node` succeeded for members and administrators.
 
