@@ -13,7 +13,7 @@ docker build -f deploy/execution/browser/Dockerfile -t clawscarf-browser:local .
 ```
 
 [Dockerfile](Dockerfile) pins Node 24.19.0 and Debian Chromium/sandbox
-152.0.7977.82-1~deb12u1. The process runs as UID/GID 1000. Mount persistent state
+153.0.8010.52-1~deb12u1. The process runs as UID/GID 1000. Mount persistent state
 at `/state`, owned by that user, and a read-only private credential file. Set
 `CLAWSCARF_BROWSER_TOKEN_FILE` to that file; it must have no group/other permissions
 and contain at least 32 non-whitespace characters. Generate a random credential,

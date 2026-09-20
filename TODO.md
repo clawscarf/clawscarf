@@ -7,9 +7,8 @@ Open work only. Select a task before implementing; this list does not authorize 
 - [ ] Verify first-time production signup through email verification and installer resume.
 
 - [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
-      platform archives with checksums/license notices. Restore reproducible Chromium
-      package acquisition: Debian no longer serves the pinned `152.0.7977.82-1~deb12u1`
-      packages, so a full runtime image rebuild currently fails.
+      platform archives with checksums/license notices and durable acquisition of pinned
+      OS packages (Debian mirrors can replace superseded versions).
       Keep runtime artifacts separate from CLI-bundled recipes/packs as defined in the [release guide](release/README.md).
 - [ ] Download and verify the runtime selected by a recipe; retain it and the operator
       outside npm's temporary cache. Pin installations; never resolve latest during startup.

@@ -274,9 +274,10 @@ API. Production sign-in and sign-up forms render correctly; complete new-account
 email verification remains untested.
 Real Outlook linking, reconnect, execution and revocation passed locally.
 
-Pack removal can be blocked by attached automations whose ownership cannot be established
-through the native CLI under trusted-proxy login. The agent is retained and the failure
-reported. Browser routing has its documented upstream limitation. Linux/WSL, clean-machine
+Native pack removal uses the runtime’s private local Gateway credential for automation
+cleanup under trusted-proxy login, preserving ownership checks. Removal after Gateway
+restart passed in the protected runtime. Browser routing has its documented upstream
+limitation. Linux/WSL, clean-machine
 release installation, complete release upgrades, external ingress and directory-backed
 hosting storage remain unfinished. [TODO.md](../../TODO.md) owns the open work.
 

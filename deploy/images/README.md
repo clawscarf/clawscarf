@@ -72,7 +72,7 @@ The image includes:
   `clawpdf` CLI installation is required. A native allowlist must include
   `document-extract` when PDF extraction is selected.
 - Debian Python 3, version 3.11.2-1+b1, for local code execution.
-- Debian Chromium and its sandbox helper, version 152.0.7977.82-1~deb12u1.
+- Debian Chromium and its sandbox helper, version 153.0.8010.52-1~deb12u1.
   The browser executable is `/usr/bin/chromium`.
 - OpenShell's iproute2 and [Netfilter dependencies](network-tools/README.md),
   including unmodified nftables 1.1.3 built for the image's Debian 12 runtime.

@@ -2,7 +2,7 @@ FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733cee
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       chromium=152.0.7977.82-1~deb12u1 chromium-sandbox=152.0.7977.82-1~deb12u1 \
+       chromium=153.0.8010.52-1~deb12u1 chromium-sandbox=153.0.8010.52-1~deb12u1 \
     && rm -rf /var/lib/apt/lists/* \
     && install -d -o node -g node -m 0700 /state
 COPY deploy/execution/browser/package*.json /opt/clawscarf/deploy/execution/browser/

@@ -72,7 +72,7 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends iproute2=6.1.0-3 python3=3.11.2-1+b1 \
        libmnl0=1.0.4-3 libgmp10=2:6.2.1+dfsg1-1.1 libjansson4=2.14-2 \
-       chromium=152.0.7977.82-1~deb12u1 chromium-sandbox=152.0.7977.82-1~deb12u1 \
+       chromium=153.0.8010.52-1~deb12u1 chromium-sandbox=153.0.8010.52-1~deb12u1 \
     && rm -rf /var/lib/apt/lists/* \
     && install -d -o node -g node -m 0700 /home/node/.openclaw \
     && install -d -o node -g node -m 0755 /workspace
