@@ -291,6 +291,16 @@ await test(
         { code: "operation_busy" },
       ),
     );
+    const nativeFile = join(modelRoot, "native.json");
+    const native: unknown = JSON.parse(await readFile(nativeFile, "utf8"));
+    assert.ok(typeof native === "object" && native !== null);
+    await writeFile(
+      nativeFile,
+      JSON.stringify({
+        ...native,
+        baseUrl: "https://retained.example.test:8443/v1",
+      }),
+    );
     await prepareModelGateway(
       join(directory, "state"),
       { ...retained, input: changedSettings.desired.input },
@@ -304,6 +314,10 @@ await test(
     assert.match(
       await readFile(join(modelRoot, "native.json"), "utf8"),
       /"thinkingDefault":"medium"/,
+    );
+    assert.match(
+      await readFile(nativeFile, "utf8"),
+      /https:\/\/retained.example.test:8443\/v1/,
     );
     const retainedNative = await readFile(join(modelRoot, "native.json"));
     await writeFile(

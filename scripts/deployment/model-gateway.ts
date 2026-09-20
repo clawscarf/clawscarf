@@ -73,6 +73,19 @@ export async function prepareModelGateway(
     input.upstreamEnvironmentFile,
   );
   const root = join(directory, "private/models");
+  let baseUrl = "https://models.clawscarf.internal:4000/v1";
+  if (options.replaceConfiguration) {
+    const current = configurationSchema.parse(
+      JSON.parse(await readFile(join(root, "native.json"), "utf8")),
+    );
+    if (current.mode !== "litellm")
+      throw new LocalSetupError(
+        "invalid_model_setup",
+        "Expected an existing model gateway.",
+      );
+    // Model choices do not change the installation's retained network endpoint.
+    baseUrl = current.baseUrl;
+  }
   await mkdir(root, { recursive: true, mode: 0o700 });
   for (const [name, prefix] of [
     ["master-key", "sk-"],
@@ -118,7 +131,7 @@ export async function prepareModelGateway(
     join(root, "native.json"),
     JSON.stringify({
       ...loaded.configuration,
-      baseUrl: "https://models.clawscarf.internal:4000/v1",
+      baseUrl,
     }),
   );
 }
