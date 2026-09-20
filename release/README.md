@@ -130,27 +130,25 @@ Repository setup:
   organization `@clawscarf` owns the public `@clawscarf/cli` package.
 - npm trusted publishing is configured for repository `clawscarf/clawscarf`, workflow
   [publish-release.yml](../.github/workflows/publish-release.yml), environment `release`.
-  The first tested tarball was published using the owner's authenticated npm CLI because
-  npm requires a package to exist before configuring trust. Subsequent publication
-  uses the workflow's short-lived identity rather than a stored npm token; alpha.2
-  was published through that workflow successfully.
+  Publication uses the workflow's short-lived identity rather than a stored npm token.
 - Transitive notices/source review remains open in [TODO.md](../TODO.md).
   Debian copyright files remain in the images; runtime assets include upstream notices
   and the image build exports its network-tool sources. Those files are not a claim of
   a completed license audit. Pinned Debian packages still depend on mirror retention.
 
-[Candidate 35532613602](https://github.com/clawscarf/clawscarf/actions/runs/35532613602)
-passed full checks, compiled archive installation and all eight image builds on
-native ARM64 and x86-64 Depot runners. The same artifacts are available in the
-[0.1.0-alpha.2 GitHub prerelease](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.2)
-and as `@clawscarf/cli@0.1.0-alpha.2`, tagged `next`.
+[0.1.0-alpha.3](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.3)
+includes the standalone installer and CLI archives. Its
+[candidate build](https://github.com/clawscarf/clawscarf/actions/runs/35536122174)
+passed full checks, npm archive installation, all eight image builds on both
+architectures, and standalone installation without system Node on all three host
+platforms. The public macOS installer also passed download verification, catalog
+loading and read-only status against an existing installation.
 
 Both Linux architectures passed protected runtime startup, native WebSocket forwarding,
 authenticated TLS to the private model gateway, retained stop/start and deletion on
-Docker 29.5.3. The final ARM64 images also passed real GPT-6 Astra inference and retained
-restart on macOS Docker Desktop. Candidate downloads passed SHA-256 verification and
-the CLI tarball installed independently of the repository. Disposable test containers,
-volumes and networks were deleted afterward.
+Docker 29.5.3. Real GPT-6 Astra inference and retained restart on macOS Docker Desktop
+were verified with alpha.2. Disposable test containers, volumes and networks were
+deleted afterward.
 
 Staging hosted administrator login and the packaged interactive setup previously
 passed on macOS with alpha.1. Hosted login and real provider inference on Linux,
