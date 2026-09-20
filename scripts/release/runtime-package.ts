@@ -11,6 +11,8 @@ export async function writeRuntimePackage(
   entrypoints: readonly string[],
   metadata: {
     name: string;
+    version?: string;
+    private?: boolean;
     scripts?: Record<string, string>;
     bin?: Record<string, string>;
   },
@@ -37,7 +39,7 @@ export async function writeRuntimePackage(
     ...source,
     ...metadata,
     dependencies,
-    private: true,
+    private: metadata.private ?? true,
     type: "module",
     license: "MIT",
   };

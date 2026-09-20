@@ -153,7 +153,7 @@ Each model can select the native `api` protocol (`openai-completions` or
 Responses so tool calls and reasoning work together; other offerings use Chat
 Completions unless specified. LiteLLM owns upstream translation.
 Catalog order controls model/provider menu order, with direct providers first and
-OpenRouter last. Recipes choose defaults from those offerings; Team documents selects
+OpenRouter last. Recipes choose defaults from those offerings; Team server selects
 direct OpenAI GPT-6 Astra with medium reasoning. Model limits are explicit data, not
 a discovery call made during installation. The current catalog conservatively enables
 text input; it does not claim tested image handling or every upstream model capability.

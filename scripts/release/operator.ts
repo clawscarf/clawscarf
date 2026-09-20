@@ -1,3 +1,5 @@
+import { releaseSchema } from "./definition.js";
+import { recipeSchema } from "../installation/recipes/definition.js";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -6,6 +8,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -77,7 +80,11 @@ const payload = [
 ];
 
 /** Package an already built operator; dependency installation and publication are separate. */
-export async function packageOperator(root: string, destination: string) {
+export async function packageOperator(
+  root: string,
+  destination: string,
+  publishedRuntime?: string,
+) {
   const output = resolve(destination);
   await mkdir(output); // Refuse overwriting an earlier artifact directory.
   const temporary = await mkdtemp(join(tmpdir(), "clawscarf-operator-"));
@@ -89,6 +96,42 @@ export async function packageOperator(root: string, destination: string) {
       await mkdir(resolve(target, ".."), { recursive: true });
       await cp(join(root, "dist", path), target, { recursive: true });
     }
+    const runtime = publishedRuntime
+      ? releaseSchema.parse(
+          JSON.parse(await readFile(publishedRuntime, "utf8")),
+        )
+      : undefined;
+    if (runtime) {
+      if (
+        JSON.stringify(runtime.images).includes('"sha256:') ||
+        !runtime.tools.openshell.cli.url ||
+        !runtime.tools.openshell.gateway.url
+      )
+        throw Error(
+          "Published runtimes require registry digests and downloadable tools.",
+        );
+      await rm(join(stage, "runtime/releases"), { recursive: true });
+      await mkdir(join(stage, "runtime/releases"));
+      await writeFile(
+        join(stage, "runtime/releases", `${runtime.version}.json`),
+        JSON.stringify(runtime, null, 2) + "\n",
+      );
+      for (const entry of await readdir(join(stage, "recipes"), {
+        withFileTypes: true,
+      })) {
+        if (!entry.isDirectory()) continue;
+        const file = join(stage, "recipes", entry.name, "recipe.json");
+        const recipe = recipeSchema.parse(
+          JSON.parse(await readFile(file, "utf8")),
+        );
+        if (recipe.runtime !== "../../runtime/releases/0.1.0-dev.json")
+          throw Error(
+            `Recipe ${recipe.id} does not select the development runtime being released.`,
+          );
+        recipe.runtime = `../../runtime/releases/${runtime.version}.json`;
+        await writeFile(file, JSON.stringify(recipe, null, 2) + "\n");
+      }
+    }
     // Remote helpers are shipped as data, executed against their runtime SDK.
     const manifest = await writeRuntimePackage(
       root,
@@ -96,6 +139,7 @@ export async function packageOperator(root: string, destination: string) {
       ["scripts/clawscarf.js", "scripts/people.js", "scripts/controller.js"],
       {
         name: "@clawscarf/cli",
+        ...(runtime ? { version: runtime.version, private: false } : {}),
         bin: { clawscarf: "scripts/clawscarf.js" },
         scripts: {
           clawscarf: "node scripts/clawscarf.js",
@@ -103,6 +147,23 @@ export async function packageOperator(root: string, destination: string) {
         },
       },
     );
+    if (runtime) {
+      await writeFile(
+        join(stage, "package.json"),
+        JSON.stringify(
+          {
+            ...manifest,
+            repository: {
+              type: "git",
+              url: "git+https://github.com/clawscarf/clawscarf.git",
+            },
+            publishConfig: { access: "public" },
+          },
+          null,
+          2,
+        ) + "\n",
+      );
+    }
     await chmod(join(stage, "scripts/clawscarf.js"), 0o755);
     await cp(
       join(root, "release/operator.md"),

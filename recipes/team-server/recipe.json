@@ -1,8 +1,8 @@
 {
-  "id": "team-documents",
-  "name": "Team documents",
-  "description": "Illustrative starting point for a team document assistant. Document workflows and pack content are not supplied yet.",
-  "maturity": "example",
+  "id": "team-server",
+  "name": "Team server",
+  "description": "A protected OpenClaw server for your team, with hosted login, managed models and optional Connections.",
+  "maturity": "supported",
   "defaults": {
     "resources": {
       "runtime": {
@@ -22,5 +22,6 @@
     "provider": "openai",
     "reasoning": "medium"
   },
-  "runtime": "../../runtime/releases/0.1.0-dev.json"
+  "runtime": "../../runtime/releases/0.1.0-dev.json",
+  "version": "0.1.0"
 }

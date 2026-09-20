@@ -22,7 +22,7 @@ clawscarf configure
 clawscarf configure --cloud-url https://cloud-staging.clawscarf.com
 ```
 
-No recipe argument opens the bundled recipe menu. `--recipe team-documents` selects
+No recipe argument opens the bundled recipe menu. `--recipe team-server` selects
 that bundled definition; `--recipe /path/to/recipe.json` reads a custom one. Its
 `runtime` path resolves relative to the recipe file. The runtime cannot be changed
 in the settings menu. `--directory` defaults to `~/clawscarf-team`.
@@ -34,13 +34,14 @@ published, clean-machine release**. Definitions belong in the tracked directorie
 above. Compiled images, binaries and test artifacts are not source definitions.
 
 The current platform is macOS arm64 with Docker Desktop. Setup validates the host,
-tools and ports; it can pull registry images pinned by digest. It cannot recover a
-missing local image ID or download missing OpenShell binaries yet. See the
+tools and ports; it pulls registry images by digest and downloads missing runtime tools
+when their definition supplies an HTTPS URL and SHA-256. It cannot recover a missing
+local development image ID. See the
 [installation guide](../deploy/deployment/installation.md) for diagnostics.
 
 ## Publishing structure
 
-The intended distribution uses:
+Release candidates contain:
 
 - npm `@clawscarf/cli`: compiled CLI, recipes, pack files, model catalog and runtime
   definitions. No Docker images or large OpenShell executables in npm.
@@ -52,9 +53,59 @@ runtime; startup never resolves “latest.” Existing installations retain thei
 accepted settings and runtime. Explicit configuration changes preserve unrelated
 native edits. The CLI package version and a runtime version need not be the same.
 
-The operator archive already includes the small catalogs and pack trees. Publication,
-runtime tool downloading and a complete clean-machine release remain in
-[TODO.md](../TODO.md). Do not describe the development archive as a published installer.
+New installations copy their runtime definition and tools into their own `runtime/`
+directory and retain selected pack files under `state/pack-sources/`. Removing the
+checkout, an npm cache entry or an older CLI package does not remove those files.
+Downloads are bounded, checked before becoming executable inputs, and reused on
+subsequent configuration. Corrupt retained tools fail verification rather than being
+silently replaced. Docker verifies image digests. No start command resolves latest.
+
+## Build and publish
+
+[Build release candidate](../.github/workflows/build-release.yml) is manually dispatched
+with an exact version, such as `0.1.0-alpha.1`. It:
+
+1. Runs checks and tests the compiled operator outside the checkout on macOS arm64.
+2. Builds the pinned OpenClaw source and ClawScarf images on Linux arm64, checks
+   runtime capabilities and the Chromium sandbox, and pushes candidate images to GHCR.
+3. Downloads checksum-pinned OpenShell tools, records the image digests, and assembles
+   the runtime archive, individual executable assets, npm CLI, checksums and notices.
+4. Installs the resulting npm archive into a temporary prefix and checks its CLI/catalog.
+
+The [image builder](../scripts/release/build-images.sh) and
+[candidate assembler](../scripts/release/candidate.ts) contain the build commands;
+Actions supplies runners and registry credentials. The source recipe pins the development
+runtime. Packaging resolves that same runtime to the candidate's immutable definition;
+it does not make recipes select latest. The first release uses the same CLI/runtime
+version. Recipe versions remain independent; bump them when defaults, pack selection
+or the selected runtime changes. Published definitions must not be overwritten.
+
+The `release-candidate` Actions artifact is the reviewable output. Download it and test
+a fresh supported installation, administrator login, real inference and stop/start
+before publication. GitHub's macOS runner does not provide our Docker Desktop journey;
+its packaging checks alone do not establish that journey. The browser-selection bug
+remains a separate, explicit limit; the Team server recipe leaves browser disabled.
+
+[Publish release candidate](../.github/workflows/publish-release.yml) accepts a successful
+build run from `main`. It checks the source commit and artifact checksums, creates the
+GitHub Release and publishes the already-built npm tarball. It never rebuilds images
+or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Repeating
+a GitHub upload is allowed only when the existing checksums match exactly.
+
+Repository setup before first publication:
+
+- GHCR image packages must be publicly readable; a private candidate digest is not
+  usable by an unauthenticated installer. The build uses GitHub's scoped job token.
+- Configure the GitHub `release` environment and npm trusted publishing for
+  `@clawscarf/cli`, repository `clawscarf/clawscarf`, workflow [publish-release.yml](../.github/workflows/publish-release.yml),
+  environment `release`. npm ownership/initial package setup is separate from code.
+- Check transitive notices/source obligations before distributing the first images.
+  Debian copyright files remain in the images; runtime assets include upstream notices
+  and the image build exports its network-tool sources. Those files are not a claim of
+  a completed license audit. Pinned Debian packages still depend on mirror retention.
+
+No npm/GitHub release has been published by adding these workflows. The first Actions
+run, clean-machine journey, registry access and publication remain in [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 

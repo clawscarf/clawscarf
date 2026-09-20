@@ -12,13 +12,17 @@ For a new installation, the CLI checks macOS/architecture, Docker and Compose be
 asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
 then checked again during preparation and startup.
 
-OpenShell tools come in the release bundle and are checked against its checksums.
+New installations retain their runtime definition and tools in their own `runtime/`
+directory. Published definitions supply checksummed HTTPS tool downloads; configure
+fetches missing tools before cloud sign-in. Development definitions require prepared
+local tools. Selected pack files are retained under `state/pack-sources/`.
 Missing registry images are downloaded by their pinned digest before sign-in, with an
 image list and layer progress on stderr; the first setup can take several minutes.
 Already-cached images are reused. Local development image IDs cannot be downloaded:
 build those images and regenerate the development release if they are missing.
 `start` also fetches missing registry images; `doctor` only reports missing prerequisites.
-The CLI does not install Docker or download an incomplete release bundle's missing tools.
+The CLI does not install Docker. `start` verifies retained runtime tools; use `configure`
+to acquire missing downloadable tools. Checksummed files that have changed fail visibly.
 
 ## Terminal installer
 
@@ -33,12 +37,12 @@ asking for missing credentials. Explicit command options preselect those same ch
 **Esc** discards unaccepted section changes and goes back; at the root it exits.
 **Ctrl+C** exits. No services change until the final confirmation.
 
-The illustrative **Team documents** recipe selects GPT-6 Astra through OpenAI with
+The **Team server** recipe selects GPT-6 Astra through OpenAI with
 medium reasoning and enables Connections. It does not include a document ingestion
 workflow. All recipe defaults except the runtime can be edited. Recipes
 cannot disable OpenShell protection or authenticated entry.
 
-`--recipe <name-or-file>` skips the picker: use `team-documents` for the bundled
+`--recipe <name-or-file>` skips the picker: use `team-server` for the bundled
 recipe or a path to a custom recipe JSON. Without it the menu lists all bundled
 recipes. Sources live in [recipes](../../recipes/README.md); the CLI package includes
 them, the model catalog and pack files. Each recipe points to its fixed runtime
@@ -112,7 +116,7 @@ The same command and options serve coding agents and scripts:
 
 ```sh
 clawscarf configure --directory ~/my-team \
-  --recipe team-documents --model gpt-6-astra --provider openai --reasoning medium \
+  --recipe team-server --model gpt-6-astra --provider openai --reasoning medium \
   --llm-key-file /private/openai-key \
   --non-interactive --json
 ```

@@ -111,9 +111,10 @@ developer operations; it is not a second supported installation format.
 The menu reviews settings before credentials, starts persistently on macOS when selected, and provides
 the private OIDC administrator claim. The same `configure` command changes
 retained models, Connections and pack selections, interactively or with explicit flags; the installation
-guide records the native pack-removal limitation. [Recipes](recipes/README.md) ship with the CLI and pack files; each pins a reusable
+guide records the supported changes. [Recipes](recipes/README.md) ship with the CLI and pack files; each pins a reusable
 [runtime release](release/README.md) containing exact images and tools. npm/GitHub/GHCR
-publication and automatic download remain unfinished.
+publication is not complete. Release candidates and verified runtime downloads are
+implemented; the first published, clean-machine release remains in [TODO.md](TODO.md).
 The bundled [Account and People plugin](plugins/access/README.md) renders inside OpenClaw.
 Administrators invite people using copyable links, assign native roles and remove access.
 The external Access companion enforces admission and revocation. Connections remains

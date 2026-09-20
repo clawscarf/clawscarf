@@ -13,7 +13,8 @@ import {
   type InstallationConfiguration,
 } from "./configuration.js";
 import { readRuntime, assertReleaseCapabilities } from "./setup.js";
-import { readJson, verifyReleaseTool } from "./files.js";
+import { readJson } from "./files.js";
+import { acquireRuntimeTools } from "./runtime.js";
 import { InstallationError } from "./errors.js";
 
 /** No configuration, credentials or cloud account is needed for these checks. */
@@ -133,7 +134,7 @@ export async function checkNewInstallationPorts(
       );
 }
 
-/** Runs before cloud registration; release tools are bundled, registry images may be fetched. */
+/** Runs before cloud registration; tools and registry images may be fetched. */
 export async function checkInstallationPrerequisites(
   configFile: string,
   options: {
@@ -151,21 +152,7 @@ export async function checkInstallationPrerequisites(
     resolve(base, config.releaseFile),
   );
   assertReleaseCapabilities({ release }, config);
-  for (const tool of [
-    release.tools.openshell.cli,
-    release.tools.openshell.gateway,
-  ]) {
-    const path = resolve(dirname(releaseFile), tool.file);
-    try {
-      await verifyReleaseTool(path, tool.sha256);
-    } catch (error) {
-      if (error instanceof InstallationError) throw error;
-      throw new InstallationError(
-        "release_mismatch",
-        `The runtime tool ${tool.file} is unavailable. Prepare the tools referenced by this runtime release; automatic tool downloading is not available yet.`,
-      );
-    }
-  }
+  await acquireRuntimeTools(releaseFile, options);
   report("Runtime tools verified");
   let state;
   try {

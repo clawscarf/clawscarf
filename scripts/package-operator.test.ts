@@ -48,7 +48,7 @@ await test(
     assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));
-    assert.ok(listing.includes("package/recipes/team-documents/recipe.json"));
+    assert.ok(listing.includes("package/recipes/team-server/recipe.json"));
     assert.ok(listing.includes("package/packs/research-team/pack.json"));
     assert.ok(listing.includes("package/runtime/releases/0.1.0-dev.json"));
     assert.ok(!listing.includes("package/runtime/tools/"));
@@ -194,5 +194,72 @@ await test(
       { cwd },
     );
     assert.ok(!stdout.includes('"typescript"') && !stdout.includes('"tsx"'));
+  },
+);
+
+await test(
+  "publishable npm package resolves its recipe to the candidate runtime without checkout paths",
+  {
+    skip: process.env.CLAWSCARF_TEST_OPERATOR_ARCHIVE !== "1",
+    timeout: 120000,
+  },
+  async (t) => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const directory = await mkdtemp(join(tmpdir(), "clawscarf-npm-test-"));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const { releaseSchema } = await import("./release/definition.js");
+    const runtime = releaseSchema.parse(
+      JSON.parse(
+        await readFile(join(root, "runtime/releases/0.1.0-dev.json"), "utf8"),
+      ),
+    );
+    runtime.version = "0.1.0-test.1";
+    // Fixture registry references test packaging, not image availability or deployment.
+    runtime.images.gateway =
+      runtime.images.companion =
+      runtime.images.openshellClient =
+        `ghcr.io/clawscarf/fixture@sha256:${"a".repeat(64)}`;
+    delete runtime.images.browser;
+    delete runtime.images.relay;
+    for (const name of ["cli", "gateway"] as const)
+      runtime.tools.openshell[name].url = `https://example.test/${name}`;
+    const file = join(directory, "runtime.json");
+    await writeFile(file, JSON.stringify(runtime));
+    const archive = await packageOperator(
+      root,
+      join(directory, "output"),
+      file,
+    );
+    const prefix = join(directory, "npm");
+    await execute(
+      "npm",
+      ["install", "--global", "--prefix", prefix, "--ignore-scripts", archive],
+      { timeout: 90000, maxBuffer: 4 * 1024 * 1024 },
+    );
+    const installed = join(prefix, "lib/node_modules/@clawscarf/cli");
+    const manifest: unknown = JSON.parse(
+      await readFile(join(installed, "package.json"), "utf8"),
+    );
+    assert.ok(
+      manifest &&
+        typeof manifest === "object" &&
+        "private" in manifest &&
+        manifest.private === false,
+    );
+    const { stdout } = await execute(
+      join(prefix, "bin/clawscarf"),
+      ["recipes", "--json"],
+      { cwd: tmpdir() },
+    );
+    assert.match(stdout, /team-server/);
+    assert.match(stdout, /0\.1\.0-test\.1\.json/);
+    assert.ok(!stdout.includes(root));
+    assert.equal(
+      await readFile(
+        join(installed, "runtime/releases/0.1.0-test.1.json"),
+        "utf8",
+      ),
+      JSON.stringify(runtime, null, 2) + "\n",
+    );
   },
 );

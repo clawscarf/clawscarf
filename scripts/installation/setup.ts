@@ -111,7 +111,11 @@ export function recipeConfiguration(
       directory: packDirectory(context, pack.id),
       members: [...pack.members],
     })),
-    recipe: { id: recipe.id, release: context.release.version },
+    recipe: {
+      id: recipe.id,
+      version: recipe.version,
+      release: context.release.version,
+    },
   };
 }
 

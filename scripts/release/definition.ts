@@ -8,7 +8,19 @@ const image = z
   .regex(
     /^(?:sha256:[a-f0-9]{64}|[a-zA-Z0-9][a-zA-Z0-9._:/-]*@sha256:[a-f0-9]{64})$/,
   );
-const file = z.strictObject({ file: z.string().min(1), sha256: digest });
+const file = z.strictObject({
+  file: z.string().min(1),
+  sha256: digest,
+  url: z
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        url.protocol === "https:" && !url.username && !url.password && !url.hash
+      );
+    }, "Tool downloads require HTTPS without credentials.")
+    .optional(),
+});
 /** Pinned runtime metadata, independent of recipe defaults and deployment state. */
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),

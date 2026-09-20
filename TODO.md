@@ -6,14 +6,13 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 - [ ] Verify first-time production signup through email verification and installer resume.
 
-- [ ] Finish the release build: exact images/tools, pack operator Python prerequisites,
-      platform archives with checksums/license notices and durable acquisition of pinned
-      OS packages (Debian mirrors can replace superseded versions).
-      Keep runtime artifacts separate from CLI-bundled recipes/packs as defined in the [release guide](release/README.md).
-- [ ] Download and verify the runtime selected by a recipe; retain it and the operator
-      outside npm's temporary cache. Pin installations; never resolve latest during startup.
-- [ ] Test a complete release on a clean supported machine through administrator login
-      and a real model response, then publish the matching npm CLI, GitHub assets and GHCR images.
+- [ ] Run the [release candidate workflow](.github/workflows/build-release.yml) from `main`;
+      verify public GHCR access, npm ownership/trusted publishing and the first complete
+      clean-machine installation through administrator login, real inference and stop/start.
+      Then publish the same tested artifacts. macOS arm64 is the current supported target.
+- [ ] Finish release distribution review: transitive licenses/source obligations,
+      durable acquisition of pinned OS packages and a self-contained Python prerequisite
+      for optional pack operations. The basic Team server recipe selects no packs.
 
 ## Upgrade decision
 
@@ -38,8 +37,8 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 ## Future decisions
 
-- [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
-      choose its packs rather than treating the example as a finished product.
+- [ ] Add a document-workflow recipe when selected; choose its packs and verify the
+      workflow. The Team server recipe supplies the basic team server only.
 - [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
       Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
       Native Lobster is required. Use the [curation findings](runtime/curation.md)

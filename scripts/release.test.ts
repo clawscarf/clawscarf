@@ -58,9 +58,7 @@ await test("runtime artifacts relocate independently of recipes and reject alter
   await verifyReleaseTool(join(moved, tool.file), tool.sha256);
   assert.ok(!JSON.stringify(release).includes(directory));
   if (process.platform === "darwin" && process.arch === "arm64") {
-    const recipe = await readRecipe(
-      resolve("recipes/team-documents/recipe.json"),
-    );
+    const recipe = await readRecipe(resolve("recipes/team-server/recipe.json"));
     const file = join(directory, "recipe.json");
     await writeFile(
       file,
@@ -72,6 +70,10 @@ await test("runtime artifacts relocate independently of recipes and reject alter
     );
     const context = await setupContext({ recipe: file });
     assert.equal(context.release.version, release.version);
+    assert.equal(
+      recipeConfiguration(context, recipe.id).recipe?.version,
+      recipe.version,
+    );
     assert.equal(
       recipeConfiguration(context, recipe.id).packs[0]?.directory,
       resolve("packs/research-team"),
@@ -87,8 +89,10 @@ await test("runtime artifacts relocate independently of recipes and reject alter
 
 await test("bundled recipes pin a runtime and validate their editable defaults", async () => {
   const catalog = await installationCatalog();
-  const recipe = catalog.recipes.find((item) => item.id === "team-documents");
+  const recipe = catalog.recipes.find((item) => item.id === "team-server");
   assert.ok(recipe);
+  assert.equal(recipe.version, "0.1.0");
+  assert.equal(recipe.name, "Team server");
   assert.equal(recipe.defaults.connections?.enabled, true);
   assert.deepEqual(recipe.models, {
     model: "gpt-6-astra",

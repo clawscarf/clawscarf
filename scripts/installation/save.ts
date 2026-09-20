@@ -1,4 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { openPack } from "../packs/source.js";
+import { retainRuntime } from "./runtime.js";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { readInputFile } from "./files.js";
 import {
@@ -71,13 +73,56 @@ export async function saveConfiguration(
       );
   // Exclusive creation also protects against another installer winning the same path.
   await mkdir(directory, { mode: 0o700 });
-  if (files.size) await mkdir(join(directory, "secrets"), { mode: 0o700 });
-  for (const [path, bytes] of files)
-    await writeFile(join(directory, path), bytes, { mode: 0o600, flag: "wx" });
-  const path = join(directory, "installation.json");
-  await writeFile(path, JSON.stringify(config, null, 2) + "\n", {
-    mode: 0o600,
-    flag: "wx",
-  });
-  return path;
+  try {
+    if (!retained)
+      config.releaseFile = await retainRuntime(
+        resolve(config.releaseFile),
+        directory,
+      );
+    if (config.packs.length)
+      await mkdir(resolve(directory, config.stateDirectory), {
+        recursive: true,
+        mode: 0o700,
+      });
+    for (const pack of config.packs) {
+      const source = await openPack(pack.directory);
+      const destination = join(
+        resolve(directory, config.stateDirectory),
+        "pack-sources",
+        source.digest,
+      );
+      if (resolve(pack.directory) !== destination) {
+        await cp(source.root, destination, {
+          recursive: true,
+          errorOnExist: true,
+          force: false,
+        }).catch(async (error: unknown) => {
+          if (!(
+            error instanceof Error &&
+            "code" in error &&
+            error.code === "EEXIST"
+          ))
+            throw error;
+          if ((await openPack(destination)).digest !== source.digest)
+            throw error;
+        });
+        pack.directory = destination;
+      }
+    }
+    if (files.size) await mkdir(join(directory, "secrets"), { mode: 0o700 });
+    for (const [path, bytes] of files)
+      await writeFile(join(directory, path), bytes, {
+        mode: 0o600,
+        flag: "wx",
+      });
+    const path = join(directory, "installation.json");
+    await writeFile(path, JSON.stringify(config, null, 2) + "\n", {
+      mode: 0o600,
+      flag: "wx",
+    });
+    return path;
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
 }

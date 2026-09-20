@@ -23,7 +23,11 @@ export const installationSchema = z
     schemaVersion: z.literal(1),
     name: localInput.shape.name,
     recipe: z
-      .strictObject({ id: z.string().min(1), release: z.string().min(1) })
+      .strictObject({
+        id: z.string().min(1),
+        version: z.string().min(1).optional(),
+        release: z.string().min(1),
+      })
       .optional(),
     releaseFile: path,
     stateDirectory: path,

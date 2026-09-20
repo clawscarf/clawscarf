@@ -1,13 +1,13 @@
 # ClawScarf operator
 
-This development archive contains the compiled configuration/lifecycle CLI and its controller, model and pack
+The operator archive contains the compiled configuration/lifecycle CLI and its controller, model and pack
 operators. It runs outside the contributor checkout. It is not the complete
 distribution: runtime/companion images and the pinned OpenShell executables are
 separate inputs. The archive includes recipes, packs, the model catalog and runtime definitions.
-The interactive menu lists those recipes; each fixes its runtime. It does not
-download missing OpenShell tools or build missing local images. The generated npm
-package is named `@clawscarf/cli` and exposes the `clawscarf` command, but remains
-private/unpublished. [Release contents](README.md) defines the publication model.
+The interactive menu lists those recipes; each fixes its runtime. For a published runtime it downloads missing OpenShell tools by checksum and pulls
+registry images by digest. Local development image IDs cannot be downloaded. The npm
+package is named `@clawscarf/cli` and exposes the `clawscarf` command. Development archives
+remain private; the release candidate builder makes the package publishable. [Release contents](README.md) defines the publication model.
 
 ## Run the archive
 
@@ -39,11 +39,12 @@ for automation. `start`, `stop`, `status` and `logs` operate the selected `--dir
 Validation and preview/apply are internal. See the source installation guide for
 supported retained changes and administrator setup.
 
-Recipes select runtime definitions relative to their own files. Published runtime
-downloading remains unfinished. The development runtime descriptor uses local image
-IDs and expects OpenShell tools prepared separately; the archive alone cannot install
-on a clean machine. Custom recipe files can point to a separately prepared runtime
-bundle. The example recipe supplies defaults, not a document workflow.
+Recipes select runtime definitions relative to their own files. New installations
+retain the runtime and selected packs outside the package. The development descriptor
+still uses local image IDs and tools prepared separately; that development archive alone
+cannot install on a clean machine. Published candidates instead contain registry digests
+and checksummed tool download URLs. Custom recipes can point to a separately prepared
+runtime bundle. Team server supplies a basic team server, not a document workflow.
 
 Keep installation data outside this extracted package. Stop retains state; replacing
 an operator archive is not a runtime upgrade or backup. Docker services keep running after

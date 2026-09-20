@@ -150,9 +150,7 @@ async function fixture(t: TestContext) {
   );
   const recipe = join(parent, "recipe.json");
   const { readRecipe } = await import("./installation/recipes/catalog.js");
-  const preset = await readRecipe(
-    resolve("recipes/team-documents/recipe.json"),
-  );
+  const preset = await readRecipe(resolve("recipes/team-server/recipe.json"));
   await writeFile(
     recipe,
     JSON.stringify({
@@ -184,7 +182,7 @@ async function fixture(t: TestContext) {
   const env = join(parent, "initial-models.env");
   await writeFile(env, "PROVIDER_KEY=test-key\n", { mode: 0o600 });
   const answers = {
-    "Starting point": "team-documents",
+    "Starting point": "team-server",
     Access: "local",
     "Default model": "team",
     Provider: "openai/test",
@@ -666,7 +664,7 @@ await test(
     const { selectedDraft } = await import("./installation/options.js");
     const { SetupInputs } = await import("./installation/save.js");
     const [preset] = [
-      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+      await readRecipe(resolve("recipes/team-server/recipe.json")),
     ];
     await writeFile(
       f.recipe,
@@ -692,7 +690,7 @@ await test(
       const inputs = new SetupInputs(f.directory);
       const draft = await selectedDraft(
         context,
-        "team-documents",
+        "team-server",
         { connections },
         inputs,
       );
@@ -731,7 +729,7 @@ await test(
     await assert.rejects(
       selectedDraft(
         context,
-        "team-documents",
+        "team-server",
         { port: 19800, widgetPort: 19800 },
         new SetupInputs(f.directory),
       ),
@@ -747,7 +745,7 @@ await test(
     const f = await fixture(t);
     const { readRecipe } = await import("./installation/recipes/catalog.js");
     const recipes = [
-      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+      await readRecipe(resolve("recipes/team-server/recipe.json")),
     ];
     assert.ok(recipes[0]);
     await writeFile(
@@ -784,7 +782,7 @@ await test("recipes refuse scripts, personal configuration, duplicate IDs and pr
   const { recipesSchema } =
     await import("./installation/recipes/definition.js");
   const [recipe] = [
-    await readRecipe(resolve("recipes/team-documents/recipe.json")),
+    await readRecipe(resolve("recipes/team-server/recipe.json")),
   ];
   assert.ok(recipe);
   assert.equal(recipesSchema.safeParse([recipe, recipe]).success, false);
@@ -866,7 +864,7 @@ await test(
     const f = await fixture(t);
     const { readRecipe } = await import("./installation/recipes/catalog.js");
     const [preset] = [
-      await readRecipe(resolve("recipes/team-documents/recipe.json")),
+      await readRecipe(resolve("recipes/team-server/recipe.json")),
     ];
     await writeFile(
       f.recipe,
@@ -1415,7 +1413,7 @@ await test(
     const context = await setupContext(f);
     const first = await selectedDraft(
       context,
-      "team-documents",
+      "team-server",
       f,
       new SetupInputs(f.directory),
     );
@@ -1424,7 +1422,7 @@ await test(
     const inputs = new SetupInputs(f.directory);
     const updated = await selectedDraft(
       context,
-      "team-documents",
+      "team-server",
       { model: "team", provider: "openai", llmKeyFile: key },
       inputs,
       first,
@@ -1446,7 +1444,7 @@ await test(
       await assert.rejects(
         selectedDraft(
           context,
-          "team-documents",
+          "team-server",
           options,
           new SetupInputs(f.directory),
           first,
@@ -1456,7 +1454,7 @@ await test(
     await assert.rejects(
       selectedDraft(
         context,
-        "team-documents",
+        "team-server",
         { access: "hosted", oidcIssuer: f.oidcIssuer },
         inputs,
       ),
@@ -1843,7 +1841,7 @@ await test(
     );
     assert.deepEqual(pulled, [postgresImage]);
     missing.clear();
-    await writeFile(join(f.parent, "tool"), "tampered");
+    await writeFile(join(f.directory, "runtime/tools/openshell"), "tampered");
     await assert.rejects(
       checkInstallationPrerequisites(file, { acquire: true }, command, pull),
       /checksum/,
@@ -1956,7 +1954,7 @@ await test(
     const f = await fixture(t);
     const ui = new Answers({
       ...f.answers,
-      "Starting point": "team-documents",
+      "Starting point": "team-server",
     });
     const result = await collectInstallation(ui, {
       directory: f.directory,

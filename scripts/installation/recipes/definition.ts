@@ -4,6 +4,7 @@ import { installationSchema } from "../configuration.js";
 /** Recipes are CLI-owned defaults, never executable installation hooks. */
 export const recipeSchema = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+  version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
   runtime: z.string().min(1),
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
