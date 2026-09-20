@@ -14,7 +14,7 @@ git -C "$upstream" fetch --depth=1 origin "$revision"
 git -C "$upstream" checkout --detach FETCH_HEAD
 test "$(git -C "$upstream" rev-parse HEAD)" = "$revision"
 docker build --build-arg "GIT_COMMIT=$revision" \
-  --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(git -C "$upstream" show -s --format=%cI HEAD)" \
+  --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(TZ=UTC git -C "$upstream" show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" \
   --build-arg OPENCLAW_EXTENSIONS=codex -t "$base" "$upstream"
 rm -rf "$upstream"
 echo '{}' > "$output/images.json"
