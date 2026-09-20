@@ -20,6 +20,8 @@ await test("local TLS supports host forwarding, preserves keys and rejects incom
       cert.checkHost("host.docker.internal"),
       "host.docker.internal",
     );
+    assert.equal(cert.ca, true);
+    assert.equal(cert.verify(cert.publicKey), true);
     await ensureCertificates(directory);
     assert.deepEqual(await readFile(path), key);
     await rm(join(directory, "management-ca.pem"));

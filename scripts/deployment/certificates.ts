@@ -1,5 +1,5 @@
 import { createPrivateKey, X509Certificate } from "node:crypto";
-import { lstat, mkdir, readFile, rm } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { LocalSetupError, run } from "./process.js";
 import { ensurePrivateFile } from "./state.js";
@@ -65,8 +65,13 @@ export async function ensureCertificates(directory: string) {
   const staging = join(directory, "management-tls");
   // A retained staging directory makes an interrupted generation explicit.
   await mkdir(staging, { mode: 0o700 });
+  // An explicit config avoids inheriting host-specific certificate extensions.
+  const requestConfig = join(staging, "request.cnf");
+  await writeFile(requestConfig, "[req]\ndistinguished_name=dn\n[dn]\n");
   await run("openssl", [
     "req",
+    "-config",
+    requestConfig,
     "-x509",
     "-newkey",
     "rsa:3072",
