@@ -7,9 +7,9 @@ changes. Those implementation commits have not been merged into `main` by this
 documentation change. References to current ClawScarf behavior below mean that
 reviewed implementation; ClawScarf source links pin it explicitly.
 
-This document owns the source findings and design considerations for reducing
-OpenClaw's built-in product surface in ClawScarf. It is not an implemented feature
-contract or a second task list. The [product README](https://github.com/clawscarf/clawscarf/blob/30dbebc13d39e46b99c3fc06b4d69af93edaca80/README.md) owns current
+This document owns the source findings and implementation design for reducing
+OpenClaw's built-in product surface in ClawScarf. Proposed behavior is explicitly
+separated from the reviewed implementation; this is not a second task list. The [product README](https://github.com/clawscarf/clawscarf/blob/30dbebc13d39e46b99c3fc06b4d69af93edaca80/README.md) owns current
 boundaries; [TODO.md](../TODO.md) owns unfinished work.
 
 The review is against OpenClaw **2026.9.4**, revision
@@ -40,9 +40,9 @@ configuration, MCP configuration, deliberate extension management and diagnostic
 belong in the appropriate administrator experience.
 
 This is a product selection, not a proposal to replace OpenClaw's chat, agent
-runtime, roles, conversations or plugin loader. The exact retained package list
-and disposition of secondary pages still require selection. Recommendations in
-this document do not authorize implementing all of them.
+runtime, roles, conversations or plugin loader. The candidate base and
+qualification rules below make the initial selection explicit. Secondary capabilities remain outside that candidate unless a selected
+recipe requires them. This documentation does not authorize runtime changes.
 
 The [existing trust boundary](https://github.com/clawscarf/clawscarf/blob/30dbebc13d39e46b99c3fc06b4d69af93edaca80/README.md#what-it-contains) remains: Gateway,
 plugins, shell and local tools share one externally protected team runtime.
@@ -149,9 +149,10 @@ the setup assistant. Plugin-provided skills need separate inventory too.
 
 ### Plugins and channels
 
-Plugins are executable extensions. They can provide model providers, tools,
-channels and UI. A messaging channel is a capability; its implementation can be a
-plugin. “Channels” and “Plugins” being separate pages does not mean they are
+Plugins can be executable extensions providing model providers, tools, channels
+and UI. OpenClaw also supports bundles of skills, MCP definitions and related
+configuration; a package inventory must cover both kinds. A messaging channel is
+a capability; its implementation can be a plugin. “Channels” and “Plugins” being separate pages does not mean they are
 unrelated packaging systems.
 
 Plugin activation is not universally default-off. Manifests, explicit settings,
@@ -206,6 +207,18 @@ incorporates personal GitHub handlers. Profile renders GitHub connections;
 agent tools have additional identity controls. These are not removed by deleting
 the GitHub skill or Copilot plugin.
 
+The RPC list is not the entire integration. The pinned
+[Gateway sidecar setup](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/server-lifetime-sidecars.ts)
+creates and starts the
+[GitHub OAuth lifecycle](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/github-oauth-lifecycle.ts),
+which runs periodic maintenance. The
+[GitHub preview implementation](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/control-ui-github-preview.ts)
+and its API client provide another integration path. Feature removal must include
+background lifecycle startup, preview request entry points, credential injection
+and profile synchronization, not only the settings page and RPC registration.
+Plain GitHub links in chat should remain ordinary links; they need not trigger
+GitHub-specific authenticated previews.
+
 An upstream proposal could extract optional GitHub account integration, including
 its UI and backend, into a plugin. That may require extending plugin interfaces.
 A smaller configurable core feature is another possible patch. Neither has been
@@ -223,43 +236,46 @@ Hiding a sidebar destination does not remove its direct route or search entries.
 
 The following is a proposed disposition, not a claim that these changes exist:
 
-| Surface                                                          | Finding and proposed treatment                                                                                                                 |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Chat, sessions, files, artifacts and agent selection             | Retain the native experience and contextual actions                                                                                            |
-| Agent creation and editing                                       | Retain for authorized users; preserve a usable creation path when changing setup assistance                                                    |
-| Ask OpenClaw / Custodian                                         | General setup and administration assistance exposes more product choices than the curated base needs; remove or narrow it deliberately         |
-| Profile                                                          | Keep identity and personal preferences; remove built-in GitHub linking/coauthor controls and direct-provider account onboarding from the base  |
-| Appearance                                                       | Keep useful display preferences; remove unrelated CLI-session-source controls and decorative feature promotion                                 |
-| Notifications                                                    | Keep relevant personal notification preferences                                                                                                |
-| Device / Device permissions                                      | Native-client-specific settings; omit from the ordinary team web experience unless that client is deliberately supported                       |
-| Connection                                                       | Gateway URL/token switching is inappropriate for ordinary users entering one protected team installation                                       |
-| Channels                                                         | No messaging integrations by default; include only deliberately selected channels with reviewed identity/admission behavior                    |
-| Communications / Talk                                            | Retain only capabilities the product or selected recipe actually supports; do not expose unrelated provider setup                              |
-| Devices / Pair device                                            | Remove personal-device onboarding from the base UI while preserving required browser-node enrollment internals                                 |
-| Cloud workers                                                    | Remove unrelated cloud-worker/host provisioning from the base                                                                                  |
-| Agents settings                                                  | Retain native agent management with an intentional administrator surface                                                                       |
-| Models and model setup                                           | Keep managed model selection; remove independent provider onboarding and personal direct-provider account setup from the base                  |
-| Plugins hub / plugin settings                                    | Remove upstream marketplace/discovery/install experience; retain native loading and configuration for packages intentionally supplied          |
-| Skills / skill settings / Skill Workshop                         | Remove marketplace discovery; preserve deliberate custom skill and agent authoring where selected                                              |
-| MCP                                                              | Retain deliberate administrator configuration and required credential handling                                                                 |
-| Memory / memory import                                           | Keep useful memory capability; do not inherit every engine/add-on promotion automatically                                                      |
-| Automation / cron / tasks                                        | Preserve selected workflows and useful scheduling; review general commands/hooks/bindings rather than exposing every schema field              |
-| Security / Secrets / Approvals                                   | Preserve necessary approvals and administrator controls, including secrets needed by retained integrations                                     |
-| Infrastructure                                                   | Gateway/browser/node/discovery/ACP configuration belongs to intentional administration, not the everyday chat surface                          |
-| Labs                                                             | Remove feature experimentation UI; preserve custom-plugin support needed by People and Connections                                             |
-| Advanced / raw configuration                                     | Remove the catch-all editor from the ordinary product surface; otherwise new upstream schema sections automatically reappear                   |
-| Debug / Logs / Usage                                             | Keep appropriate diagnostics and usage views with native authorization                                                                         |
-| Updates                                                          | Runtime image/version ownership belongs to ClawScarf releases; remove competing upstream self-update UX and review backend update entry points |
-| About                                                            | Keep version/provenance/license information; curate hardcoded upstream community and promotional links                                         |
-| Apps                                                             | Remove unrelated app-store, browser-extension, release-download and marketplace promotion                                                      |
-| Lobsterdex                                                       | Cosmetic collection feature; distinct from the required Lobster workflow engine and removable independently                                    |
-| Dashboards / Systems / Activity / Meetings / Portals / Worktrees | Additional workspace surfaces, not all necessarily useless; omit from the base unless a concrete retained capability needs them                |
+| Surface                                                          | Finding and proposed treatment                                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chat, sessions, files, artifacts and agent selection             | Retain the native experience and contextual actions                                                                                               |
+| Agent creation and editing                                       | Retain for authorized users; preserve a usable creation path when changing setup assistance                                                       |
+| Ask OpenClaw / Custodian                                         | General setup and administration assistance exposes more product choices than the curated base needs; remove or narrow it deliberately            |
+| Profile                                                          | Keep identity and personal preferences; remove built-in GitHub linking/coauthor controls and direct-provider account onboarding from the base     |
+| Appearance                                                       | Keep useful display preferences; remove unrelated CLI-session-source controls and decorative feature promotion                                    |
+| Notifications                                                    | Keep relevant personal notification preferences                                                                                                   |
+| Device / Device permissions                                      | Native-client-specific settings; omit from the ordinary team web experience unless that client is deliberately supported                          |
+| Connection                                                       | Gateway URL/token switching is inappropriate for ordinary users entering one protected team installation                                          |
+| Channels                                                         | No messaging integrations by default; include only deliberately selected channels with reviewed identity/admission behavior                       |
+| Communications / Talk                                            | Retain only capabilities the product or selected recipe actually supports; do not expose unrelated provider setup                                 |
+| Devices / Pair device                                            | Remove personal-device onboarding from the base UI while preserving required browser-node enrollment internals                                    |
+| Cloud workers                                                    | Remove unrelated cloud-worker/host provisioning from the base                                                                                     |
+| Agents settings                                                  | Retain native agent management with an intentional administrator surface                                                                          |
+| Models and model setup                                           | Keep managed model selection; remove independent provider onboarding and personal direct-provider account setup from the base                     |
+| Plugins hub / plugin settings                                    | Remove the marketplace hub; retain administrator management of installed extensions and explicit-source installation, using native lifecycle APIs |
+| Skills / skill settings / Skill Workshop                         | Remove marketplace discovery; preserve deliberate custom skill and agent authoring where selected                                                 |
+| MCP                                                              | Retain deliberate administrator configuration and required credential handling                                                                    |
+| Memory / memory import                                           | Keep useful memory capability; do not inherit every engine/add-on promotion automatically                                                         |
+| Automation / cron / tasks                                        | Preserve selected workflows and useful scheduling; review general commands/hooks/bindings rather than exposing every schema field                 |
+| Security / Secrets / Approvals                                   | Preserve necessary approvals and administrator controls, including secrets needed by retained integrations                                        |
+| Infrastructure                                                   | Gateway/browser/node/discovery/ACP configuration belongs to intentional administration, not the everyday chat surface                             |
+| Labs                                                             | Remove feature experimentation UI; preserve custom-plugin support needed by People and Connections                                                |
+| Advanced / raw configuration                                     | Remove the catch-all editor from the ordinary product surface; otherwise new upstream schema sections automatically reappear                      |
+| Debug / Logs / Usage                                             | Keep appropriate diagnostics and usage views with native authorization                                                                            |
+| Updates                                                          | Runtime image/version ownership belongs to ClawScarf releases; remove competing upstream self-update UX and review backend update entry points    |
+| About                                                            | Keep version/provenance/license information; curate hardcoded upstream community and promotional links                                            |
+| Apps                                                             | Remove unrelated app-store, browser-extension, release-download and marketplace promotion                                                         |
+| Lobsterdex                                                       | Cosmetic collection feature; distinct from the required Lobster workflow engine and removable independently                                       |
+| Dashboards / Systems / Activity / Meetings / Portals / Worktrees | Additional workspace surfaces, not all necessarily useless; omit from the base unless a concrete retained capability needs them                   |
 
 Several dependencies make a blanket “hide settings” patch insufficient:
 
 - **Agent creation:** the new-agent entry point routes to Custodian with
   `intent=new-agent`. Removing the assistant without providing a retained native
-  creation flow would break an explicitly wanted capability. See
+  creation flow would break an explicitly wanted capability. Native
+  [`agents.create`](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/server-methods/agents.ts)
+  already exists: reuse it for a small creation form followed by the existing
+  editor, rather than adding another agent store or management backend. See
   [agents home](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/ui/src/pages/agents-home/view.ts).
 - **Profile:** GitHub connections and model-account controls are embedded in the
   [Profile page](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/ui/src/pages/profile/profile-page.ts),
@@ -315,10 +331,11 @@ switch: policy evaluation can occur after fetching/staging a candidate. See
 Do not claim “no marketplace traffic” from a hidden button or rejected final
 installation alone.
 
-The desired alternative is deliberate administrator installation through
-ClawScarf's selected packaging model, retaining upstream extension formats where
-useful. It must not remove legitimate custom skills or MCP merely to eliminate
-the marketplace. The packaging model itself has not yet been built.
+The retained administrator path uses native explicit-source installation, as
+specified below. It does not require building a ClawScarf registry or package
+manager first. Image selection owns supplied packages; OpenClaw continues to own
+administrator-added packages and their lifecycle. Removing marketplace discovery
+must not remove custom skills, MCP or native integrity and capability checks.
 
 ## Device pairing and messaging channels
 
@@ -378,6 +395,165 @@ discussion. It does not establish that NemoClaw removes OpenClaw's marketplace,
 GitHub settings or other product surfaces. This curation review has not qualified
 NemoClaw as an implementation of those requirements.
 
+## Candidate base and package qualification
+
+The initial candidate is deliberately small. This is the proposed input to a
+build-and-runtime qualification, not a claim that this reduced set already boots
+or supports every retained workflow. Do not ship it until the acceptance cases
+below pass. Do not silently restore upstream's full default set to make them pass.
+
+| Package group                                                  | Initial candidate                                                  | Qualification condition                                                                                                                                                                             |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native team UI                                                 | `clawscarf-access`                                                 | People, native identities and roles, enrollment and revocation remain usable                                                                                                                        |
+| Workflows                                                      | `lobster`                                                          | Preserve the separately pinned official artifact and its embedded runtime; approval/resume must work                                                                                                |
+| Browser                                                        | `browser`                                                          | Preserve the native tool and required node-host registration; omitting the personal-device onboarding plugin must not break enrollment                                                              |
+| Memory                                                         | `memory-core`                                                      | Preserve the current default memory slot and exercise the supported memory path without adding direct-provider credentials                                                                          |
+| Model transport and execution                                  | Initially retain `openai` and `codex` for qualification            | Trace their actual use by the configured LiteLLM routes and agent harness; retain only required implementations, with external session catalogs, provider onboarding and marketplace tools disabled |
+| Optional Connections                                           | `clawscarf-connections` in a runtime that supplies this capability | Disabled operation has no page, tools, calls or credential requirement; enabled operation keeps its native page and broker contract                                                                 |
+| Ordinary bundled and Custodian skills                          | No entries in the initial base candidate                           | Physically omit these directories' skill entries; this does not mean setting `allowBundled: []`                                                                                                     |
+| Plugin-owned skills, bundles and recipe packs                  | Explicit files required by the selected package or pack            | Inventory separately; keeping a plugin must not silently keep all of its skills or nested bundles                                                                                                   |
+| Messaging channels, other providers and other optional plugins | None in the initial base candidate                                 | Add only through a deliberate recipe/package decision or explicit administrator installation                                                                                                        |
+
+The `browser` and `memory-core` names are source-verified, not inferred from page
+names: see the [browser manifest](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/openclaw.plugin.json)
+and [default slots](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/plugins/slots.ts).
+The `openai` and `codex` entries are conservative candidates, not a finding that
+both are required for every LiteLLM model. Qualify Responses and Completions
+routes separately; model-provider branding is not sufficient evidence to delete
+a transport implementation. Conversely, retaining a harness does not authorize
+its catalog or plugin marketplace. The
+[Codex manifest](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/codex/openclaw.plugin.json)
+also declares a `codex_plugins` tool and native plugin settings; these need
+coverage beyond the session-picker switch.
+
+The packaging slice must produce an exact machine-readable selection of plugin
+IDs, skill paths, versions/integrities and origins from every source: upstream
+package output, separately downloaded artifacts, ClawScarf plugins and selected
+packs. Include required shared libraries without implicitly admitting additional
+plugin IDs. Resolve and record the full dependency closure before producing the
+final image. Build failures from missing imports are evidence to inspect the
+dependency, not permission to ship another feature without review.
+
+Compare the assembled image inventory to that selection. Unexpected plugins,
+skills, duplicate plugin IDs or missing selected entries fail qualification.
+An absent selected dependency must fail visibly; do not fetch omitted packages
+automatically at startup or on first use.
+Upstream additions should remain unshipped until selected. At upgrade time,
+changes to native routes, setup entry points and exposed feature metadata also
+require explicit disposition; UI curation must not depend on noticing a new page
+manually after release. This is a build/upgrade check, not a second runtime plugin
+registry or a restriction on deliberately installed user packages.
+
+Start with one curated team image and an explicitly declared optional Connections
+capability. Additional document tools and skills belong to a separately selected
+recipe requirement, with an image variant only when its executable dependencies
+justify one. Do not add every eligible skill to the base merely because it runs.
+
+## Retained administrator workflows
+
+Remove the marketplace hub, not all administration. Preserve native authorization
+on every mutation. The first curated UI should keep a small administrator area
+using the existing native pages and APIs, without a replacement dashboard or role
+database:
+
+| Administrator task                      | Retained path                                                                                                                                             |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create and edit agents                  | A creation form calling native `agents.create`, followed by the existing agent editor, tool/skill controls and workspace files                            |
+| Add an MCP server                       | Existing scoped MCP settings for explicit stdio/remote definitions, credentials/OAuth where supported, and enablement/tool controls                       |
+| Add a custom skill                      | Native skill authoring/upload or workspace files, followed by native agent assignment and eligibility feedback                                            |
+| Install a supplied plugin               | An explicit npm package-and-version form using native `plugins.install` with `source: "npm"`; no discovery, recommendations or official-catalog fallback  |
+| Manage installed plugins                | An installed-only administrator view using native inspect, enable/disable, reload, update and uninstall; preserve configuration for retained plugin pages |
+| Use a local plugin directory or archive | Installation operator runs the native CLI inside the protected runtime; preserve the local-client requirement rather than bypassing it for web requests   |
+| Manage team membership and accounts     | Existing People and optional Connections pages, with their current external service boundaries                                                            |
+
+The [native install schema](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/packages/gateway-protocol/src/schema/plugins.ts)
+already distinguishes npm, local, npm-pack, Git, official, ClawHub and marketplace
+sources. The [install handler](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/server-methods/plugins-mutations.ts)
+requires a local Gateway client for local artifacts. A web administrator is not
+automatically such a client. Browser-based local archive installation is not
+promised in the first slice; it would need a separately reviewed upload contract.
+The explicit npm form is a proposed UI change, not an existing upstream screen.
+
+For the initial curated path, accept explicit pinned npm packages and native local
+artifacts; preserve source trust confirmation, capability consent, install-policy,
+integrity and transactional publication behavior. Disable implicit official
+catalog resolution and marketplace fallback. Updates must retain the explicit
+source and version choice; do not expose a generic refresh/update-all action that
+contacts excluded catalogs. Built-in image packages are replaced through runtime
+releases, while native lifecycle management operates on administrator-added
+packages. Reject ambiguous ID collisions instead of silently shadowing a built-in.
+
+Package fetches and MCP transports remain subject to the existing outer network
+policy. The installation UI must report a blocked destination clearly; it must
+not open general egress or put controller authority in the Gateway. Local artifacts
+provide an operator path where remote installation is unavailable. A concrete
+installation test must verify the approved source's dependency fetches, not merely
+that its form submits. Preserve native protections when removing ClawHub audit
+calls; do not turn off all install validation to suppress one remote service.
+
+Verify install, enable, invoke, restart, update and removal of a small user plugin,
+and add, authenticate where applicable, invoke and remove an MCP server. Confirm
+member rejection for administrator-only mutations. Custom package state and
+unrelated native edits must survive restart and explicit recipe reapplication;
+image inventory checks must not delete these user additions.
+
+## Feature boundaries and implementation order
+
+A product feature needs one effective availability decision in its backend owner,
+with availability exposed to the UI through the existing Gateway bootstrap or
+capability mechanisms. Navigation, direct routes, settings search, command
+palette, contextual actions, agent-visible tools and setup prompts must agree.
+Do not implement UI-only flags and independently maintained backend deny lists.
+Retain shared methods such as config access for supported administration; gate
+excluded feature operations at the point where they would perform their effects.
+
+For each feature patch, identify HTTP and RPC entry points, CLI and tool calls,
+startup/background services, credentials and outbound requests. When disabled,
+reject operations before network or persistent side effects and do not start its
+background service. Cover live configuration changes if supported; otherwise
+require a visible restart rather than claiming immediate disablement. An upstream
+configurable patch may keep its upstream default while the ClawScarf preset turns
+it off. Such a mutable setting is not physical removal or protection against a
+trusted administrator changing configuration. The curated UI does not offer
+switches for excluded product features.
+
+Use these commit boundaries in dependency order. Intermediate builds are test
+candidates; publish only the integrated, qualified runtime in the final row.
+Install and agent-creation replacements must land before their existing entry
+points or supporting skills are removed:
+
+| Slice                           | Concrete result required before proceeding                                                                                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline and inventory          | Select/integrate the already reviewed team-runtime baseline separately; record the actual image inventory and candidate selection, dependency closure and native route inventory                            |
+| Existing configuration          | Add the explicit CLI-agent switch; retain terminal/community suppression; verify picker, direct terminal access and required model routes without calling this package removal                              |
+| Retained administration         | Add the native agent creation form, retain scoped MCP and installed-extension settings, and implement explicit-source installation with native authorization and source restrictions                        |
+| Marketplace removal             | Gate ClawHub, official catalog fallback and other shipped marketplace entry points, including harness tools; verify the retained administrator installation path with marketplace availability disabled     |
+| Optional GitHub integration     | Gate UI, RPC/HTTP previews, background OAuth lifecycle, credential injection and related setup; preserve ordinary links and deliberate Git CLI use                                                          |
+| Remaining UI and setup curation | Apply the disposition table to navigation/routes/search; remove Custodian only after the replacement creation flow works; retain MCP, People, Connections, approvals and installed-extension administration |
+| Curated package build           | Build the candidate base, physically omit unselected packages and skills, resolve dependencies explicitly, and exercise retained workflows against that exact image                                         |
+| Qualified runtime release       | Record downstream source and image provenance, verify restart and retained administrator additions, then run the complete acceptance cases and documentation checks                                         |
+
+The first baseline row is essential: `main` currently contains this document but
+not the reviewed branch's execution-model and installer changes. Publishing the
+document is not approval or verification of merging those commits. Do not apply
+this design to the old worker arrangement and claim it qualifies the unified
+runtime. No backward-compatibility or legacy-worker migration is part of this
+work. When implementation begins, update the product README and contributor rule
+that currently describe OpenClaw as vanilla to accurately allow the maintained
+curation patches while preserving native ownership of application state.
+
+Marketplace tests must cover attempted catalog search/install/update and a
+successful explicit-source installation with no unwanted marketplace requests.
+GitHub tests must cover cold startup, direct RPC/HTTP attempts, ordinary pasted
+links and retained chat after disablement. Package tests must detect an injected
+unexpected built-in entry. UI tests should cover member and administrator access,
+direct URLs, search and mobile layouts, including missing/disabled optional
+Connections. Retained feature tests include upload-to-file analysis, shell and
+Lobster acting on the same files, approval/resume, agent creation, model selection,
+MCP tools, People/revocation and browser-node enrollment. The separately owned
+browser-routing bug remains explicitly outside this curation slice; do not claim
+that package selection fixes it.
+
 ## Maintaining downstream changes
 
 Prefer existing configuration for supported behavior, packaging for unwanted
@@ -393,12 +569,19 @@ selection, and package selection. Each needs its own behavior and regression
 evidence. Upstream PRs can seek reusable configuration or plugin seams; ClawScarf
 must not depend on their acceptance to reproduce its release.
 
-A practical distribution model is one pinned upstream source plus a small,
-ordered patch series and packaging inputs. A fork can be the authoring and PR
-workspace. Pick one authoritative representation for released changes; do not
-maintain both fork commits and hand-edited patch files independently. The exact
-mechanism should be chosen after the first concrete patches show their size and
-dependencies. Current releases do not yet implement this patch workflow.
+Use a downstream Git branch/fork at the exact upstream pin as the initial
+source of truth. Its focused commits are the patches; record both upstream base
+and downstream revision in release provenance and build from the downstream
+revision. Also record the UI revision, package selection and resulting image
+digest. A separate UI build, if used, must be derived from the same source
+revision. A version label such as 2026.9.4 alone does not identify patched content.
+
+Do not maintain an independently edited patch-file series at the same time.
+Exporting a series for distribution tooling can be added later as a generated
+representation of the canonical commits. An upstream PR should correspond to a
+focused change; acceptance lets us drop that change on a later baseline, rather
+than becoming a prerequisite for our release. No fork, patch pipeline or curated
+release has been created by this documentation.
 
 This is the useful part of the Linux-distribution analogy: upstream sources,
 downstream changes and packaging are explicit. Debian documents patch series in
