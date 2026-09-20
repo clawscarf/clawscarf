@@ -148,7 +148,10 @@ async function fixture(t: TestContext) {
       args.includes("com.docker.network.bridge.gateway_mode_ipv4=isolated"),
       ["browser", "machine"].includes(purpose),
     );
-    assert.ok(!args.includes("--subnet") && !args.includes("--gateway"));
+    assert.equal(args.includes("--subnet"), purpose !== "companion");
+    if (purpose !== "companion")
+      assert.equal(args[args.indexOf("--subnet") + 1], "0.0.0.0/24");
+    assert.ok(!args.includes("--gateway"));
     if (purpose === behavior.failPurpose && behavior.failure === "before")
       throw Error("external error containing a secret");
     const id = String(creates.length).repeat(64);

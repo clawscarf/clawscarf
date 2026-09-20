@@ -105,6 +105,8 @@ uses an explicit address on the owned runtime bridge for sandbox callbacks; its
 forwarders use the private `controller.clawscarf.internal` name. Bundled LiteLLM
 is reachable at `models.clawscarf.internal` over authenticated TLS. This avoids
 Docker Desktop-specific routing while keeping published ports on loopback.
+Docker 29+ allocates these service subnets from its own address pools with
+`--subnet 0.0.0.0/24`, allowing fixed endpoints without hardcoded network ranges.
 Public application access and the widget origin go through the
 [access companion](../../services/access/README.md), never directly to these listeners.
 

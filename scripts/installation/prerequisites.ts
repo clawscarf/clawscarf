@@ -55,6 +55,15 @@ export async function checkHost(command: typeof run = run) {
       "Docker Compose is unavailable. Install the Docker Compose plugin or update Docker Desktop, then try again.",
     );
   }
+  const version = (
+    await command("docker", ["version", "--format", "{{.Server.Version}}"])
+  ).trim();
+  const major = Number(/^([0-9]+)\./.exec(version)?.[1]);
+  if (!Number.isInteger(major) || major < 29)
+    throw new InstallationError(
+      "unsupported_platform",
+      "Docker Engine 29 or newer is required for automatic subnet allocation with fixed service addresses. Update Docker Engine or Docker Desktop, then try again.",
+    );
 }
 
 /** Stream only Docker's layer progress, never registry error payloads or credentials. */

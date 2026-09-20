@@ -1797,9 +1797,11 @@ await test(
       return Promise.resolve(
         args[0] === "info"
           ? "linux"
-          : args.includes("--format")
-            ? "team-runtime"
-            : "[]",
+          : args[0] === "version"
+            ? "29.0.0"
+            : args.includes("--format")
+              ? "team-runtime"
+              : "[]",
       );
     };
     const pull: typeof import("./installation/prerequisites.js").pullImage = (
@@ -1906,6 +1908,16 @@ await test(
         return Promise.resolve("linux");
       }),
       /Compose is unavailable/,
+    );
+    for (const version of ["28.5.1", "invalid"])
+      await assert.rejects(
+        checkHost((_exe, args) =>
+          Promise.resolve(args[0] === "version" ? version : "linux"),
+        ),
+        /Docker Engine 29 or newer/,
+      );
+    await checkHost((_exe, args) =>
+      Promise.resolve(args[0] === "version" ? "29.0.0" : "linux"),
     );
   },
 );

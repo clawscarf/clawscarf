@@ -302,6 +302,10 @@ export async function ensureLocalNetworks(
             "create",
             "--driver",
             "bridge",
+            // Docker chooses a free subnet; declaring its size permits static endpoints.
+            ...(intent.purpose !== "companion"
+              ? ["--subnet", "0.0.0.0/24"]
+              : []),
             ...(intent.purpose === "runtime" ? ["--attachable"] : []),
             ...(["browser", "machine"].includes(intent.purpose)
               ? [
