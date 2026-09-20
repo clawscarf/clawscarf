@@ -1,164 +1,133 @@
 # ClawScarf 🧣
 
-**OpenClaw for your team. On your terms.**
+**Run OpenClaw for your team, on infrastructure you control.**
 
-ClawScarf packages vanilla [OpenClaw](https://github.com/openclaw/openclaw) with
-protected team login, a confined team runtime, LiteLLM models, optional Connections and
-reusable agent packs. Run it on infrastructure you control.
+ClawScarf is an open-source distribution of [OpenClaw](https://github.com/openclaw/openclaw)
+with team login, protected execution, model configuration and optional connections
+to services such as Outlook. Install it from npm, follow the terminal setup, then
+work in OpenClaw’s own interface.
 
-> **Developer preview.** OIDC login, model/tool use and retained-state restart
-> have passed on macOS arm64 with Docker Desktop. This is not yet a qualified
-> production release. The first alpha is available through npm and GitHub Releases.
+- **Bring your team:** invite people, assign native OpenClaw roles and revoke access.
+- **Bring your model:** choose a provider and model, then supply your API key.
+- **Connect your accounts:** link external services and choose which agents can use them.
+- **Keep execution contained:** NVIDIA OpenShell protects the team runtime, including
+  its Gateway, plugins, shell commands and local tools.
 
-The installer defaults to ClawScarf hosted login, with customer OIDC as an override.
-Connections is independently optional and uses its native OpenClaw page and cloud broker.
-Cloud staging and production are deployed through build/promotion. Real Outlook linking,
-reconnect, tool execution and revocation passed locally. The current runtime's
-verification and remaining integration limits are described below.
+> **Alpha preview.** The published `0.1.0-alpha.1` supports macOS Apple Silicon with
+> Docker Desktop. Linux ARM64/x86-64 and WSL2 support is being prepared for the next
+> alpha; it is not available in the published package yet.
 
-## What it contains
+## Get started
 
-| Component                                                | Responsibility                                                                                                                                           |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Runtime](runtime/README.md)                             | Pinned vanilla OpenClaw, native defaults and persistent home. Agents, roles, conversations and configuration stay native.                                |
-| [OpenShell](deploy/openshell/README.md)                  | Externally controlled protection around the complete team runtime: Gateway, plugins, shell and local tools.                                              |
-| [Access](services/access/README.md)                      | Hosted login or generic company OIDC, enrollment, protected entry and session revocation.                                                                |
-| [Connections](services/connections/README.md) — optional | Account setup, agent grants and a small [search/describe/call plugin](plugins/connections/README.md). Cloud broker with installation-scoped credentials. |
-| [Models](deploy/models/README.md)                        | Existing LiteLLM or bundled LiteLLM; provider credentials stay outside OpenClaw.                                                                         |
-| [Packs](packs/README.md) — optional                      | Native agent/skill/workflow bundles with prerequisites and preview; includes a researcher/reviewer example.                                              |
+Have these ready:
 
-Compose runs the OpenShell controller, forwarding services, the
-[companion](apps/companion/README.md), PostgreSQL and bundled LiteLLM. OpenShell owns
-the protected team runtime container. The CLI starts/stops this stack
-and then exits; no host daemon or launchd registration is required. Access and the optional Connections management adapter run in the companion process. Connections can be omitted entirely. Its native
-plugin can also use an external broker. PostgreSQL stores identity/sessions and,
-when enabled, connection accounts; it does not duplicate native roles or pack state.
+- **Docker Desktop**, installed and running on an Apple Silicon Mac.
+- **Node.js** 24.16+ within the 24.x series, or 26.1+.
+- **An LLM provider API key.** The Team server recipe defaults to OpenAI GPT-6 Astra
+  with medium reasoning; you can choose another model/provider during setup.
+  Model usage is billed by your provider.
 
-One installation serves **one trusted team**. Gateway, native plugins, Lobster,
-ordinary shell commands and local tools run together inside the same OpenShell
-boundary. They share the persistent home filesystem. Default agent work happens
-in `/home/node/.openclaw/workspace`; other native agents can have their own
-workspaces on that filesystem. Browser accounts are shared through the separate
-browser service.
-
-People keep native identities and roles for ordinary application permissions.
-Anyone allowed to execute code must be trusted with Gateway authority, including
-its local configuration, sessions and runtime credentials. These roles do not
-isolate hostile teammates from administrators. OpenShell protects the surrounding
-host and services; Access, controller credentials, Docker authority, original
-model-provider keys and Connections management credentials stay outside. External
-revocation stops authenticated entry; it cannot undo a process or persistent change
-already made inside the runtime. Different untrusted teams need separate installations.
-
-## Run the preview
-
-Requires **macOS Apple Silicon or Linux ARM64/x86-64 (including Windows through WSL2)**,
-Docker with Compose and Node 24.16+ (24.x) or 26.1+. On Windows, install and run the CLI
-inside WSL2 with Docker Desktop WSL integration enabled (experimental). Native Windows and Intel Mac
-are unsupported; pinned OpenShell does not provide an Intel Mac executable.
+Install the CLI and launch setup:
 
 ```sh
 npm install -g @clawscarf/cli@next
 clawscarf configure
 ```
 
-The alpha package includes recipes and downloads their pinned runtime tools/images.
-See the [installation CLI guide](deploy/deployment/installation.md) and
-[measured footprint](deploy/openshell/README.md#development-footprint) before starting.
-For source builds, use [contributor setup](scripts/README.md).
+No repository checkout, recipe file or separate OpenClaw installation is needed.
+The CLI includes the recipe catalog and downloads the selected runtime’s tools and
+Docker images. The first installation can take several minutes.
 
-Loopback installations need no public DNS or VM allocation. Hosted login requires a
-ClawScarf account; custom OIDC works independently of the cloud. HTTPS exposure is
-configured separately from login.
-The installer requires bundled or existing LiteLLM; Connections and packs are optional.
-Lower-level component tests can omit models, in which case the Gateway starts with
-outbound traffic denied. That policy is not a blanket network policy for every companion.
+1. Choose **Team server** and review its settings. Connections is enabled by default;
+   you can turn it off. Accept the settings, then enter the selected provider’s key.
+2. Follow the browser link to **sign in or create a ClawScarf account** and approve
+   the installation. That account becomes its first administrator. You can choose
+   your company’s OIDC provider instead during setup.
+3. Let setup start the server. It opens OpenClaw at **[http://127.0.0.1:18800](http://127.0.0.1:18800)**
+   by default. Start a chat, invite teammates through **People**, or link an account
+   through **Connections**.
 
-## Current verification and limits
+The installation directory defaults to `~/clawscarf-team`. To choose another location,
+use `clawscarf configure --directory ~/my-team`. The server keeps running after the
+terminal closes; Docker must remain running.
 
-- The single runtime passed native chat upload → file read → Python → Lobster,
-  PDF extraction, Lobster approval/resume, member permissions and persistent restart
-  with a deterministic model fixture. Shell and Lobster remained confined by
-  OpenShell. Reproduction and limits are in the
-  [OpenShell guide](deploy/openshell/README.md#repeatable-boundary-and-retention-check).
-- Prior component and assembly checks passed OIDC administrator setup, native Account/People
-  pages and a direct OpenAI GPT-6 Astra response with medium reasoning and a tool call
-  through LiteLLM Responses.
-- Fresh installer setup passed normal Docker networking, hosted account approval,
-  automatic OIDC registration, persistent startup, private administrator claim through
-  WorkOS, native People and a real GPT-6 Astra / medium browser response.
-- The assembled team profile passed local Dex browser login, enrollment, handover,
-  revocation, bookmarks, widgets and hooks. Public deployment remains unverified.
-- Connections has broker/protocol and native plugin tests. Initial unified activation passed with a fixture catalog.
-  Real Outlook linking, execution, reconnect and revocation passed locally. Disabled operation works
-  without provider credentials or a Connections schema.
-- Optional [browser-node startup](deploy/execution/browser-node/README.md) uses local
-  public-SDK enrollment, private TLS/DNS and retained native identity. Native public
-  navigation and full stop/start with retained browser cookies passed.
-  Member/administrator explicit-node browsing and revocation passed
-  component acceptance. Ordinary model-selected browsing has an owner-managed upstream
-  routing bug. The team runtime retains OpenShell; Chromium retains its own sandbox.
-- Local stopped-runtime replacement preserves the owned volume and has interruption
-  tests. Changed-upstream-version upgrades and automated backups are unfinished.
+The default address is accessible only on your machine. To let teammates reach the
+server remotely, configure HTTPS and a reachable address using the
+[installation guide](deploy/deployment/installation.md). Hosted login does not make
+your local server publicly accessible.
 
-The `0.1.0-alpha.1` packaged CLI passed a fresh installation on the development Mac:
-staging hosted login, native administrator setup, a real GPT-6 Astra response and
-stop/start with retained chat history. Published runtime downloads passed checksum
-verification separately. This was not a newly provisioned host.
+## Manage your server
 
-[TODO.md](TODO.md) contains only open work and future decisions. Native Lobster is
-a required capability. Built-in plugin/skill curation and removal of ClawHub mentions
-are a separate selected direction; this execution-model change does not implement them.
-The [OpenClaw curation review](runtime/curation.md) records configuration limits,
-UI/backend ownership, packaging choices and downstream patch considerations.
+These commands use the same default installation directory:
 
-## Installation management
+```sh
+clawscarf status
+clawscarf stop
+clawscarf start
+clawscarf logs --service companion
+clawscarf configure
+```
 
-The [installation CLI](deploy/deployment/installation.md) is the public configuration and
-lifecycle entrypoint, shared by the terminal installer and automation. Recipes provide
-defaults for initial configuration. The [component guide](deploy/deployment/README.md) covers internal
-developer operations; it is not a second supported installation format.
-The menu reviews settings before credentials, starts persistently when selected, and provides
-the private OIDC administrator claim. The same `configure` command changes
-retained models, Connections and pack selections, interactively or with explicit flags; the installation
-guide records the supported changes. [Recipes](recipes/README.md) ship with the CLI and pack files; each pins a reusable
-[runtime release](release/README.md) containing exact images and tools.
-[0.1.0-alpha.1](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.1)
-is published through npm, GitHub Releases and public GHCR images.
-The bundled [Account and People plugin](plugins/access/README.md) renders inside OpenClaw.
-Administrators invite people using copyable links, assign native roles and remove access.
-The external Access companion enforces admission and revocation. Connections remains
-optional and renders its native page inside OpenClaw; its backend runs in the cloud.
+`stop` preserves your data; `start` resumes the installation. Use `configure` to
+change model, Connections or pack settings.
 
-Every recipe retains the same outer protection and authenticated entry/admission/
-revocation. Recipes select resources, models and capabilities. CLI dependencies
-belong in the runtime image; a document recipe may eventually select an enriched
-image without introducing a second execution filesystem. Current recipes use one
-runtime image per release. External access remains a proposed verified delegation,
-never anonymous entry.
+If you chose a different directory, add `--directory ~/my-team` to each command.
+For scripts and coding agents, configuration choices are also available as explicit
+flags with `--non-interactive`; use `--json` for machine-readable output. See
+[CLI options and examples](deploy/deployment/installation.md#configure-without-prompts).
 
-OpenClaw retains its mutable application state. Applying selected installation
-settings must preserve unrelated native edits. External hosting must supply its own
-entry/admission, models and broker without a second login or fleet database.
+## How it fits together
 
-## Code tour
+OpenClaw owns agents, conversations, roles, tools and application settings. ClawScarf
+adds authenticated entry and session revocation, OpenShell runtime protection, and
+model routing through bundled or external LiteLLM. Provider keys stay outside OpenClaw.
+Account, People and optional Connections pages appear inside OpenClaw.
 
-Start with [apps/companion](apps/companion/README.md) for service composition,
-[runtime](runtime/README.md) for native configuration,
-[deploy/images](deploy/images/README.md) for images and
-[scripts](scripts/README.md) for operator commands. The largest feature is the
-[Access service](services/access/README.md). The [Connections adapter](services/connections/README.md)
-and native plugin call the separately deployed cloud backend.
-[Component pins](release/components.json) identify upstream versions.
+Docker Compose runs the supporting services; OpenShell runs the protected OpenClaw
+container. The CLI manages them without installing a host daemon. Chats, files and
+settings persist across stop/start. **Persistence is not a backup**; automated backups
+and upgrades across upstream versions remain unfinished.
 
-An external hosting platform may supply identity, model gateway and broker instead
-of the standalone services. It must integrate the
-[hosted runtime boundary](runtime/README.md#external-hosting-boundary); that consumer
-integration is future work, not a runtime dependency.
+Hosted login and the optional Connections broker use ClawScarf Cloud. Company OIDC
+works independently of hosted login, and Connections can be disabled entirely.
+[Recipes](recipes/README.md) supply editable defaults and pin the runtime version;
+optional [packs](packs/README.md) add groups of native agents, skills and workflows.
+Recipes always retain authenticated access and OpenShell protection.
 
-## Contribute and license
+## Team and security boundaries
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). ClawScarf-owned work
-is [MIT licensed](LICENSE); incorporated material retains its licenses and
-[attribution](THIRD_PARTY_NOTICES.md). ClawScarf is independent, not an official
-OpenClaw or NVIDIA distribution.
+Each installation is for **one trusted team**, with separate native identities and
+roles but shared execution files and browser accounts. Members permitted to execute
+code must be trusted with Gateway authority, including its runtime credentials.
+Native roles do not isolate hostile teammates from each other or from administrators;
+use separate installations for mutually untrusted teams.
+
+Access, Docker/controller credentials, original model-provider keys and Connections
+management credentials remain outside the protected runtime. Revoking access stops
+entry and active authenticated connections; it cannot undo code already executed or
+changes already made inside the runtime.
+
+Browser automation is optional and off by default. Explicit browser-node use has
+passed tests, but automatic browser selection still has an upstream routing issue.
+See [browser support](deploy/execution/browser-node/README.md) and
+[OpenShell protection and limits](deploy/openshell/README.md) before enabling it.
+
+## Documentation and help
+
+- [Installation guide](deploy/deployment/installation.md): configuration, company SSO,
+  automation, lifecycle commands and deletion.
+- [Models](deploy/models/README.md), [People](plugins/access/README.md) and
+  [Connections](plugins/connections/README.md): feature configuration and behavior.
+- [Runtime architecture](runtime/README.md) and [service composition](apps/companion/README.md):
+  implementation and integration boundaries.
+- [Releases](https://github.com/clawscarf/clawscarf/releases) and [open work](TODO.md):
+  available downloads and remaining work.
+- [Report a bug](https://github.com/clawscarf/clawscarf/issues): include your CLI version,
+  operating system and relevant logs, with credentials removed.
+
+## Contributing and license
+
+See [contributor setup](scripts/README.md), [CONTRIBUTING.md](CONTRIBUTING.md) and
+[AGENTS.md](AGENTS.md). ClawScarf-owned code is [MIT licensed](LICENSE); bundled
+components retain their [licenses and attribution](THIRD_PARTY_NOTICES.md).
+ClawScarf is independent, not an official OpenClaw or NVIDIA distribution.

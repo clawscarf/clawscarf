@@ -1,7 +1,7 @@
 # Contributing to ClawScarf
 
-ClawScarf is implementing and validating its standalone runtime. There is no
-qualified installable release yet. The [task checklist](TODO.md) is the single list of
+ClawScarf has a published alpha. See the [README](README.md) for installation
+and current platform availability. The [task checklist](TODO.md) is the single list of
 open work; [AGENTS.md](AGENTS.md) defines engineering and review conventions.
 
 Use the Node and pnpm versions in [package.json](package.json) and follow the
