@@ -52,8 +52,10 @@ Open work only. Select a task before implementing; this list does not authorize 
 
 - [ ] Refine the illustrative Team documents recipe and verify its actual workflow;
       choose packs/Connections explicitly rather than treating the example as a finished product.
-- [ ] Select Lobster, Codex or other optional packs individually. Preserve vanilla ClawHub
-      discovery unless a supported curation approach is explicitly selected.
+- [ ] Curate the built-in plugin/channel/skill surface and remove ClawHub mentions.
+      Keep user-added plugins/MCP possible; evaluate document dependencies per recipe.
+      Native Lobster is required. Use the [curation findings](runtime/curation.md)
+      to select configuration, packaging and source changes.
 - [ ] Package privately operated Connections against the same broker contract, independent of
       our hosted identity/billing services. The separation is part of the selected cloud design.
 - [ ] Add payment integration to the cloud allowance policy when selected; keep connector

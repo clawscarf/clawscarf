@@ -82,7 +82,11 @@ outbound traffic denied. That policy is not a blanket network policy for every c
   Linux/WSL and automated backups are unfinished.
 
 [TODO.md](TODO.md) contains only open work and future decisions. Lobster and other
-optional capabilities are not release requirements. Vanilla ClawHub discovery stays.
+optional capabilities are not release requirements of this main-branch implementation.
+The selected curation direction makes native Lobster required and removes ClawHub
+discovery. The [OpenClaw curation review](runtime/curation.md) records the findings
+and proposed changes against its explicitly identified working-branch implementation;
+this documentation does not merge those runtime changes.
 
 ## Installation management
 

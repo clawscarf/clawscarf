@@ -1,5 +1,8 @@
 # Native configuration
 
+The [curation review](curation.md) records proposed packaging, UI and backend
+changes against its explicitly identified working-branch implementation.
+
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Gateway, worker and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset. Generate a
