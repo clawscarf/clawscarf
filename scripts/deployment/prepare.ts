@@ -15,7 +15,7 @@ import { prepareRelay } from "./relay.js";
 import { prepareRuntimePolicy } from "./policy.js";
 import { prepareBrowser, initializeBrowserVolume } from "./browser.js";
 import { readTeamMaterials, prepareTeamFiles } from "./team.js";
-import { readFile, lstat } from "node:fs/promises";
+import { readFile, lstat, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   prepareInitialModels,
@@ -140,6 +140,9 @@ export async function prepareLocal(
         controllerAddress,
         browser?.address,
         browserMachine,
+        process.platform === "linux"
+          ? (await stat("/var/run/docker.sock")).gid
+          : 0,
       ),
       null,
       2,

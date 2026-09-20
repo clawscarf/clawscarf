@@ -7,6 +7,7 @@ export function controllerServices(
   directory: string,
   state: LocalState,
   address: string,
+  socketGroup: number,
 ) {
   const controller = join(directory, "controller");
   const { input } = state;
@@ -14,6 +15,7 @@ export function controllerServices(
   const port = input.ports.controller;
   const forward = (target: string, port: number) => ({
     image: input.openshellClientImage,
+    user: `${String(process.getuid?.() ?? 1000)}:${String(process.getgid?.() ?? 1000)}`,
     init: true,
     read_only: true,
     cap_drop: ["ALL"],
@@ -28,7 +30,10 @@ export function controllerServices(
     volumes: [`${join(controller, "config")}:/controller/config:ro`],
     command: [
       "forward",
-      "start",
+      "service",
+      "--target-port",
+      String(port),
+      "--local",
       `0.0.0.0:${String(port)}`,
       target,
       "--gateway",
@@ -41,7 +46,9 @@ export function controllerServices(
   return {
     controller: {
       image: openshellGatewayImage,
-      user: "0:0",
+      user: `${String(process.getuid?.() ?? 1000)}:${String(process.getgid?.() ?? 1000)}`,
+      // Desktop exposes a root-group socket; Linux Engine uses the host socket's group.
+      group_add: [...new Set(["0", String(socketGroup)])],
       networks: {
         default: { aliases: ["controller.clawscarf.internal"] },
         runtime: { ipv4_address: address },

@@ -6,9 +6,11 @@ The CLI manages its saved configuration; users do not write installation JSON or
 run separate validation, preview and apply commands.
 
 This alpha runs on macOS arm64 and Linux arm64/x86-64, including Windows through
-WSL2. Use Docker Desktop on macOS, Docker Engine with Compose on Linux, or Docker
+WSL2 (experimental). Use Docker Desktop on macOS, Docker Engine with Compose on Linux, or Docker
 Desktop with WSL2 integration on Windows. Install Node 24.16+ (24.x) or 26.1+ and
 the CLI inside WSL2, and keep the installation directory in its Linux filesystem.
+Use Docker 28+; Linux also requires glibc 2.28+ and the normal local Docker socket.
+OpenShell’s mandatory filesystem protection must be available in the Docker host kernel.
 Native Windows and Intel Mac are unsupported: pinned OpenShell supplies no Intel Mac tool.
 Install the published CLI with `npm install -g @clawscarf/cli@next`. Its bundled
 [recipes](../../recipes/README.md) download pinned runtime tools and images.

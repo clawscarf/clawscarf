@@ -34,9 +34,17 @@ await test("controller authority stays outside the application and forwarding pu
     state,
     "/private/team",
     "172.30.0.254",
+    undefined,
+    undefined,
+    987,
   );
   const { controller, application, widgets } = configuration.services;
   assert.equal(controller.networks.runtime.ipv4_address, "172.30.0.254");
+  assert.deepEqual(controller.group_add, ["0", "987"]);
+  assert.equal(
+    controller.user,
+    `${String(process.getuid?.() ?? 1000)}:${String(process.getgid?.() ?? 1000)}`,
+  );
   assert.equal("execution" in configuration.services, false);
   assert.ok(
     controller.volumes.includes("/var/run/docker.sock:/var/run/docker.sock"),

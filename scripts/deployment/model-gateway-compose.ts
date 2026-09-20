@@ -29,6 +29,8 @@ export function modelGatewayServices(directory: string, state: LocalState) {
     },
     models: {
       image: input.image,
+      user: `${String(process.getuid?.() ?? 1000)}:${String(process.getgid?.() ?? 1000)}`,
+      environment: { HOME: "/tmp" },
       networks: {
         default: {},
         runtime: { aliases: ["models.clawscarf.internal"] },

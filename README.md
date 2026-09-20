@@ -54,7 +54,7 @@ already made inside the runtime. Different untrusted teams need separate install
 
 Requires **macOS Apple Silicon or Linux ARM64/x86-64 (including Windows through WSL2)**,
 Docker with Compose and Node 24.16+ (24.x) or 26.1+. On Windows, install and run the CLI
-inside WSL2 with Docker Desktop WSL integration enabled. Native Windows and Intel Mac
+inside WSL2 with Docker Desktop WSL integration enabled (experimental). Native Windows and Intel Mac
 are unsupported; pinned OpenShell does not provide an Intel Mac executable.
 
 ```sh

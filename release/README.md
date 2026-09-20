@@ -35,9 +35,12 @@ published, clean-machine release**. Definitions belong in the tracked directorie
 above. Compiled images, binaries and test artifacts are not source definitions.
 
 Published candidates include macOS arm64 and Linux arm64/x86-64 tools, with Linux
-container images for both architectures. Windows uses the Linux CLI inside WSL2;
+container images for both architectures. Windows uses the Linux CLI inside WSL2
+(experimental);
 Docker Desktop must expose its Linux engine to that distribution. Intel Mac is blocked
-by the pinned upstream OpenShell release lacking a Darwin x86-64 executable. Setup validates the host,
+by the pinned upstream OpenShell release lacking a Darwin x86-64 executable.
+See the [upstream support matrix](https://docs.nvidia.com/openshell/reference/support-matrix)
+for host requirements. Setup validates the host,
 tools and ports; it pulls registry images by digest and downloads missing runtime tools
 when their definition supplies an HTTPS URL and SHA-256. It cannot recover a missing
 local development image ID. See the

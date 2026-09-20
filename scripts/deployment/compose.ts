@@ -18,6 +18,7 @@ export function composeConfiguration(
   controllerAddress: string,
   browserAddress?: string,
   browserMachine?: { addresses: BrowserMachineAddresses; fingerprint: string },
+  controllerSocketGroup = 0,
 ) {
   const { input, ownerId } = state;
   const names = resourceNames(state);
@@ -37,7 +38,12 @@ export function composeConfiguration(
   const configuration = {
     name: names.project,
     services: {
-      ...controllerServices(directory, state, controllerAddress),
+      ...controllerServices(
+        directory,
+        state,
+        controllerAddress,
+        controllerSocketGroup,
+      ),
       ...modelGatewayServices(directory, state),
       ...(input.browser && browserAddress && browserMachine
         ? browserNodeServices(state, directory, browserAddress, browserMachine)

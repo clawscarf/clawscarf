@@ -169,6 +169,27 @@ await test(
         ),
         /models reachable/,
       );
+      await new Promise<void>((resolve, reject) => {
+        const socket = new WebSocket("ws://127.0.0.1:18402");
+        const timer = setTimeout(() => {
+          socket.close();
+          reject(new Error("Native WebSocket challenge timed out."));
+        }, 10_000);
+        socket.onmessage = (message) => {
+          clearTimeout(timer);
+          socket.close();
+          if (
+            typeof message.data === "string" &&
+            message.data.includes('"event":"connect.challenge"')
+          )
+            resolve();
+          else reject(new Error("Missing native WebSocket challenge."));
+        };
+        socket.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error("Native WebSocket forwarding failed."));
+        };
+      });
       const response = await fetch("http://127.0.0.1:18405/_clawscarf/health", {
         redirect: "manual",
       });

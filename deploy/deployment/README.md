@@ -281,10 +281,12 @@ the controller, forwarding and companion service lifetimes. Closing the terminal
 does not stop them; use `clawscarf stop`. Stop retains owned volumes. No ClawScarf
 host daemon, control socket or launchd job is installed.
 
-The controller alone has the Docker socket and server signing key. Its state
-directory is mounted at the identical absolute path because Docker resolves the
-extracted supervisor path on the host. Forwarders use the pinned Linux CLI and
-OpenSSH, read-only client credentials and loopback-only published ports. They have
+The controller alone has the Docker socket and server signing key. It runs as the
+installation owner with socket-group access so retained files remain removable
+without sudo. Bundled LiteLLM also runs as that owner to read its private mounted files.
+The controller state directory is mounted at the identical absolute path because Docker resolves the
+extracted supervisor path on the host. Forwarders use the pinned Linux CLI’s native gRPC service forwarding,
+read-only client credentials and loopback-only published ports. They have
 no Docker socket or server signing key.
 
 Startup checks native and Access health. Administrator setup remains pending until

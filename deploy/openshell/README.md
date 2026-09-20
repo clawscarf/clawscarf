@@ -98,7 +98,8 @@ These listeners bind host loopback. The first reaches OpenClaw; the second reach
 its separate widget sandbox. Each command remains running for the lifetime of its
 forward. Stop the process to close its listener; restart forwards after replacing
 compute. They neither initialize state nor replace session authorization.
-The installation CLI runs forwards as Compose services. The companion reaches
+The installation CLI runs native gRPC service forwards as Compose services under
+the installation owner, avoiding SSH’s requirement for a matching container passwd entry. The companion reaches
 `application` and `widgets` through private Compose DNS. The OpenShell controller
 uses an explicit address on the owned runtime bridge for sandbox callbacks; its
 forwarders use the private `controller.clawscarf.internal` name. Bundled LiteLLM
