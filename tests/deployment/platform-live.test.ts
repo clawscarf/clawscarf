@@ -7,7 +7,7 @@ import { z } from "zod";
 import pins from "../../release/components.json" with { type: "json" };
 import { prepareLocal } from "../../scripts/deployment/prepare.js";
 import { launchLocal, stopLocal } from "../../scripts/deployment/launch.js";
-import { resourceNames } from "../../scripts/deployment/state.js";
+import { resourceNames, readState } from "../../scripts/deployment/state.js";
 import { run } from "../../scripts/deployment/process.js";
 import {
   liteLlmImage,
@@ -202,6 +202,31 @@ await test(
         ),
         /retained/,
       );
+    } catch (error) {
+      if (allocated) {
+        const state = await readState(stateDirectory);
+        const ids = (
+          await run("docker", [
+            "ps",
+            "-aq",
+            "--filter",
+            `label=com.docker.compose.project=${resourceNames(state).project}`,
+          ])
+        )
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (ids.length)
+          console.error(
+            await run("docker", [
+              "inspect",
+              "--format",
+              "{{json .Name}} {{json .State.Status}} {{json .State.ExitCode}} {{json .State.Error}}",
+              ...ids,
+            ]),
+          );
+      }
+      throw error;
     } finally {
       if (allocated) await deleteInstallation(stateDirectory);
       await rm(directory, { recursive: true, force: true });
