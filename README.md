@@ -1,4 +1,6 @@
-# ClawScarf 🧣
+<a href="https://clawscarf.com"><img src="https://clawscarf.com/clawscarf-mark.svg" alt="ClawScarf logo" width="112" height="112" /></a>
+
+# ClawScarf
 
 ### OpenClaw, ready for your team.
 
