@@ -90,6 +90,9 @@ importers:
       '@types/proper-lockfile':
         specifier: 4.1.4
         version: 4.1.4
+      '@types/semver':
+        specifier: 7.8.0
+        version: 7.8.0
       '@types/ws':
         specifier: 8.18.1
         version: 8.18.1
@@ -111,6 +114,9 @@ importers:
       prettier:
         specifier: 3.9.6
         version: 3.9.6
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
       tsx:
         specifier: 4.20.6
         version: 4.20.6
@@ -470,6 +476,9 @@ packages:
 
   '@types/retry@0.12.5':
     resolution: {integrity: sha512-3xSjTp3v03X/lSQLkczaN9UIEwJMoMCA1+Nb5HfbJEQWogdeQIyVtTvxPXDQjZ5zws8rFQfVfRdz03ARihPJgw==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -1843,6 +1852,8 @@ snapshots:
       '@types/retry': 0.12.5
 
   '@types/retry@0.12.5': {}
+
+  '@types/semver@7.8.0': {}
 
   '@types/ws@8.18.1':
     dependencies:

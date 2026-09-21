@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
+    outputs:
+      source: ${{ steps.source.outputs.sha }}
+      version: ${{ steps.publish.outputs.version }}
     permissions:
       contents: write
       actions: read
@@ -47,6 +50,7 @@ jobs:
           node-version: 24.19.0
           registry-url: https://registry.npmjs.org
       - name: Publish the previously built artifacts
+        id: publish
         working-directory: candidate
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
@@ -56,6 +60,7 @@ jobs:
           version="$(jq -er '.version' clawscarf-release.json)"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]
           test "$(jq -r .sourceRevision clawscarf-release.json)" = "$SOURCE_SHA"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           tag="v$version"
           channel=latest
           prerelease=()
@@ -72,3 +77,55 @@ jobs:
           fi
           # npm trusted publishing must be configured for this workflow and environment.
           npm publish "clawscarf-cli-$version.tgz" --access public --tag "$channel" --provenance
+  advance-runtime:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ needs.publish.outputs.source }}
+      VERSION: ${{ needs.publish.outputs.version }}
+    steps:
+      - name: Check out current main for the runtime selection update
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify the published runtime
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/published-runtime"
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" \
+            --pattern clawscarf-release.json --pattern SHA256SUMS \
+            --dir "$RUNNER_TEMP/published-runtime"
+          cd "$RUNNER_TEMP/published-runtime"
+          awk '$2 == "clawscarf-release.json" { print }' SHA256SUMS > selected.sha256
+          test "$(wc -l < selected.sha256)" -eq 1
+          sha256sum -c selected.sha256
+          test "$(jq -r .version clawscarf-release.json)" = "$VERSION"
+          test "$(jq -r .sourceRevision clawscarf-release.json)" = "$SOURCE_SHA"
+      - name: Advance the checkout's pinned runtime
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          git show "$SOURCE_SHA:runtime/current.json" > "$RUNNER_TEMP/expected-runtime.json"
+          node --import tsx scripts/release/advance-runtime.ts \
+            --current runtime/current.json \
+            --expected "$RUNNER_TEMP/expected-runtime.json" \
+            --candidate "$RUNNER_TEMP/published-runtime/clawscarf-release.json"
+          if git diff --quiet -- runtime/current.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add runtime/current.json
+          git commit -m "Select runtime $VERSION"
+          # A concurrent main update must fail visibly; never force-push or overwrite it.
+          git push origin HEAD:main

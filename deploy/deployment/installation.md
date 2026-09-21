@@ -23,15 +23,14 @@ Alternatively, use `npm install -g @clawscarf/cli@next` with your own Node 24.16
 (24.x) or 26.1+. Both distributions run the same CLI. Its bundled
 [recipes](../../recipes/README.md) download pinned runtime tools and images.
 Contributors can instead [link the development command](../../scripts/README.md#development-command)
-and build the development runtime.
+which uses the checkout’s [pinned published runtime](../../release/README.md#published-and-development-use).
 For a new installation, the CLI checks the host platform, Docker and Compose before
 asking for setup answers or cloud sign-in. Selected listener ports are checked before saving a new installation,
 then checked again during preparation and startup.
 
 New installations retain their runtime definition and tools in their own `runtime/`
 directory. Published definitions supply checksummed HTTPS tool downloads; configure
-fetches missing tools before cloud sign-in. Development definitions require prepared
-local tools. Selected pack files are retained under `state/pack-sources/`.
+fetches missing tools before cloud sign-in. Custom definitions without download URLs require prepared local tools. Selected pack files are retained under `state/pack-sources/`.
 Missing registry images are downloaded by their pinned digest before sign-in, with an
 image list and layer progress on stderr; the first setup can take several minutes.
 Already-cached images are reused. Local development image IDs cannot be downloaded:
@@ -109,7 +108,7 @@ The runtime selection, OpenShell protection and authenticated entry are fixed.
 recipe or a path to a custom recipe JSON. Without it the menu lists all bundled
 recipes. Sources live in [recipes](../../recipes/README.md); the CLI package includes
 them, the model catalog and pack files. Each recipe points to its fixed runtime
-under [runtime/releases](../../runtime/releases/0.1.0-dev.json). There is no public
+in [runtime/current.json](../../runtime/current.json). There is no public
 `--release` override. Runtime images/tools are separate [release artifacts](../../release/README.md).
 Recipe defaults are copied once; changing a recipe never changes an existing server.
 

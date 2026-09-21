@@ -23,6 +23,6 @@
     "provider": "openai",
     "reasoning": "medium"
   },
-  "runtime": "../../runtime/releases/0.1.0-dev.json",
-  "version": "0.1.2"
+  "runtime": "../../runtime/current.json",
+  "version": "0.1.3"
 }

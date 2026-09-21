@@ -2,11 +2,11 @@
 
 These have separate responsibilities:
 
-| Definition      | Owns                                                                                             | Location                                               |
-| --------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Runtime release | Exact software images, OpenShell executables, checksums and supported platforms                  | [runtime/releases](../runtime/releases/0.1.0-dev.json) |
-| Recipe          | A fixed runtime reference plus editable model, reasoning, resource, capability and pack defaults | [recipes](../recipes/README.md)                        |
-| Pack            | Native agent, skill and workflow files with declared prerequisites                               | [packs](../packs/README.md)                            |
+| Definition      | Owns                                                                                             | Location                                        |
+| --------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| Runtime release | Exact software images, OpenShell executables, checksums and supported platforms                  | [runtime/current.json](../runtime/current.json) |
+| Recipe          | A fixed runtime reference plus editable model, reasoning, resource, capability and pack defaults | [recipes](../recipes/README.md)                 |
+| Pack            | Native agent, skill and workflow files with declared prerequisites                               | [packs](../packs/README.md)                     |
 
 Several recipes can use the same runtime. A runtime contains no recipes, model
 catalog or pack selections. Changing a recipe does not require rebuilding its runtime.
@@ -20,10 +20,23 @@ Use the [installation guide](../deploy/deployment/installation.md) for published
 CLI installation, platform requirements and runtime downloads. Use the
 [development command](../scripts/README.md#development-command) for this checkout.
 
-The tracked [development runtime](../runtime/releases/0.1.0-dev.json) is an input
-for a prepared development environment, not a clean-machine release. Its exact
-images and executable paths are data in that definition. Packaging resolves those
-inputs to immutable candidate artifacts; runtime startup never selects latest.
+The tracked [current runtime](../runtime/current.json) selects a published release
+by exact image digests and downloadable tool checksums. The development command
+reads it from the checkout; it does not query a remote latest version or build images.
+New installations retain their own copy. Updating this file or the CLI never changes
+an existing installation's saved selection.
+
+After publication, the workflow copies the verified release manifest into this file
+and commits it to `main`. Pulling that commit updates the development command's
+selection. [Promotion](../scripts/release/advance-runtime.ts) requires a newer version
+and the same selection the candidate was built against; an identical repeat is a no-op.
+A changed pin or concurrent Git update fails visibly instead of overwriting another
+selection. The promotion job can be retried independently of publication. Repository
+rules must permit the release workflow's bot to push this commit to `main`.
+
+For experiments with locally built images/tools, create a separate runtime bundle
+and custom recipe using [runtime assembly](#assemble-runtime-artifacts). The bundled
+recipe uses the same published artifact format in development and installed CLIs.
 
 ## Publishing structure
 
@@ -84,9 +97,10 @@ owns source identity and reconstruction. Candidate assembly packages
 [openclaw-source.json and openclaw-patches.tgz](../scripts/release/candidate.ts)
 with checksums; each runtime archive includes both. The runtime definition's `sourceRevision`
 identifies the ClawScarf commit that owns those inputs.
-The source recipe pins the development
-runtime. Packaging resolves that same runtime to the candidate's immutable definition;
-it does not make recipes select latest. Published definitions must not be overwritten.
+Recipes reference the current manifest within their checkout or installed package.
+Candidate packaging replaces that file only in the staged package with the newly
+built manifest. It leaves source files untouched; publication advances the checkout
+as described above. Published packages and release assets remain immutable.
 
 The `release-candidate` Actions artifact is the reviewable output. Download it and test
 a fresh supported installation, administrator login, real inference and stop/start
@@ -99,6 +113,9 @@ build run from `main`. It checks the source commit and artifact checksums, creat
 GitHub Release and publishes the already-built npm tarball. It never rebuilds images
 or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Repeating
 a GitHub upload is allowed only when the existing checksums match exactly.
+A separate dependent job then advances the checkout's current runtime selection;
+a failure there leaves the published release available and can be retried without
+republishing npm or rebuilding artifacts.
 
 Repository setup:
 

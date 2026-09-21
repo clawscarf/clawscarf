@@ -1,5 +1,4 @@
-import { releaseSchema, releaseTools } from "./definition.js";
-import { recipeSchema } from "../installation/recipes/definition.js";
+import { releaseSchema, assertPublishedRuntime } from "./definition.js";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -8,7 +7,6 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  readdir,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -33,7 +31,7 @@ const assets = [
   "release/README.md",
   "recipes",
   "packs",
-  "runtime/releases",
+  "runtime/current.json",
   "deploy/models/catalog.json",
   "deploy/openshell/policy.yaml",
   "deploy/execution/browser/seccomp.json",
@@ -104,37 +102,11 @@ export async function packageOperator(
         )
       : undefined;
     if (runtime) {
-      if (
-        JSON.stringify(runtime.images).includes('"sha256:') ||
-        runtime.platforms.some((platform) => {
-          const tools = releaseTools(runtime, platform);
-          return !tools.cli.url || !tools.gateway.url;
-        })
-      )
-        throw Error(
-          "Published runtimes require registry digests and downloadable tools.",
-        );
-      await rm(join(stage, "runtime/releases"), { recursive: true });
-      await mkdir(join(stage, "runtime/releases"));
+      assertPublishedRuntime(runtime);
       await writeFile(
-        join(stage, "runtime/releases", `${runtime.version}.json`),
+        join(stage, "runtime/current.json"),
         JSON.stringify(runtime, null, 2) + "\n",
       );
-      for (const entry of await readdir(join(stage, "recipes"), {
-        withFileTypes: true,
-      })) {
-        if (!entry.isDirectory()) continue;
-        const file = join(stage, "recipes", entry.name, "recipe.json");
-        const recipe = recipeSchema.parse(
-          JSON.parse(await readFile(file, "utf8")),
-        );
-        if (recipe.runtime !== "../../runtime/releases/0.1.0-dev.json")
-          throw Error(
-            `Recipe ${recipe.id} does not select the development runtime being released.`,
-          );
-        recipe.runtime = `../../runtime/releases/${runtime.version}.json`;
-        await writeFile(file, JSON.stringify(recipe, null, 2) + "\n");
-      }
     }
     // Remote helpers are shipped as data, executed against their runtime SDK.
     const manifest = await writeRuntimePackage(

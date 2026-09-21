@@ -2053,10 +2053,7 @@ await test(
       cloudUrl: "https://cloud-staging.clawscarf.com",
     });
     assert.ok(ui.questions.includes("Starting point"));
-    assert.equal(
-      result.config.releaseFile,
-      resolve("runtime/releases/0.1.0-dev.json"),
-    );
+    assert.equal(result.config.releaseFile, resolve("runtime/current.json"));
     assert.equal(result.config.connections.mode, "hosted");
     assert.equal(
       result.config.connections.cloudUrl,

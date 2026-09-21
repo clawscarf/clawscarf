@@ -32,6 +32,6 @@ node scripts/clawscarf.js configure --directory /absolute/new-team
 
 Keep installation data outside the extracted package. A development runtime that
 references local image IDs needs those images prepared separately; see
-[development releases](README.md#published-and-development-use).
+[custom runtime assembly](README.md#assemble-runtime-artifacts).
 The optional pack operator also needs its [Python dependencies](../packs/README.md#requirements-and-bindings).
 Required [notices](../THIRD_PARTY_NOTICES.md) and dependency licenses accompany the payload.

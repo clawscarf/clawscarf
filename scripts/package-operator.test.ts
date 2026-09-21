@@ -59,7 +59,7 @@ await test(
     assert.ok(listing.includes("package/scripts/telemetry.js"));
     assert.ok(listing.includes("package/recipes/team-server/recipe.json"));
     assert.ok(listing.includes("package/packs/research-team/pack.json"));
-    assert.ok(listing.includes("package/runtime/releases/0.1.0-dev.json"));
+    assert.ok(listing.includes("package/runtime/current.json"));
     assert.ok(!listing.includes("package/runtime/tools/"));
     assert.ok(listing.includes("package/runtime/model-contract.js"));
     assert.ok(listing.includes("package/pnpm-lock.yaml"));
@@ -219,9 +219,7 @@ await test(
     t.after(() => rm(directory, { recursive: true, force: true }));
     const { releaseSchema } = await import("./release/definition.js");
     const runtime = releaseSchema.parse(
-      JSON.parse(
-        await readFile(join(root, "runtime/releases/0.1.0-dev.json"), "utf8"),
-      ),
+      JSON.parse(await readFile(join(root, "runtime/current.json"), "utf8")),
     );
     runtime.version = "0.1.0-test.1";
     // Fixture registry references test packaging, not image availability or deployment.
@@ -263,13 +261,10 @@ await test(
       { cwd: tmpdir() },
     );
     assert.match(stdout, /team-server/);
-    assert.match(stdout, /0\.1\.0-test\.1\.json/);
+    assert.match(stdout, /runtime\/current\.json/);
     assert.ok(!stdout.includes(root));
     assert.equal(
-      await readFile(
-        join(installed, "runtime/releases/0.1.0-test.1.json"),
-        "utf8",
-      ),
+      await readFile(join(installed, "runtime/current.json"), "utf8"),
       JSON.stringify(runtime, null, 2) + "\n",
     );
   },

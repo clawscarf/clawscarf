@@ -13,6 +13,7 @@ import {
 } from "./installation/recipes/catalog.js";
 import { postgresImage } from "./deployment/images.js";
 import teamServer from "../recipes/team-server/recipe.json" with { type: "json" };
+import currentRuntime from "../runtime/current.json" with { type: "json" };
 
 await test("runtime artifacts relocate independently of recipes and reject altered tools", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-release-"));
@@ -103,8 +104,9 @@ await test("bundled recipes pin a runtime and validate their editable defaults",
   assert.equal(
     releaseSchema.parse(JSON.parse(await readFile(recipe.runtime, "utf8")))
       .version,
-    "0.1.0-dev",
+    currentRuntime.version,
   );
+  assert.equal(recipe.runtime, resolve("runtime/current.json"));
 });
 
 await test("release browser capability requires its complete browser and relay image set", () => {

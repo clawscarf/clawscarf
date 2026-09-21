@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import { acquireRuntimeTools, retainRuntime } from "./installation/runtime.js";
 import { fingerprint, verifyReleaseTool } from "./installation/files.js";
-import { releaseSchema } from "./release/definition.js";
+import { releaseSchema, hostPlatformSchema } from "./release/definition.js";
 
 await test("retained runtime survives removal of its package; downloads are verified before use", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "clawscarf-download-"));
@@ -13,10 +13,11 @@ await test("retained runtime survives removal of its package; downloads are veri
   const executable = "#!/bin/sh\nexit 0\n";
   const source = join(root, "release.json");
   const release = releaseSchema.parse(
-    JSON.parse(
-      await readFile(resolve("runtime/releases/0.1.0-dev.json"), "utf8"),
-    ),
+    JSON.parse(await readFile(resolve("runtime/current.json"), "utf8")),
   );
+  release.platforms = [
+    hostPlatformSchema.parse(`${process.platform}-${process.arch}`),
+  ];
   for (const name of ["cli", "gateway"] as const)
     release.tools.openshell[name] = {
       file: `absent-${name}`,
@@ -28,6 +29,11 @@ await test("retained runtime survives removal of its package; downloads are veri
   const retained = resolve(
     installation,
     await retainRuntime(source, installation),
+  );
+  await writeFile(source, JSON.stringify({ ...release, version: "99.0.0" }));
+  assert.equal(
+    releaseSchema.parse(JSON.parse(await readFile(retained, "utf8"))).version,
+    release.version,
   );
   await rm(source);
   let calls = 0;

@@ -63,6 +63,20 @@ export const releaseSchema = z.strictObject({
 });
 export type Release = z.infer<typeof releaseSchema>;
 
+/** Published manifests must work without checkout-local images or executables. */
+export function assertPublishedRuntime(runtime: Release) {
+  if (
+    JSON.stringify(runtime.images).includes('"sha256:') ||
+    runtime.platforms.some((platform) => {
+      const tools = releaseTools(runtime, platform);
+      return !tools.cli.url || !tools.gateway.url;
+    })
+  )
+    throw Error(
+      "Published runtimes require registry digests and downloadable tools.",
+    );
+}
+
 /** Single-platform development bundles and multi-platform published bundles share resolution. */
 export function releaseTools(
   release: Release,

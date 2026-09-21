@@ -56,7 +56,7 @@ modules collect feature-specific answers; shared prompts render the revisitable 
 noninteractive flags. It calls the shared validation, preparation and change operators;
 there is no separate provisioning engine.
 Recipes and packs are CLI assets from [recipes](../recipes/README.md) and [packs](../packs/README.md).
-Each recipe pins a runtime definition in [runtime/releases](../runtime/releases/0.1.0-dev.json).
+Each recipe pins a runtime definition in [runtime/current.json](../runtime/current.json).
 Run `clawscarf configure` after linking the development command below.
 
 [CLI telemetry](telemetry.ts) owns the PostHog adapter, local random identity and

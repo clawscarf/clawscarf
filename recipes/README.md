@@ -5,13 +5,15 @@ Recipes are bundled with the CLI. Each folder contains a [recipe.json](team-serv
 
 ```text
 recipes/team-server/recipe.json
-runtime/releases/0.1.0-dev.json
+runtime/current.json
 packs/research-team/pack.json
 ```
 
 Each recipe has an ID and a version. Accepted installations retain that provenance
 alongside their actual settings; a CLI update never reapplies new defaults. Bump the
-recipe version when its defaults, pack selections or runtime pin change.
+recipe version when its defaults, pack selections or explicit runtime reference change.
+The resolved runtime release is retained separately; automatic advancement of the
+[current selection](../release/README.md#published-and-development-use) does not change recipe defaults.
 
 A recipe's `runtime` points to an exact runtime definition, relative to the recipe
 file. Runtime images and tools are fixed; its other fields are defaults that users

@@ -6,3 +6,5 @@ pnpm-lock.yaml
 **/src/generated
 
 **/generated/**
+# Copied from the checksummed release artifact by the publication workflow.
+runtime/current.json
