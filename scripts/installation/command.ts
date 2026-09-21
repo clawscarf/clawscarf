@@ -159,7 +159,7 @@ export function installationCommand(observation?: CommandObservation) {
           );
           output(
             result,
-            "Installation deleted from Docker. You can now remove its installation folder.",
+            "Installation deleted from Docker. The local folder still contains configuration and credentials. To install again, move or remove that folder, or configure a new --directory.",
           );
           return;
         }

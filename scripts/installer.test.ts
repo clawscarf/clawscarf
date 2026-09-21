@@ -24,7 +24,10 @@ import {
   type InstallerPrompts,
   type Choice,
 } from "./installation/installer/prompts.js";
-import { installFromAnswers } from "./installation/installer/run.js";
+import {
+  installFromAnswers,
+  runConfiguration,
+} from "./installation/installer/run.js";
 import { installationSchema } from "./installation/configuration.js";
 import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { fingerprint, readJson } from "./installation/files.js";
@@ -1257,6 +1260,44 @@ await test(
     assert.deepEqual(result.config, original);
     assert.deepEqual(result.inputs.files, inputs);
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "configure after deletion explains recovery without reusing retained settings",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const draft = await collectInstallation(new Answers(f.answers), f);
+    await mkdir(f.directory, { mode: 0o700 });
+    const state = join(f.directory, "state");
+    await mkdir(state, { mode: 0o700 });
+    const settings = JSON.stringify({ ...draft.config, stateDirectory: state });
+    await writeFile(join(f.directory, "installation.json"), settings);
+    await writeFile(join(state, "settings.json"), settings);
+    // Deletion removes prepared.json before touching Docker, retaining settings
+    // both on success and on failure so cleanup can be retried safely.
+    await assert.rejects(
+      runConfiguration({ directory: f.directory, nonInteractive: true }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error && "code" in error);
+        assert.equal(error.code, "invalid_configuration");
+        assert.match(
+          error.message,
+          /If deletion failed, finish it with clawscarf stop/,
+        );
+        assert.match(
+          error.message,
+          /After successful deletion, move or remove/,
+        );
+        return true;
+      },
+    );
+    assert.equal(
+      await readFile(join(state, "settings.json"), "utf8"),
+      settings,
+    );
+    assert.deepEqual(await readdir(state), ["settings.json"]);
   },
 );
 

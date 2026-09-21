@@ -284,6 +284,22 @@ export async function runConfiguration(
           throw error;
       }
     }
+    if (existing && state) {
+      try {
+        await access(join(state, "prepared.json"));
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        ))
+          throw error;
+        throw new InstallationError(
+          "invalid_configuration",
+          `This folder retains settings but the installation is no longer prepared. If deletion failed, finish it with clawscarf stop --directory ${quote(options.directory ?? defaultInstallationDirectory)} --delete. After successful deletion, move or remove the installation folder before configuring it again, or choose a new --directory.`,
+        );
+      }
+    }
     observeMode?.(existing ? "edit" : "new");
     let result =
       existing && state

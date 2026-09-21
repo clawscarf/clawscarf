@@ -339,7 +339,9 @@ clawscarf stop --directory /absolute/my-team --delete \
 The confirmation must exactly match the absolute installation directory. The command removes
 only that installation's resources, never prunes Docker or removes another container to free
 a volume. Images, cloud accounts and the local folder remain. After successful deletion,
-you can remove the folder, which still holds private configuration and credentials.
+move or remove the folder before configuring the same path again, or choose a new
+`--directory`. The retained folder still holds private configuration and credentials;
+it cannot be edited or restarted as an installed server after deletion.
 A failed deletion can be retried; invalid ownership records block it. Startup settings need
 not be valid for deletion.
 
