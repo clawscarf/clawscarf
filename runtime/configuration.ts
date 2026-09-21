@@ -78,7 +78,7 @@ export function initialConfiguration(
           member: {
             agents: "*",
             scopes: ["operator.read", "operator.write", "operator.talk"],
-            sessions: { others: "none" },
+            sessions: { others: "view" },
             sandbox: "inherit",
           },
         },

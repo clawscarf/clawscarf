@@ -22,7 +22,7 @@ The preset is adapted from RawClaw's
 [`runtime/openclaw/defaults.py`](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/runtime/openclaw/defaults.py).
 It retains explicit initial identity, trusted ingress, disabled terminal/community
 invite/marketplace/external session catalogs, restricted Codex dynamic tools, separate widget
-origin, self-only sessions, disabled elevated execution and Chrome's sandbox.
+origin, disabled elevated execution and Chrome's sandbox.
 The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. The preset sets
 `agents.defaults.sandbox.mode: off`, member `sandbox: inherit` and
@@ -37,6 +37,14 @@ Connections starts disabled in the native preset; selecting that capability enab
 its plugin. Native administrators can deliberately change application settings.
 The preset sets `gateway.cliAgents.enabled: false` to disable catalog-backed CLI
 agents while retaining the native Codex agent plugin.
+
+Members use `gateway.roles.definitions.member.sessions.others: "view"`: they can
+read other people's ordinary sessions, while explicit native session membership
+permits participation. Their own sessions remain writable; native draft and
+incognito restrictions still apply. Home keeps OpenClaw's shared main-session
+destination: if someone else owns it, a member can read it and either create their
+own session or be explicitly added to participate. This preset does not create
+private Home sessions or grant team-wide write access.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
 Use it for the canonical Gateway command and operator CLI execution. It sets the
