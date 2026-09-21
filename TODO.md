@@ -37,129 +37,204 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## OpenClaw curation
 
-The [distribution guide](runtime/openclaw/README.md) owns general principles and
-patch maintenance. Requirements below are unimplemented or unqualified; establish
-retained administration before removing its old entry points. These tasks do not
-authorize release publication or upstream PRs.
+This scope selects the shipped packages and removes the named UI features below.
+Keep existing native plugin management, custom skills and MCP. The
+[distribution guide](runtime/openclaw/README.md) owns patch maintenance and the
+[image guide](deploy/images/README.md) owns packaging. Broader redesigns are separate
+[deferred decisions](#deferred-product-decisions). No release publication or upstream PRs
+are authorized by this checklist.
 
-- [ ] **Configuration:** Set `gateway.cliAgents.enabled: false` in the preset;
-      verify picker suppression and retained managed model routes.
-- [ ] **Documentation:** Expand [native configuration](runtime/README.md) into a
-      complete map of configured settings, purpose and source owners. Distinguish
-      initial defaults, installation-dependent settings, administrator edits and
-      restart/reapplication behavior; link exact values rather than duplicating them.
-- [ ] **Selection:** Inventory the installed image's plugins and skills by exact
-      ID/path, origin, purpose, execution location and required binaries/services.
-      Select a small useful team-runtime set; exclude personal-host/hardware-specific,
-      migration/setup-only and otherwise unselected capabilities. Missing runtime
-      binaries disqualify a shipped capability unless explicitly selected and packaged.
-      Distinguish installed, enabled and ready; UI counts are not the selection contract.
-- [ ] **UI naming:** Use consistent display names, `People` and `Connections`, in
-      plugin manifests, registration, settings and navigation; preserve stable plugin
-      IDs and Account functionality. Update affected tests and component documentation.
-- [ ] **Patch:** Add a native `agents.create` form followed by the existing editor,
-      workspace and tool/skill controls before removing or narrowing Custodian and
-      its setup skills. Preserve native authorization; do not create a new agent store.
-- [ ] **Patch:** Provide installed-only plugin inspect/enable/disable/reload/update/
-      uninstall and an explicit pinned npm package/version form using native
-      `plugins.install`, without discovery or catalog fallback. Retain selected plugin
-      settings and the CLI local-artifact path; web users cannot bypass local-client checks.
-- [ ] **Patch:** Preserve native source trust, capability consent, install policy,
-      integrity and transactional publication in the curated install/update paths.
-      Keep explicit source/version choices, reject ambiguous plugin-ID collisions and
-      avoid update-all catalog fetches. Browser archive upload needs a separate contract.
-- [ ] **Verification:** Preserve custom skill authoring/upload/workspace files,
-      agent assignment and eligibility feedback, plus scoped stdio/remote MCP,
-      enablement/tool controls and credentials/OAuth. Test actual dependency fetches
-      and blocked destinations without widening egress; a new package registry is not required.
-- [ ] **Patch completion:** Remove remaining ClawHub promotion/setup/publishing
-      references and independent marketplaces in retained harnesses, including
-      `codex_plugins`. Reuse the existing native patch; retain required attribution.
-      For every curated feature, update shipped docs/help, tool descriptions, prompts
-      and skill instructions alongside its removal; verify no unsupported setup advice.
-- [ ] **Patch + configuration:** Make core GitHub integration optional and disable it
-      in the base: settings/account linking, account/session/tool APIs, authenticated
-      previews, credential injection, profile synchronization and background OAuth.
-      Choose a core switch or plugin seam;
-      preserve ordinary links and deliberate Git CLI use, without automatic authenticated previews.
-- [ ] **Patch:** Remove Cloud Workers navigation, settings and provisioning/setup
-      journeys; disable their RPC/HTTP/CLI/tool and background provisioning paths before
-      effects. Preserve the OpenShell team runtime and required browser-node operations.
-- [ ] **Patch:** Remove personal-device onboarding and native-client settings from the
-      base, including plugin, core setup RPC and join-HTTP entry points. Preserve required
-      browser-node bootstrap-token/pairing operations and review each retained flow's scopes.
-- [ ] **Channels:** Review messaging channels for retention rather than removing them
-      as a category. Select useful channels whose dependencies work in the team runtime;
-      qualify sender identity, admission, native authority and revocation before enabling
-      them. Retain Channels/Communications and setup for selected channels; assess Talk
-      separately against available audio/runtime support. Connections grants are separate.
-- [ ] **Patch:** Keep managed LiteLLM model selection while removing independent provider
-      onboarding and personal direct-provider accounts from Profile, model setup and backends.
-- [ ] **Patch:** Curate everyday UI: retain chat/sessions/search/uploads/files/artifacts,
-      agent/model selection, identity and relevant appearance/notification preferences.
-      Remove CLI-session controls, Gateway URL/token switching and unrelated About/Apps/
+### Plugins
+
+Retain these 22 plugins without automatically enabling optional capabilities:
+`clawscarf-access`, `clawscarf-connections`, `openai`, `codex`, `litellm`, `browser`,
+`file-transfer`, `document-extract`, `web-readability`, `oc-path`, `memory-core`,
+`active-memory`, `memory-wiki`, `lobster`, `llm-task`, `workboard`, `policy`,
+`telegram`, `a2a`, `reef`, `imap` and `webhooks`.
+Retain the browser-node registration, Lobster's embedded runtime and native PDF
+extraction's bundled `clawpdf`. Retaining model runtime support does not retain
+personal-provider account onboarding.
+
+Remove each of these plugins from the distributed image, not just its enabled flag:
+
+- [ ] Remove `admin-http-rpc` — unused additional admin HTTP endpoint.
+- [ ] Remove `alibaba` — separate video-provider integration.
+- [ ] Remove `anthropic` — direct Anthropic accounts and Claude CLI; retain Claude models through LiteLLM.
+- [ ] Remove `apple-fm` — Mac-only Apple Intelligence.
+- [ ] Remove `azure-speech` — separate Azure speech setup.
+- [ ] Remove `beam` — external coding-session mirroring.
+- [ ] Remove `bonjour` — local-network Gateway discovery.
+- [ ] Remove `canvas` — paired Mac panels; preserve browser widgets and custom plugin UI.
+- [ ] Remove `clawrouter` — alternative model router.
+- [ ] Remove `copilot-proxy` — separate Copilot model route.
+- [ ] Remove `crabbox` — cloud-worker provisioning.
+- [ ] Remove `cua-computer` — personal desktop-node control.
+- [ ] Remove `deepgram` — separate transcription service.
+- [ ] Remove `device-pair` — personal-device setup; preserve core browser-node pairing.
+- [ ] Remove `elevenlabs` — separate speech service.
+- [ ] Remove `fal` — separate image/music/video provider.
+- [ ] Remove `geolocation` — client-IP location lookup.
+- [ ] Remove `github-copilot` — personal GitHub Copilot provider.
+- [ ] Remove `google` — direct Google accounts; retain Google models through LiteLLM.
+- [ ] Remove `huggingface` — direct model-provider integration.
+- [ ] Remove `linux-node` — desktop notifications, camera and location.
+- [ ] Remove `lmstudio` — personal/local inference-server integration.
+- [ ] Remove `logbook` — personal desktop screenshot capture.
+- [ ] Remove `microsoft` — separate speech-provider integration.
+- [ ] Remove `microsoft-foundry` — direct model-provider integration.
+- [ ] Remove `migrate-claude` — migration from Claude installations.
+- [ ] Remove `migrate-hermes` — migration from Hermes installations.
+- [ ] Remove `minimax` — direct model/media-provider integration.
+- [ ] Remove `nvidia` — direct model-provider integration; preserve NVIDIA OpenShell.
+- [ ] Remove `ollama` — separate local/cloud model integration.
+- [ ] Remove `onepassword` — separate 1Password installation and secrets broker.
+- [ ] Remove `opencode-go` — direct model-provider integration.
+- [ ] Remove `openrouter` — direct integration; retain OpenRouter models through LiteLLM.
+- [ ] Remove `runway` — separate video service.
+- [ ] Remove `senseaudio` — separate transcription service.
+- [ ] Remove `session-share` — sharing between paired Gateways.
+- [ ] Remove `sglang` — separate inference-server integration.
+- [ ] Remove `talk-voice` — voice selection for the unselected Talk setup.
+- [ ] Remove `together` — direct model/video-provider integration.
+- [ ] Remove `tts-local-cli` — unshipped speech executable.
+- [ ] Remove `vault` — separate HashiCorp Vault integration.
+- [ ] Remove `vllm` — separate inference-server integration.
+- [ ] Remove `xai` — direct model/media/search-provider integration.
+
+### Skills
+
+Retain `browser-automation`, `connections`, `wiki-maintainer`, `diagram-maker`,
+`node-inspect-debugger`, `skill-creator`, `spike`, `taskflow`, `visualize` and `weather`.
+Plugin-owned skills follow their owning capability; Connections remains optional.
+Preserve administrator-authored and other user-installed/local/workspace skills.
+
+Remove each of these standalone bundled skills independently of plugin removal:
+
+- [ ] Remove `1password` — missing op executable.
+- [ ] Remove `apple-notes` — Mac application and missing memo executable.
+- [ ] Remove `apple-reminders` — Mac application and missing remindctl executable.
+- [ ] Remove `bear-notes` — Mac application and missing grizzly executable.
+- [ ] Remove `blogwatcher` — missing blogwatcher executable.
+- [ ] Remove `blucli` — personal audio hardware and missing blu executable.
+- [ ] Remove `camsnap` — camera workflow and missing camsnap executable.
+- [ ] Remove `clawhub` — disabled marketplace.
+- [ ] Remove `coding-agent` — separate coding-worker setup and unavailable CLI commands on PATH.
+- [ ] Remove `control-ui` — upstream Gateway/dashboard/setup instructions outside the selected scope.
+- [ ] Remove `eightctl` — Eight Sleep hardware.
+- [ ] Remove `gemini` — missing Gemini CLI and separate model setup.
+- [ ] Remove `gh-issues` — missing GitHub CLI.
+- [ ] Remove `gifgrep` — missing gifgrep executable.
+- [ ] Remove `github` — missing GitHub CLI; core GitHub removal is a separate task.
+- [ ] Remove `gog` — missing Google Workspace CLI.
+- [ ] Remove `goplaces` — missing executable and separate Google Places key.
+- [ ] Remove `healthcheck` — host firewall/SSH administration outside the agent runtime's responsibility.
+- [ ] Remove `himalaya` — missing email CLI.
+- [ ] Remove `mcporter` — missing executable; preserve native MCP support.
+- [ ] Remove `meme-maker` — novelty workflow with browser/service assumptions.
+- [ ] Remove `model-usage` — missing CodexBar and external coding-session cost logs.
+- [ ] Remove `nano-pdf` — missing nano-pdf executable; preserve native PDF extraction.
+- [ ] Remove `node-connect` — personal-device/Gateway setup.
+- [ ] Remove `notion` — separate account/token instructions; use optional Connections.
+- [ ] Remove `obsidian` — missing Obsidian application/CLI.
+- [ ] Remove `openai-whisper` — missing Whisper executable.
+- [ ] Remove `openai-whisper-api` — requires a direct OpenAI key inside the runtime.
+- [ ] Remove `openhue` — personal lighting hardware.
+- [ ] Remove `oracle` — missing executable and separate model/browser setup.
+- [ ] Remove `ordercli` — personal food-order service.
+- [ ] Remove `peekaboo` — Mac desktop automation.
+- [ ] Remove `python-debugpy` — unshipped debugpy for advertised remote debugging; preserve Python execution.
+- [ ] Remove `sag` — missing executable and separate ElevenLabs setup.
+- [ ] Remove `sherpa-onnx-tts` — missing speech runtime/models.
+- [ ] Remove `songsee` — missing audio-analysis executable.
+- [ ] Remove `sonoscli` — personal speaker hardware.
+- [ ] Remove `spotify-player` — missing playback executables.
+- [ ] Remove `summarize` — missing summarize executable; preserve ordinary summarization.
+- [ ] Remove `taskflow-inbox-triage` — synthetic demonstration, not working inbox integration.
+- [ ] Remove `things-mac` — Mac application.
+- [ ] Remove `tmux` — unshipped executable.
+- [ ] Remove `trello` — missing jq and separate account credentials.
+- [ ] Remove `xurl` — missing X CLI and separate account setup.
+- [ ] Remove the `canvas` skill with its owning Canvas plugin.
+- [ ] Remove `obsidian-vault-maintainer` from `memory-wiki`; retain `wiki-maintainer`.
+- [ ] Change `skill-creator` instructions to use installed `python3` instead of `python`;
+      exercise its packaged validator.
+- [ ] Fix `taskflow` example paths to use packaged files rather than assuming the
+      Gateway runs from the source checkout; exercise approval and resume.
+
+### UI and configuration
+
+- [ ] Qualify CLI-agent picker suppression and retained managed model routes in a
+      released image using the [native preset](runtime/README.md).
+- [ ] Document all configured settings, their purpose and source owners in
+      [native configuration](runtime/README.md). Distinguish initial defaults,
+      installation choices, administrator edits and restart/reapplication behavior;
+      link exact values instead of copying them.
+- [ ] Remove Cloud Workers navigation, settings, setup and provisioning operations,
+      including background activity. Preserve the OpenShell team runtime.
+- [ ] Remove native GitHub account linking/settings, account/session/tool APIs,
+      authenticated previews, credential injection, profile synchronization and
+      background OAuth from the base. Preserve ordinary links and deliberate Git CLI use.
+- [ ] Remove Labs while preserving custom plugin UI for Account/People, optional
+      Connections and administrator additions. Replace “Open Labs” links and enablement
+      instructions; put any needed plugin-UI administration in Plugins.
+- [ ] Rename `ClawScarf People` to `People` consistently in manifests, registration,
+      settings and navigation. Keep `Connections`, stable plugin IDs and Account functionality.
+- [ ] Remove setup/settings entries and operations for the removed capabilities,
+      including personal-device/native-client setup, Talk and direct-provider accounts
+      in Profile/model setup. Preserve managed LiteLLM model selection, selected channel
+      setup and required browser bootstrap-token/pairing operations.
+- [ ] Remove Systems for both members and administrators, including direct navigation
+      and contextual links. Preserve required browser-node management.
+- [ ] Remove OpenClaw server Updates and disable upstream server self-update operations.
+      ClawScarf releases own the runtime version; retain updates for administrator additions.
+- [ ] Remove remaining marketplace entry points, especially `codex_plugins` in retained
+      Codex, and ClawHub promotion/setup/publishing advice. Extend the existing marketplace
+      patch while preserving required attribution and deliberate explicit-source installs.
+
+### Completion checks
+
+- [ ] Build the selected image with no removed files in distributed layers or automatic
+      first-use restoration. Check exact plugin IDs, skill paths, dependency versions,
+      integrity and origins across upstream output, downloads and packs; reject unexpected,
+      missing or duplicate entries. Preserve licenses and administrator additions.
+- [ ] Update shipped docs/help, tool descriptions, prompts and skill instructions with
+      each removal. Check direct routes, search, command palette, RPC/HTTP/CLI/tools,
+      cached paths and cold-start/background activity: removed operations cause no effects
+      or unwanted catalog traffic. Verify enabled/disabled states and required restarts.
+- [ ] Verify the retained chat, uploads/files/artifacts, model selection, shell, Lobster,
+      memory, agents, People/revocation and optional Connections on the exact image for
+      members/admins and desktop/mobile, including loading/error states and restart.
+      Absent Connections must need no UI/tools/calls/credentials; enabled invalid setup
+      must fail visibly. Browser transfer qualification remains [separate](#browser-qualification).
+- [ ] Verify existing plugin install/enable/invoke/reload/update/uninstall, skill
+      authoring/upload/assignment and scoped stdio/remote MCP authentication and removal.
+      Preserve native authorization, source trust, consent, install policy, integrity
+      and atomic update publication. Reject ambiguous plugin IDs and unauthorized changes;
+      test dependency downloads without widening egress or adding a package registry.
+- [ ] Verify plugin disable/removal drops contributed skills and generated links after
+      refresh/restart, including existing sessions. Preserve independent bundled/local
+      copies and user additions/settings through restart and explicit recipe reapplication.
+      Explain that image-bundled plugins require packaging changes, not normal UI uninstall.
+- [ ] Qualify sender identity, admission, native authority and revocation before enabling
+      retained channels or incoming automation. Keep Connections account grants separate.
+
+## Deferred product decisions
+
+These are outside the agreed curation scope; decide separately before implementation.
+
+- [ ] Decide whether to remove/narrow Custodian and its setup skills. If selected,
+      first provide native agent creation with the existing editor/workspace/tool/skill
+      controls; preserve authorization and the native agent store.
+- [ ] Decide whether to replace Advanced/raw configuration with explicitly selected
+      admin/member settings and prevent new upstream sections appearing automatically.
+      Review engines, hooks, commands and bindings as part of that decision.
+- [ ] Decide individually whether to retain Dashboards, Activity, Meetings, Portals,
+      Worktrees and cosmetic Lobsterdex; preserve useful visualization and Workboard.
+- [ ] Decide separately on Gateway URL/token switching and unrelated About/Apps,
       community/download/browser-extension promotion; retain version, provenance and licenses.
-- [ ] **Settings selection:** Define explicit admin/member pages and actions, including
-      selected channels and optional capabilities. Remove irrelevant member inspection
-      pages and the Advanced/raw-config catch-all; give every retained control a deliberate
-      home. Cover direct routes/search/palette/contextual links and native authorization;
-      newly introduced upstream sections must not appear automatically.
-- [ ] **Patch:** Retain intentional administrator settings for agents, scoped MCP,
-      People, optional Connections, selected memory/import and automation/cron/tasks,
-      security/secrets/approvals, infrastructure and authorized debug/logs/usage. Review
-      engines, hooks, commands and bindings; absent Connections must need no page/tools/calls/credentials.
-- [ ] **Labs:** Remove the Labs page while preserving native custom plugin UI for
-      Account/People, optional Connections and deliberate administrator additions.
-      Retain the preset's custom-plugin capability and move any needed administration
-      to Plugins; replace disabled-state links/instructions that currently point to Labs.
-      Qualify plugin pages, assets, authorization and restart without visiting Labs.
-- [ ] **Patch:** Remove cosmetic Lobsterdex and unselected Dashboards/Systems/Activity/
-      Meetings/Portals/Worktrees. Preserve required Lobster workflows; cover direct
-      routes/search/palette/contextual links and prompts.
-- [ ] **Patch:** Remove competing upstream self-update UI and gate its backend operations;
-      keep runtime version ownership in ClawScarf releases and native lifecycle for user additions.
-- [ ] **Packaging:** Qualify the initial candidate: `clawscarf-access`, official `lobster`
-      with its embedded runtime, `browser` plus node-host registration, `memory-core`,
-      initially `openai`/`codex`, `document-extract` for retained native PDF extraction,
-      selected channels, and optional `clawscarf-connections`. Trace managed Responses/
-      Completions and document dependencies before removing transports; require no new
-      direct-provider secrets. Remove unselected plugin files, not just enabled flags.
-- [ ] **Skills:** Select shipped skills independently of plugins across bundled,
-      Custodian, plugin-owned and pack sources. Remove unsupported OS/device workflows
-      (for example Apple Notes, Things and home-device control), omitted-feature setup
-      and skills requiring unshipped binaries. Keep generally useful skills only with
-      exercised dependencies; preserve custom/local/workspace skills and authoring.
-      A fresh install must not advertise unsupported skills as ready or needing setup.
-- [ ] **Skill lifecycle:** Verify plugin disable/uninstall removes its contributed
-      skills from effective discovery and prompts after the required refresh/restart;
-      distinguish package removal from eligibility and independently stored copies.
-      Cover generated skill links, session snapshots and retained user skills; document
-      why uninstalling a plugin does not remove the separate bundled skill library.
-- [ ] **Packaging:** Physically omit unselected skills/channels/providers/plugins
-      before final distributed layers. Start with one team image and declared optional
-      Connections; do not restore all upstream defaults to fix missing imports or fetch
-      omitted built-ins on first use. Preserve selected plugin bundles and pack files.
-- [ ] **Packaging:** Record exact plugin IDs, skill paths, versions/integrities, origins
-      and dependency closure across upstream output, downloaded artifacts, native plugins
-      and packs. Exclude files before final distributed layers; reject extra/missing/duplicate
-      entries and new upstream routes/features. Preserve deliberate administrator additions.
-- [ ] **Recipe + packaging:** Select and exercise document/PDF tools and skills on the
-      shared team filesystem; create a runtime variant only if executable dependencies justify it.
-      Preserve native `document-extract` and its bundled `clawpdf` dependency when selecting
-      PDF extraction; additional document skills need their own verified executable dependencies.
-- [ ] **Verification:** Qualify curated absence across UI, direct RPC/HTTP/CLI/tools,
-      cached paths and cold-start/background services: disabled features reject before
-      effects and produce no unwanted catalog traffic. Exercise enabled/disabled states,
-      required restarts and injected unexpected inventory entries.
-- [ ] **Verification:** Qualify retained chat/upload analysis, shared shell/Lobster files,
-      approval/resume, agents/models, People/revocation and optional Connections on exact images.
-      Cover member/admin, desktop/mobile and advertised skill paths after restart.
-      Preserve browser enrollment; real browsing/file transfer remains in
-      [Browser qualification](#browser-qualification).
-- [ ] **Verification:** Exercise supplied-plugin install/enable/invoke/restart/explicit
-      update/removal and MCP add/authenticate/invoke/remove, including unauthorized-mutation
-      rejection and user additions/unrelated settings surviving restart and recipe reapplication.
-      Verify artifact provenance and update publication status when released.
+- [ ] Select additional document/PDF authoring tools and skills only as a separate
+      enhancement; package and exercise their executables on the team filesystem.
+      Create a runtime variant only if executable dependencies justify it.
 
 ## Future decisions
 
