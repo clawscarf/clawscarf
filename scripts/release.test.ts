@@ -12,6 +12,7 @@ import {
   readRecipe,
 } from "./installation/recipes/catalog.js";
 import { postgresImage } from "./deployment/images.js";
+import teamServer from "../recipes/team-server/recipe.json" with { type: "json" };
 
 await test("runtime artifacts relocate independently of recipes and reject altered tools", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-release-"));
@@ -91,7 +92,7 @@ await test("bundled recipes pin a runtime and validate their editable defaults",
   const catalog = await installationCatalog();
   const recipe = catalog.recipes.find((item) => item.id === "team-server");
   assert.ok(recipe);
-  assert.equal(recipe.version, "0.1.0");
+  assert.equal(recipe.version, teamServer.version);
   assert.equal(recipe.name, "Team server");
   assert.equal(recipe.defaults.connections?.enabled, true);
   assert.deepEqual(recipe.models, {
