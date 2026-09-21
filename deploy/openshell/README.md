@@ -7,8 +7,9 @@ a Docker socket.
 
 [policy.yaml](policy.yaml) gives the process UID/GID 1000, read-only application
 software and a writable home/workspace. Landlock is a hard startup requirement.
-Egress is denied until explicit endpoint policies are configured; no provider
-credentials are baked into the [image](../images/Dockerfile).
+Egress requires configured policies, including the recipe’s optional public-web
+rule described below. No provider credentials are baked into the
+[image](../images/Dockerfile).
 The [image inventory](../images/README.md) and [runtime launcher](../../runtime/README.md)
 own packaged tools, native registration and temporary-file configuration.
 Read-only cgroup and CPU metadata let Node inspect its actual resource limits.
@@ -33,6 +34,45 @@ policy are ClawScarf integration configuration, based on the documented
 [Docker driver](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/docs/reference/sandbox-compute-drivers.mdx)
 and [policy schema](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/docs/reference/policy-schema.mdx).
 Do not use a development build tag as a published release reference.
+
+## Public web access
+
+The recipe’s `defaults.publicWeb` becomes the installation’s editable `publicWeb`
+choice; omitted recipe values are false. The Team server recipe enables it.
+[Installer controls](../deployment/installation.md#public-web) own its CLI/menu usage.
+
+The [public-web policy](../../scripts/deployment/public-web.ts) adds public IPv4
+and global IPv6 destinations on ports 80/443 to OpenShell’s existing explicit
+proxy. Private, loopback, link-local, metadata and reserved address ranges are
+excluded; explicitly configured inference/Connections endpoints keep their own
+rules. The controller resolves destination names and enforces `allowed_ips`.
+TLS passes through without interception; the rule allows TCP tunnels on those
+ports, not a payload-level guarantee that every byte is HTTP. It grants neither
+raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
+[the launcher](../../runtime/README.md) configures native OpenClaw and Node clients.
+
+Enabling public web lets team code send data to public services. It does not isolate
+team members or prevent data export. Turning it off removes only ClawScarf’s
+`public_web` rule, preserving other operator policies. Retained changes use the
+[network policy updater](../../scripts/deployment/network-policy.ts), which waits
+for the selected policy version to become effective before reopening installation
+access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
+user’s browser; inline previews do not inherit a saved dashboard’s network grants.
+
+The opt-in [public-web regression](../../tests/runtime/public-web.test.ts) creates
+and deletes an isolated sandbox. With the controller XDG directories selected,
+run it with `CLAWSCARF_TEST_PUBLIC_WEB=1`, `CLAWSCARF_TEST_OPENSHELL` set to the
+pinned CLI, `CLAWSCARF_TEST_GATEWAY` to the controller name and
+`CLAWSCARF_TEST_RUNTIME_IMAGE` to the exact runtime image:
+
+```sh
+node --import tsx --test tests/runtime/public-web.test.ts
+```
+
+It checks public HTTP/HTTPS through Node and OpenClaw’s native guarded fetch,
+explicit proxy denial of private destinations and
+public-access denial after removing the rule. It does not qualify every CLI’s
+proxy support or the browser’s dashboard rendering.
 
 ## Contributor controller setup
 

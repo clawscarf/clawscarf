@@ -47,6 +47,7 @@ export const selectionSchema = z.object({
   connections: z.boolean().optional(),
   connectionsCloudUrl: cloudUrlSchema.optional(),
   browser: z.boolean().optional(),
+  publicWeb: z.boolean().optional(),
   model: text.optional(),
   provider: text.optional(),
   reasoning: z.enum(["low", "medium", "high"]).optional(),
@@ -113,6 +114,8 @@ export function installationOptions(command: Command) {
     )
     .option("--browser", "Enable experimental browser capability")
     .option("--no-browser", "Disable browser capability")
+    .option("--public-web", "Allow public HTTP(S) from agents and tools")
+    .option("--no-public-web", "Restrict runtime egress to configured services")
     .option("--model <id>", "Default model from the model catalog")
     .option(
       "--provider <id>",
@@ -192,6 +195,7 @@ export async function selectedDraft(
       "modelGatewayKeyFile",
       "modelGatewayCaFile",
       "connections",
+      "publicWeb",
       "connectionsCloudUrl",
       "pack",
       "packs",
@@ -204,7 +208,7 @@ export async function selectedDraft(
       )
     )
       invalid(
-        "Existing installations support changes to models, keys, Connections and packs only.",
+        "Existing installations support changes to models, keys, Connections, public web and packs only.",
       );
   }
   const config = structuredClone(
@@ -216,6 +220,7 @@ export async function selectedDraft(
   if (o.cpu !== undefined) config.resources.runtime.cpu = o.cpu;
   if (o.memory !== undefined) config.resources.runtime.memory = o.memory;
   if (o.browser !== undefined) config.browser.enabled = o.browser;
+  if (o.publicWeb !== undefined) config.publicWeb = o.publicWeb;
   if (o.connections !== undefined)
     config.connections.mode = o.connections ? "hosted" : "disabled";
   if (o.connectionsCloudUrl)

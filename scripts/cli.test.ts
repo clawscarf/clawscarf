@@ -57,6 +57,7 @@ await test("CLI status use readable output or explicit JSON without issuing cred
   await initializeState(directory, {
     name: "team",
     administratorName: "Administrator",
+    publicWeb: false,
     runtimeImage: `sha256:${"a".repeat(64)}`,
     companionImage: `sha256:${"b".repeat(64)}`,
     openshellCli: "/tools/openshell",

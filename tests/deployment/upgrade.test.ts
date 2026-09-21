@@ -31,6 +31,7 @@ async function fixture(t: TestContext) {
     input: {
       name: "test",
       administratorName: "Ada",
+      publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"c".repeat(64)}`,
       openshellCli: process.execPath,

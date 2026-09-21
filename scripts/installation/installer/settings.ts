@@ -33,7 +33,7 @@ export async function editInstallationSettings(
   if (options.recipe || options.cloudUrl)
     throw new InstallationError(
       "change_unsupported",
-      "Existing installations keep their recipe, software release and login service. Change models, keys, Connections or packs instead.",
+      "Existing installations keep their recipe, software release and login service. Change models, keys, Connections, public web or packs instead.",
     );
   if (options.nonInteractive && !options.yes)
     throw new InstallationError(
@@ -184,6 +184,9 @@ export async function editInstallationSettings(
           ? [
               `Connections: ${plan.changes.connections.to === "disabled" ? "Off" : "On"}`,
             ]
+          : []),
+        ...(plan.scopes.publicWeb
+          ? [`Public web: ${plan.changes.publicWeb.to ? "On" : "Off"}`]
           : []),
         ...(plan.scopes.packs
           ? [`Packs: ${plan.changes.packs.selected.join(", ") || "None"}`]

@@ -71,6 +71,12 @@ and rejects unreadable inputs or mismatched existing contents. Runtime-owned CA 
 Gateway restart; no certificate verification is disabled. Model tokens remain separate
 private native file secrets.
 
+When OpenShell supplies `HTTPS_PROXY`, the launcher selects it through OpenClaw’s
+native `OPENCLAW_PROXY_URL` and enables Node’s `NODE_USE_ENV_PROXY`. Native web
+fetches and proxy-aware child tools therefore use the controller’s network policy;
+this does not grant direct DNS or arbitrary outbound sockets. The
+[network boundary](../deploy/openshell/README.md#public-web-access) owns those rules.
+
 For an explicitly configured Connections runtime, the launcher reads
 `/home/node/.openclaw/clawscarf-connections/runtime.json` by default and exports
 its `token` as `CLAWSCARF_CONNECTIONS_TOKEN` before starting OpenClaw. An explicit

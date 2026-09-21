@@ -250,6 +250,25 @@ export async function collectInstallation(
           case "resources":
             config.resources = await collectResources(ui, config.resources);
             break;
+          case "public-web":
+            config.publicWeb =
+              (await ui.select(
+                "Public web access",
+                [
+                  {
+                    value: "on",
+                    label: "On",
+                    hint: "Public HTTP(S); agents can send team data to public services",
+                  },
+                  {
+                    value: "off",
+                    label: "Off",
+                    hint: "Only configured services and explicit policies",
+                  },
+                ],
+                config.publicWeb ? "on" : "off",
+              )) === "on";
+            break;
           case "browser":
             ui.note(
               "Explicit browser node use works. Ordinary model-selected browsing is not qualified because of an upstream routing issue.",

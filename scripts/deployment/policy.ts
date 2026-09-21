@@ -7,10 +7,13 @@ import type { InitialConnectionsEndpoint } from "./connections.js";
 import { LocalSetupError } from "./process.js";
 import { ensurePrivateFile } from "./state.js";
 
+import { publicWebPolicy } from "./public-web.js";
+
 export function initialRuntimePolicy(
   source: string,
   models: InitialModels | undefined,
   connections?: InitialConnectionsEndpoint,
+  publicWeb = false,
 ) {
   const document = parseDocument(source);
   if (document.errors.length || document.warnings.length)
@@ -30,6 +33,7 @@ export function initialRuntimePolicy(
   return {
     ...parsed.data,
     network_policies: {
+      ...(publicWeb ? { public_web: publicWebPolicy(true) } : {}),
       ...(connections
         ? {
             connections_broker: {
@@ -68,6 +72,7 @@ export async function prepareRuntimePolicy(
   directory: string,
   models: InitialModels | undefined,
   connections?: InitialConnectionsEndpoint,
+  publicWeb = false,
 ) {
   const policy = initialRuntimePolicy(
     await readFile(
@@ -76,6 +81,7 @@ export async function prepareRuntimePolicy(
     ),
     models,
     connections,
+    publicWeb,
   );
   await ensurePrivateFile(
     join(directory, "private/runtime-policy.json"),

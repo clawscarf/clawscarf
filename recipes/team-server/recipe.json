@@ -15,7 +15,8 @@
     },
     "connections": {
       "enabled": true
-    }
+    },
+    "publicWeb": true
   },
   "models": {
     "model": "gpt-6-astra",
@@ -23,5 +24,5 @@
     "reasoning": "medium"
   },
   "runtime": "../../runtime/releases/0.1.0-dev.json",
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

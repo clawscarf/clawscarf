@@ -150,7 +150,12 @@ export async function prepareLocal(
   );
   await prepareModelCredential(directory, state);
   const models = await prepareInitialModels(directory, input.models);
-  await prepareRuntimePolicy(directory, models, connectionsEndpoint);
+  await prepareRuntimePolicy(
+    directory,
+    models,
+    connectionsEndpoint,
+    state.input.publicWeb,
+  );
   await withPreparedDatabase(directory, state, async (pool, runtimeUrl) => {
     const store = new PostgresAccessStore(
       pool,

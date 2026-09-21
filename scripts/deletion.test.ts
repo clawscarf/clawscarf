@@ -68,6 +68,7 @@ await test(
     const state = await initializeState(directory, {
       name: "delete-test",
       administratorName: "Ada",
+      publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,
       openshellClientImage: `sha256:${"a".repeat(64)}`,

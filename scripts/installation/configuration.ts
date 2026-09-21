@@ -65,6 +65,7 @@ export const installationSchema = z
       }),
     ]),
     resources: z.strictObject({ runtime: resources }),
+    publicWeb: z.boolean().default(false),
     browser: z.strictObject({ enabled: z.boolean() }),
     models: z.discriminatedUnion("mode", [
       externalLiteLlmSchema,

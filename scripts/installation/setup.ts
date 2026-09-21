@@ -102,6 +102,7 @@ export function recipeConfiguration(
     },
     resources: structuredClone(recipe.defaults.resources),
     browser: structuredClone(recipe.defaults.browser),
+    publicWeb: recipe.defaults.publicWeb,
     connections: {
       mode: recipe.defaults.connections?.enabled ? "hosted" : "disabled",
       cloudUrl: context.cloudUrl,

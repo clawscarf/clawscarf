@@ -53,6 +53,7 @@ async function fixture(t: TestContext): Promise<LocalState> {
       team: oidcTeam(ports.application, ports.widgets),
       name: "preflight",
       administratorName: "Ada",
+      publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,
       openshellCli: process.execPath,

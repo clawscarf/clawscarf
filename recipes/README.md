@@ -21,7 +21,7 @@ no executable hooks, secrets or user identities.
 
 - `models` selects model ID, provider and reasoning from the bundled
   [model catalog](../deploy/models/catalog.json).
-- `defaults` selects resources, browser and Connections enablement.
+- `defaults` selects resources, public web access, browser and Connections enablement.
 - `packs: [{ id, members }]` selects agents from the bundled [packs](../packs/README.md).
   The installer checks members and collects required credentials after settings review.
 

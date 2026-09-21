@@ -219,7 +219,7 @@ Run `clawscarf configure --help` for descriptions. The relevant groups are:
 | Login                  | `--access hosted\|oidc`, `--oidc-issuer`, `--oidc-client-id`, `--oidc-secret-file`, `--administrator-subject`, `--administrator-email` |
 | Local networking       | `--port`, `--widget-port`                                                                                                              |
 | HTTPS networking       | `--origin`, `--widget-origin`, `--tls-certificate`, `--tls-key-file`                                                                   |
-| Capabilities           | `--connections` / `--no-connections`, `--browser` / `--no-browser`, `--cpu`, `--memory`                                                |
+| Capabilities           | `--connections` / `--no-connections`, `--browser` / `--no-browser`, `--public-web` / `--no-public-web`, `--cpu`, `--memory`            |
 | Packs                  | repeat `--pack <id:member,member>`, `--no-packs`, repeat `--pack-bindings <id=file>`, `--pack-python`                                  |
 | Advanced model gateway | `--model-catalog`, `--model-gateway-url`, `--model-gateway-key-file`, `--model-gateway-ca-file`                                        |
 | Automation             | `--non-interactive`, `--yes`, `--start` / `--no-start`, `--json`, `--cloud-credential-file`                                            |
@@ -233,6 +233,19 @@ Models always use bundled or external LiteLLM. An external gateway needs its act
 catalog, HTTPS endpoint ending in `/v1`, and a scoped inference key; never supply its master
 key. Bundled models keep provider keys outside OpenClaw and issue a scoped runtime key.
 See [models](../models/README.md) for catalog and credential contracts.
+
+### Public web
+
+The Team server recipe starts with public HTTP(S) access enabled. Set
+`--no-public-web` to restrict the runtime to explicitly configured services;
+`--public-web` enables it again. Both are available during initial and retained
+configuration, including the **Public web** menu section. Existing settings are
+never changed merely by updating the recipe.
+
+This controls agent/runtime egress, not which plugins are installed. Native
+dashboard network grants remain separate. See the
+[network boundary](../openshell/README.md#public-web-access) for private-address
+blocking, proxy requirements and data-sharing implications.
 
 ### Connections
 
@@ -274,7 +287,7 @@ authority as their pages; an operator filesystem credential is not a role overri
 clawscarf configure --directory ~/my-team
 ```
 
-This loads accepted choices and opens the Models, Connections and Packs editor.
+This loads accepted choices and opens the Models, Connections, Public web and Packs editor.
 Review and confirm the change; the CLI handles stopping, applying and optionally starting.
 Unrelated native edits and data are retained. For automation:
 
@@ -285,7 +298,7 @@ clawscarf configure --directory ~/my-team --reasoning high \
 
 `--yes` is required for unattended changes to an existing installation. Changes can restart
 the server; removing packs can remove their native-owned agents, workspaces and sessions.
-Supported changes are models, routes/keys, Connections enablement and pack selections.
+Supported changes are models, routes/keys, Connections enablement, public web access and pack selections.
 Release, identity, login, addresses, resources and execution protection stay fixed. Changing
 model gateway ownership or moving broker accounts is a separate deployment change and is
 rejected here.

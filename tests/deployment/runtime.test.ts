@@ -23,6 +23,7 @@ async function fixture() {
     input: {
       name: "team",
       administratorName: "Admin",
+      publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,
       openshellCli: "/tools/openshell",

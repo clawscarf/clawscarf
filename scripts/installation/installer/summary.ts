@@ -51,6 +51,7 @@ export async function installationSummary(
     `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
     `Models: ${model}`,
     `Connections: ${config.connections.mode === "disabled" ? "Off" : "On"}`,
+    `Public web: ${config.publicWeb ? "On" : "Off"} (private destinations blocked)`,
     `Browser: ${config.browser.enabled ? "Experimental" : "Off"} · Packs: ${config.packs.flatMap((pack) => pack.members).join(", ") || "None"}`,
   ].join("\n");
 }

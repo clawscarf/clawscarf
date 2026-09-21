@@ -12,6 +12,7 @@ export const recipeSchema = z.strictObject({
   defaults: z.strictObject({
     resources: installationSchema.shape.resources,
     browser: installationSchema.shape.browser,
+    publicWeb: z.boolean().default(false),
     connections: z.strictObject({ enabled: z.boolean() }).optional(),
   }),
   models: z.strictObject({

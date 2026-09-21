@@ -58,6 +58,12 @@ export function installationMenu(
         ? "This computer"
         : config.exposure.applicationOrigin,
     ),
+    row(
+      "public-web",
+      "Public web",
+      config.publicWeb ? "On" : "Off",
+      "HTTP(S) for agents and tools; private destinations blocked",
+    ),
     row("models", "Models", modelSummary ?? "Choose a model"),
     row(
       "connections",
@@ -94,7 +100,9 @@ export function installationMenu(
   return existing
     ? [
         ...choices.filter(({ value }) =>
-          ["review", "models", "connections", "packs"].includes(value),
+          ["review", "models", "connections", "packs", "public-web"].includes(
+            value,
+          ),
         ),
         { value: "model-credentials", label: "Change LLM API keys" },
       ]

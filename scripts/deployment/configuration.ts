@@ -177,6 +177,7 @@ export const localInput = z
       .optional(),
     cpu,
     memory,
+    publicWeb: z.boolean().default(false),
     relayImage: image.optional(),
     browser: z
       .strictObject({

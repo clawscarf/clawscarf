@@ -108,6 +108,7 @@ export async function resolveInstallation(
     name: config.name,
     administratorName: access.administratorName,
     runtimeImage: release.images.gateway,
+    publicWeb: config.publicWeb,
     companionImage: release.images.companion,
     ...(config.browser.enabled ? { relayImage: release.images.relay } : {}),
     openshellCli: cli,

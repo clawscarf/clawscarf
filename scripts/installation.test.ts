@@ -238,11 +238,13 @@ await test(
     assert.deepEqual(changedSettings.scopes, {
       models: false,
       connections: false,
+      publicWeb: false,
       packs: false,
     });
     assert.deepEqual((await planSettingsChange(path, "models")).scopes, {
       models: true,
       connections: false,
+      publicWeb: false,
       packs: false,
     });
     const candidate = await saveConfiguration(

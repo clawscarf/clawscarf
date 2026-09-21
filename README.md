@@ -90,6 +90,11 @@ execution files and browser accounts. Native roles control application permissio
 people allowed to run code share the Gateway’s authority. Use separate installations
 for teams that must be isolated from one another.
 
+The Team server recipe enables public web access for agents and shell tools. Operators
+can turn it off; private destinations remain restricted to explicitly configured services.
+Public web access permits sending team data to public services. See the
+[network boundary](deploy/openshell/README.md#public-web-access) for enforcement and limits.
+
 Default login and optional Connections use **ClawScarf Cloud**. You can use your own
 OIDC provider and disable Connections to run without those hosted services. Original
 model-provider keys and Connections management credentials stay outside OpenClaw.

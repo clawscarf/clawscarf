@@ -1244,7 +1244,14 @@ await test(
         if (message.endsWith("— settings"))
           assert.deepEqual(
             choices.map((choice) => choice.value),
-            ["review", "models", "connections", "packs", "model-credentials"],
+            [
+              "review",
+              "public-web",
+              "models",
+              "connections",
+              "packs",
+              "model-credentials",
+            ],
           );
         return super.select(message, choices, initial);
       }
@@ -1458,6 +1465,35 @@ await test(
       f,
       new SetupInputs(f.directory),
     );
+    assert.equal(first.publicWeb, true, "Team recipe enables public web");
+    const strict = await selectedDraft(
+      context,
+      "team-server",
+      { publicWeb: false },
+      new SetupInputs(f.directory),
+      first,
+    );
+    assert.equal(strict.publicWeb, false);
+    const retained = await selectedDraft(
+      context,
+      "team-server",
+      {},
+      new SetupInputs(f.directory),
+      strict,
+    );
+    assert.equal(
+      retained.publicWeb,
+      false,
+      "Unrelated edits preserve strict egress",
+    );
+    const enabled = await selectedDraft(
+      context,
+      "team-server",
+      { publicWeb: true },
+      new SetupInputs(f.directory),
+      retained,
+    );
+    assert.equal(enabled.publicWeb, true);
     const key = join(f.parent, "new-key");
     await writeFile(key, "rotated-key", { mode: 0o600 });
     const inputs = new SetupInputs(f.directory);
@@ -1738,12 +1774,14 @@ await test(
     assert.deepEqual(await configurationChanges(accepted, copied), {
       models: false,
       connections: false,
+      publicWeb: false,
       packs: false,
     });
     copied.connections.mode = "hosted";
     assert.deepEqual(await configurationChanges(accepted, copied), {
       models: false,
       connections: true,
+      publicWeb: false,
       packs: false,
     });
     copied.models = { ...copied.models };
@@ -1756,6 +1794,7 @@ await test(
       assert.deepEqual(await configurationChanges(accepted, copied), {
         models: true,
         connections: true,
+        publicWeb: false,
         packs: false,
       });
     }

@@ -1,3 +1,5 @@
+import { publicWebPolicy } from "../deployment/public-web.js";
+import { stageNetworkPolicyChange } from "../deployment/network-policy.js";
 import { applyConnectionSettings } from "../deployment/connection-settings.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -70,12 +72,14 @@ export async function planSettingsChange(
     models: _oldModels,
     modelGateway: oldGateway,
     connections: oldConnections,
+    publicWeb: oldPublicWeb,
     ...oldFixed
   } = old;
   const {
     models: _nextModels,
     modelGateway: nextGateway,
     connections: nextConnections,
+    publicWeb: nextPublicWeb,
     ...nextFixed
   } = next;
   if (
@@ -153,6 +157,7 @@ export async function planSettingsChange(
     scopes,
     reapply,
     changes: {
+      publicWeb: { from: oldPublicWeb, to: nextPublicWeb },
       models: modelConfiguration
         ? {
             enabled: modelConfiguration.models
@@ -339,6 +344,11 @@ export async function reconfigureInstallation(
           checked.previousEndpoint,
           desired.connectorCredentialFile,
         );
+      stage = "public web policy";
+      if (scopes.publicWeb)
+        await stageNetworkPolicyChange(directory, state, {
+          public_web: publicWebPolicy(desired.input.publicWeb),
+        });
       stage = "accepted settings";
       if (scopes.models)
         await writePrivate(

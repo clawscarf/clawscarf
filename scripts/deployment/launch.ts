@@ -1,4 +1,4 @@
-import { applyConnectionPolicy } from "./connection-policy.js";
+import { applyNetworkPolicy } from "./network-policy.js";
 import { verifyRuntimeImage } from "./images.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
 import { verifyBrowserNode } from "./browser-node.js";
@@ -107,7 +107,7 @@ export async function launchLocal(
         { env, timeout: 5000 },
       );
     });
-    await applyConnectionPolicy(directory, state, env);
+    await applyNetworkPolicy(directory, state, env);
     if (state.input.modelGateway) {
       report("Starting model gateway…");
       await compose(directory, [
@@ -143,7 +143,7 @@ export async function launchLocal(
       await response.body?.cancel();
     });
     await verifyRuntimeBinding(state, runtime);
-    await applyConnectionPolicy(directory, state, env, true);
+    await waitFor(() => applyNetworkPolicy(directory, state, env, true));
     if (state.input.browser) {
       report("Starting native browser node…");
       await startBrowserNode(directory, state, cancellation.signal);

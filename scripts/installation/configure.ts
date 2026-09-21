@@ -184,6 +184,7 @@ export async function configurationChanges(
   return {
     models: !isDeepStrictEqual(await models(before), await models(after)),
     connections: !isDeepStrictEqual(before.connections, after.connections),
+    publicWeb: before.publicWeb !== after.publicWeb,
     packs: !isDeepStrictEqual(await packs(before), await packs(after)),
   };
 }
