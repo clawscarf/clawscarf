@@ -13,7 +13,7 @@ models, connected accounts, and execution protected by NVIDIA OpenShell.
 ## Get started
 
 ```sh
-curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.5/install.sh | sh
+curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.7/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
