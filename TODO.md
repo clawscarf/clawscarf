@@ -44,6 +44,13 @@ Keep existing native plugin management, custom skills and MCP. The
 [deferred decisions](#deferred-product-decisions). No release publication or upstream PRs
 are authorized by this checklist.
 
+- [ ] **Bug — member Home session:** Fix non-admin Home opening
+      `agent:main:main` and reporting `Session "agent:main:main" was not found.`
+      Resolve a stable session owned by the current native user per agent across
+      initial landing, sidebar Home and the Home assistant panel; preserve member
+      session permissions. Verify first login before any admin chat, an existing
+      admin-owned main session, reload and account switching.
+
 ### Plugins
 
 Retain these 22 plugins without automatically enabling optional capabilities:
