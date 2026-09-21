@@ -334,16 +334,22 @@ export async function runConfiguration(
               : `http://127.0.0.1:${String(saved.config.exposure.applicationPort)}`
             : undefined;
       if (result.state === "cancelled") clack.cancel("Cancelled.");
-      else
+      else {
+        if ("ready" in result && result.ready)
+          ui.note(
+            `clawscarf status --directory ${quote(options.directory ?? defaultInstallationDirectory)}\nclawscarf stop --directory ${quote(options.directory ?? defaultInstallationDirectory)}`,
+            "Manage this installation",
+          );
         clack.outro(
           "ready" in result
             ? result.ready
-              ? `ClawScarf is ready.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}\n\nManage this installation:\n  clawscarf status --directory ${quote(options.directory ?? defaultInstallationDirectory)}\n  clawscarf stop --directory ${quote(options.directory ?? defaultInstallationDirectory)}`
+              ? `ClawScarf is ready.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}`
               : "ClawScarf needs attention. Check status for details."
             : result.state === "unchanged"
               ? "No changes. Server left as it was."
               : "Configuration saved. Server stopped.",
         );
+      }
       if ("ready" in result && result.ready && applicationUrl)
         await ui.openBrowser(applicationUrl);
     }
