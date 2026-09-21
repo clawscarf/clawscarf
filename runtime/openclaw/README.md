@@ -222,7 +222,7 @@ revision metadata agrees across builders; user Git identity/environment is ignor
 The initial marketplace experiment passed its disabled/enabled UI and native
 operation checks. Browser guidance regressions exercise actual registration and
 routing owners with controlled transports. A reconstructed source build and
-ClawScarf checks/build passed locally. Patched images still need release-candidate
-CI qualification; published alpha.3 predates these patches.
-[TODO.md](../../TODO.md) tracks release and real browser qualification.
+ClawScarf checks/build passed locally. The [release guide](../../release/README.md#build-and-publish)
+records the published image and packaging qualification.
+[TODO.md](../../TODO.md) tracks remaining curation and real browser qualification.
 No existing installation is modified by prepare, export or verify.

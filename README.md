@@ -13,7 +13,7 @@ models, connected accounts, and execution protected by NVIDIA OpenShell.
 ## Get started
 
 ```sh
-curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.3/install.sh | sh
+curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.4/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
@@ -107,8 +107,8 @@ for details.
 - **Customizing it:** [Recipes](recipes/README.md) · [Packs](packs/README.md) · [Runtime architecture](runtime/README.md)
 - **Helping build it:** [Contributing](CONTRIBUTING.md) · [Development setup](scripts/README.md) · [Report a bug](https://github.com/clawscarf/clawscarf/issues)
 
-Development maintains a small [OpenClaw patch series](runtime/openclaw/README.md)
-for selected fixes and optional capabilities. Published alpha.3 predates that series.
+ClawScarf maintains a small [OpenClaw patch series](runtime/openclaw/README.md)
+for selected fixes and optional capabilities. Releases include its exact source provenance.
 
 Built on [OpenClaw](https://github.com/openclaw/openclaw),
 [NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) and

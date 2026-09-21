@@ -37,7 +37,7 @@ retains Node's complete upstream LICENSE, including its bundled third-party noti
 at `node/LICENSE`. JavaScript dependencies retain their licenses in `node_modules`.
 Gateway source builds apply the maintained patch series to upstream commit
 `7bc487d39dc9e059bb9b19ea08152883022f83fe`. Release provenance records the
-resulting tree and patch-set digest. Published alpha.3 predates these patches.
+resulting tree and patch-set digest alongside the exact patches and their intent documents.
 The [image build instructions](deploy/images/README.md) own source packaging.
 OpenClaw's upstream [license](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/LICENSE)
 is MIT. NVIDIA NemoClaw's [license](https://github.com/NVIDIA/NemoClaw/blob/main/LICENSE)

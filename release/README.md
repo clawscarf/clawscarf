@@ -152,24 +152,33 @@ Repository setup:
   and the image build exports its network-tool sources. Those files are not a claim of
   a completed license audit. Pinned Debian packages still depend on mirror retention.
 
-[0.1.0-alpha.3](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.3)
-includes the standalone installer and CLI archives. Its
-[candidate build](https://github.com/clawscarf/clawscarf/actions/runs/35536122174)
-passed full checks, npm archive installation, all eight image builds on both
-architectures, and standalone installation without system Node on all three host
-platforms. The public macOS installer also passed download verification, catalog
-loading and read-only status against an existing installation.
+[0.1.0-alpha.4](https://github.com/clawscarf/clawscarf/releases/tag/v0.1.0-alpha.4)
+is the first published candidate built from the ordered OpenClaw patch series. Its
+[candidate build](https://github.com/clawscarf/clawscarf/actions/runs/35573534670)
+passed full checks, all eight image builds on both architectures, exact source/patch
+agreement, npm archive installation and standalone installation without system Node
+on all three host platforms. Published assets include the verified source provenance
+and patch archive; all image indexes are anonymously readable.
+The public macOS installer also passed checksum verification and CLI/catalog loading
+with system Node unavailable.
 
 Both Linux architectures passed protected runtime startup, native WebSocket forwarding,
-authenticated TLS to the private model gateway, retained stop/start and deletion on
-Docker 29.5.3. Real GPT-6 Astra inference and retained restart on macOS Docker Desktop
-were verified with alpha.2. Disposable test containers, volumes and networks were
-deleted afterward.
+authenticated native administrator access through the companion, private model TLS,
+retained stop/start and deletion on Docker 29.5.3. A fresh macOS Docker Desktop fixture
+using the candidate package and images passed signed OIDC administrator login with a
+disposable issuer, native People access, real GPT-6 Astra chat and retained files after
+restart. Test containers, volumes and networks were deleted afterward.
 
-Staging hosted administrator login and the packaged interactive setup previously
-passed on macOS with alpha.1. Hosted login and real provider inference on Linux,
-actual Windows/WSL2 installation, production first-time signup and changed-version
-upgrades remain unverified; see [TODO.md](../TODO.md).
+The exact ARM64 runtime image also passed disabled marketplace CLI/RPC checks,
+installed-inventory access and a zero-request ClawHub trap. Its Browser registration
+advertised configured-node, disabled-node and sandbox priorities correctly. These
+checks do not qualify model-selected browsing; the recipe still leaves browser off
+and does not yet disable the marketplace.
+
+Staging hosted administrator login and packaged interactive setup previously passed
+on macOS with alpha.1. Hosted login and real provider inference on Linux, actual
+Windows/WSL2 installation, production first-time signup and changed-version upgrades
+remain unverified; see [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 

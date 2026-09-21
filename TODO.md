@@ -99,8 +99,6 @@ authorize release publication or upstream PRs.
 - [ ] **Recipe + packaging:** Select and exercise document/PDF tools and skills on the
       shared team filesystem; create a runtime variant only if executable dependencies justify it.
       A skill does not install its CLI; `clawpdf` was an example, not a selected dependency.
-- [ ] **Verification:** Run the existing two-patch source through release-candidate CI;
-      local source tests do not qualify the patched images on both architectures.
 - [ ] **Verification:** Qualify curated absence across UI, direct RPC/HTTP/CLI/tools,
       cached paths and cold-start/background services: disabled features reject before
       effects and produce no unwanted catalog traffic. Exercise enabled/disabled states,

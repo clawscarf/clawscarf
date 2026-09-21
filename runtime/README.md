@@ -143,8 +143,9 @@ controls, not hot reload, menu hiding or shell authorization.
 The [marketplace patch](openclaw/patches/optional-marketplace.prompt.md) adds
 `marketplace.enabled: false` to suppress native discovery UI and reject its native
 catalog operations. It preserves explicit-source administration. The default remains
-enabled and this tooling slice does not change the preset; published alpha.3 has
-neither source patch. Package removal and wider UI curation remain separate work.
+enabled, and the preset does not set it to false. See the
+[release guide](../release/README.md#build-and-publish) for packaged verification.
+Package removal and wider UI curation remain separate work.
 Loading restrictions alone still do not establish a curated browsing UI.
 
 ## External hosting boundary
