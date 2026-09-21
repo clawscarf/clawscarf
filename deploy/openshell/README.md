@@ -44,16 +44,23 @@ choice; omitted recipe values are false. The Team server recipe enables it.
 The [public-web policy](../../scripts/deployment/public-web.ts) adds public IPv4
 and global IPv6 destinations on ports 80/443 to OpenShell’s existing explicit
 proxy. Private, loopback, link-local, metadata and reserved address ranges are
-excluded; explicitly configured inference/Connections endpoints keep their own
-rules. The controller resolves destination names and enforces `allowed_ips`.
+excluded. On ports 80/443, configured inference/Connections endpoints use the
+same public-address constraints: the pinned OpenShell rejects overlapping rules
+with different `allowed_ips`, even when their binary selectors differ. Private
+services on those ports require public web to be off; services on other ports
+retain their explicit rules (including the bundled private model gateway on 4000).
+The controller resolves destination names and enforces `allowed_ips`.
 TLS passes through without interception; the rule allows TCP tunnels on those
 ports, not a payload-level guarantee that every byte is HTTP. It grants neither
 raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
 [the launcher](../../runtime/README.md) configures native OpenClaw and Node clients.
 
 Enabling public web lets team code send data to public services. It does not isolate
-team members or prevent data export. Turning it off removes only ClawScarf’s
-`public_web` rule, preserving other operator policies. Retained changes use the
+team members or prevent data export. Turning it off removes ClawScarf’s
+`public_web` rule and its IP constraints from managed service rules, restoring
+strict endpoint-based access. Other operator policies are preserved; custom IP
+restrictions on overlapping managed services cause an explicit configuration error
+rather than being overwritten. Retained changes use the
 [network policy updater](../../scripts/deployment/network-policy.ts), which waits
 for the selected policy version to become effective before reopening installation
 access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
@@ -69,9 +76,12 @@ pinned CLI, `CLAWSCARF_TEST_GATEWAY` to the controller name and
 node --import tsx --test tests/runtime/public-web.test.ts
 ```
 
-It checks public HTTP/HTTPS through Node and OpenClaw’s native guarded fetch,
-explicit proxy denial of private destinations and
-public-access denial after removing the rule. It does not qualify every CLI’s
+It creates the combined public-web and Connections policy, checks public HTTP/HTTPS
+through Node and OpenClaw’s native guarded fetch, denies private destinations,
+and verifies that removing public web preserves the configured Connections endpoint
+while denying other public access. The release’s
+[platform test](../../tests/deployment/platform-live.test.ts) also starts a fresh
+installation with both capabilities enabled. It does not qualify every CLI’s
 proxy support or the browser’s dashboard rendering.
 
 ## Contributor controller setup

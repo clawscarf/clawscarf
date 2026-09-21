@@ -7,7 +7,7 @@ import type { InitialConnectionsEndpoint } from "./connections.js";
 import { LocalSetupError } from "./process.js";
 import { ensurePrivateFile } from "./state.js";
 
-import { publicWebPolicy } from "./public-web.js";
+import { publicWebPolicy, publicWebEndpointConstraints } from "./public-web.js";
 
 export function initialRuntimePolicy(
   source: string,
@@ -42,6 +42,10 @@ export function initialRuntimePolicy(
                 {
                   host: connections.network.host,
                   port: connections.network.port,
+                  ...publicWebEndpointConstraints(
+                    connections.network.port,
+                    publicWeb,
+                  ),
                   tls: "skip",
                 },
               ],
@@ -57,6 +61,10 @@ export function initialRuntimePolicy(
                 {
                   host: models.network.host,
                   port: models.network.port,
+                  ...publicWebEndpointConstraints(
+                    models.network.port,
+                    publicWeb,
+                  ),
                   tls: "skip",
                 },
               ],

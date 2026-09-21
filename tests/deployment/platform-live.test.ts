@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { z } from "zod";
 import pins from "../../release/components.json" with { type: "json" };
+import { stageNetworkPolicyChange } from "../../scripts/deployment/network-policy.js";
 import { prepareLocal } from "../../scripts/deployment/prepare.js";
 import { launchLocal, stopLocal } from "../../scripts/deployment/launch.js";
 import { resourceNames, readState } from "../../scripts/deployment/state.js";
@@ -21,7 +22,7 @@ import { hash, token } from "../../services/access/service/session.js";
 
 const imageFile = process.env.CLAWSCARF_TEST_PLATFORM_IMAGES;
 await test(
-  "real Docker platform: protected runtime, private model gateway, retention and cleanup",
+  "real Docker platform: public web with Connections, protected runtime, private models and retention",
   {
     skip: !imageFile,
     timeout: 600_000,
@@ -100,6 +101,8 @@ await test(
       const state = await prepareLocal(stateDirectory, {
         name: "platform-test",
         administratorName: "Test administrator",
+        publicWeb: true,
+        connections: { mode: "external", brokerUrl: "https://example.org" },
         cpu: "2",
         memory: "3Gi",
         runtimeImage: images.runtime,
@@ -230,7 +233,24 @@ await test(
       } finally {
         await storage.close();
       }
+      await run(
+        process.execPath,
+        ["--import", "tsx", "--test", "tests/runtime/public-web.test.ts"],
+        {
+          env: {
+            ...env,
+            CLAWSCARF_TEST_PUBLIC_WEB: "1",
+            CLAWSCARF_TEST_OPENSHELL: state.input.openshellCli,
+            CLAWSCARF_TEST_GATEWAY: name,
+            CLAWSCARF_TEST_RUNTIME_IMAGE: images.runtime,
+          },
+          timeout: 180_000,
+        },
+      );
       await stopLocal(stateDirectory);
+      await stageNetworkPolicyChange(stateDirectory, state, {
+        public_web: null,
+      });
       await launchLocal(stateDirectory, console.log);
       assert.match(
         await inside(

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initialRuntimePolicy } from "../../scripts/deployment/policy.js";
 import {
+  composePublicWebRules,
   publicWebAddresses,
   publicWebPolicy,
 } from "../../scripts/deployment/public-web.js";
@@ -84,6 +85,79 @@ await test("public-web selection only adds its own runtime policy", () => {
   const enabled = initialRuntimePolicy(source, undefined, undefined, true);
   assert.deepEqual(before.network_policies, {});
   assert.deepEqual(enabled.network_policies.public_web, publicWebPolicy(true));
+});
+
+await test("public web composes with HTTPS services and restores strict service rules", () => {
+  const connections = {
+    brokerUrl: "https://cloud.clawscarf.com",
+    network: {
+      host: "cloud.clawscarf.com",
+      port: 443,
+      protocol: "tcp" as const,
+      binary: "/usr/local/bin/node",
+    },
+  };
+  const strict = initialRuntimePolicy(
+    "network_policies: {}",
+    undefined,
+    connections,
+  ).network_policies;
+  const combined = initialRuntimePolicy(
+    "network_policies: {}",
+    undefined,
+    connections,
+    true,
+  ).network_policies;
+  assert.deepEqual(
+    combined.connections_broker?.endpoints[0]?.allowed_ips,
+    publicWebAddresses,
+  );
+  assert.deepEqual(
+    composePublicWebRules({ ...strict, public_web: publicWebPolicy(true) }),
+    combined,
+  );
+  const { public_web: publicRule, ...services } = combined;
+  assert.deepEqual(publicRule, publicWebPolicy(true));
+  assert.deepEqual(composePublicWebRules(services), strict);
+  const model = {
+    name: "Model gateway",
+    endpoints: [{ host: "models.example", port: 443, tls: "skip" }],
+    binaries: [{ path: "/usr/local/bin/node" }],
+  };
+  const privateModel = {
+    ...model,
+    endpoints: [{ host: "models.internal", port: 4000, tls: "skip" }],
+  };
+  const operator = {
+    name: "Operator policy",
+    endpoints: [{ host: "private.internal", port: 8443 }],
+  };
+  const rules = composePublicWebRules({
+    ...combined,
+    model_gateway: model,
+    operator,
+  });
+  assert.deepEqual(rules.model_gateway, {
+    ...model,
+    endpoints: [{ ...model.endpoints[0], allowed_ips: publicWebAddresses }],
+  });
+  assert.deepEqual(rules.operator, operator);
+  assert.deepEqual(
+    composePublicWebRules({ ...combined, model_gateway: privateModel })
+      .model_gateway,
+    privateModel,
+  );
+  assert.throws(
+    () =>
+      composePublicWebRules({
+        ...combined,
+        model_gateway: {
+          ...model,
+          endpoints: [{ ...model.endpoints[0], allowed_ips: ["1.1.1.1/32"] }],
+        },
+      }),
+    /custom IP restrictions/u,
+  );
 });
 
 await test("pending network edits retain independently selected changes and bind ownership", async () => {

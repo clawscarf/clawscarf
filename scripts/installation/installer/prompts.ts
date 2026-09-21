@@ -134,7 +134,7 @@ export async function progress<T>(
   const report = (detail: string) => {
     if (spinner && detail.includes("\n")) {
       spinner.stop(message);
-      process.stderr.write(detail + "\n");
+      clack.log.info(detail, { output: process.stderr });
       spinner.start(message);
     } else if (spinner) spinner.message(detail);
     else process.stderr.write(detail + "\n");

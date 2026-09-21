@@ -4,12 +4,18 @@ import { join } from "node:path";
 import { z } from "zod";
 import { run } from "./process.js";
 import { resourceNames, writePrivate, type LocalState } from "./state.js";
+import { composePublicWebRules } from "./public-web.js";
 import { runtimeManager } from "./runtime.js";
 
 const connectionRuleSchema = z.object({
   name: z.string(),
   endpoints: z.array(
-    z.object({ host: z.string(), port: z.number(), tls: z.string() }),
+    z.object({
+      host: z.string(),
+      port: z.number(),
+      tls: z.string(),
+      allowed_ips: z.array(z.string()).optional(),
+    }),
   ),
   binaries: z.array(z.object({ path: z.string() })),
 });
@@ -81,23 +87,40 @@ export async function applyNetworkPolicy(
   const update = (policy: z.infer<typeof policySchema>) => {
     return {
       ...policy,
-      network_policies: Object.fromEntries([
-        ...Object.entries(policy.network_policies).filter(
-          ([key]) => !Object.hasOwn(change.rules, key),
-        ),
-        ...Object.entries(change.rules).filter(([, rule]) => rule !== null),
-      ]),
+      network_policies: composePublicWebRules(
+        Object.fromEntries([
+          ...Object.entries(policy.network_policies).filter(
+            ([key]) => !Object.hasOwn(change.rules, key),
+          ),
+          ...Object.entries(change.rules).filter(([, rule]) => rule !== null),
+        ]),
+      ),
     };
   };
-  const matches = (policy: z.infer<typeof policySchema>) =>
-    Object.entries(change.rules).every(([key, rule]) => {
+  const matches = (policy: z.infer<typeof policySchema>) => {
+    const expected = update(policy).network_policies;
+    return [
+      ...new Set([
+        ...Object.keys(change.rules),
+        "connections_broker",
+        "model_gateway",
+      ]),
+    ].every((key) => {
       const observed = policy.network_policies[key];
-      if (rule === null) return observed === undefined;
-      const parsed = (
-        key === "public_web" ? publicRuleSchema : connectionRuleSchema
-      ).safeParse(observed);
-      return parsed.success && isDeepStrictEqual(parsed.data, rule);
+      if (!Object.hasOwn(change.rules, key))
+        return isDeepStrictEqual(observed, expected[key]);
+      if (expected[key] === undefined) return observed === undefined;
+      const schema =
+        key === "public_web" ? publicRuleSchema : connectionRuleSchema;
+      const actualRule = schema.safeParse(observed);
+      const expectedRule = schema.safeParse(expected[key]);
+      return (
+        actualRule.success &&
+        expectedRule.success &&
+        isDeepStrictEqual(actualRule.data, expectedRule.data)
+      );
     });
+  };
   const name = resourceNames(state).sandbox;
   if (
     !(await runtimeManager(directory, state, env, command).recorded()).receipt

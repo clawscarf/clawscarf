@@ -10,7 +10,7 @@ import { initialRuntimePolicy } from "../../scripts/deployment/policy.js";
 
 const execute = promisify(execFile);
 await test(
-  "OpenShell public-web policy permits proxied HTTPS and denies private destinations and disabled web",
+  "OpenShell accepts public web with Connections and preserves private blocking across policy toggles",
   {
     skip: process.env.CLAWSCARF_TEST_PUBLIC_WEB !== "1",
     timeout: 180_000,
@@ -27,9 +27,20 @@ await test(
     const directory = await mkdtemp(join(tmpdir(), "clawscarf-web-"));
     const policy = join(directory, "policy.json");
     const source = await readFile("deploy/openshell/policy.yaml", "utf8");
+    const connections = {
+      brokerUrl: "https://example.org",
+      network: {
+        host: "example.org",
+        port: 443,
+        protocol: "tcp" as const,
+        binary: "/usr/local/bin/node",
+      },
+    };
     await writeFile(
       policy,
-      JSON.stringify(initialRuntimePolicy(source, undefined, undefined, true)),
+      JSON.stringify(
+        initialRuntimePolicy(source, undefined, connections, true),
+      ),
     );
     const run = async (args: string[]) =>
       execute(cli, args, { timeout: 60000, maxBuffer: 1024 * 1024 });
@@ -117,6 +128,7 @@ await test(
         "setInterval(()=>{},1000)",
       ]);
       created = true;
+      await probe("https://example.org", true);
       await probe("https://example.com", true);
       await probe("http://example.com", true);
       for (const url of [
@@ -127,11 +139,15 @@ await test(
         "http://100.100.100.200",
         "http://[::1]",
         "http://[fc00::1]",
+        "https://10.0.0.1",
+        "https://169.254.169.254",
+        "http://host.docker.internal",
+        "https://host.openshell.internal",
       ])
         await probe(url, false);
       await writeFile(
         policy,
-        JSON.stringify(initialRuntimePolicy(source, undefined)),
+        JSON.stringify(initialRuntimePolicy(source, undefined, connections)),
       );
       await run([
         "policy",
@@ -144,6 +160,7 @@ await test(
         "--wait",
       ]);
       await probe("https://example.com", false);
+      await probe("https://example.org", true);
     } finally {
       if (created) await run(["sandbox", "delete", name, "--gateway", gateway]);
       await rm(directory, { recursive: true, force: true });
