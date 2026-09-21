@@ -1,11 +1,13 @@
 import {
   createServer,
+  Agent as HttpAgent,
   STATUS_CODES,
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
 import {
   createServer as createHttpsServer,
+  Agent as HttpsAgent,
   type ServerOptions as TlsOptions,
 } from "node:https";
 import { Socket } from "node:net";
@@ -64,6 +66,16 @@ export function createIngress(
       );
   }
   const streams = new SessionStreams(authority);
+  // OpenShell forwards share a 20-connection sandbox budget with WebSockets.
+  // Queue HTTP bursts instead of opening a tunnel for every UI chunk at once.
+  const agentOptions = {
+    keepAlive: true,
+    maxSockets: 8,
+    maxTotalSockets: 8,
+    maxFreeSockets: 2,
+  };
+  const httpAgent = new HttpAgent(agentOptions);
+  const httpsAgent = new HttpsAgent(agentOptions);
   const timer = setInterval(() => streams.tick(), 2000);
   timer.unref();
   async function forward(
@@ -107,6 +119,10 @@ export function createIngress(
         req.method === "POST" &&
         route.webhookPaths?.includes(url.pathname) === true;
       const proxy = createProxyServer({
+        agent:
+          new URL(route.upstream).protocol === "https:"
+            ? httpsAgent
+            : httpAgent,
         proxyTimeout: 0,
         timeout: 0,
         followRedirects: false,
@@ -159,10 +175,14 @@ export function createIngress(
             ),
           10000,
         );
-        request.once("socket", (socket) => {
+        const connected = (socket: Socket) => {
           if (!socket.connecting) clearTimeout(timeout);
           else socket.once("connect", () => clearTimeout(timeout));
-        });
+        };
+        // httpxy emits proxyReq from its socket event; that event may already
+        // have fired. This is a connection deadline, not a response deadline.
+        if (request.socket) connected(request.socket);
+        else request.once("socket", connected);
         request.once("response", () => clearTimeout(timeout));
         request.once("upgrade", () => clearTimeout(timeout));
         request.once("close", () => {
@@ -233,6 +253,8 @@ export function createIngress(
     async close() {
       clearInterval(timer);
       streams.close();
+      httpAgent.destroy();
+      httpsAgent.destroy();
       await Promise.all(
         servers.map((listener) =>
           listener.listening

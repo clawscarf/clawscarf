@@ -150,6 +150,13 @@ CSRF requirements.
 
 The runtime connection uses the [OpenShell transport](../../deploy/openshell/README.md#application-transport).
 That guide owns the forwarding implementation; Access owns HTTP/WebSocket authorization.
+Ingress reuses upstream HTTP connections and queues bursts behind an eight-socket
+pool per protocol (at most two idle sockets). This limits asset-download fan-out
+within the controller’s shared connection budget; it does not remove that budget
+or reserve capacity for an unlimited number of WebSockets. Its ten-second deadline
+covers connecting, not waiting for response headers or a valid stream to finish.
+The [ingress regressions](../../tests/access/session.test.ts) exercise queued asset
+bursts, delayed response headers, streaming and revocation.
 
 Ingress replaces identity and forwarded headers using authenticated session data
 and the actual socket address. It does not invent a remote address to bypass native

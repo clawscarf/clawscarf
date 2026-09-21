@@ -190,3 +190,95 @@ await test("reserved application return paths require an explicit composition gr
   ])
     assert.throws(() => safeReturn(path, allowed));
 });
+
+await test("UI asset bursts queue within the runtime tunnel budget", async () => {
+  const { createServer } = await import("node:http");
+  const { createIngress } =
+    await import("../../services/access/providers/ingress.js");
+  let active = 0,
+    peak = 0;
+  const upstream = createServer((_req, res) => {
+    active++;
+    peak = Math.max(peak, active);
+    const status = active > 8 ? 503 : 200;
+    setTimeout(() => {
+      active--;
+      res.writeHead(status).end("asset");
+    }, 20);
+  });
+  upstream.listen(0, "127.0.0.1");
+  await once(upstream, "listening");
+  const target = upstream.address();
+  assert.ok(target && typeof target !== "string");
+  const route = {
+    kind: "application" as const,
+    origin: "http://127.0.0.1",
+    upstream: `http://127.0.0.1:${target.port}`,
+  };
+  const ingress = createIngress(
+    { authenticate: () => Promise.resolve({ identity: "clawscarf:test" }) },
+    [route],
+    () => {},
+  );
+  ingress.server.listen(0, "127.0.0.1");
+  await once(ingress.server, "listening");
+  const listener = ingress.server.address();
+  assert.ok(listener && typeof listener !== "string");
+  route.origin = `http://127.0.0.1:${listener.port}`;
+  try {
+    await Promise.all(
+      Array.from({ length: 60 }, async (_, i) => {
+        const response = await fetch(`${route.origin}/chunk-${i}.js`);
+        assert.equal(response.status, 200);
+        assert.equal(await response.text(), "asset");
+      }),
+    );
+    assert.ok(peak <= 8);
+  } finally {
+    await ingress.close();
+    upstream.closeAllConnections();
+    await new Promise<void>((resolve) => upstream.close(() => resolve()));
+  }
+});
+
+await test(
+  "connected upstream requests can wait for headers without a connection timeout",
+  { timeout: 15000 },
+  async () => {
+    const { createServer } = await import("node:http");
+    const { createIngress } =
+      await import("../../services/access/providers/ingress.js");
+    const upstream = createServer((_req, res) => {
+      const timer = setTimeout(() => res.end("ready"), 10500);
+      res.once("close", () => clearTimeout(timer));
+    });
+    upstream.listen(0, "127.0.0.1");
+    await once(upstream, "listening");
+    const target = upstream.address();
+    assert.ok(target && typeof target !== "string");
+    const route = {
+      kind: "application" as const,
+      origin: "http://127.0.0.1",
+      upstream: `http://127.0.0.1:${target.port}`,
+    };
+    const ingress = createIngress(
+      { authenticate: () => Promise.resolve({ identity: "clawscarf:test" }) },
+      [route],
+      () => {},
+    );
+    ingress.server.listen(0, "127.0.0.1");
+    await once(ingress.server, "listening");
+    const listener = ingress.server.address();
+    assert.ok(listener && typeof listener !== "string");
+    route.origin = `http://127.0.0.1:${listener.port}`;
+    try {
+      const response = await fetch(route.origin);
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), "ready");
+    } finally {
+      await ingress.close();
+      upstream.closeAllConnections();
+      await new Promise<void>((resolve) => upstream.close(() => resolve()));
+    }
+  },
+);

@@ -9,6 +9,8 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
       inference on Linux ARM64/x86-64, and the full Windows/WSL2 journey.
 - [ ] Qualify concurrent native UI requests and long-lived streams through the shipped
       gRPC service forwards and address the [controller connection limit](deploy/openshell/README.md#application-transport).
+- [ ] Verify saved native dashboards and their granted network controls through the
+      authenticated UI on the release image, including cold asset loading.
 - [ ] Qualify hosted signup/email verification, recovery, logout and account switching,
       plus customer OIDC callbacks/TLS, on a fresh installation.
 - [ ] Add Intel Mac support when compatible upstream OpenShell tools are available;
