@@ -98,7 +98,8 @@ unchanged and ingress records the actual network peer.
 
 [The companion application](../../apps/companion/README.md) is the process entry for
 Access plus optional Connections. It serves no management dashboard; Account/People and optional Connections assets ship in native plugins.
-The Access-only command above remains useful for isolated component work. Both entries
+The [Access-only entrypoint](../../apps/access/entry.ts) remains useful for isolated
+component work through `pnpm access:start`. Both application entries
 use the same [process lifecycle](../../apps/process-lifecycle.ts), including cleanup
 after a partially failed startup and one shutdown for simultaneous signals.
 [The Compose fragment](../../deploy/compose/companion.yaml) publishes access on loopback

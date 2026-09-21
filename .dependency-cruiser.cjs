@@ -1,9 +1,9 @@
 module.exports = {
   forbidden: [
     {
-      name: "companion-app-uses-named-composition-boundaries",
+      name: "apps-use-named-composition-boundaries",
       severity: "error",
-      from: { path: "^apps/companion/" },
+      from: { path: "^apps/" },
       to: {
         path: "^services/",
         pathNot:
@@ -14,7 +14,7 @@ module.exports = {
       name: "components-do-not-import-process-apps",
       severity: "error",
       from: { path: "^(services|runtime|plugins)/" },
-      to: { path: "^apps/", pathNot: "^apps/process-lifecycle\\.ts$" },
+      to: { path: "^apps/" },
     },
     {
       name: "plugin-common-is-domain-independent",

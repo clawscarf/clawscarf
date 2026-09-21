@@ -6,6 +6,8 @@
 !tsconfig*.json
 !apps/
 !apps/process-lifecycle.ts
+!apps/access/
+!apps/access/**
 !apps/companion/
 !apps/companion/**
 !services/

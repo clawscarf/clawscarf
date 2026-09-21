@@ -25,7 +25,7 @@
     "connectors:plugin:build": "npm --prefix plugins/connections run build",
     "test:connector-plugin": "npm --prefix plugins/connections run test:native",
     "access:generate": "openapi-ts -f scripts/access-api.config.ts",
-    "access:start": "node --import tsx services/access/runtime/entry.ts",
+    "access:start": "node --import tsx apps/access/entry.ts",
     "access:migrate": "node --import tsx services/access/runtime/migrate.ts",
     "test:access": "node --import tsx --test tests/access/*.test.ts",
     "architecture:check": "depcruise scripts plugins/common apps services runtime plugins/connections/src plugins/access/src --config .dependency-cruiser.cjs",

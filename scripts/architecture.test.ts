@@ -127,13 +127,15 @@ await test("domain layers and the public access seam enforce allowed and forbidd
       "service/work",
       "repo/store",
       "providers/vendor",
-      "runtime/entry",
+      "runtime/config",
     ])
       await write(`services/access/${file}.ts`, "export const value = 1;");
     await write("services/access/types/native.ts", "export const value = 1;");
     await write("services/access/repo/private.ts", "export const value = 1;");
     await write("runtime/preset.ts", "export const value = 1;");
+    await write("apps/access/entry.ts", "export const value = 1;");
     await write("apps/companion/entry.ts", "export const value = 1;");
+    await write("apps/process-lifecycle.ts", "export const value = 1;");
     await write(
       "services/access/runtime/composition.ts",
       "export const value = 1;",
@@ -168,7 +170,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
       [
         "types/port",
         "./local.js",
-        "../runtime/entry.js",
+        "../runtime/config.js",
         "access-types-are-framework-free",
       ],
       [
@@ -198,50 +200,56 @@ await test("domain layers and the public access seam enforce allowed and forbidd
       );
       await write(file, "export const value = 1;");
     }
-    await write(
-      "apps/companion/entry.ts",
-      'export {value} from "../../services/access/runtime/composition.js";',
-    );
-    await run(process.execPath, args, { cwd: root });
-    await write(
-      "apps/companion/entry.ts",
-      'export {value} from "../../services/access/repo/private.js";',
-    );
-    await assert.rejects(
-      run(process.execPath, args, { cwd: root }),
-      (error: unknown) => {
-        assert.ok(
-          error instanceof Error &&
-            "stdout" in error &&
-            typeof error.stdout === "string",
-        );
-        assert.ok(
-          error.stdout.includes(
-            "companion-app-uses-named-composition-boundaries",
-          ),
-        );
-        return true;
-      },
-    );
-    await write("apps/companion/entry.ts", "export const value = 1;");
-    await write(
-      "services/access/repo/private.ts",
-      'export {value} from "../../../apps/companion/entry.js";',
-    );
-    await assert.rejects(
-      run(process.execPath, args, { cwd: root }),
-      (error: unknown) => {
-        assert.ok(
-          error instanceof Error &&
-            "stdout" in error &&
-            typeof error.stdout === "string",
-        );
-        assert.ok(
-          error.stdout.includes("components-do-not-import-process-apps"),
-        );
-        return true;
-      },
-    );
+    for (const app of ["access", "companion"]) {
+      await write(
+        `apps/${app}/entry.ts`,
+        'export {value} from "../../services/access/runtime/composition.js"; export {value as lifecycle} from "../process-lifecycle.js";',
+      );
+      await run(process.execPath, args, { cwd: root });
+      await write(
+        `apps/${app}/entry.ts`,
+        'export {value} from "../../services/access/repo/private.js";',
+      );
+      await assert.rejects(
+        run(process.execPath, args, { cwd: root }),
+        (error: unknown) => {
+          assert.ok(
+            error instanceof Error &&
+              "stdout" in error &&
+              typeof error.stdout === "string",
+          );
+          assert.ok(
+            error.stdout.includes("apps-use-named-composition-boundaries"),
+          );
+          return true;
+        },
+      );
+      await write(`apps/${app}/entry.ts`, "export const value = 1;");
+    }
+    for (const app of [
+      "access/entry",
+      "companion/entry",
+      "process-lifecycle",
+    ]) {
+      await write(
+        "services/access/repo/private.ts",
+        `export {value} from "../../../apps/${app}.js";`,
+      );
+      await assert.rejects(
+        run(process.execPath, args, { cwd: root }),
+        (error: unknown) => {
+          assert.ok(
+            error instanceof Error &&
+              "stdout" in error &&
+              typeof error.stdout === "string",
+          );
+          assert.ok(
+            error.stdout.includes("components-do-not-import-process-apps"),
+          );
+          return true;
+        },
+      );
+    }
     await write("services/access/repo/private.ts", "export const value = 1;");
     await write(
       "services/access/service/work.ts",

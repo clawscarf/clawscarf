@@ -160,7 +160,9 @@ The Connections HTTP composition uses only the access companion's public
 Other cross-companion source imports fail. The process app explicitly wires the
 access configuration/composition and native ports to the Connections composition,
 HTTP registration, catalog provider and typed errors. These named entry boundaries
-are allowlisted; companions cannot import the process app. Plugins communicate through protocols
+are allowlisted. Access-only and combined companion process entrypoints live in
+`apps/` and share their lifecycle helper there; services, runtime and plugins cannot
+import application code. Plugins communicate through protocols
 and remain independently packaged. Domain layers cannot import network, filesystem,
 subprocess, database or authentication infrastructure. Typed lint also blocks global
 `fetch`, `WebSocket` and `EventSource` in those domain layers. The regression fixture checks
