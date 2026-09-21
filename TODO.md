@@ -190,8 +190,6 @@ Remove each of these standalone bundled skills independently of plugin removal:
       including personal-device/native-client setup, Talk and direct-provider accounts
       in Profile/model setup. Preserve managed LiteLLM model selection, selected channel
       setup and required browser bootstrap-token/pairing operations.
-- [ ] Remove Systems for both members and administrators, including direct navigation
-      and contextual links. Preserve required browser-node management.
 - [ ] Remove OpenClaw server Updates and disable upstream server self-update operations.
       ClawScarf releases own the runtime version; retain updates for administrator additions.
 - [ ] Remove remaining marketplace entry points, especially `codex_plugins` in retained

@@ -1,0 +1,3741 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Mon, 21 Sep 2026 15:36:46 +0200
+Subject: [PATCH] Remove the Systems workspace from the distribution
+
+Delete its routes, discovery entries and page-owned inventory and sidebar machinery. Preserve shared node and Desktop APIs and their ordinary UI consumers.
+
+ClawScarf-Patch: remove-systems-page
+---
+ docs/gateway/cloud-workers/desktop.md         |   5 +-
+ docs/web/control-ui.md                        |   1 -
+ docs/web/control-ui/sessions-and-sidebar.md   |  29 --
+ scripts/lib/control-ui-i18n-catalog.ts        |   3 -
+ ui/config/control-ui-boot-modules.json        |  25 +-
+ ui/src/app-navigation-groups.test.ts          |  13 +-
+ ui/src/app-navigation.test.ts                 |   4 -
+ ui/src/app-navigation.ts                      |   4 +-
+ ui/src/app-route-paths.ts                     |   1 -
+ ui/src/app-routes.test.ts                     |   8 +-
+ ui/src/app-routes.ts                          |   4 -
+ ui/src/app/app-host.dock-suppression.test.ts  |   7 -
+ ui/src/app/app-shell-panels.ts                |  10 +-
+ ui/src/app/app-shell-view.ts                  |   5 +-
+ .../app/settings.sidebar-prefs.node.test.ts   |   1 -
+ ui/src/components/app-sidebar-base.ts         |   9 +-
+ ui/src/components/app-sidebar.ts              |  15 +-
+ .../components/desktop/desktop-panel-view.ts  |  14 -
+ ui/src/components/desktop/desktop-panel.ts    |  38 +-
+ .../desktop/desktop-presentation.ts           |   2 -
+ .../desktop/desktop-session-controller.ts     |   3 +-
+ .../sidebar-context-controller.test.ts        |  57 ---
+ .../components/sidebar-context-controller.ts  |  65 ---
+ .../components/sidebar-context-state.test.ts  |  48 --
+ ui/src/components/sidebar-context-state.ts    |  35 --
+ ui/src/e2e/sidebar-customization.e2e.test.ts  |   8 +-
+ ui/src/e2e/systems-removal.e2e.test.ts        | 184 +++++++
+ ui/src/e2e/systems-workspace.e2e.test.ts      | 193 -------
+ ui/src/i18n/locales/en-systems.ts             |  75 ---
+ ui/src/i18n/locales/en.ts                     |   4 -
+ ui/src/pages/systems/route.ts                 |  16 -
+ ui/src/pages/systems/systems-controller.ts    | 332 -------------
+ ui/src/pages/systems/systems-data.test.ts     | 231 ---------
+ ui/src/pages/systems/systems-data.ts          | 120 -----
+ ui/src/pages/systems/systems-page.test.ts     | 235 ---------
+ ui/src/pages/systems/systems-page.ts          | 374 --------------
+ ui/src/pages/systems/systems-sidebar.ts       | 146 ------
+ ui/src/styles/layout.css                      |   9 -
+ ui/src/styles/systems.css                     | 470 ------------------
+ .../app-sidebar-cases/sidebar-scroll.ts       | 101 +---
+ ui/src/test-helpers/app-sidebar.ts            |   3 -
+ 41 files changed, 268 insertions(+), 2639 deletions(-)
+ delete mode 100644 ui/src/components/sidebar-context-controller.test.ts
+ delete mode 100644 ui/src/components/sidebar-context-controller.ts
+ delete mode 100644 ui/src/components/sidebar-context-state.test.ts
+ delete mode 100644 ui/src/components/sidebar-context-state.ts
+ create mode 100644 ui/src/e2e/systems-removal.e2e.test.ts
+ delete mode 100644 ui/src/e2e/systems-workspace.e2e.test.ts
+ delete mode 100644 ui/src/i18n/locales/en-systems.ts
+ delete mode 100644 ui/src/pages/systems/route.ts
+ delete mode 100644 ui/src/pages/systems/systems-controller.ts
+ delete mode 100644 ui/src/pages/systems/systems-data.test.ts
+ delete mode 100644 ui/src/pages/systems/systems-data.ts
+ delete mode 100644 ui/src/pages/systems/systems-page.test.ts
+ delete mode 100644 ui/src/pages/systems/systems-page.ts
+ delete mode 100644 ui/src/pages/systems/systems-sidebar.ts
+ delete mode 100644 ui/src/styles/systems.css
+
+diff --git a/docs/gateway/cloud-workers/desktop.md b/docs/gateway/cloud-workers/desktop.md
+index 75d0d3c3943a4317e51c2c4e339f6cf59a7f1b3d..abdb16dfc20c059c5b9902223973769e4531799c 100644
+--- a/docs/gateway/cloud-workers/desktop.md
++++ b/docs/gateway/cloud-workers/desktop.md
+@@ -30,9 +30,8 @@ When another operator takes control, your viewer reconnects in view-only mode. T
+ 
+ ## Desktop size
+ 
+-Open **Systems** in the Control UI sidebar to select a worker and use its desktop
+-as the main workspace. The docked and chat-side Desktop panels remain available;
+-all presentations reuse the desktop connection implementation and Gateway control arbitration.
++Use the docked or chat-side Desktop panel to view a worker desktop. Both
++presentations reuse the desktop connection implementation and Gateway control arbitration.
+ 
+ The **Desktop size** menu is available in the panel and the standalone desktop view:
+ 
+diff --git a/docs/web/control-ui.md b/docs/web/control-ui.md
+index e74b80ab79b5f5e6e17391db3c3f51b5de4d78a2..5a700168ed44fba235845a6906cd27fc2bc6c877 100644
+--- a/docs/web/control-ui.md
++++ b/docs/web/control-ui.md
+@@ -165,7 +165,6 @@ is absent from the window, its agent's most recent session supplies the preview.
+ 
+ - [Connect and pair](/web/control-ui/connect-and-pair) — pair a browser or phone, reach the UI over Tailscale, and fix a blank page.
+ - [Sessions and sidebar](/web/control-ui/sessions-and-sidebar) — sidebar zones, session menus, and the New session page.
+-- [Systems workspace](/web/control-ui/sessions-and-sidebar#systems-workspace) — contextual machine navigation and a desktop-first workspace.
+ - [Chat](/web/control-ui/chat) — composer controls, the session rail, transcript rendering, and hosted embeds.
+ - [Panels and docks](/web/control-ui/panels) — Ask OpenClaw, the Home dock, the operator terminal, and the browser panel.
+ - [Settings](/web/control-ui/settings) — identity, appearance, plugins, updates, MCP, activity, and meetings.
+diff --git a/docs/web/control-ui/sessions-and-sidebar.md b/docs/web/control-ui/sessions-and-sidebar.md
+index 4d198fc109b658bd1967c4ae33d7f7dc6103d5bb..4149277e15427bb865634ef0ee6adb5a0025684f 100644
+--- a/docs/web/control-ui/sessions-and-sidebar.md
++++ b/docs/web/control-ui/sessions-and-sidebar.md
+@@ -63,35 +63,6 @@ transcript entry. Acceptance does not imply that a transcript row already
+ exists; the accepted input replaces its local pending copy and later becomes
+ one canonical message, including its attachments.
+ 
+-## Systems workspace
+-
+-Open **Systems** in the sidebar, or visit `/systems`, to inspect the Gateway,
+-worker environments, and paired devices available to your connection. If your
+-customized sidebar does not include Systems, add it from **Edit pinned items**.
+-
+-Systems replaces the conversation list with a machine list below the global
+-navigation. Navigation and the active list share one scroll area on every route;
+-the sidebar header and footer stay fixed. Returning to conversations restores
+-their sidebar scroll position. Navigation changes this context; background
+-machine or session activity does not switch your workspace.
+-
+-The machine list excludes cloud workers whose teardown is complete, including
+-retained records from archived sessions and failed starts with no allocated
+-machine. Workers awaiting cleanup remain visible. Archiving stops running cloud
+-workers through the normal workspace-reconciliation flow; failed placements keep
+-their existing cleanup retries and recovery history.
+-
+-Select a desktop-capable system to open the existing Desktop viewer in the main
+-workspace. It uses the same connection, control, sizing, and fullscreen behavior
+-as the Desktop panel. Headless and offline entries remain inspectable instead
+-of opening an empty desktop. Pairing, desktop enablement, and operator permissions
+-still apply; opening Systems does not grant additional access.
+-
+-System details use reported facts. A connected device is not necessarily the
+-machine running a session, and unavailable measurements are not shown as zero.
+-See [Cloud Worker Desktop](/gateway/cloud-workers/desktop) for worker desktop
+-enablement and sizing.
+-
+ ## Sidebar navigation
+ 
+ Drag page destinations, including plugin-provided pages, to reorder them together.
+diff --git a/scripts/lib/control-ui-i18n-catalog.ts b/scripts/lib/control-ui-i18n-catalog.ts
+index b2bb3fe0e9429285c2a3af4c6b9a3c17508d5642..fcd1bc0fabc46a64a4ca4b5e702c1364d10e51fb 100644
+--- a/scripts/lib/control-ui-i18n-catalog.ts
++++ b/scripts/lib/control-ui-i18n-catalog.ts
+@@ -33,7 +33,6 @@ import { registerSettingsEnglish } from "../../ui/src/i18n/locales/en-settings.t
+ import { registerSkillLibraryEnglish } from "../../ui/src/i18n/locales/en-skill-library.ts";
+ import { registerSkillWorkshopEnglish } from "../../ui/src/i18n/locales/en-skill-workshop.ts";
+ import { registerSkillsBrowserEnglish } from "../../ui/src/i18n/locales/en-skills-browser.ts";
+-import { registerSystemsEnglish } from "../../ui/src/i18n/locales/en-systems.ts";
+ import { registerTranscriptsEnglish } from "../../ui/src/i18n/locales/en-transcripts.ts";
+ import { registerUpdateActionsEnglish } from "../../ui/src/i18n/locales/en-update-actions.ts";
+ import { registerUsageEnglish } from "../../ui/src/i18n/locales/en-usage.ts";
+@@ -83,7 +82,6 @@ const sourceFiles = [
+   "en-skill-library.ts",
+   "en-skill-workshop.ts",
+   "en-skills-browser.ts",
+-  "en-systems.ts",
+   "en-update-actions.ts",
+   "en-transcripts.ts",
+   "en-usage.ts",
+@@ -149,7 +147,6 @@ export function loadControlUiSourceCatalog(): TranslationMap {
+     registerSettingsEnglish.catalog,
+     registerSkillWorkshopEnglish.catalog,
+     registerSkillsBrowserEnglish.catalog,
+-    registerSystemsEnglish.catalog,
+     registerUpdateActionsEnglish.catalog,
+     registerTranscriptsEnglish.catalog,
+     registerUsageEnglish.catalog,
+diff --git a/ui/config/control-ui-boot-modules.json b/ui/config/control-ui-boot-modules.json
+index aebbdfd3a1fa1abda3769c1b168f4184b6a2a80e..57ee7dc064062b34249cf39944e5f69380171f1e 100644
+--- a/ui/config/control-ui-boot-modules.json
++++ b/ui/config/control-ui-boot-modules.json
+@@ -165,7 +165,6 @@
+   "node_modules/lit/async-directive.js",
+   "node_modules/lit/decorators.js",
+   "node_modules/lit/directive-helpers.js",
+-  "node_modules/lit/directives/cache.js",
+   "node_modules/lit/directives/class-map.js",
+   "node_modules/lit/directives/guard.js",
+   "node_modules/lit/directives/if-defined.js",
+@@ -890,6 +889,7 @@
+   "packages/gateway-protocol/src/protocol-validator.ts",
+   "packages/gateway-protocol/src/protocol-value-normalization.ts",
+   "packages/gateway-protocol/src/restart-unavailable.ts",
++  "packages/gateway-protocol/src/schema/agent-database-admission.ts",
+   "packages/gateway-protocol/src/schema/agents-models-skills.ts",
+   "packages/gateway-protocol/src/schema/approval-id.ts",
+   "packages/gateway-protocol/src/schema/approvals.ts",
+@@ -904,6 +904,7 @@
+   "packages/gateway-protocol/src/schema/human-mentions.ts",
+   "packages/gateway-protocol/src/schema/logs-chat.ts",
+   "packages/gateway-protocol/src/schema/model-account-selection.ts",
++  "packages/gateway-protocol/src/schema/model-runtime-options.ts",
+   "packages/gateway-protocol/src/schema/plugin-credentials.ts",
+   "packages/gateway-protocol/src/schema/plugins.ts",
+   "packages/gateway-protocol/src/schema/primitives.ts",
+@@ -1050,6 +1051,7 @@
+   "src/infra/update-doctor-config.ts",
+   "src/infra/update-failure-facts-format.ts",
+   "src/infra/update-run-legacy-expiry.ts",
++  "src/infra/update-run-record.ts",
+   "src/infra/update-run-report.ts",
+   "src/infra/update-run-step.ts",
+   "src/infra/update-snapshot-capacity.ts",
+@@ -1223,6 +1225,7 @@
+   "ui/src/app/update-schedule-projection.ts",
+   "ui/src/app/update-triage.ts",
+   "ui/src/app/user-identity.ts",
++  "ui/src/app/user-prefs-cache.ts",
+   "ui/src/app/user-profile.ts",
+   "ui/src/app/web-push.runtime.ts",
+   "ui/src/app/web-push.ts",
+@@ -1301,6 +1304,7 @@
+   "ui/src/components/markdown-details.ts",
+   "ui/src/components/markdown-file-links.ts",
+   "ui/src/components/markdown-github-refs.ts",
++  "ui/src/components/markdown-human-mentions.ts",
+   "ui/src/components/markdown-link-boundary.ts",
+   "ui/src/components/markdown-parser.ts",
+   "ui/src/components/markdown-raw-content.ts",
+@@ -1325,7 +1329,10 @@
+   "ui/src/components/panel-loading-skeleton.ts",
+   "ui/src/components/panel-refresh-status.ts",
+   "ui/src/components/panel-toggle-contract.ts",
++  "ui/src/components/person-activity-card.ts",
+   "ui/src/components/person-activity-link.ts",
++  "ui/src/components/person-reference.ts",
++  "ui/src/components/portaled-hovercard.ts",
+   "ui/src/components/promise-modal-host.ts",
+   "ui/src/components/provider-icon.ts",
+   "ui/src/components/resizable-divider.ts",
+@@ -1377,8 +1384,6 @@
+   "ui/src/components/sidebar-attention.ts",
+   "ui/src/components/sidebar-build-chip-format.ts",
+   "ui/src/components/sidebar-build-chip.ts",
+-  "ui/src/components/sidebar-context-controller.ts",
+-  "ui/src/components/sidebar-context-state.ts",
+   "ui/src/components/sidebar-empty-groups-controller.ts",
+   "ui/src/components/sidebar-issue-item.ts",
+   "ui/src/components/sidebar-issues-tabs.ts",
+@@ -1414,6 +1419,7 @@
+   "ui/src/i18n/locales/en-plugin-management.ts",
+   "ui/src/i18n/locales/en-session-placement.ts",
+   "ui/src/i18n/locales/en-skill-library.ts",
++  "ui/src/i18n/locales/en-skills-browser.ts",
+   "ui/src/i18n/locales/en.ts",
+   "ui/src/lib/agents/display.ts",
+   "ui/src/lib/agents/identity.ts",
+@@ -1499,6 +1505,7 @@
+   "ui/src/lib/cron/decimal.ts",
+   "ui/src/lib/cron/form-schedule.ts",
+   "ui/src/lib/cron/index.ts",
++  "ui/src/lib/cron/run-feedback.ts",
+   "ui/src/lib/cron/runs.ts",
+   "ui/src/lib/device-pair-setup.ts",
+   "ui/src/lib/download.ts",
+@@ -1540,6 +1547,7 @@
+   "ui/src/lib/nodes/index.ts",
+   "ui/src/lib/observer-digest.ts",
+   "ui/src/lib/open-external-url.ts",
++  "ui/src/lib/platform-label.ts",
+   "ui/src/lib/plugins/index.ts",
+   "ui/src/lib/presence-users.ts",
+   "ui/src/lib/product-links.ts",
+@@ -1641,6 +1649,7 @@
+   "ui/src/pages/apps/route.ts",
+   "ui/src/pages/channels/route.ts",
+   "ui/src/pages/chat/attachment-api.ts",
++  "ui/src/pages/chat/attachment-payload-lifecycle.ts",
+   "ui/src/pages/chat/attachment-payload-store.ts",
+   "ui/src/pages/chat/board-session-surface.ts",
+   "ui/src/pages/chat/browser-annotation-admission.ts",
+@@ -1796,6 +1805,7 @@
+   "ui/src/pages/chat/components/chat-composer-plus-menu.ts",
+   "ui/src/pages/chat/components/chat-composer-question.ts",
+   "ui/src/pages/chat/components/chat-composer-queue.ts",
++  "ui/src/pages/chat/components/chat-composer-selected-mentions.ts",
+   "ui/src/pages/chat/components/chat-composer-skill-menu.ts",
+   "ui/src/pages/chat/components/chat-composer-slash-menu-dom.ts",
+   "ui/src/pages/chat/components/chat-composer-slash-menu.ts",
+@@ -1827,6 +1837,8 @@
+   "ui/src/pages/chat/components/chat-message-attachments.ts",
+   "ui/src/pages/chat/components/chat-message-bubble.ts",
+   "ui/src/pages/chat/components/chat-message-confirmation.ts",
++  "ui/src/pages/chat/components/chat-message-disclosure.ts",
++  "ui/src/pages/chat/components/chat-message-entry.ts",
+   "ui/src/pages/chat/components/chat-message-group.ts",
+   "ui/src/pages/chat/components/chat-message-image-open.ts",
+   "ui/src/pages/chat/components/chat-message-images.ts",
+@@ -1904,7 +1916,6 @@
+   "ui/src/pages/chat/components/chat-transcript-scroll-restore.ts",
+   "ui/src/pages/chat/components/chat-transcript-virtualizer-host.ts",
+   "ui/src/pages/chat/components/chat-typing-indicator.ts",
+-  "ui/src/pages/chat/components/chat-user-turn-entry.ts",
+   "ui/src/pages/chat/components/chat-video-player.ts",
+   "ui/src/pages/chat/components/chat-voice-activity.ts",
+   "ui/src/pages/chat/components/chat-welcome.ts",
+@@ -1990,6 +2001,8 @@
+   "ui/src/pages/config/route.ts",
+   "ui/src/pages/connection/route.ts",
+   "ui/src/pages/cron/route.ts",
++  "ui/src/pages/custodian/custodian-session-owner.ts",
++  "ui/src/pages/custodian/plugin-help-state.ts",
+   "ui/src/pages/custodian/route.ts",
+   "ui/src/pages/dashboards/route.ts",
+   "ui/src/pages/debug/debug-overlay-contract.ts",
+@@ -2025,7 +2038,6 @@
+   "ui/src/pages/skills/library-events.ts",
+   "ui/src/pages/skills/library-files.ts",
+   "ui/src/pages/skills/route.ts",
+-  "ui/src/pages/systems/route.ts",
+   "ui/src/pages/tasks/route.ts",
+   "ui/src/pages/terminal/route.ts",
+   "ui/src/pages/usage/route.ts",
+@@ -2038,6 +2050,7 @@
+   "ui/src/plugins/control-ui-scope.ts",
+   "ui/src/plugins/control-ui-view.ts",
+   "ui/src/styles/chat/attachments.css",
++  "ui/src/styles/chat/composer-context-strip.css",
+   "ui/src/styles/chat/composer-surface.css",
+   "ui/src/styles/chat/composer.css",
+   "ui/src/styles/chat/emoji-menu.css",
+@@ -2045,7 +2058,6 @@
+   "ui/src/styles/chat/mention-menu.css",
+   "ui/src/styles/chat/message-layout.css",
+   "ui/src/styles/chat/question-card.css",
+-  "ui/src/styles/chat/reply-preview.css",
+   "ui/src/styles/chat/selection-annotations.css",
+   "ui/src/styles/chat/sidebar.css",
+   "ui/src/styles/chat/startup-layout.css",
+@@ -2088,7 +2100,6 @@
+   "ui/src/i18n/locales/en-new-session-setup.ts",
+   "ui/src/lib/gateway-secret-shape.ts",
+   "ui/src/lib/mac-form-factor.ts",
+-  "ui/src/lib/platform-label.ts",
+   "ui/src/lib/worktrees/create-worktree.ts",
+   "ui/src/pages/new-session/attachment-draft.ts",
+   "ui/src/pages/new-session/background-session-notice.ts",
+diff --git a/ui/src/app-navigation-groups.test.ts b/ui/src/app-navigation-groups.test.ts
+index 038608791f3fb66590f2254d8b1a025b94e5c704..978f0d47034fb5777d22532f6f7ae8e1543c757c 100644
+--- a/ui/src/app-navigation-groups.test.ts
++++ b/ui/src/app-navigation-groups.test.ts
+@@ -143,11 +143,18 @@ describe("sidebar entries", () => {
+       ).toBe(true);
+     }
+   });
++  it.each([false, true])("omits Systems from command discovery (admin=%s)", (canAdmin) => {
++    expect(
++      getStaticCommandPaletteCatalogItems(canAdmin).some(
++        (item) => String(item.routeId) === "systems",
++      ),
++    ).toBe(false);
++  });
++
+   it("keeps operational destinations visible by default", () => {
+     expect(DEFAULT_SIDEBAR_ENTRIES).toEqual([
+       "route:agents-home",
+       "route:dashboards",
+-      "route:systems",
+       "route:cron",
+       "route:plugins",
+     ]);
+@@ -155,7 +162,9 @@ describe("sidebar entries", () => {
+   });
+ 
+   it("drops retired routes from persisted entries", () => {
+-    expect(normalizeSidebarEntries(["route:overview", "route:usage"])).toEqual(["route:usage"]);
++    expect(normalizeSidebarEntries(["route:overview", "route:systems", "route:usage"])).toEqual([
++      "route:usage",
++    ]);
+   });
+ 
+   it("treats worktrees as a sessions hub tab without its own pin", () => {
+diff --git a/ui/src/app-navigation.test.ts b/ui/src/app-navigation.test.ts
+index 4c01fe8d4933b2296e2037e24f7f597f58170d4b..9eb35621448cec9ce81be28be5d62b84ec1416f5 100644
+--- a/ui/src/app-navigation.test.ts
++++ b/ui/src/app-navigation.test.ts
+@@ -105,7 +105,6 @@ describe("navigationIconForRoute", () => {
+       channels: "link",
+       connection: "radio",
+       sessions: "fileText",
+-      systems: "monitor",
+       usage: "coins",
+       cron: "calendarClock",
+       tasks: "listChecks",
+@@ -212,7 +211,6 @@ describe("titleForRoute", () => {
+       channels: "Channels",
+       connection: "Gateway",
+       sessions: "Sessions",
+-      systems: "Systems",
+       usage: "Usage",
+       cron: "Automations",
+       tasks: "Tasks",
+@@ -269,7 +267,6 @@ describe("subtitleForRoute", () => {
+       channels: "Channels and settings.",
+       connection: "Gateway endpoint, credentials, and handshake status.",
+       sessions: "Active sessions and defaults.",
+-      systems: "Machines and desktops.",
+       usage: "API usage and costs.",
+       cron: "Scheduled tasks and recurring agent runs.",
+       tasks: "Background tasks: subagents, automation runs, CLI.",
+@@ -618,7 +615,6 @@ describe("SIDEBAR_NAV_ROUTES", () => {
+       "cron",
+       "tasks",
+       "sessions",
+-      "systems",
+       "activity",
+       "meetings",
+       "plugins",
+diff --git a/ui/src/app-navigation.ts b/ui/src/app-navigation.ts
+index 1ff09d1fc95b3f60723ab606f51af5bdef2db334..7745818b4a2a9546ceec106dc12a4c2794cabe88 100644
+--- a/ui/src/app-navigation.ts
++++ b/ui/src/app-navigation.ts
+@@ -26,7 +26,6 @@ export const SIDEBAR_NAV_ROUTES = [
+   "cron",
+   "tasks",
+   "sessions",
+-  "systems",
+   "activity",
+   "meetings",
+   "plugins",
+@@ -69,7 +68,7 @@ export type SidebarZoneEntry =
+ // Keep the highest-value operational destinations visible on first use. Users
+ // can still replace this route set through the customize menu.
+ export const DEFAULT_SIDEBAR_ENTRIES = (
+-  ["agents-home", "dashboards", "systems", "cron", "plugins"] as const
++  ["agents-home", "dashboards", "cron", "plugins"] as const
+ ).map((route) => serializeSidebarEntry({ type: "route", route }));
+ 
+ /**
+@@ -334,7 +333,6 @@ const NAVIGATION_PRESENTATION: Record<NavigationRouteId, NavigationPresentation>
+   channels: navigationPresentation("link", "channels"),
+   connection: navigationPresentation("radio", "connection"),
+   sessions: navigationPresentation("fileText", "sessions"),
+-  systems: navigationPresentation("monitor", "systems"),
+   usage: navigationPresentation("coins", "usage"),
+   cron: navigationPresentation("calendarClock", "cron"),
+   tasks: navigationPresentation("listChecks", "tasks"),
+diff --git a/ui/src/app-route-paths.ts b/ui/src/app-route-paths.ts
+index d74409a6dfd6f99678d626ce9ea55fac791a888d..390fb0f846388b2a2f16490521cdc71434bb7689 100644
+--- a/ui/src/app-route-paths.ts
++++ b/ui/src/app-route-paths.ts
+@@ -81,7 +81,6 @@ const APP_ROUTE_DEFINITIONS = {
+   workboard: { path: "/workboard" },
+   worktrees: { path: "/worktrees", aliases: ["/settings/worktrees"] },
+   sessions: { path: "/sessions", aliases: ["/settings/sessions"] },
+-  systems: { path: "/systems" },
+   usage: { path: "/usage" },
+   debug: { path: "/debug" },
+   logs: { path: "/logs" },
+diff --git a/ui/src/app-routes.test.ts b/ui/src/app-routes.test.ts
+index eebedc44941e024036d111ae89738c2251bda49c..cd98ded031dd8926afc96cd902b88c30022132f7 100644
+--- a/ui/src/app-routes.test.ts
++++ b/ui/src/app-routes.test.ts
+@@ -20,6 +20,12 @@ describe("application router registration", () => {
+     expect([...routeIds].toSorted()).toEqual([...APP_ROUTE_IDS].toSorted());
+   });
+ 
++  it("does not register the removed Systems page, including direct navigation", () => {
++    expect(router.routeIdFromPath("/systems")).toBeNull();
++    expect(routeIdFromPath("/systems", "")).toBeNull();
++    expect(routeIdFromPath("/team/systems", "/team")).toBeNull();
++  });
++
+   it("serves the table's canonical paths and aliases", () => {
+     for (const route of router.routes) {
+       expect(route.path, `path for route "${route.id}"`).toBe(pathForRoute(route.id));
+@@ -32,7 +38,7 @@ describe("application router registration", () => {
+ });
+ 
+ it("compares optional route locations by pathname, search, and hash", () => {
+-  const location = { pathname: "/systems", search: "?machine=one", hash: "#desktop" };
++  const location = { pathname: "/sessions", search: "?agent=main", hash: "#list" };
+   expect(sameRouteLocation(undefined, undefined)).toBe(true);
+   expect(sameRouteLocation(undefined, location)).toBe(false);
+   expect(sameRouteLocation(location, undefined)).toBe(false);
+diff --git a/ui/src/app-routes.ts b/ui/src/app-routes.ts
+index 2b05e8a22c1808960b8112e6cb401f8275b13ad7..9d85a62d01668069c18443059325213e7a8568a9 100644
+--- a/ui/src/app-routes.ts
++++ b/ui/src/app-routes.ts
+@@ -60,7 +60,6 @@ import { page as secretsPage } from "./pages/secrets/route.ts";
+ import { page as sessionsPage } from "./pages/sessions/route.ts";
+ import { page as skillWorkshopPage } from "./pages/skill-workshop/route.ts";
+ import { pages as skillsPages } from "./pages/skills/route.ts";
+-import { page as systemsPage } from "./pages/systems/route.ts";
+ import { page as tasksPage } from "./pages/tasks/route.ts";
+ import { page as terminalPage } from "./pages/terminal/route.ts";
+ import { page as usagePage } from "./pages/usage/route.ts";
+@@ -70,8 +69,6 @@ import { page as worktreesPage } from "./pages/worktrees/route.ts";
+ 
+ type AppRouteModule = {
+   render: (data: unknown, loaderPending: boolean, presented?: boolean) => unknown;
+-  /** Optional lower-sidebar content owned by the same route and loader as the page. */
+-  renderSidebar?: (data: unknown, loaderPending: boolean, presented?: boolean) => unknown;
+   retainOnNavigate?: boolean;
+   renderOwnerKey?: (
+     match: Pick<RouteMatch, "data" | "location">,
+@@ -114,7 +111,6 @@ const APP_ROUTE_TREE = [
+   workboardPage,
+   worktreesPage,
+   sessionsPage,
+-  systemsPage,
+   secretsPage,
+   usagePage,
+   debugPage,
+diff --git a/ui/src/app/app-host.dock-suppression.test.ts b/ui/src/app/app-host.dock-suppression.test.ts
+index a1f5895889ed4c9c1c7e2f8879d1a6d5abced4c2..764cfb889d253f1ba4a7d5f7291f49ad05a6f489 100644
+--- a/ui/src/app/app-host.dock-suppression.test.ts
++++ b/ui/src/app/app-host.dock-suppression.test.ts
+@@ -173,13 +173,6 @@ describe("OpenClaw shell dock suppression", () => {
+       ).custodianSuppressed,
+     ).toBe(true);
+ 
+-    shell.routeState = { routeId: "systems" };
+-    renderLit(shell.render(), container);
+-    expect(
+-      container.querySelector<HTMLElement & { suppressed: boolean }>("openclaw-desktop-panel")
+-        ?.suppressed,
+-    ).toBe(true);
+-
+     shell.routeState = { routeId: "chat" };
+     renderLit(shell.render(), container);
+     expect(
+diff --git a/ui/src/app/app-shell-panels.ts b/ui/src/app/app-shell-panels.ts
+index bfcf25b9ad3c300aec5ba72aa8d388bfbbe6f515..62d4f5cd78f125b9283e721c4ec63e6b68c66450 100644
+--- a/ui/src/app/app-shell-panels.ts
++++ b/ui/src/app/app-shell-panels.ts
+@@ -61,11 +61,7 @@ export class ShellPanelOwner {
+     for (const [element, layout, available] of [
+       [host.terminalPanelElement, terminalPanelLayout, terminalAvailable],
+       [host.browserPanelElement, browserPanelLayout, browserAvailable],
+-      [
+-        host.desktopPanelElement,
+-        desktopPanelLayout,
+-        !sessionRoute && host.routeState.routeId !== "systems" && desktopAvailable,
+-      ],
++      [host.desktopPanelElement, desktopPanelLayout, !sessionRoute && desktopAvailable],
+     ] as const) {
+       if (!available) {
+         continue;
+@@ -134,10 +130,6 @@ export class ShellPanelOwner {
+ 
+   readonly handleDeferredDesktopToggle = (event: Event): void => {
+     const host = this.host;
+-    // Systems owns its embedded viewer; never materialize a second shell dock.
+-    if (host.routeState.routeId === "systems") {
+-      return;
+-    }
+     if (this.isSessionRoute()) {
+       rememberSessionPanelToggle("desktop", event);
+       return;
+diff --git a/ui/src/app/app-shell-view.ts b/ui/src/app/app-shell-view.ts
+index d77a3a8a50a3dac852354f2769b230f3c11dafb5..7db2c58b5e7d91d3d2cdd3650698620c1706fdb3 100644
+--- a/ui/src/app/app-shell-view.ts
++++ b/ui/src/app/app-shell-view.ts
+@@ -257,12 +257,11 @@ export function renderApplicationShell(host: ShellViewHost) {
+   const uiSettings = context.theme.settings;
+   // The new-session draft shares the chat layout: full-height pane that owns
+   // its scrolling and pins the composer dock to the bottom.
+-  const chatLikeRoute = sessionRoute || activeRoute === "new-session" || activeRoute === "systems";
++  const chatLikeRoute = sessionRoute || activeRoute === "new-session";
+   if (!settingsTakeover && !nativeEmbed) {
+     Object.assign(host.navigationSidebar, {
+       basePath: context.basePath,
+       activeRouteId: activeRoute,
+-      router: host.runtime.router,
+       activePluginTabId: activePluginRef ? pluginTabKey(activePluginRef) : "",
+       enabledRouteIds: host.enabledRouteIds(),
+       sessionKey: host.activeSessionKey,
+@@ -639,7 +638,7 @@ export function renderApplicationShell(host: ShellViewHost) {
+                 data-chat-autotype-exempt
+                 .client=${gatewayConnected ? gatewaySnapshot.client : null}
+                 .available=${desktopPanelAvailable}
+-                .suppressed=${settingsTakeover || nativeEmbed || activeRoute === "systems"}
++                .suppressed=${settingsTakeover || nativeEmbed}
+                 .basePath=${context.basePath}
+               ></openclaw-desktop-panel>
+             `
+diff --git a/ui/src/app/settings.sidebar-prefs.node.test.ts b/ui/src/app/settings.sidebar-prefs.node.test.ts
+index a82e9904b961aa809dbbbc898dc0126301e5f1be..1e000bc9296052cb0e6187e47827fedb741202c3 100644
+--- a/ui/src/app/settings.sidebar-prefs.node.test.ts
++++ b/ui/src/app/settings.sidebar-prefs.node.test.ts
+@@ -110,7 +110,6 @@ describe("sidebar preference persistence", () => {
+     expect(loadSettings().sidebarEntries).toEqual([
+       "route:agents-home",
+       "route:dashboards",
+-      "route:systems",
+       "route:cron",
+       "route:plugins",
+     ]);
+diff --git a/ui/src/components/app-sidebar-base.ts b/ui/src/components/app-sidebar-base.ts
+index 8cb0b073588349133d6a17ae7f27c171ac47ea90..4b40cb2468eab2d0b3310da82bc2d102037994a9 100644
+--- a/ui/src/components/app-sidebar-base.ts
++++ b/ui/src/components/app-sidebar-base.ts
+@@ -1,8 +1,7 @@
+ import { consume } from "@lit/context";
+-import { property, state } from "lit/decorators.js";
++import { property } from "lit/decorators.js";
+ import { DEFAULT_SIDEBAR_ENTRIES, type NavigationRouteId } from "../app-navigation.ts";
+ import type { RouteId } from "../app-route-paths.ts";
+-import type { ApplicationRouter } from "../app-routes.ts";
+ import { selectApplicationSession } from "../app/agent-selection.ts";
+ import {
+   applicationContext,
+@@ -19,17 +18,11 @@ import { SESSION_NAVIGATION_KEY_PARAM } from "../lib/sessions/route-navigation.t
+ import { parseAgentSessionKey, resolveUiConfiguredMainKey } from "../lib/sessions/session-key.ts";
+ import { OpenClawLightDomContentsElement } from "../lit/openclaw-element.ts";
+ import type { NewSessionTarget } from "../pages/new-session/location.ts";
+-import type { ContextualSidebar } from "./sidebar-context-state.ts";
+ 
+ /** Stable custom-element inputs. Behavior is layered in focused sidebar modules. */
+ export abstract class AppSidebarBase extends OpenClawLightDomContentsElement {
+   @property({ attribute: false }) basePath = "";
+   @property({ attribute: false }) activeRouteId?: NavigationRouteId;
+-  @property({ attribute: false }) router?: Pick<
+-    ApplicationRouter,
+-    "getState" | "subscribeSelector"
+-  >;
+-  @state() contextualSidebar?: ContextualSidebar;
+   @property({ attribute: false }) activePluginTabId = "";
+   @property({ attribute: false }) enabledRouteIds?: readonly NavigationRouteId[];
+   @property({ attribute: false }) connected = false;
+diff --git a/ui/src/components/app-sidebar.ts b/ui/src/components/app-sidebar.ts
+index 4eafe3437749fa9441f616a8f1691b5cc8b9c8b6..e0f285321d3f90a6d4266e65dc7dd70563f04b25 100644
+--- a/ui/src/components/app-sidebar.ts
++++ b/ui/src/components/app-sidebar.ts
+@@ -72,7 +72,6 @@ import {
+ import { icons } from "./icons.ts";
+ import { renderPanelRefreshStatus } from "./panel-refresh-status.ts";
+ import { SessionOrganizerController } from "./session-organizer-controller.ts";
+-import { SidebarContextController } from "./sidebar-context-controller.ts";
+ import { SidebarMenusController } from "./sidebar-menus-controller.ts";
+ import { SidebarPeopleController } from "./sidebar-people-controller.ts";
+ 
+@@ -135,7 +134,6 @@ class AppSidebar extends AppSidebarSessionNavigationElement implements SessionLi
+   private narration: SidebarSessionNarrationController | null = null;
+   private narrationLoad: Promise<void> | null = null;
+   private sessionNavigationState: SidebarSessionNavigationState | undefined;
+-  private readonly sidebarContext = new SidebarContextController(this);
+   private projectedSessionRows: SidebarRecentSession[] | undefined;
+   private projectedSessionCatalogs: SidebarSessionCatalog[] = [];
+   private projectedSessionSections: SidebarVisibleSections = {
+@@ -637,7 +635,11 @@ class AppSidebar extends AppSidebarSessionNavigationElement implements SessionLi
+           <div class="sidebar-shell__content">
+             <div
+               class="sidebar-shell__body sidebar-shell__body--scroll-${this.sessionData.sessionsScrollState}"
+-              @scroll=${(event: Event) => this.sidebarContext.handleScroll(event)}
++              @scroll=${(event: Event) => {
++                if (event.currentTarget instanceof HTMLElement) {
++                  this.sessionData.updateSessionsScrollState(event.currentTarget);
++                }
++              }}
+             >
+               <nav
+                 class="sidebar-nav"
+@@ -667,13 +669,10 @@ class AppSidebar extends AppSidebarSessionNavigationElement implements SessionLi
+                     )}
+                 </div>
+               </nav>
+-              <div class="sidebar-session-content" ?hidden=${Boolean(this.contextualSidebar)}>
+-                ${renderAppSidebarOnline(this)} ${this.renderSessions()}
+-              </div>
+-              ${this.contextualSidebar?.render(this.contextualSidebar.data, this.contextualSidebar.loaderPending, true) ?? nothing}
++              ${renderAppSidebarOnline(this)} ${this.renderSessions()}
+             </div>
+             ${
+-              this.contextualSidebar || this.sessionsStatusFilter === "archived"
++              this.sessionsStatusFilter === "archived"
+                 ? nothing
+                 : renderPanelRefreshStatus({
+                     status: this.sessionData.sessionCatalogRefreshStatus,
+diff --git a/ui/src/components/desktop/desktop-panel-view.ts b/ui/src/components/desktop/desktop-panel-view.ts
+index 80a01b09530d681715bb9131edd44c37a262cf33..f47d967398d086c2fac68e138e8d897cc2bf7ebd 100644
+--- a/ui/src/components/desktop/desktop-panel-view.ts
++++ b/ui/src/components/desktop/desktop-panel-view.ts
+@@ -17,7 +17,6 @@ registerDesktopEnglish();
+ 
+ export function renderDesktopPanelView(options: {
+   embedded: boolean;
+-  workspaceControls?: boolean;
+   dock: "bottom" | "right";
+   height: number;
+   width: number;
+@@ -33,17 +32,6 @@ export function renderDesktopPanelView(options: {
+   const connection = renderDesktopConnection({
+     ...options.connection,
+     state: options.content.state,
+-    presentationControls: options.workspaceControls
+-      ? html`<button
+-            class="desktop-toolbar-action"
+-            type="button"
+-            title=${t("desktop.openWindow")}
+-            aria-label=${t("desktop.openWindow")}
+-            @click=${options.onOpenWindow}
+-          >
+-            ${icons.externalLink}</button
+-          >${options.renderFullscreenControl()}`
+-      : nothing,
+   });
+   const style =
+     options.embedded || options.fullscreen
+@@ -282,7 +270,6 @@ export function renderDesktopConnection(options: {
+   showApps: boolean;
+   sizing: DesktopSizingOptions;
+   pictureInPictureControl: TemplateResult;
+-  presentationControls?: TemplateResult | typeof nothing;
+   onDisconnect: () => void;
+   onLaunch: (app: WorkerDesktopAppId) => void;
+   onTakeControl: () => void;
+@@ -320,7 +307,6 @@ export function renderDesktopConnection(options: {
+       }
+       <span class="desktop-toolbar__spacer"></span>
+       ${renderDesktopSizing(options.sizing)} ${options.pictureInPictureControl}
+-      ${options.presentationControls ?? nothing}
+       <button
+         class="desktop-toolbar-action"
+         type="button"
+diff --git a/ui/src/components/desktop/desktop-panel.ts b/ui/src/components/desktop/desktop-panel.ts
+index df512c2ccbd85d4c0ac975454b09a7900061030e..2d4a7051ae1c0e6467b7574559e3804d464e0401 100644
+--- a/ui/src/components/desktop/desktop-panel.ts
++++ b/ui/src/components/desktop/desktop-panel.ts
+@@ -51,11 +51,7 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+   @property({ attribute: false }) sessionKey: string | null = null;
+   @property({ type: Boolean }) documentControl = false;
+   @property({ attribute: false }) basePath = "";
+-  /** Host-owned inventory; null preserves the standalone/session inventory owner. */
+-  @property({ attribute: false }) suppliedEnvironments: readonly EnvironmentSummary[] | null = null;
+-  /** Show the canonical focus/fullscreen controls inside an embedded workspace. */
+-  @property({ type: Boolean }) workspaceControls = false;
+-  /** Hosted by a side panel or workspace, which owns visibility and geometry. */
++  /** Hosted by a side panel, which owns visibility and geometry. */
+   @property({ type: Boolean }) embedded = false;
+   /** This embedded instance is the active pane's visible Desktop presenter. */
+   @property({ type: Boolean }) presented = false;
+@@ -206,8 +202,7 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+       gatewayAvailabilityChanged ||
+       changed.has("embedded") ||
+       changed.has("documentMode") ||
+-      (changed.has("requestedSource") &&
+-        (!this.embedded || this.suppliedEnvironments !== null || this.usesAutomaticSource)) ||
++      (changed.has("requestedSource") && (!this.embedded || this.usesAutomaticSource)) ||
+       changed.has("sessionKey") ||
+       changed.has("documentControl");
+     if ((this.documentMode || this.embedded) && contextChanged) {
+@@ -238,13 +233,6 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+         void this.refreshEnvironments();
+       }
+     }
+-    if (changed.has("suppliedEnvironments") && this.suppliedEnvironments !== null) {
+-      this.environments = [...this.suppliedEnvironments];
+-      const selected = this.environments.find((entry) => entry.id === this.environmentId);
+-      if (this.source) {
+-        this.sessionSource.setDesktopSource(this.source, selected?.desktopAvailability);
+-      }
+-    }
+     this.dockLayout.syncReservation();
+     this.onFocusTargetChange?.({
+       kind: "desktop",
+@@ -355,18 +343,6 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+     this.errorText = null;
+     let refreshed = false;
+     let requestedSource: string | undefined;
+-    if (this.suppliedEnvironments !== null) {
+-      this.environments = [...this.suppliedEnvironments];
+-      this.loading = false;
+-      const selected = this.environments.find(
+-        (entry) => entry.id === this.requestedSource && entry.desktop,
+-      );
+-      if (selected && this.sourceSelection === "pending") {
+-        this.sourceSelection = "resolved";
+-        await this.connectEnvironment(selected.id, false);
+-      }
+-      return true;
+-    }
+     const inventoryRequest = this.sessionSource.loadInventory({
+       automatic: this.sourceSelection === "pending",
+       target: resolvedSessionTarget,
+@@ -694,7 +670,6 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+     return renderDesktopPresentation({
+       documentMode: this.documentMode,
+       embedded: this.embedded,
+-      workspaceControls: this.workspaceControls,
+       content,
+       controlling: this.controlling,
+       desktopApps: this.desktopApps,
+@@ -712,15 +687,10 @@ class OpenClawDesktopPanel extends OpenClawLitElement {
+       onClose: () => this.closePanel(),
+       onDocumentClose: () => this.onDocumentClose?.(),
+       onOpenWindow: () => {
+-        // A workspace pop-out starts view-only; a second window never takes input.
+-        openDesktopFocus(
+-          this.basePath,
+-          this.environmentId,
+-          this.workspaceControls ? false : this.controlling,
+-        );
++        openDesktopFocus(this.basePath, this.environmentId, this.controlling);
+       },
+       onDisconnect: () => {
+-        if (this.embedded && (this.sessionKey !== null || this.suppliedEnvironments !== null)) {
++        if (this.embedded && this.sessionKey !== null) {
+           this.handleDesktopDisconnect(this.environmentId, { clean: true });
+         } else {
+           this.returnToPicker();
+diff --git a/ui/src/components/desktop/desktop-presentation.ts b/ui/src/components/desktop/desktop-presentation.ts
+index 9b4e86f0915d59a49ae791f5ad7f87134f80816a..be792a7cbc3418ad68d0406de6f93df91f846e04 100644
+--- a/ui/src/components/desktop/desktop-presentation.ts
++++ b/ui/src/components/desktop/desktop-presentation.ts
+@@ -10,7 +10,6 @@ import { renderDesktopPanelView, type DesktopSizingOptions } from "./desktop-pan
+ type DesktopPresentation = {
+   documentMode: boolean;
+   embedded: boolean;
+-  workspaceControls: boolean;
+   content: Parameters<typeof renderDesktopPanelView>[0]["content"];
+   controlling: boolean;
+   desktopApps: WorkerDesktopAppId[];
+@@ -49,7 +48,6 @@ export function renderDesktopPresentation(view: DesktopPresentation) {
+   }
+   return renderDesktopPanelView({
+     embedded: view.embedded,
+-    workspaceControls: view.workspaceControls,
+     dock: view.dockLayout.dock,
+     height: view.dockLayout.height,
+     width: view.dockLayout.width,
+diff --git a/ui/src/components/desktop/desktop-session-controller.ts b/ui/src/components/desktop/desktop-session-controller.ts
+index ab22f0e854924c3a9564917f7d6476e5506a0c1f..8079c75d9ce04de682d83d68071f2ef78291f018 100644
+--- a/ui/src/components/desktop/desktop-session-controller.ts
++++ b/ui/src/components/desktop/desktop-session-controller.ts
+@@ -35,7 +35,6 @@ type DesktopSessionHost = ReactiveControllerHost & {
+   embedded: boolean;
+   requestedSource: string | null;
+   sessionKey: string | null;
+-  suppliedEnvironments: readonly EnvironmentSummary[] | null;
+ };
+ 
+ type NodeAvailability = {
+@@ -59,7 +58,7 @@ export class DesktopSessionController {
+     private readonly onTargetError: (error: unknown) => void,
+   ) {
+     new SubscriptionsController(host).effect(
+-      () => (host.available && host.suppliedEnvironments === null ? host.client : null),
++      () => (host.available ? host.client : null),
+       (client) =>
+         client.addEventListener((event) => {
+           if (!host.isConnected || !host.available || client !== host.client) {
+diff --git a/ui/src/components/sidebar-context-controller.test.ts b/ui/src/components/sidebar-context-controller.test.ts
+deleted file mode 100644
+index d96d52cd74bc93c576e001ba051411b3c6e874ec..0000000000000000000000000000000000000000
+--- a/ui/src/components/sidebar-context-controller.test.ts
++++ /dev/null
+@@ -1,57 +0,0 @@
+-/* @vitest-environment jsdom */
+-import { createRouter, definePage } from "@openclaw/uirouter";
+-import { expect, it, onTestFinished, vi } from "vitest";
+-import { createDeferred } from "../../../test/helpers/promise.js";
+-import type { GatewayBrowserClient } from "../api/gateway.ts";
+-import type { ApplicationRouter, RouteId } from "../app-routes.ts";
+-import { setupSidebarTest } from "../test-helpers/app-sidebar-setup.ts";
+-import { createGateway, createSessions, mountSidebar } from "../test-helpers/app-sidebar.ts";
+-import "./app-sidebar.ts";
+-
+-setupSidebarTest();
+-
+-type RouteModule = NonNullable<
+-  ReturnType<ApplicationRouter["getState"]>["matches"][number]["module"]
+->;
+-
+-it("updates contextual navigation from its router and retires the subscription on detach", async () => {
+-  const loaded = createDeferred<unknown>();
+-  const router = createRouter<RouteId, unknown, RouteModule>({
+-    routes: [
+-      definePage({
+-        id: "systems",
+-        path: "/systems",
+-        component: () => ({
+-          render: () => "workspace",
+-          renderSidebar: (_data: unknown, pending: boolean) =>
+-            pending ? "loading machines" : "machine inventory",
+-        }),
+-        loader: () => loaded.promise,
+-      }),
+-      definePage({ id: "tasks", path: "/tasks", component: () => ({ render: () => "tasks" }) }),
+-    ],
+-  });
+-  onTestFinished(() => router.stop());
+-  const { sidebar } = await mountSidebar(
+-    createGateway({} as GatewayBrowserClient),
+-    createSessions("main", []),
+-  );
+-  sidebar.router = router;
+-  await sidebar.updateComplete;
+-  const navigation = router.navigate("systems", {});
+-  await vi.waitFor(() => expect(sidebar.contextualSidebar?.loaderPending).toBe(true));
+-  const pending = sidebar.contextualSidebar;
+-  const data = { machine: "worker-one" };
+-  loaded.resolve(data);
+-  await navigation;
+-  await sidebar.updateComplete;
+-  expect(sidebar.contextualSidebar?.loaderPending).toBe(false);
+-  expect(sidebar.contextualSidebar?.data).toBe(data);
+-  expect(pending?.loaderPending).toBe(true);
+-  expect(sidebar.querySelector(".sidebar-shell__body")?.textContent).toContain("machine inventory");
+-  sidebar.remove();
+-  expect(sidebar.contextualSidebar).toBeUndefined();
+-  await router.navigate("tasks", {});
+-  await router.navigate("systems", {});
+-  expect(sidebar.contextualSidebar).toBeUndefined();
+-});
+diff --git a/ui/src/components/sidebar-context-controller.ts b/ui/src/components/sidebar-context-controller.ts
+deleted file mode 100644
+index 124336329c108b7ab3ebc324f3329f3a0d3e610e..0000000000000000000000000000000000000000
+--- a/ui/src/components/sidebar-context-controller.ts
++++ /dev/null
+@@ -1,65 +0,0 @@
+-import type { ReactiveController } from "lit";
+-import { SubscriptionsController } from "../lit/subscriptions-controller.ts";
+-import type { AppSidebarSessionNavigationElement } from "./app-sidebar-session-navigation.ts";
+-import { equalSidebarContext, selectSidebarContext } from "./sidebar-context-state.ts";
+-
+-/** Preserve the shared sidebar's scroll position for each destination. */
+-export class SidebarContextController implements ReactiveController {
+-  private readonly positions = new Map<string, number>();
+-  private presentedKey = "sessions";
+-
+-  constructor(private readonly host: AppSidebarSessionNavigationElement) {
+-    new SubscriptionsController(host).watch(
+-      () => host.router,
+-      (router, notify) => {
+-        const stop = router.subscribeSelector(selectSidebarContext, notify, equalSidebarContext);
+-        return () => {
+-          stop();
+-          host.contextualSidebar = undefined;
+-        };
+-      },
+-      (router) => {
+-        host.contextualSidebar = selectSidebarContext(router.getState());
+-      },
+-    );
+-    host.addController(this);
+-  }
+-
+-  hostUpdate(): void {
+-    if (!this.host.isConnected || this.key === this.presentedKey) {
+-      return;
+-    }
+-    const scroller = this.scroller;
+-    if (scroller) {
+-      this.positions.set(this.presentedKey, scroller.scrollTop);
+-    }
+-  }
+-
+-  hostUpdated(): void {
+-    if (!this.host.isConnected || this.key === this.presentedKey) {
+-      return;
+-    }
+-    this.presentedKey = this.key;
+-    const scroller = this.scroller;
+-    if (scroller) {
+-      scroller.scrollTop = this.positions.get(this.key) ?? 0;
+-      this.host.sessionData.updateSessionsScrollState(scroller);
+-    }
+-  }
+-
+-  handleScroll(event: Event): void {
+-    const scroller = event.currentTarget;
+-    if (!(scroller instanceof HTMLElement)) {
+-      return;
+-    }
+-    this.positions.set(this.presentedKey, scroller.scrollTop);
+-    this.host.sessionData.updateSessionsScrollState(scroller);
+-  }
+-
+-  private get key(): string {
+-    return this.host.contextualSidebar?.key ?? "sessions";
+-  }
+-  private get scroller(): HTMLElement | null {
+-    return this.host.querySelector<HTMLElement>(".sidebar-shell__body");
+-  }
+-}
+diff --git a/ui/src/components/sidebar-context-state.test.ts b/ui/src/components/sidebar-context-state.test.ts
+deleted file mode 100644
+index b42babdab5e049cc7371b7dc8b05ce45a801679b..0000000000000000000000000000000000000000
+--- a/ui/src/components/sidebar-context-state.test.ts
++++ /dev/null
+@@ -1,48 +0,0 @@
+-/* @vitest-environment jsdom */
+-
+-import { describe, expect, it, vi } from "vitest";
+-import { committedRouterState } from "../app/app-host.test-support.ts";
+-import { equalSidebarContext, selectSidebarContext } from "./sidebar-context-state.ts";
+-
+-describe("sidebar route state", () => {
+-  it("binds contextual navigation to the same rendered route as the workspace", () => {
+-    const data = { source: "host" };
+-    const renderSidebar = vi.fn(() => "Machine inventory");
+-    const state = committedRouterState("systems", "/systems", data);
+-    Object.assign(state.matches[0]!, { status: "success", module: { renderSidebar } });
+-    const sidebar = selectSidebarContext(state);
+-    expect(sidebar?.key).toBe("systems");
+-    expect(sidebar?.render(sidebar.data, sidebar.loaderPending, true)).toBe("Machine inventory");
+-    expect(renderSidebar).toHaveBeenCalledWith(data, false, true);
+-
+-    // A cold import keeps the current main page, so its contextual list stays too.
+-    state.pendingMatches = [
+-      { ...state.matches[0]!, routeId: "tasks", status: "pending", module: undefined },
+-    ];
+-    expect(selectSidebarContext(state)?.key).toBe("systems");
+-    Object.assign(state.pendingMatches[0]!, { status: "error", error: new Error("Route failed") });
+-    expect(selectSidebarContext(state)).toBeUndefined();
+-  });
+-
+-  it("updates a contextual sidebar when its loader settles without a route change", () => {
+-    const renderSidebar = vi.fn(() => "Machine inventory");
+-    const state = committedRouterState("systems", "/systems");
+-    Object.assign(state.matches[0]!, {
+-      status: "pending",
+-      module: { renderSidebar },
+-      isFetching: "loader",
+-    });
+-    const pending = selectSidebarContext(state);
+-    expect(equalSidebarContext(pending, selectSidebarContext(state))).toBe(true);
+-    const data = { source: "Gateway" };
+-    Object.assign(state.matches[0]!, { status: "success", data, isFetching: false });
+-    const ready = selectSidebarContext(state);
+-    expect(equalSidebarContext(pending, ready)).toBe(false);
+-    expect(equalSidebarContext(ready, selectSidebarContext(state))).toBe(true);
+-    Object.assign(state.matches[0]!, { data: { source: "Worker" } });
+-    expect(equalSidebarContext(ready, selectSidebarContext(state))).toBe(false);
+-    Object.assign(state.matches[0]!, { status: "error", error: new Error("Unavailable") });
+-    expect(selectSidebarContext(state)).toBeUndefined();
+-    expect(equalSidebarContext(ready, selectSidebarContext(state))).toBe(false);
+-  });
+-});
+diff --git a/ui/src/components/sidebar-context-state.ts b/ui/src/components/sidebar-context-state.ts
+deleted file mode 100644
+index 213ca1e3551815a625886146003a7145b3b3f45c..0000000000000000000000000000000000000000
+--- a/ui/src/components/sidebar-context-state.ts
++++ /dev/null
+@@ -1,35 +0,0 @@
+-import type { ApplicationRouter, RouteId } from "../app-routes.ts";
+-import { selectRenderedRouteMatch } from "../app/router-outlet-controller.ts";
+-
+-export type ContextualSidebar = {
+-  key: RouteId;
+-  data: unknown;
+-  loaderPending: boolean;
+-  render: (data: unknown, loaderPending: boolean, presented?: boolean) => unknown;
+-};
+-
+-/** Both page and sidebar consume the router owner's same rendered match. */
+-export function selectSidebarContext(
+-  state: ReturnType<ApplicationRouter["getState"]>,
+-): ContextualSidebar | undefined {
+-  const match = selectRenderedRouteMatch(state.matches[0], state.pendingMatches[0]);
+-  const render = match?.module?.renderSidebar;
+-  return match &&
+-    (match.status === "success" || match.status === "pending") &&
+-    match.error === undefined &&
+-    typeof render === "function"
+-    ? { key: match.routeId, data: match.data, loaderPending: match.isFetching === "loader", render }
+-    : undefined;
+-}
+-
+-export function equalSidebarContext(
+-  previous: ContextualSidebar | undefined,
+-  next: ContextualSidebar | undefined,
+-): boolean {
+-  return (
+-    previous?.key === next?.key &&
+-    previous?.data === next?.data &&
+-    previous?.loaderPending === next?.loaderPending &&
+-    previous?.render === next?.render
+-  );
+-}
+diff --git a/ui/src/e2e/sidebar-customization.e2e.test.ts b/ui/src/e2e/sidebar-customization.e2e.test.ts
+index 5d71cc1de06a93614093945569ad78471ad9f170..f56967a6e8f7e845969bde3a2c516213c947d706 100644
+--- a/ui/src/e2e/sidebar-customization.e2e.test.ts
++++ b/ui/src/e2e/sidebar-customization.e2e.test.ts
+@@ -225,7 +225,7 @@ suite.define(() => {
+       );
+       await expect
+         .poll(() => trimmedTextContents(pinnedItems))
+-        .toEqual(["Agents", "Dashboards", "Systems", "Automations", "Plugins"]);
++        .toEqual(["Agents", "Dashboards", "Automations", "Plugins"]);
+       // Desktop renders no topbar row: the sidebar owns navigation.
+       await expect.poll(() => page.locator(".topbar").isVisible()).toBe(false);
+       const shellNav = page.locator(".shell-nav");
+@@ -527,11 +527,11 @@ suite.define(() => {
+       await tasksItem.click();
+       await expect
+         .poll(() => trimmedTextContents(pinnedItems))
+-        .toEqual(["Agents", "Dashboards", "Systems", "Automations", "Plugins", "Tasks"]);
++        .toEqual(["Agents", "Dashboards", "Automations", "Plugins", "Tasks"]);
+       await page.reload();
+       await expect
+         .poll(() => trimmedTextContents(pinnedItems))
+-        .toEqual(["Agents", "Dashboards", "Systems", "Automations", "Plugins", "Tasks"]);
++        .toEqual(["Agents", "Dashboards", "Automations", "Plugins", "Tasks"]);
+       // The More menu is transient: closed after reload, unpinned routes inside.
+       await expect.poll(() => moreButton.getAttribute("aria-expanded")).toBe("false");
+       await moreButton.click();
+@@ -553,7 +553,7 @@ suite.define(() => {
+       await menu.getByRole("menuitem", { name: "Reset pinned items" }).click();
+       await expect
+         .poll(() => trimmedTextContents(pinnedItems))
+-        .toEqual(["Agents", "Dashboards", "Systems", "Automations", "Plugins"]);
++        .toEqual(["Agents", "Dashboards", "Automations", "Plugins"]);
+ 
+       // The sidebar header search button is the command palette entry point.
+       const searchButton = page.locator(".sidebar-brand__search");
+diff --git a/ui/src/e2e/systems-removal.e2e.test.ts b/ui/src/e2e/systems-removal.e2e.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd449ee6ef58f293dc5730e5457b80e51b573e91
+--- /dev/null
++++ b/ui/src/e2e/systems-removal.e2e.test.ts
+@@ -0,0 +1,184 @@
++import path from "node:path";
++import type { Page } from "playwright";
++import { expect, it } from "vitest";
++import { z } from "zod";
++import { installMockGateway } from "../test-helpers/control-ui-e2e.ts";
++import { createControlUiSessionRow } from "../test-helpers/control-ui-session-fixtures.ts";
++import { createControlUiE2eSuite } from "./control-ui-e2e-suite.test-support.ts";
++
++const suite = createControlUiE2eSuite({
++  name: "Systems removal and dashboard navigation mocked Gateway E2E",
++  startServerBeforeBrowser: true,
++});
++
++function installCuratedGateway(page: Page, operatorScopes = ["operator.admin"]) {
++  return installMockGateway(page, {
++    operatorScopes,
++    sessions: Array.from({ length: 30 }, (_, index) =>
++      createControlUiSessionRow(`agent:main:task-${index}`, `Task ${index + 1}`, 30 - index),
++    ),
++    historyMessages: [{ role: "assistant", content: [{ type: "text", text: "Ready to help." }] }],
++    featureMethods: ["environments.list", "node.list", "system.info"],
++    methodResponses: {
++      "environments.list": { environments: [] },
++      "node.list": {
++        nodes: [
++          {
++            nodeId: "browser-node",
++            displayName: "Team browser",
++            platform: "linux",
++            connected: true,
++            paired: true,
++            caps: ["browser"],
++            commands: ["browser.proxy"],
++          },
++        ],
++      },
++      "system.info": { machineName: "Gateway machine" },
++    },
++  });
++}
++
++suite.define(() => {
++  it("scrolls navigation and dashboard sessions together", async () => {
++    const route = "dashboards";
++    await suite.withPage(
++      {
++        locale: "en-US",
++        serviceWorkers: "block",
++        viewport: { width: 1440, height: 900 },
++      },
++      async ({ page }) => {
++        await installCuratedGateway(page);
++        await page.goto(suite.server.baseUrl + route);
++        const home = page.locator(".nav-item--home");
++        const row = page.locator(".sidebar-recent-session").first();
++        await row.waitFor();
++        const showMore = page
++          .locator("openclaw-app-sidebar")
++          .getByRole("button", { name: "Show more" });
++        await showMore.click();
++        await showMore.click();
++        await expect.poll(() => page.locator(".sidebar-recent-session").count()).toBe(30);
++        const homeTop = () => home.evaluate((element) => element.getBoundingClientRect().top);
++        const rowTop = () => row.evaluate((element) => element.getBoundingClientRect().top);
++        await home.hover();
++        await row.hover();
++        const initialHomeTop = await homeTop();
++        const initialRowTop = await rowTop();
++        if (process.env.OPENCLAW_CAPTURE_UI_PROOF === "1") {
++          await page.screenshot({ path: path.join(suite.artifactDir, `${route}-top.png`) });
++        }
++        await page.mouse.wheel(0, 160);
++        await expect.poll(rowTop).toBeLessThan(initialRowTop - 80);
++        if (process.env.OPENCLAW_CAPTURE_UI_PROOF === "1") {
++          await page.screenshot({ path: path.join(suite.artifactDir, `${route}-scrolled.png`) });
++        }
++        await expect
++          .poll(async () => (await homeTop()) - initialHomeTop - ((await rowTop()) - initialRowTop))
++          .toBeCloseTo(0, 0);
++
++        await page.mouse.wheel(0, -1000);
++        await expect.poll(homeTop).toBeCloseTo(initialHomeTop, 0);
++        await home.hover();
++        await page.mouse.wheel(0, 120);
++        await expect.poll(homeTop).toBeLessThan(initialHomeTop - 80);
++        await expect
++          .poll(async () => (await homeTop()) - initialHomeTop - ((await rowTop()) - initialRowTop))
++          .toBeCloseTo(0, 0);
++      },
++    );
++  });
++
++  for (const role of ["admin", "member"] as const) {
++    for (const viewport of [
++      { width: 1440, height: 900 },
++      { width: 390, height: 844 },
++    ]) {
++      it(`removes Systems for ${role} at ${viewport.width}px while retaining chat and browser nodes`, async () => {
++        await suite.withPage(
++          { locale: "en-US", serviceWorkers: "block", viewport },
++          async ({ page }) => {
++            const gateway = await installCuratedGateway(
++              page,
++              role === "admin" ? ["operator.admin"] : ["operator.read", "operator.write"],
++            );
++            await page.goto(`${suite.server.baseUrl}systems`);
++            const composer = page.locator(".agent-chat__composer-combobox textarea");
++            await composer.waitFor({ state: "visible" });
++            expect(new URL(page.url()).pathname).not.toBe("/systems");
++            expect(await page.locator("openclaw-systems-page, .systems-sidebar").count()).toBe(0);
++            for (const method of ["environments.list", "node.list"]) {
++              expect(await gateway.getRequests(method)).toEqual([]);
++            }
++
++            // Chat still reads the Gateway name for its session menu; Systems must not add another read.
++            expect(await gateway.getRequests("system.info")).toHaveLength(1);
++
++            if (viewport.width < 768) {
++              await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
++            }
++            const sidebar = page.locator("openclaw-app-sidebar");
++            await sidebar.locator(".nav-item--home").waitFor({ state: "visible" });
++            expect(await sidebar.locator('a[href$="/systems"]').count()).toBe(0);
++            await page.screenshot({
++              animations: "disabled",
++              path: path.join(suite.artifactDir, `${role}-${viewport.width}-navigation.png`),
++            });
++            await sidebar.getByRole("button", { name: "Edit pinned items", exact: true }).click();
++            const more = page.locator(".sidebar-more-menu");
++            await more.waitFor({ state: "visible" });
++            expect(await more.locator('[value="systems"]').count()).toBe(0);
++            await more.locator('[value="customize"]').click();
++            const customize = page.locator(".sidebar-pin-editor-menu");
++            await customize.waitFor({ state: "visible" });
++            expect(await customize.locator('[value="systems"]').count()).toBe(0);
++            await page.screenshot({
++              animations: "disabled",
++              path: path.join(suite.artifactDir, `${role}-${viewport.width}-customize.png`),
++            });
++            await page.keyboard.press("Escape");
++            if (viewport.width < 768) {
++              await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
++            }
++            await sidebar.locator(".nav-item--home").click();
++            await composer.waitFor({ state: "visible" });
++            await composer.fill("Hello");
++            await page.getByRole("button", { name: "Send message", exact: true }).click();
++            const sent = await gateway.waitForRequest("chat.send");
++            const params = z.object({ idempotencyKey: z.string() }).parse(sent.params);
++            await gateway.emitChatFinal({
++              runId: params.idempotencyKey,
++              text: "Chat remains available.",
++            });
++            await page
++              .getByRole("paragraph")
++              .filter({ hasText: "Chat remains available." })
++              .waitFor();
++
++            await page.keyboard.press("ControlOrMeta+k");
++            const input = page.locator(".cmd-palette__input");
++            await input.fill("Systems");
++            await gateway.waitForRequest("sessions.list", { match: { search: "Systems" } });
++            const results = page.locator(".cmd-palette__results");
++            await expect.poll(() => results.getAttribute("aria-busy")).toBe("false");
++            expect(await results.getByRole("option", { name: /^Systems(?:\s|$)/ }).count()).toBe(0);
++            await page.screenshot({
++              animations: "disabled",
++              path: path.join(suite.artifactDir, `${role}-${viewport.width}-search.png`),
++            });
++            await input.press("Escape");
++
++            await page.goto(`${suite.server.baseUrl}settings/devices`);
++            await gateway.waitForRequest("node.list");
++            await page
++              .locator("openclaw-devices-page")
++              .getByText("Team browser", { exact: true })
++              .waitFor();
++            expect(await page.locator("openclaw-systems-page").count()).toBe(0);
++          },
++        );
++      });
++    }
++  }
++});
+diff --git a/ui/src/e2e/systems-workspace.e2e.test.ts b/ui/src/e2e/systems-workspace.e2e.test.ts
+deleted file mode 100644
+index 0e5b94883f8873ecbc1f45a48adc62ae6e5ea5d5..0000000000000000000000000000000000000000
+--- a/ui/src/e2e/systems-workspace.e2e.test.ts
++++ /dev/null
+@@ -1,193 +0,0 @@
+-import path from "node:path";
+-import type { Page } from "playwright";
+-import { expect, it } from "vitest";
+-import { createControlUiE2eArtifactDir } from "../test-helpers/control-ui-e2e-artifacts.ts";
+-import { installMockGateway } from "../test-helpers/control-ui-e2e.ts";
+-import { createControlUiSessionRow } from "../test-helpers/control-ui-session-fixtures.ts";
+-import { createControlUiE2eSuite } from "./control-ui-e2e-suite.test-support.ts";
+-
+-const suite = createControlUiE2eSuite({
+-  name: "Systems workspace mocked Gateway E2E",
+-  startServerBeforeBrowser: true,
+-});
+-
+-function installSystemsGateway(page: Page, additionalWorkers = 20) {
+-  return installMockGateway(page, {
+-    sessions: Array.from({ length: 30 }, (_, index) =>
+-      createControlUiSessionRow(`agent:main:task-${index}`, `Task ${index + 1}`, 30 - index),
+-    ),
+-    featureMethods: ["environments.list", "node.list", "system.info"],
+-    methodResponses: {
+-      "environments.list": {
+-        environments: [
+-          { id: "gateway", type: "local", label: "Gateway machine", status: "available" },
+-          { id: "worker-one", type: "worker", label: "Cloud worker", status: "available" },
+-          ...Array.from({ length: additionalWorkers }, (_, index) => ({
+-            id: `worker-${index + 2}`,
+-            type: "worker",
+-            label: `Worker ${index + 2}`,
+-            status: "available",
+-          })),
+-          ...(["destroyed", "failed"] as const).map((state) => ({
+-            id: `worker-${state}`,
+-            type: "worker",
+-            label: `${state} worker history`,
+-            status: state === "destroyed" ? "unavailable" : "error",
+-            worker: {
+-              state,
+-              profileId: "cloud",
+-              providerId: "crabbox",
+-              ...(state === "destroyed" ? { leaseId: "released-lease" } : {}),
+-              ageMs: 1_000,
+-              attachedSessionIds: [],
+-              tunnelStatus: "stopped",
+-            },
+-          })),
+-        ],
+-      },
+-      "node.list": { nodes: [] },
+-      "system.info": {
+-        machineName: "Gateway machine",
+-        hostname: "gateway.test",
+-        platform: "linux",
+-        release: "test",
+-        arch: "x64",
+-        osLabel: "Linux",
+-        nodeVersion: "v26",
+-        pid: 1,
+-        uptimeMs: 1000,
+-        cpuCount: 4,
+-        loadAverage: [0.5, 0.4, 0.3],
+-        memoryTotalBytes: 8192,
+-        memoryFreeBytes: 4096,
+-      },
+-    },
+-  });
+-}
+-
+-suite.define(() => {
+-  it.each(["dashboards", "systems"])(
+-    "scrolls navigation and the %s sidebar content together",
+-    async (route) => {
+-      await suite.withPage(
+-        {
+-          locale: "en-US",
+-          serviceWorkers: "block",
+-          viewport: { width: 1440, height: 900 },
+-        },
+-        async ({ page }) => {
+-          await installSystemsGateway(page);
+-          await page.goto(suite.server.baseUrl + route);
+-          const home = page.locator(".nav-item--home");
+-          const row = page
+-            .locator(route === "systems" ? ".systems-machine" : ".sidebar-recent-session")
+-            .first();
+-          await row.waitFor();
+-          if (route === "dashboards") {
+-            const showMore = page
+-              .locator("openclaw-app-sidebar")
+-              .getByRole("button", { name: "Show more" });
+-            await showMore.click();
+-            await showMore.click();
+-            await expect.poll(() => page.locator(".sidebar-recent-session").count()).toBe(30);
+-          }
+-          const homeTop = () => home.evaluate((element) => element.getBoundingClientRect().top);
+-          const rowTop = () => row.evaluate((element) => element.getBoundingClientRect().top);
+-          await home.hover();
+-          await row.hover();
+-          const initialHomeTop = await homeTop();
+-          const initialRowTop = await rowTop();
+-          if (process.env.OPENCLAW_CAPTURE_UI_PROOF === "1") {
+-            await page.screenshot({ path: path.join(suite.artifactDir, `${route}-top.png`) });
+-          }
+-          await page.mouse.wheel(0, 160);
+-          await expect.poll(rowTop).toBeLessThan(initialRowTop - 80);
+-          if (process.env.OPENCLAW_CAPTURE_UI_PROOF === "1") {
+-            await page.screenshot({ path: path.join(suite.artifactDir, `${route}-scrolled.png`) });
+-          }
+-          await expect
+-            .poll(
+-              async () => (await homeTop()) - initialHomeTop - ((await rowTop()) - initialRowTop),
+-            )
+-            .toBeCloseTo(0, 0);
+-
+-          await page.mouse.wheel(0, -1000);
+-          await expect.poll(homeTop).toBeCloseTo(initialHomeTop, 0);
+-          await home.hover();
+-          await page.mouse.wheel(0, 120);
+-          await expect.poll(homeTop).toBeLessThan(initialHomeTop - 80);
+-          await expect
+-            .poll(
+-              async () => (await homeTop()) - initialHomeTop - ((await rowTop()) - initialRowTop),
+-            )
+-            .toBeCloseTo(0, 0);
+-        },
+-      );
+-    },
+-  );
+-
+-  it("loads the lazy workspace and keeps its machine picker aligned after navigation", async () => {
+-    const artifacts = createControlUiE2eArtifactDir("systems-worker-history");
+-    const context = await suite.browser.newContext({
+-      locale: "en-US",
+-      serviceWorkers: "block",
+-      viewport: { width: 1440, height: 900 },
+-    });
+-    const page = await context.newPage();
+-    const gateway = await installSystemsGateway(page, 0);
+-    try {
+-      await page.goto(suite.server.baseUrl + "systems");
+-      await gateway.waitForRequest("environments.list");
+-      const inventory = page.locator(".systems-sidebar");
+-      await inventory.getByRole("button", { name: /Cloud worker/ }).click();
+-      await expect
+-        .poll(() => page.locator(".systems-heading h1").textContent())
+-        .toBe("Cloud worker");
+-      await page.screenshot({ path: path.join(artifacts, "machine-inventory.png") });
+-      expect(await inventory.getByRole("button", { name: /worker history/ }).count()).toBe(0);
+-      expect(await inventory.locator(".systems-sidebar__header > span").textContent()).toBe("2");
+-      await page.locator('.sidebar-nav a[href$="/dashboards"]').click();
+-      await expect.poll(() => page.locator(".systems-sidebar").count()).toBe(0);
+-      await page.locator('.sidebar-nav a[href$="/systems"]').click();
+-      await expect
+-        .poll(() => page.locator(".systems-heading h1").textContent())
+-        .toBe("Cloud worker");
+-      await page.setViewportSize({ width: 640, height: 900 });
+-      const picker = page.locator(".systems-mobile-picker");
+-      await expect.poll(() => picker.isVisible()).toBe(true);
+-      expect(await picker.inputValue()).toBe("worker-one");
+-      expect(await picker.locator("option").allTextContents()).not.toEqual(
+-        expect.arrayContaining([expect.stringContaining("worker history")]),
+-      );
+-      expect(await page.locator("openclaw-systems-page").count()).toBe(1);
+-      await gateway.setMethodResponse("environments.list", {
+-        environments: [
+-          { id: "gateway", type: "local", label: "Gateway machine", status: "available" },
+-          {
+-            id: "worker-one",
+-            type: "worker",
+-            label: "Cloud worker",
+-            status: "unavailable",
+-            worker: {
+-              state: "destroyed",
+-              profileId: "cloud",
+-              providerId: "crabbox",
+-              leaseId: "released-lease",
+-              ageMs: 2_000,
+-              attachedSessionIds: [],
+-              tunnelStatus: "stopped",
+-            },
+-          },
+-        ],
+-      });
+-      await page.setViewportSize({ width: 1440, height: 900 });
+-      await inventory.getByRole("button", { name: "Refresh machines" }).click();
+-      await expect.poll(() => inventory.locator(".systems-machine").count()).toBe(1);
+-      expect(await inventory.locator(".systems-sidebar__header > span").textContent()).toBe("1");
+-      await page.setViewportSize({ width: 640, height: 900 });
+-      expect(await picker.locator('option[value="worker-one"]').count()).toBe(0);
+-    } finally {
+-      await context.close();
+-    }
+-  });
+-});
+diff --git a/ui/src/i18n/locales/en-systems.ts b/ui/src/i18n/locales/en-systems.ts
+deleted file mode 100644
+index ebfa8840d440afb03221f06e3e850a0a911b90c3..0000000000000000000000000000000000000000
+--- a/ui/src/i18n/locales/en-systems.ts
++++ /dev/null
+@@ -1,75 +0,0 @@
+-import type { TranslationMap } from "../lib/types.ts";
+-import { en } from "./en.ts";
+-
+-const enSystems = {
+-  systems: {
+-    title: "Systems",
+-    inventory: "Machines",
+-    search: "Find a machine…",
+-    select: "Select a machine",
+-    selectHint: "Choose a host, worker, or paired node to see its status and desktop.",
+-    refresh: "Refresh machines",
+-    loading: "Loading machines…",
+-    empty: "No machines are available to this account.",
+-    noMatches: "No machines match your search.",
+-    offlineGateway: "Gateway disconnected. Reconnect to refresh machines or open a desktop.",
+-    offlineTitle: "This machine is offline",
+-    offlineHint:
+-      "Its last reported information is shown. Reconnect the machine to open its desktop.",
+-    noDesktopTitle: "No desktop available",
+-    noDesktopHint:
+-      "This machine has not reported a desktop. Its other capabilities remain available.",
+-    accessTitle: "Desktop access unavailable",
+-    accessHint: "Desktop viewing requires an advertised desktop service and administrator access.",
+-    missingTitle: "This machine is no longer listed",
+-    missingHint:
+-      "Refresh the inventory or choose another machine. Your selection has not been changed.",
+-    details: "Machine details",
+-    closeDetails: "Close details",
+-    stats: "Show statistics",
+-    hideStats: "Hide statistics",
+-    online: "Online",
+-    offline: "Offline",
+-    unknown: "Unknown",
+-    unavailable: "Unavailable",
+-    desktop: "Desktop",
+-    headless: "No desktop",
+-    host: "Gateway host",
+-    worker: "Worker",
+-    node: "Paired node",
+-    hosts: "Hosts",
+-    workers: "Workers",
+-    nodes: "Paired nodes",
+-    status: "Status",
+-    platform: "Platform",
+-    identifier: "Identifier",
+-    capabilities: "Capabilities",
+-    telemetry: "Reported statistics",
+-    load: "Load (1 min)",
+-    cpuCount: "{count} cores",
+-    memory: "Memory used",
+-    disk: "Disk available",
+-    sampled: "Sampled {time}",
+-    lastKnown: "Last reported {time}",
+-    noTelemetry: "This machine has not reported resource statistics.",
+-    attachedSessions: "Attached sessions",
+-    attachedHint: "Attachment does not mean a session is currently executing on this machine.",
+-    relatedSessions: "Related sessions",
+-    relatedHint:
+-      "Bindings from the loaded session list. A binding is not proof that a turn executed here.",
+-    noRelatedSessions: "No related sessions in the loaded list.",
+-    relations: {
+-      placement: "Placed here",
+-      "retained-placement": "Retained placement",
+-      runner: "Runner",
+-      "exec-binding": "Configured exec target",
+-      gateway: "Local session context",
+-    },
+-    statuses: { starting: "Starting", stopping: "Stopping", error: "Error" },
+-    errors: "Some machine information could not be refreshed.",
+-  },
+-} satisfies TranslationMap;
+-
+-export const registerSystemsEnglish = Object.assign(() => Object.assign(en, enSystems), {
+-  catalog: enSystems,
+-});
+diff --git a/ui/src/i18n/locales/en.ts b/ui/src/i18n/locales/en.ts
+index c0b0501ad4bf6f8a96530066ff391fc0d1414141..2fe1bedc037e4ac40df8ff22a04c6595b47b17fa 100644
+--- a/ui/src/i18n/locales/en.ts
++++ b/ui/src/i18n/locales/en.ts
+@@ -54,7 +54,6 @@ export const en: TranslationMap & {
+   modelSetup: TranslationMap;
+   newSession: TranslationMap;
+   skillWorkshop: TranslationMap;
+-  systems: TranslationMap;
+   usage: TranslationMap & { overview: TranslationMap };
+ } = {
+   pluginUi: {
+@@ -2273,7 +2272,6 @@ export const en: TranslationMap & {
+     reconnect: "Reconnect",
+     connecting: "Connecting to desktop…",
+   },
+-  systems: {},
+   routeTitles: {
+     modelProviders: "Models",
+     notifications: "Notifications",
+@@ -2294,7 +2292,6 @@ export const en: TranslationMap & {
+     channels: "Channels",
+     connection: "Gateway",
+     sessions: "Sessions",
+-    systems: "Systems",
+     usage: "Usage",
+     cron: "Automations",
+     tasks: "Tasks",
+@@ -2342,7 +2339,6 @@ export const en: TranslationMap & {
+     channels: "Channels and settings.",
+     connection: "Gateway endpoint, credentials, and handshake status.",
+     sessions: "Active sessions and defaults.",
+-    systems: "Machines and desktops.",
+     usage: "API usage and costs.",
+     cron: "Scheduled tasks and recurring agent runs.",
+     tasks: "Background tasks: subagents, automation runs, CLI.",
+diff --git a/ui/src/pages/systems/route.ts b/ui/src/pages/systems/route.ts
+deleted file mode 100644
+index 0f71e7c30175a72b69ad3249f8777be491e0e272..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/route.ts
++++ /dev/null
+@@ -1,16 +0,0 @@
+-import { definePage } from "@openclaw/uirouter";
+-import { routePageSpec, type RouteId } from "../../app-route-paths.ts";
+-import type { ApplicationContext } from "../../app/context.ts";
+-import { gatewayPresentationScope } from "../../app/gateway-presentation-scope.ts";
+-
+-const loadModule = () => import("./systems-page.ts");
+-
+-export const page = definePage({
+-  ...routePageSpec("systems"),
+-  loaderDeps: (context: ApplicationContext<RouteId>) =>
+-    String(gatewayPresentationScope(context.gateway).key),
+-  // Inventory is refreshed by the mounted controller, not by a second route loader.
+-  staleTime: Infinity,
+-  loader: async (context: ApplicationContext<RouteId>) => (await loadModule()).load(context),
+-  component: loadModule,
+-});
+diff --git a/ui/src/pages/systems/systems-controller.ts b/ui/src/pages/systems/systems-controller.ts
+deleted file mode 100644
+index 75dcadef0e9e7c2cbaf299ce271fefa7a9735151..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-controller.ts
++++ /dev/null
+@@ -1,332 +0,0 @@
+-import type { SystemInfoResult } from "@openclaw/gateway-protocol";
+-import { isRecord } from "@openclaw/normalization-core/record-coerce";
+-import type { NodeListNode } from "../../../../src/shared/node-list-types.js";
+-import type { RouteId } from "../../app-route-paths.ts";
+-import type { ApplicationContext } from "../../app/context.ts";
+-import { gatewayPresentationScope } from "../../app/gateway-presentation-scope.ts";
+-import { hasOperatorReadAccess } from "../../app/operator-access.ts";
+-import { isDesktopPanelAvailable } from "../../app/panel-availability.ts";
+-import { formatUiError } from "../../lib/format-error.ts";
+-import { createGatewayConnectionLifecycle } from "../../lib/gateway-connection-lifecycle.ts";
+-import {
+-  loadSystemsInventory,
+-  projectSystemsInventory,
+-  type SystemsInventory,
+-  type SystemsInventoryRow,
+-} from "./systems-data.ts";
+-
+-/** The route cache owns selection; the mounted page owns active reads and subscriptions. */
+-export class SystemsController {
+-  readonly scope;
+-  inventory: SystemsInventory | null = null;
+-  rows: SystemsInventoryRow[] = [];
+-  selectedId: string | null = null;
+-  query = "";
+-  showStats = true;
+-  showDetails = false;
+-  loading = false;
+-  error: string | null = null;
+-  sampledAtMs: number | null = null;
+-  private readonly listeners = new Set<() => void>();
+-  private readonly lifecycle;
+-  private subscriptions: Array<() => void> = [];
+-  private request: AbortController | undefined;
+-  private telemetryRequest: AbortController | undefined;
+-  private generation = 0;
+-  private presented = false;
+-  private refreshQueued = false;
+-
+-  constructor(readonly context: ApplicationContext<RouteId>) {
+-    this.scope = gatewayPresentationScope(context.gateway);
+-    this.lifecycle = createGatewayConnectionLifecycle(context.gateway.snapshot);
+-  }
+-
+-  get current(): boolean {
+-    return this.scope === gatewayPresentationScope(this.context.gateway);
+-  }
+-
+-  get connected(): boolean {
+-    return this.current && this.context.gateway.snapshot.phase === "connected";
+-  }
+-
+-  get desktopAvailable(): boolean {
+-    return this.current && isDesktopPanelAvailable(this.context.gateway.snapshot);
+-  }
+-
+-  get selected(): SystemsInventoryRow | undefined {
+-    return this.current
+-      ? this.rows.find((row) => row.environment.id === this.selectedId)
+-      : undefined;
+-  }
+-
+-  subscribe(listener: () => void): () => void {
+-    this.listeners.add(listener);
+-    return () => {
+-      this.listeners.delete(listener);
+-    };
+-  }
+-
+-  private notify(): void {
+-    for (const listener of this.listeners) {
+-      listener();
+-    }
+-  }
+-
+-  private projectRows(): void {
+-    this.rows =
+-      this.inventory && this.current
+-        ? projectSystemsInventory(
+-            this.inventory,
+-            this.context.sessions.state.result?.sessions ?? [],
+-          )
+-        : [];
+-  }
+-
+-  select(id: string): void {
+-    if (!this.current || !id.trim()) {
+-      return;
+-    }
+-    this.telemetryRequest?.abort();
+-    this.telemetryRequest = undefined;
+-    this.selectedId = id;
+-    this.notify();
+-  }
+-
+-  search(query: string): void {
+-    this.query = query;
+-    this.notify();
+-  }
+-
+-  toggleStats(): void {
+-    this.showStats = !this.showStats;
+-    this.notify();
+-  }
+-
+-  toggleDetails(): void {
+-    this.showDetails = !this.showDetails;
+-    this.notify();
+-  }
+-
+-  /** A sidebar subscription only redraws; it never starts a second inventory reader. */
+-  setPresented(presented: boolean): void {
+-    if (this.presented === presented) {
+-      return;
+-    }
+-    this.presented = presented;
+-    if (!presented) {
+-      for (const unsubscribe of this.subscriptions) {
+-        unsubscribe();
+-      }
+-      this.subscriptions = [];
+-      this.cancelRefresh();
+-      return;
+-    }
+-    this.subscriptions = [
+-      this.context.gateway.subscribe((snapshot) => {
+-        const changed = this.lifecycle.transition(snapshot);
+-        if (!this.current) {
+-          this.clear();
+-        } else if (changed) {
+-          this.cancelRefresh();
+-          if (snapshot.phase === "connected") {
+-            void this.refresh();
+-          }
+-        }
+-        this.notify();
+-      }),
+-      this.context.gateway.subscribeEvents((event) => {
+-        if (
+-          event.event === "presence" ||
+-          event.event === "node.pair.resolved" ||
+-          event.event === "node.runnerInventory.changed"
+-        ) {
+-          void this.refresh();
+-        } else if (
+-          event.event === "node.hostStats" &&
+-          isRecord(event.payload) &&
+-          typeof event.payload.nodeId === "string" &&
+-          this.selectedId === `node:${event.payload.nodeId}`
+-        ) {
+-          void this.refreshTelemetry();
+-        }
+-      }),
+-      this.context.sessions.subscribe(() => {
+-        this.projectRows();
+-        this.notify();
+-      }),
+-    ];
+-    this.lifecycle.transition(this.context.gateway.snapshot);
+-    if (!this.current) {
+-      this.clear();
+-    } else {
+-      void this.refresh();
+-    }
+-  }
+-
+-  private cancelRefresh(): void {
+-    this.generation += 1;
+-    this.request?.abort();
+-    this.telemetryRequest?.abort();
+-    this.request = undefined;
+-    this.telemetryRequest = undefined;
+-    this.loading = false;
+-    this.refreshQueued = false;
+-  }
+-
+-  private clear(): void {
+-    this.cancelRefresh();
+-    this.inventory = null;
+-    this.rows = [];
+-    this.selectedId = null;
+-    this.error = null;
+-    this.sampledAtMs = null;
+-    this.query = "";
+-  }
+-
+-  async refresh(): Promise<void> {
+-    const snapshot = this.context.gateway.snapshot;
+-    this.lifecycle.transition(snapshot);
+-    const scope = this.lifecycle.capture();
+-    if (
+-      !this.presented ||
+-      !this.current ||
+-      !scope ||
+-      !hasOperatorReadAccess(snapshot.hello?.auth ?? null)
+-    ) {
+-      return;
+-    }
+-    // Bursts of presence events must not continually cancel the only useful response.
+-    if (this.loading) {
+-      this.refreshQueued = true;
+-      return;
+-    }
+-    this.cancelRefresh();
+-    const generation = this.generation;
+-    const request = new AbortController();
+-    this.request = request;
+-    const isCurrent = () =>
+-      this.presented &&
+-      this.current &&
+-      generation === this.generation &&
+-      this.lifecycle.isCurrent(scope);
+-    this.loading = true;
+-    this.error = null;
+-    this.notify();
+-    try {
+-      const inventory = await loadSystemsInventory(scope.client, {
+-        signal: request.signal,
+-        isCurrent,
+-      });
+-      if (!inventory || !isCurrent()) {
+-        return;
+-      }
+-      const initial = this.inventory === null;
+-      this.inventory = inventory;
+-      this.projectRows();
+-      this.sampledAtMs = Date.now();
+-      // Only initial entry picks a default. Later updates never replace an explicit or missing selection.
+-      if (initial && this.selectedId === null) {
+-        const currentSession = this.context.gateway.snapshot.sessionKey;
+-        this.selectedId =
+-          this.rows.find((row) =>
+-            row.sessions.some((relation) => relation.session.key === currentSession),
+-          )?.environment.id ??
+-          this.rows.find((row) => row.environment.id === "gateway")?.environment.id ??
+-          this.rows[0]?.environment.id ??
+-          null;
+-      }
+-    } catch (error) {
+-      if (isCurrent()) {
+-        this.error = formatUiError(error);
+-      }
+-    } finally {
+-      if (isCurrent()) {
+-        this.loading = false;
+-        this.request = undefined;
+-        const refreshQueued = this.refreshQueued;
+-        this.refreshQueued = false;
+-        this.notify();
+-        if (refreshQueued) {
+-          void this.refresh();
+-        }
+-      }
+-    }
+-  }
+-
+-  /** Refresh selected-host measurements without reloading profiles or changing the desktop source. */
+-  async refreshTelemetry(): Promise<void> {
+-    const selected = this.selected;
+-    const inventory = this.inventory;
+-    const scope = this.lifecycle.capture();
+-    if (
+-      !this.presented ||
+-      !this.current ||
+-      !scope ||
+-      !selected ||
+-      !inventory ||
+-      this.loading ||
+-      this.telemetryRequest
+-    ) {
+-      return;
+-    }
+-    const gatewayHost = selected.environment.id === "gateway";
+-    if (!gatewayHost && selected.environment.type !== "node") {
+-      return;
+-    }
+-    const request = new AbortController();
+-    this.telemetryRequest = request;
+-    const generation = this.generation;
+-    const id = this.selectedId;
+-    const isCurrent = () =>
+-      this.presented &&
+-      this.current &&
+-      this.lifecycle.isCurrent(scope) &&
+-      this.telemetryRequest === request &&
+-      generation === this.generation &&
+-      this.selectedId === id;
+-    try {
+-      if (gatewayHost) {
+-        const info = await scope.client.request<SystemInfoResult>(
+-          "system.info",
+-          {},
+-          { signal: request.signal },
+-        );
+-        if (!isCurrent() || !this.inventory) {
+-          return;
+-        }
+-        const { systemInfo: _previousError, ...errors } = this.inventory.errors;
+-        this.inventory = { ...this.inventory, gatewaySystemInfo: info, errors };
+-        this.sampledAtMs = Date.now();
+-      } else {
+-        const result = await scope.client.request<{ nodes: NodeListNode[] }>(
+-          "node.list",
+-          {},
+-          { signal: request.signal },
+-        );
+-        if (!isCurrent() || !this.inventory) {
+-          return;
+-        }
+-        const { nodes: _previousError, ...errors } = this.inventory.errors;
+-        this.inventory = { ...this.inventory, nodes: result.nodes, errors };
+-      }
+-      this.projectRows();
+-    } catch (error) {
+-      if (isCurrent() && this.inventory) {
+-        this.inventory = {
+-          ...this.inventory,
+-          errors: {
+-            ...this.inventory.errors,
+-            [gatewayHost ? "systemInfo" : "nodes"]: formatUiError(error),
+-          },
+-        };
+-      }
+-    } finally {
+-      if (isCurrent()) {
+-        this.telemetryRequest = undefined;
+-        this.notify();
+-      }
+-    }
+-  }
+-}
+-
+-export type SystemsRouteData = { controller: SystemsController };
+diff --git a/ui/src/pages/systems/systems-data.test.ts b/ui/src/pages/systems/systems-data.test.ts
+deleted file mode 100644
+index 32d15d096e2b2170b4344c76767baa2d0cbb0b46..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-data.test.ts
++++ /dev/null
+@@ -1,231 +0,0 @@
+-import type {
+-  EnvironmentSummary,
+-  SessionPlacement,
+-  SystemInfoResult,
+-} from "@openclaw/gateway-protocol";
+-import { afterEach, describe, expect, it, vi } from "vitest";
+-import { createDeferred } from "../../../../test/helpers/promise.js";
+-import { GatewayBrowserClient } from "../../api/gateway.ts";
+-import type { GatewaySessionRow } from "../../api/types.ts";
+-import {
+-  loadSystemsInventory,
+-  projectSystemsInventory,
+-  type SystemsInventory,
+-} from "./systems-data.ts";
+-
+-afterEach(() => vi.restoreAllMocks());
+-
+-const environments: EnvironmentSummary[] = [
+-  { id: "gateway", type: "local", status: "available" },
+-  { id: "node:headless", type: "node", status: "available", label: "Same name" },
+-  { id: "node:offline", type: "node", status: "unavailable", label: "Same name" },
+-  { id: "worker:active", type: "worker", status: "available", desktop: true },
+-  { id: "worker:retained", type: "worker", status: "unavailable" },
+-];
+-const systemInfo: SystemInfoResult = {
+-  machineName: "Gateway host",
+-  hostname: "gateway-host",
+-  platform: "linux",
+-  release: "test",
+-  arch: "x64",
+-  osLabel: "Linux",
+-  nodeVersion: "v26",
+-  pid: 1,
+-  uptimeMs: 1_000,
+-  cpuCount: 4,
+-  memoryTotalBytes: 8_192,
+-  memoryFreeBytes: 4_096,
+-};
+-const hostStats = { cpuCount: 2, memoryTotalBytes: 4_096, memoryFreeBytes: 1_024, updatedAtMs: 50 };
+-const inventory: SystemsInventory = {
+-  environments,
+-  nodes: [
+-    { nodeId: "headless", connected: true },
+-    { nodeId: "offline", connected: false, hostStats },
+-    { nodeId: "managed-cloud-node", connected: true },
+-  ],
+-  gatewaySystemInfo: systemInfo,
+-  errors: {},
+-};
+-const timing = { generation: 1, createdAtMs: 1, updatedAtMs: 2, stateChangedAtMs: 2 };
+-const active: SessionPlacement = {
+-  state: "active",
+-  ...timing,
+-  environmentId: "worker:active",
+-  activeOwnerEpoch: 1,
+-  workerBundleHash: "a".repeat(64),
+-  workspaceBaseManifestRef: "manifest",
+-  remoteWorkspaceDir: "/work",
+-};
+-function session(key: string, fields: Partial<GatewaySessionRow> = {}): GatewaySessionRow {
+-  return { key, sessionId: key, kind: "direct", updatedAt: 1, ...fields };
+-}
+-
+-describe("Systems inventory projection", () => {
+-  it("omits completed worker history while keeping running workers and unresolved cleanup", () => {
+-    const states = ["attached", "destroying", "orphaned", "destroyed", "failed"] as const;
+-    const workers: EnvironmentSummary[] = states.map((state) => ({
+-      id: `worker:${state}`,
+-      type: "worker",
+-      status: state === "attached" ? "available" : "unavailable",
+-      worker: {
+-        state,
+-        profileId: "cloud",
+-        providerId: "crabbox",
+-        ...(state !== "failed" ? { leaseId: `lease:${state}` } : {}),
+-        ageMs: 1_000,
+-        attachedSessionIds: [],
+-        tunnelStatus: "stopped",
+-      },
+-    }));
+-    const rows = projectSystemsInventory({ ...inventory, environments: workers }, [
+-      session("archived", {
+-        archivedAt: 2,
+-        placement: {
+-          state: "reclaimed",
+-          ...timing,
+-          environmentId: "worker:destroyed",
+-          activeOwnerEpoch: 1,
+-        },
+-      }),
+-    ]);
+-    expect(rows.map((row) => row.environment.id)).toEqual([
+-      "worker:attached",
+-      "worker:destroying",
+-      "worker:orphaned",
+-    ]);
+-  });
+-
+-  it("keeps headless, offline and same-named targets without resurrecting managed node rows", () => {
+-    const rows = projectSystemsInventory(inventory, []);
+-    expect(rows.map((row) => row.environment.id)).toEqual(environments.map((entry) => entry.id));
+-    expect(rows[0]?.gatewaySystemInfo).toBe(systemInfo);
+-    expect(rows[2]?.node?.hostStats).toEqual(hostStats);
+-    expect(rows[2]?.node?.connected).toBe(false);
+-    expect(rows[3]?.node).toBeUndefined();
+-  });
+-
+-  it("uses placement before exec bindings and keeps offline runner identity", () => {
+-    const placed = session("placed", {
+-      execNode: "headless",
+-      placement: { ...active, runner: { kind: "device", deviceId: "offline", status: "offline" } },
+-    });
+-    const bound = session("bound", { execNode: "headless" });
+-    const local = session("local", { placement: { state: "local", ...timing } });
+-    const rows = projectSystemsInventory(inventory, [placed, bound, local]);
+-    expect(rows[0]?.sessions).toEqual([{ kind: "gateway", session: local }]);
+-    expect(rows[1]?.sessions).toEqual([{ kind: "exec-binding", session: bound }]);
+-    expect(rows[2]?.sessions).toEqual([{ kind: "runner", session: placed }]);
+-    expect(rows[3]?.sessions).toEqual([{ kind: "placement", session: placed }]);
+-  });
+-
+-  it("retains only recorded terminal references and never guesses a prior device or Gateway fallback", () => {
+-    const reclaimed = session("reclaimed", {
+-      execNode: "headless",
+-      placement: {
+-        state: "reclaimed",
+-        ...timing,
+-        environmentId: "worker:retained",
+-        activeOwnerEpoch: 1,
+-      },
+-    });
+-    const failed = session("failed", {
+-      placement: { state: "failed", ...timing, recoveryError: "Provisioning failed" },
+-    });
+-    const requested = session("requested", {
+-      execNode: "headless",
+-      placement: { state: "requested", ...timing },
+-    });
+-    const moved = session("moved", {
+-      placement: active,
+-      placementMove: { target: { kind: "device", deviceId: "headless" }, updatedAtMs: 2 },
+-    });
+-    const rows = projectSystemsInventory(inventory, [reclaimed, failed, requested, moved]);
+-    expect(rows[0]?.sessions).toEqual([]);
+-    expect(rows[1]?.sessions).toEqual([]);
+-    expect(rows[4]?.sessions).toEqual([{ kind: "retained-placement", session: reclaimed }]);
+-    expect(rows[3]?.sessions).toEqual([{ kind: "placement", session: moved }]);
+-  });
+-
+-  it("does not fabricate rows for a removed target or resolve exec aliases by display name", () => {
+-    const rows = projectSystemsInventory(inventory, [
+-      session("removed", { placement: { ...active, environmentId: "worker:removed" } }),
+-      session("alias", { execNode: "Same name" }),
+-    ]);
+-    expect(rows).toHaveLength(environments.length);
+-    expect(rows.flatMap((row) => row.sessions)).toEqual([]);
+-  });
+-});
+-
+-describe("Systems inventory loading", () => {
+-  it("loads the existing read contracts and does not create a second session inventory", async () => {
+-    const client = new GatewayBrowserClient({ url: "ws://gateway.test" });
+-    const request = vi
+-      .spyOn(client, "request")
+-      .mockResolvedValueOnce({ environments })
+-      .mockResolvedValueOnce({ nodes: inventory.nodes })
+-      .mockResolvedValueOnce(systemInfo);
+-    const controller = new AbortController();
+-    expect(
+-      await loadSystemsInventory(client, { isCurrent: () => true, signal: controller.signal }),
+-    ).toEqual(inventory);
+-    expect(
+-      request.mock.calls.map(([method, params, options]) => [method, params, options?.signal]),
+-    ).toEqual([
+-      ["environments.list", {}, controller.signal],
+-      ["node.list", {}, controller.signal],
+-      ["system.info", {}, controller.signal],
+-    ]);
+-  });
+-
+-  it("keeps canonical inventory when auxiliary resource reads fail, with visible errors", async () => {
+-    const client = new GatewayBrowserClient({ url: "ws://gateway.test" });
+-    vi.spyOn(client, "request")
+-      .mockResolvedValueOnce({ environments })
+-      .mockRejectedValueOnce(new Error("Node inventory denied"))
+-      .mockRejectedValueOnce(new Error("System info unavailable"));
+-    const result = await loadSystemsInventory(client, { isCurrent: () => true });
+-    expect(result).toMatchObject({ environments, nodes: [], gatewaySystemInfo: null });
+-    expect(result?.errors.nodes).toContain("Node inventory denied");
+-    expect(result?.errors.systemInfo).toContain("System info unavailable");
+-  });
+-
+-  it("propagates inventory failure rather than synthesizing a successful list from nodes", async () => {
+-    const failure = new Error("Inventory unavailable");
+-    const client = new GatewayBrowserClient({ url: "ws://gateway.test" });
+-    vi.spyOn(client, "request")
+-      .mockRejectedValueOnce(failure)
+-      .mockResolvedValueOnce({ nodes: inventory.nodes })
+-      .mockResolvedValueOnce(systemInfo);
+-    await expect(loadSystemsInventory(client, { isCurrent: () => true })).rejects.toBe(failure);
+-  });
+-
+-  it.each(["replacement", "abort"] as const)("discards a late result after %s", async (change) => {
+-    const delayed = createDeferred<{ environments: EnvironmentSummary[] }>();
+-    const client = new GatewayBrowserClient({ url: "ws://gateway.test" });
+-    vi.spyOn(client, "request")
+-      .mockReturnValueOnce(delayed.promise)
+-      .mockResolvedValueOnce({ nodes: inventory.nodes })
+-      .mockResolvedValueOnce(systemInfo);
+-    let current = true;
+-    const controller = new AbortController();
+-    const result = loadSystemsInventory(client, {
+-      isCurrent: () => current,
+-      signal: controller.signal,
+-    });
+-    if (change === "replacement") {
+-      current = false;
+-    } else {
+-      controller.abort();
+-    }
+-    delayed.resolve({ environments });
+-    await expect(result).resolves.toBeUndefined();
+-  });
+-
+-  it("does not dispatch an already invalidated load", async () => {
+-    const client = new GatewayBrowserClient({ url: "ws://gateway.test" });
+-    const request = vi.spyOn(client, "request");
+-    await expect(loadSystemsInventory(client, { isCurrent: () => false })).resolves.toBeUndefined();
+-    expect(request).not.toHaveBeenCalled();
+-  });
+-});
+diff --git a/ui/src/pages/systems/systems-data.ts b/ui/src/pages/systems/systems-data.ts
+deleted file mode 100644
+index 13b91858263c6f6bf9e867d0e8bae5045e8d0e11..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-data.ts
++++ /dev/null
+@@ -1,120 +0,0 @@
+-import type {
+-  EnvironmentSummary,
+-  EnvironmentsListResult,
+-  SystemInfoResult,
+-} from "@openclaw/gateway-protocol";
+-import type { NodeListNode } from "../../../../src/shared/node-list-types.js";
+-import type { GatewayBrowserClient } from "../../api/gateway.ts";
+-import type { GatewaySessionRow } from "../../api/types.ts";
+-import { formatUiError } from "../../lib/format-error.ts";
+-
+-export type SystemsInventory = {
+-  environments: EnvironmentSummary[];
+-  nodes: NodeListNode[];
+-  gatewaySystemInfo: SystemInfoResult | null;
+-  errors: { nodes?: string; systemInfo?: string };
+-};
+-
+-type SystemsSessionRelation = {
+-  // These are recorded bindings, not proof that a model turn ran on the host.
+-  kind: "placement" | "retained-placement" | "runner" | "exec-binding" | "gateway";
+-  session: GatewaySessionRow;
+-};
+-
+-export type SystemsInventoryRow = {
+-  environment: EnvironmentSummary;
+-  node?: NodeListNode;
+-  gatewaySystemInfo?: SystemInfoResult;
+-  sessions: SystemsSessionRelation[];
+-};
+-
+-/** The route owns connection epochs, refresh scheduling and publication of this snapshot. */
+-export async function loadSystemsInventory(
+-  client: Pick<GatewayBrowserClient, "request">,
+-  options: { isCurrent: () => boolean; signal?: AbortSignal },
+-): Promise<SystemsInventory | undefined> {
+-  if (!options.isCurrent() || options.signal?.aborted) {
+-    return undefined;
+-  }
+-  const requestOptions = { signal: options.signal };
+-  const [inventory, nodes, systemInfo] = await Promise.allSettled([
+-    client.request<EnvironmentsListResult>("environments.list", {}, requestOptions),
+-    client.request<{ nodes: NodeListNode[] }>("node.list", {}, requestOptions),
+-    client.request<SystemInfoResult>("system.info", {}, requestOptions),
+-  ]);
+-  if (!options.isCurrent() || options.signal?.aborted) {
+-    return undefined;
+-  }
+-  // Never rebuild inventory from auxiliary node reads: that would resurrect cloud-owned
+-  // pairings deliberately suppressed by environments.list and hide inventory failures.
+-  if (inventory.status === "rejected") {
+-    throw inventory.reason;
+-  }
+-  return {
+-    environments: inventory.value.environments,
+-    nodes: nodes.status === "fulfilled" ? nodes.value.nodes : [],
+-    gatewaySystemInfo: systemInfo.status === "fulfilled" ? systemInfo.value : null,
+-    errors: {
+-      ...(nodes.status === "rejected" ? { nodes: formatUiError(nodes.reason) } : {}),
+-      ...(systemInfo.status === "rejected" ? { systemInfo: formatUiError(systemInfo.reason) } : {}),
+-    },
+-  };
+-}
+-
+-/** Join only exact Gateway identities; desktop capability never determines row membership. */
+-export function projectSystemsInventory(
+-  inventory: SystemsInventory,
+-  sessions: readonly GatewaySessionRow[],
+-): SystemsInventoryRow[] {
+-  const nodes = new Map(inventory.nodes.map((node) => [`node:${node.nodeId}`, node]));
+-  const relations = new Map<string, SystemsSessionRelation[]>();
+-  const add = (id: string, kind: SystemsSessionRelation["kind"], session: GatewaySessionRow) => {
+-    const existing = relations.get(id);
+-    const relation = { kind, session };
+-    if (existing) {
+-      existing.push(relation);
+-    } else {
+-      relations.set(id, [relation]);
+-    }
+-  };
+-  for (const session of sessions) {
+-    const placement = session.placement;
+-    if (placement && placement.state !== "local") {
+-      if (placement.state === "requested") {
+-        continue;
+-      }
+-      if (placement.environmentId) {
+-        add(
+-          placement.environmentId,
+-          placement.state === "reclaimed" || placement.state === "failed"
+-            ? "retained-placement"
+-            : "placement",
+-          session,
+-        );
+-      }
+-      if (placement.state === "active" && placement.runner?.deviceId) {
+-        add(`node:${placement.runner.deviceId}`, "runner", session);
+-      }
+-      continue;
+-    }
+-    const execNode = session.execNode?.trim();
+-    add(execNode ? `node:${execNode}` : "gateway", execNode ? "exec-binding" : "gateway", session);
+-  }
+-  return inventory.environments
+-    .filter((environment) => {
+-      // Terminal worker records remain in Gateway history after their machine is gone.
+-      return (
+-        environment.type !== "worker" ||
+-        (environment.worker?.state !== "destroyed" && environment.worker?.state !== "failed")
+-      );
+-    })
+-    .map((environment) => {
+-      return {
+-        environment,
+-        node: environment.type === "node" ? nodes.get(environment.id) : undefined,
+-        gatewaySystemInfo:
+-          environment.id === "gateway" ? (inventory.gatewaySystemInfo ?? undefined) : undefined,
+-        sessions: relations.get(environment.id) ?? [],
+-      };
+-    });
+-}
+diff --git a/ui/src/pages/systems/systems-page.test.ts b/ui/src/pages/systems/systems-page.test.ts
+deleted file mode 100644
+index 74d5a71186b327250db3e8b371328bb2675f94f5..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-page.test.ts
++++ /dev/null
+@@ -1,235 +0,0 @@
+-/* @vitest-environment jsdom */
+-import type { EnvironmentSummary, SystemInfoResult } from "@openclaw/gateway-protocol";
+-import { afterEach, describe, expect, it, vi } from "vitest";
+-import { createDeferred } from "../../../../test/helpers/promise.js";
+-import type { GatewayBrowserClient } from "../../api/gateway.ts";
+-import { DesktopClient } from "../../components/desktop/desktop-client.ts";
+-import { createConnectionHandle } from "../../components/desktop/desktop-panel.test-support.ts";
+-import { DESKTOP_PANEL_TOGGLE_EVENT } from "../../components/panel-toggle-contract.ts";
+-import { setupSidebarTest } from "../../test-helpers/app-sidebar-setup.ts";
+-import {
+-  createContext,
+-  createGatewayHarness,
+-  createSessions,
+-} from "../../test-helpers/app-sidebar.ts";
+-import { gatewayHelloForMethods } from "../../test-helpers/gateway-methods.ts";
+-import { SystemsController } from "./systems-controller.ts";
+-import "./systems-page.ts";
+-import "./systems-sidebar.ts";
+-
+-setupSidebarTest();
+-afterEach(() => vi.restoreAllMocks());
+-
+-const host: EnvironmentSummary = {
+-  id: "gateway",
+-  type: "local",
+-  label: "Gateway",
+-  status: "available",
+-};
+-const worker: EnvironmentSummary = {
+-  id: "worker-one",
+-  type: "worker",
+-  label: "Cloud worker",
+-  status: "available",
+-  desktop: true,
+-};
+-const offline: EnvironmentSummary = {
+-  id: "node:offline",
+-  type: "node",
+-  label: "Offline laptop",
+-  status: "unavailable",
+-};
+-const systemInfo: SystemInfoResult = {
+-  machineName: "Test Gateway",
+-  hostname: "gateway.test",
+-  platform: "linux",
+-  release: "test",
+-  arch: "x64",
+-  osLabel: "Linux",
+-  nodeVersion: "v26",
+-  pid: 1,
+-  uptimeMs: 1000,
+-  cpuCount: 4,
+-  loadAverage: [0.5, 0.4, 0.3],
+-  memoryTotalBytes: 8192,
+-  memoryFreeBytes: 4096,
+-};
+-
+-function harness(
+-  inventory: () => Promise<EnvironmentSummary[]> = async () => [host, worker, offline],
+-) {
+-  const request = vi.fn(async (method: string) => {
+-    if (method === "environments.list") {
+-      return { environments: await inventory() };
+-    }
+-    if (method === "system.info") {
+-      return systemInfo;
+-    }
+-    if (method === "node.list") {
+-      return {
+-        nodes: [
+-          {
+-            nodeId: "offline",
+-            connected: false,
+-            hostStats: {
+-              cpuCount: 2,
+-              memoryTotalBytes: 4096,
+-              memoryFreeBytes: 2048,
+-              updatedAtMs: Date.now(),
+-            },
+-          },
+-        ],
+-      };
+-    }
+-    if (method === "desktop.observe") {
+-      return {
+-        transport: "rfb",
+-        wsPath: "/desktop/proof",
+-        expiresAtMs: Date.now() + 60000,
+-        control: false,
+-      };
+-    }
+-    throw new Error("Unexpected request: " + method);
+-  });
+-  const gateway = createGatewayHarness({ request } as unknown as GatewayBrowserClient);
+-  gateway.publish({
+-    hello: gatewayHelloForMethods(
+-      ["environments.list", "node.list", "system.info", "desktop.observe"],
+-      ["operator.admin"],
+-    ),
+-  });
+-  const context = createContext(gateway.gateway, createSessions("main", []));
+-  Object.assign(context, { basePath: "", navigate: vi.fn() });
+-  const controller = new SystemsController(context);
+-  return { controller, gateway, context, request };
+-}
+-
+-async function mount(controller: SystemsController) {
+-  const page = document.createElement("openclaw-systems-page");
+-  const sidebar = document.createElement("openclaw-systems-sidebar");
+-  page.routeData = { controller };
+-  sidebar.controller = controller;
+-  document.body.append(page, sidebar);
+-  await vi.waitFor(() => expect(controller.inventory).not.toBeNull());
+-  await page.updateComplete;
+-  await sidebar.updateComplete;
+-  return { page, sidebar };
+-}
+-
+-describe("Systems workspace", () => {
+-  it("shares inventory, keeps a single view-only connection through presentation changes, and retains a removed selection", async () => {
+-    let environments = [host, worker, offline];
+-    const { controller, request } = harness(async () => environments);
+-    const handle = createConnectionHandle();
+-    const connect = vi
+-      .spyOn(DesktopClient.prototype, "connect")
+-      .mockImplementation(async (options) => {
+-        options.onConnect?.();
+-        return handle;
+-      });
+-    const { page, sidebar } = await mount(controller);
+-    expect(sidebar.querySelectorAll(".systems-machine")).toHaveLength(3);
+-    expect(page.textContent).toContain("No desktop available");
+-    expect(request.mock.calls.filter(([method]) => method === "environments.list")).toHaveLength(1);
+-    const entry = [...sidebar.querySelectorAll<HTMLButtonElement>(".systems-machine")].find(
+-      (button) => button.textContent?.includes("Cloud worker"),
+-    );
+-    entry!.click();
+-    await vi.waitFor(() => expect(connect).toHaveBeenCalledOnce());
+-    expect(request).toHaveBeenCalledWith("desktop.observe", {
+-      source: { kind: "environment", environmentId: worker.id },
+-      control: false,
+-    });
+-    const viewer = page.querySelector("openclaw-desktop-panel");
+-    expect(viewer?.hasAttribute("embedded")).toBe(true);
+-    expect(viewer?.embedded).toBe(true);
+-    controller.toggleStats();
+-    controller.toggleDetails();
+-    await controller.refresh();
+-    await page.updateComplete;
+-    expect(page.querySelector("openclaw-desktop-panel")).toBe(viewer);
+-    expect(connect).toHaveBeenCalledOnce();
+-    environments = [host, offline];
+-    await controller.refresh();
+-    await page.updateComplete;
+-    expect(controller.selectedId).toBe(worker.id);
+-    expect(page.textContent).toContain("This machine is no longer listed");
+-    expect(page.querySelector<HTMLSelectElement>(".systems-mobile-picker")?.value).toBe("");
+-    expect(page.querySelector("openclaw-desktop-panel")).toBeNull();
+-    expect(handle.disconnect).toHaveBeenCalled();
+-    window.dispatchEvent(
+-      new CustomEvent(DESKTOP_PANEL_TOGGLE_EVENT, {
+-        detail: { open: true, environmentId: "worker-no-longer-known" },
+-      }),
+-    );
+-    await page.updateComplete;
+-    expect(controller.selectedId).toBe("worker-no-longer-known");
+-    expect(page.textContent).toContain("This machine is no longer listed");
+-    expect(connect).toHaveBeenCalledOnce();
+-  });
+-
+-  it("keeps a retained worker selected in the mobile picker after remount", async () => {
+-    const { controller } = harness();
+-    vi.spyOn(DesktopClient.prototype, "connect").mockImplementation(async (options) => {
+-      options.onConnect?.();
+-      return createConnectionHandle();
+-    });
+-    const first = await mount(controller);
+-    controller.select(worker.id);
+-    await first.page.updateComplete;
+-    expect(first.page.querySelector<HTMLSelectElement>(".systems-mobile-picker")?.value).toBe(
+-      worker.id,
+-    );
+-    first.page.remove();
+-    first.sidebar.remove();
+-
+-    const second = await mount(controller);
+-    await vi.waitFor(() => expect(controller.loading).toBe(false));
+-    await second.page.updateComplete;
+-    expect(controller.selectedId).toBe(worker.id);
+-    expect(second.page.querySelector<HTMLSelectElement>(".systems-mobile-picker")?.value).toBe(
+-      worker.id,
+-    );
+-    expect(second.page.querySelector("openclaw-desktop-panel")?.requestedSource).toBe(worker.id);
+-  });
+-
+-  it("shows offline last-known telemetry without creating a desktop connection", async () => {
+-    const { controller, gateway, request } = harness();
+-    const connect = vi.spyOn(DesktopClient.prototype, "connect");
+-    const { page } = await mount(controller);
+-    const calls = request.mock.calls.length;
+-    gateway.publishEvent("node.hostStats", { nodeId: "unrelated-node" });
+-    expect(request.mock.calls).toHaveLength(calls);
+-    controller.select(offline.id);
+-    await page.updateComplete;
+-    expect(page.textContent).toContain("This machine is offline");
+-    expect(page.textContent).toContain("Last reported");
+-    expect(page.querySelector('.systems-metrics[data-stale="true"]')).not.toBeNull();
+-    expect(connect).not.toHaveBeenCalled();
+-  });
+-
+-  it("keeps selection across route activation and drops late work after departure or gateway replacement", async () => {
+-    const delayed = createDeferred<EnvironmentSummary[]>();
+-    const { controller, gateway } = harness(() => delayed.promise);
+-    controller.setPresented(true);
+-    controller.setPresented(false);
+-    delayed.resolve([host, worker]);
+-    await Promise.resolve();
+-    await Promise.resolve();
+-    await Promise.resolve();
+-    expect(controller.inventory).toBeNull();
+-    controller.setPresented(true);
+-    await vi.waitFor(() => expect(controller.inventory).not.toBeNull());
+-    controller.select(worker.id);
+-    controller.setPresented(false);
+-    controller.setPresented(true);
+-    await vi.waitFor(() => expect(controller.loading).toBe(false));
+-    expect(controller.selectedId).toBe(worker.id);
+-    // Simulate a new revision from the Gateway owner; consumers only read this property.
+-    Object.defineProperty(gateway.gateway, "connectionRevision", { value: 1 });
+-    gateway.publish({});
+-    expect(controller.rows).toEqual([]);
+-    expect(controller.selected).toBeUndefined();
+-    controller.setPresented(false);
+-  });
+-});
+diff --git a/ui/src/pages/systems/systems-page.ts b/ui/src/pages/systems/systems-page.ts
+deleted file mode 100644
+index b74b888057f87a57820adffef88ab131f209b115..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-page.ts
++++ /dev/null
+@@ -1,374 +0,0 @@
+-import type { SystemInfoResult } from "@openclaw/gateway-protocol";
+-import { isRecord } from "@openclaw/normalization-core/record-coerce";
+-import { html, nothing, type PropertyValues } from "lit";
+-import { property } from "lit/decorators.js";
+-import type { RouteId } from "../../app-route-paths.ts";
+-import type { ApplicationContext } from "../../app/context.ts";
+-import { icons } from "../../components/icons.ts";
+-import "../../components/desktop/desktop-panel.ts";
+-import { DESKTOP_PANEL_TOGGLE_EVENT } from "../../components/panel-toggle-contract.ts";
+-import { t } from "../../i18n/index.ts";
+-import { registerSystemsEnglish } from "../../i18n/locales/en-systems.ts";
+-import { formatByteSize, formatTimeAgo } from "../../lib/format.ts";
+-import { shouldHandleNavigationClick } from "../../lib/navigation-click.ts";
+-import {
+-  resolveSessionPreferredFace,
+-  sessionNavigationTarget,
+-} from "../../lib/sessions/route-navigation.ts";
+-import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+-import { PollController } from "../../lit/poll-controller.ts";
+-import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
+-import { SystemsController } from "./systems-controller.ts";
+-import type { SystemsRouteData } from "./systems-controller.ts";
+-import type { SystemsInventoryRow } from "./systems-data.ts";
+-import { systemKind, systemName, systemStatus } from "./systems-sidebar.ts";
+-import "../../styles/systems.css";
+-
+-registerSystemsEnglish();
+-
+-type HostMeasurements = Pick<
+-  SystemInfoResult,
+-  | "cpuCount"
+-  | "loadAverage"
+-  | "memoryTotalBytes"
+-  | "memoryFreeBytes"
+-  | "diskTotalBytes"
+-  | "diskAvailableBytes"
+->;
+-
+-function measurements(row: SystemsInventoryRow): HostMeasurements | undefined {
+-  return row.gatewaySystemInfo ?? row.node?.hostStats;
+-}
+-
+-function bytes(value: number): string {
+-  return formatByteSize(value, {
+-    style: "legacy-binary",
+-    separator: " ",
+-    maxUnit: "tera",
+-    fractionDigits: (size, unit) => (unit === "tera" || size < 10 ? 1 : 0),
+-  });
+-}
+-
+-function renderMeasurements(
+-  row: SystemsInventoryRow,
+-  sampledAtMs: number | null,
+-  connected: boolean,
+-) {
+-  const stats = measurements(row);
+-  if (!stats) {
+-    return html`<p class="systems-no-telemetry">${t("systems.noTelemetry")}</p>`;
+-  }
+-  const observedAt = row.node?.hostStats?.updatedAtMs ?? sampledAtMs;
+-  const lastKnown =
+-    !connected ||
+-    row.environment.status !== "available" ||
+-    (observedAt !== null && Date.now() - observedAt > 30_000);
+-  return html`<div class="systems-metrics" data-stale=${lastKnown}>
+-    <div>
+-      <span>${t("systems.load")}</span
+-      ><strong
+-        >${stats.loadAverage ? stats.loadAverage[0].toFixed(2) : t("systems.unavailable")}</strong
+-      ><small>${t("systems.cpuCount", { count: String(stats.cpuCount) })}</small>
+-    </div>
+-    <div>
+-      <span>${t("systems.memory")}</span
+-      ><strong
+-        >${bytes(stats.memoryTotalBytes - stats.memoryFreeBytes)}
+-        <small>/ ${bytes(stats.memoryTotalBytes)}</small></strong
+-      >
+-    </div>
+-    <div>
+-      <span>${t("systems.disk")}</span
+-      ><strong
+-        >${stats.diskAvailableBytes === undefined ? t("systems.unavailable") : bytes(stats.diskAvailableBytes)}</strong
+-      >
+-    </div>
+-    ${observedAt === null ? nothing : html`<span class="systems-sample-time">${t(lastKnown ? "systems.lastKnown" : "systems.sampled", { time: formatTimeAgo(Math.max(0, Date.now() - observedAt)) })}</span>`}
+-  </div>`;
+-}
+-
+-class SystemsPage extends OpenClawLightDomElement {
+-  @property({ attribute: false }) routeData?: SystemsRouteData;
+-  @property({ type: Boolean }) presented = true;
+-  private activeController: SystemsController | undefined;
+-  private readonly poll = new PollController(this, 15_000, () => {
+-    if (
+-      this.presented &&
+-      document.visibilityState !== "hidden" &&
+-      (this.routeData?.controller.showStats || this.routeData?.controller.showDetails)
+-    ) {
+-      void this.routeData?.controller.refreshTelemetry();
+-    }
+-  });
+-
+-  constructor() {
+-    super();
+-    void this.poll;
+-    new SubscriptionsController(this).watch(
+-      () => this.routeData?.controller,
+-      (controller, notify) => controller.subscribe(notify),
+-    );
+-  }
+-
+-  override connectedCallback(): void {
+-    super.connectedCallback();
+-    window.addEventListener(DESKTOP_PANEL_TOGGLE_EVENT, this.handleDesktopToggle);
+-  }
+-
+-  override disconnectedCallback(): void {
+-    window.removeEventListener(DESKTOP_PANEL_TOGGLE_EVENT, this.handleDesktopToggle);
+-    this.activeController?.setPresented(false);
+-    this.activeController = undefined;
+-    super.disconnectedCallback();
+-  }
+-
+-  override updated(changed: PropertyValues<this>): void {
+-    if (changed.has("routeData") || changed.has("presented")) {
+-      if (this.activeController !== this.routeData?.controller) {
+-        this.activeController?.setPresented(false);
+-      }
+-      this.activeController = this.routeData?.controller;
+-      this.activeController?.setPresented(this.presented);
+-    }
+-  }
+-
+-  private readonly handleDesktopToggle = (event: Event) => {
+-    const controller = this.routeData?.controller;
+-    if (!this.presented || !controller?.current || !(event instanceof CustomEvent)) {
+-      return;
+-    }
+-    const detail = isRecord(event.detail) ? event.detail : {};
+-    const environmentId =
+-      typeof detail.environmentId === "string" ? detail.environmentId : undefined;
+-    event.preventDefault();
+-    event.stopImmediatePropagation();
+-    if (detail?.open === false) {
+-      this.querySelector("openclaw-desktop-panel")?.handleToggleRequest(event);
+-      return;
+-    }
+-    if (environmentId && environmentId !== controller.selectedId) {
+-      controller.select(environmentId);
+-      if (!controller.rows.some((row) => row.environment.id === environmentId)) {
+-        void controller.refresh();
+-      }
+-      return;
+-    }
+-    if (environmentId) {
+-      this.querySelector("openclaw-desktop-panel")?.handleToggleRequest(event);
+-    }
+-  };
+-
+-  private renderDetails(controller: SystemsController, row: SystemsInventoryRow) {
+-    const environment = row.environment;
+-    return html`<aside class="systems-details" aria-label=${t("systems.details")}>
+-      <header>
+-        <h2>${t("systems.details")}</h2>
+-        <button
+-          class="systems-icon-button"
+-          aria-label=${t("systems.closeDetails")}
+-          @click=${() => controller.toggleDetails()}
+-        >
+-          ${icons.x}
+-        </button>
+-      </header>
+-      <dl>
+-        <dt>${t("systems.identifier")}</dt>
+-        <dd>${environment.id}</dd>
+-        <dt>${t("systems.status")}</dt>
+-        <dd>${controller.connected ? systemStatus(row) : t("systems.offline")}</dd>
+-        <dt>${t("systems.platform")}</dt>
+-        <dd>${environment.platform ?? row.node?.platform ?? t("systems.unknown")}</dd>
+-      </dl>
+-      <h3>${t("systems.telemetry")}</h3>
+-      ${renderMeasurements(row, controller.sampledAtMs, controller.connected)}
+-      <h3>${t("systems.relatedSessions")}</h3>
+-      <p class="systems-detail-hint">${t("systems.relatedHint")}</p>
+-      ${
+-        row.sessions.length
+-          ? row.sessions.map((relation) => {
+-              const session = relation.session;
+-              const face = resolveSessionPreferredFace(session);
+-              const target = sessionNavigationTarget({
+-                context: controller.context,
+-                face,
+-                sessionKey: session.key,
+-                preferenceDerivedFace: true,
+-              });
+-              return html`<a
+-                class="systems-session-link"
+-                href=${target.href}
+-                @click=${(event: MouseEvent) => {
+-                  if (!shouldHandleNavigationClick(event)) {
+-                    return;
+-                  }
+-                  event.preventDefault();
+-                  controller.context.navigate(face, target.options);
+-                }}
+-                ><strong>${session.displayName ?? session.label ?? session.key}</strong
+-                ><span>${t("systems.relations." + relation.kind)}</span></a
+-              >`;
+-            })
+-          : html`<p class="systems-detail-hint">${t("systems.noRelatedSessions")}</p>`
+-      }
+-      ${
+-        environment.worker?.attachedSessionIds.length
+-          ? html`<h3>${t("systems.attachedSessions")}</h3>
+-              <p class="systems-detail-hint">${t("systems.attachedHint")}</p>
+-              <ul>
+-                ${environment.worker.attachedSessionIds.map((id) => html`<li>${id}</li>`)}
+-              </ul>`
+-          : nothing
+-      }
+-      <h3>${t("systems.capabilities")}</h3>
+-      <div class="systems-capabilities">
+-        ${(environment.capabilities ?? []).map((capability) => html`<span>${capability}</span>`)}
+-      </div>
+-    </aside>`;
+-  }
+-
+-  override render() {
+-    const controller = this.routeData?.controller;
+-    if (!controller?.current) {
+-      return html`<p class="systems-state" role="status">${t("systems.loading")}</p>`;
+-    }
+-    const row = controller.selected;
+-    const canView = Boolean(
+-      row?.environment.desktop &&
+-      row.environment.status === "available" &&
+-      controller.desktopAvailable &&
+-      this.presented,
+-    );
+-    const title = row ? systemName(row) : t("systems.title");
+-    const auxiliaryErrors = Object.values(controller.inventory?.errors ?? {});
+-    const emptyTitle = !controller.connected
+-      ? t("systems.offlineGateway")
+-      : controller.loading && !controller.inventory
+-        ? t("systems.loading")
+-        : controller.selectedId && !row
+-          ? t("systems.missingTitle")
+-          : !row
+-            ? t("systems.select")
+-            : row.environment.status !== "available"
+-              ? row.environment.status === "unavailable"
+-                ? t("systems.offlineTitle")
+-                : systemStatus(row)
+-              : !row.environment.desktop
+-                ? t("systems.noDesktopTitle")
+-                : t("systems.accessTitle");
+-    const emptyHint =
+-      controller.selectedId && !row
+-        ? t("systems.missingHint")
+-        : !row
+-          ? t("systems.selectHint")
+-          : row.environment.status !== "available"
+-            ? t("systems.offlineHint")
+-            : !row.environment.desktop
+-              ? t("systems.noDesktopHint")
+-              : t("systems.accessHint");
+-    return html`<section class="systems-workspace" aria-label=${t("systems.title")}>
+-      <header class="systems-toolbar">
+-        <div class="systems-heading">
+-          <h1>${title}</h1>
+-          <span>${row ? t("systems." + systemKind(row)) : t("systems.selectHint")}</span>
+-        </div>
+-        <select
+-          class="systems-mobile-picker"
+-          aria-label=${t("systems.select")}
+-          @change=${(event: Event) => {
+-            if (event.currentTarget instanceof HTMLSelectElement) {
+-              controller.select(event.currentTarget.value);
+-            }
+-          }}
+-        >
+-          <option value="" disabled .selected=${!row}>${t("systems.select")}</option>
+-          ${controller.rows.map((entry) => html`<option value=${entry.environment.id} .selected=${entry.environment.id === controller.selectedId}>${systemName(entry)}</option>`)}
+-        </select>
+-        <button
+-          class="systems-icon-button"
+-          title=${t(controller.showStats ? "systems.hideStats" : "systems.stats")}
+-          aria-label=${t(controller.showStats ? "systems.hideStats" : "systems.stats")}
+-          aria-pressed=${controller.showStats}
+-          @click=${() => controller.toggleStats()}
+-        >
+-          ${icons.activity}
+-        </button>
+-        <button
+-          class="systems-icon-button"
+-          title=${t("systems.details")}
+-          aria-label=${t("systems.details")}
+-          aria-pressed=${controller.showDetails}
+-          ?disabled=${!row}
+-          @click=${() => controller.toggleDetails()}
+-        >
+-          ${icons.panelRightOpen}
+-        </button>
+-      </header>
+-      ${controller.error ? html`<div class="systems-callout systems-callout--error" role="alert">${controller.error}<button @click=${() => void controller.refresh()} ?disabled=${controller.loading}>${t("common.retry")}</button></div>` : nothing}
+-      ${!controller.connected ? html`<div class="systems-callout" role="status">${t("systems.offlineGateway")}</div>` : nothing}
+-      ${
+-        auxiliaryErrors.length
+-          ? html`<details class="systems-callout">
+-              <summary>${t("systems.errors")}</summary>
+-              ${auxiliaryErrors.map((error) => html`<p>${error}</p>`)}
+-            </details>`
+-          : nothing
+-      }
+-      ${controller.showStats && row ? renderMeasurements(row, controller.sampledAtMs, controller.connected) : nothing}
+-      <div class="systems-body">
+-        <div class="systems-desktop">
+-          ${
+-            canView && row
+-              ? html`<openclaw-desktop-panel
+-                  embedded
+-                  data-chat-autotype-exempt
+-                  .client=${controller.context.gateway.snapshot.client}
+-                  .available=${controller.desktopAvailable}
+-                  .presented=${this.presented}
+-                  .workspaceControls=${true}
+-                  .suppliedEnvironments=${controller.inventory?.environments ?? []}
+-                  .requestedSource=${row.environment.id}
+-                  .basePath=${controller.context.basePath}
+-                ></openclaw-desktop-panel>`
+-              : html`<div class="systems-state" role="status">
+-                  <span class="systems-state__icon" aria-hidden="true">${icons.monitor}</span>
+-                  <h2>${emptyTitle}</h2>
+-                  <p>${emptyHint}</p>
+-                  ${row ? html`<button class="systems-text-button" @click=${() => controller.toggleDetails()}>${t("systems.details")}</button>` : nothing}
+-                </div>`
+-          }
+-        </div>
+-        ${controller.showDetails && row ? this.renderDetails(controller, row) : nothing}
+-      </div>
+-    </section>`;
+-  }
+-}
+-
+-if (!customElements.get("openclaw-systems-page")) {
+-  customElements.define("openclaw-systems-page", SystemsPage);
+-}
+-
+-declare global {
+-  interface HTMLElementTagNameMap {
+-    "openclaw-systems-page": SystemsPage;
+-  }
+-}
+-
+-/** Route rendering stays in the lazy page module, not in startup route metadata. */
+-export function render(data: SystemsRouteData | undefined, _pending: boolean, presented = true) {
+-  return data
+-    ? html`<openclaw-systems-page
+-        .routeData=${data}
+-        .presented=${presented}
+-      ></openclaw-systems-page>`
+-    : nothing;
+-}
+-
+-export function renderSidebar(data: SystemsRouteData | undefined) {
+-  return data
+-    ? html`<openclaw-systems-sidebar .controller=${data.controller}></openclaw-systems-sidebar>`
+-    : nothing;
+-}
+-
+-export function load(context: ApplicationContext<RouteId>): SystemsRouteData {
+-  return { controller: new SystemsController(context) };
+-}
+diff --git a/ui/src/pages/systems/systems-sidebar.ts b/ui/src/pages/systems/systems-sidebar.ts
+deleted file mode 100644
+index 73c91d49fad61a910875237f5059ec329aef3865..0000000000000000000000000000000000000000
+--- a/ui/src/pages/systems/systems-sidebar.ts
++++ /dev/null
+@@ -1,146 +0,0 @@
+-import { html, nothing } from "lit";
+-import { property } from "lit/decorators.js";
+-import { icons } from "../../components/icons.ts";
+-import { t } from "../../i18n/index.ts";
+-import { registerSystemsEnglish } from "../../i18n/locales/en-systems.ts";
+-import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+-import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
+-import type { SystemsController } from "./systems-controller.ts";
+-import type { SystemsInventoryRow } from "./systems-data.ts";
+-import "../../styles/systems.css";
+-
+-registerSystemsEnglish();
+-
+-export function systemName(row: SystemsInventoryRow): string {
+-  return (
+-    row.gatewaySystemInfo?.machineName ??
+-    row.environment.label ??
+-    row.node?.displayName ??
+-    (row.environment.id === "gateway" ? t("systems.host") : row.environment.id)
+-  );
+-}
+-
+-export function systemKind(row: SystemsInventoryRow): "host" | "worker" | "node" {
+-  return row.environment.id === "gateway"
+-    ? "host"
+-    : row.environment.type === "node"
+-      ? "node"
+-      : "worker";
+-}
+-
+-export function systemStatus(row: SystemsInventoryRow): string {
+-  return t(
+-    row.environment.status === "available"
+-      ? "systems.online"
+-      : row.environment.status === "unavailable"
+-        ? "systems.offline"
+-        : "systems.statuses." + row.environment.status,
+-  );
+-}
+-
+-class SystemsSidebar extends OpenClawLightDomElement {
+-  @property({ attribute: false }) controller?: SystemsController;
+-
+-  constructor() {
+-    super();
+-    new SubscriptionsController(this).watch(
+-      () => this.controller,
+-      (controller, notify) => controller.subscribe(notify),
+-    );
+-  }
+-
+-  override render() {
+-    const controller = this.controller;
+-    if (!controller?.current) {
+-      return nothing;
+-    }
+-    const query = controller.query.trim().toLocaleLowerCase();
+-    const rows = controller.rows.filter((row) =>
+-      [
+-        systemName(row),
+-        row.environment.id,
+-        row.environment.platform ?? row.node?.platform ?? "",
+-      ].some((value) => value.toLocaleLowerCase().includes(query)),
+-    );
+-    return html`<section class="systems-sidebar" aria-label=${t("systems.inventory")}>
+-      <header class="systems-sidebar__header">
+-        <h2>${t("systems.inventory")}</h2>
+-        <span>${controller.rows.length}</span>
+-        <button
+-          type="button"
+-          class="systems-icon-button"
+-          aria-label=${t("systems.refresh")}
+-          title=${t("systems.refresh")}
+-          ?disabled=${controller.loading || !controller.connected}
+-          @click=${() => void controller.refresh()}
+-        >
+-          ${icons.refresh}
+-        </button>
+-      </header>
+-      <label class="systems-search">
+-        <span aria-hidden="true">${icons.search}</span>
+-        <input
+-          type="search"
+-          aria-label=${t("systems.search")}
+-          placeholder=${t("systems.search")}
+-          .value=${controller.query}
+-          @input=${(event: InputEvent) => {
+-            if (event.currentTarget instanceof HTMLInputElement) {
+-              controller.search(event.currentTarget.value);
+-            }
+-          }}
+-        />
+-      </label>
+-      <div class="systems-sidebar__list" aria-busy=${controller.loading}>
+-        ${controller.loading && !controller.inventory ? html`<p class="systems-sidebar__empty" role="status">${t("systems.loading")}</p>` : nothing}
+-        ${(["host", "worker", "node"] as const).map((kind) => {
+-          const group = rows.filter((row) => systemKind(row) === kind);
+-          return group.length
+-            ? html`<section class="systems-group">
+-                <h3>
+-                  ${t(kind === "host" ? "systems.hosts" : kind === "worker" ? "systems.workers" : "systems.nodes")}
+-                </h3>
+-                ${group.map(
+-                  (row) => html`<button
+-                    class="systems-machine"
+-                    type="button"
+-                    aria-pressed=${row.environment.id === controller.selectedId}
+-                    @click=${() => controller.select(row.environment.id)}
+-                  >
+-                    <span class="systems-machine__icon" aria-hidden="true"
+-                      >${row.environment.desktop ? icons.monitor : icons.server}</span
+-                    >
+-                    <span class="systems-machine__copy"
+-                      ><strong>${systemName(row)}</strong>
+-                      <span
+-                        ><i
+-                          class="systems-status-dot"
+-                          data-online=${row.environment.status === "available"}
+-                        ></i
+-                        >${systemStatus(row)}</span
+-                      >
+-                      <small
+-                        >${row.environment.platform ?? row.node?.platform ?? t("systems.unknown")} ·
+-                        ${t(row.environment.desktop ? "systems.desktop" : "systems.headless")}</small
+-                      >
+-                    </span>
+-                  </button>`,
+-                )}
+-              </section>`
+-            : nothing;
+-        })}
+-        ${!controller.loading && rows.length === 0 ? html`<p class="systems-sidebar__empty">${t(query ? "systems.noMatches" : "systems.empty")}</p>` : nothing}
+-      </div>
+-    </section>`;
+-  }
+-}
+-
+-if (!customElements.get("openclaw-systems-sidebar")) {
+-  customElements.define("openclaw-systems-sidebar", SystemsSidebar);
+-}
+-
+-declare global {
+-  interface HTMLElementTagNameMap {
+-    "openclaw-systems-sidebar": SystemsSidebar;
+-  }
+-}
+diff --git a/ui/src/styles/layout.css b/ui/src/styles/layout.css
+index f4be82ce35e3e55fa519ded5633bf0ed93973f08..be9e878e90a4130004a546c6fabd4a9f892ad0da 100644
+--- a/ui/src/styles/layout.css
++++ b/ui/src/styles/layout.css
+@@ -1254,15 +1254,6 @@ openclaw-settings-save-indicator:empty {
+   padding: 0;
+ }
+ 
+-/* Keep the live session tree mounted while a route owns the lower region. */
+-.sidebar-session-content {
+-  display: contents;
+-}
+-
+-.sidebar-session-content[hidden] {
+-  display: none;
+-}
+-
+ .sidebar-sessions,
+ .sidebar-online {
+   display: flex;
+diff --git a/ui/src/styles/systems.css b/ui/src/styles/systems.css
+deleted file mode 100644
+index 690320b213f5675f1b5b4aab32966a2ea716c652..0000000000000000000000000000000000000000
+--- a/ui/src/styles/systems.css
++++ /dev/null
+@@ -1,470 +0,0 @@
+-openclaw-systems-page {
+-  display: flex;
+-  flex: 1;
+-  min-width: 0;
+-  min-height: 0;
+-  height: 100%;
+-}
+-.systems-workspace {
+-  display: flex;
+-  flex-direction: column;
+-  flex: 1;
+-  min-height: 0;
+-  min-width: 0;
+-  overflow: hidden;
+-  background: var(--bg);
+-}
+-.systems-toolbar {
+-  display: flex;
+-  align-items: center;
+-  gap: 10px;
+-  padding: 12px 18px;
+-  border-bottom: 1px solid var(--border);
+-  flex: 0 0 auto;
+-}
+-.systems-heading {
+-  flex: 1;
+-  min-width: 0;
+-}
+-.systems-heading h1 {
+-  margin: 0;
+-  font-size: 15px;
+-  font-weight: 600;
+-  overflow-wrap: anywhere;
+-  color: var(--text-strong);
+-}
+-.systems-heading > span {
+-  color: var(--muted);
+-  font-size: 11px;
+-}
+-.systems-icon-button {
+-  display: inline-grid;
+-  place-items: center;
+-  width: 32px;
+-  height: 32px;
+-  padding: 6px;
+-  border: 1px solid var(--border);
+-  border-radius: 6px;
+-  background: transparent;
+-  color: var(--muted);
+-  flex: 0 0 auto;
+-}
+-.systems-icon-button:hover,
+-.systems-icon-button[aria-pressed="true"] {
+-  color: var(--text-strong);
+-  background: var(--bg-hover);
+-}
+-.systems-icon-button:focus-visible,
+-.systems-machine:focus-visible,
+-.systems-text-button:focus-visible {
+-  outline: 2px solid var(--accent);
+-  outline-offset: 2px;
+-}
+-.systems-icon-button:disabled {
+-  opacity: 0.45;
+-}
+-.systems-icon-button svg {
+-  width: 17px;
+-  height: 17px;
+-}
+-.systems-metrics {
+-  display: flex;
+-  align-items: center;
+-  gap: 22px;
+-  padding: 10px 18px;
+-  border-bottom: 1px solid var(--border);
+-  flex: 0 0 auto;
+-  flex-wrap: wrap;
+-}
+-.systems-metrics > div {
+-  display: flex;
+-  gap: 7px;
+-  align-items: baseline;
+-  font-size: 11px;
+-}
+-.systems-metrics span,
+-.systems-metrics small {
+-  color: var(--muted);
+-  font-size: 10px;
+-  font-weight: 400;
+-}
+-.systems-metrics strong {
+-  color: var(--text);
+-  font-weight: 500;
+-  font-size: 11px;
+-}
+-.systems-metrics[data-stale="true"] strong {
+-  color: var(--muted);
+-}
+-.systems-sample-time {
+-  margin-left: auto;
+-}
+-.systems-no-telemetry {
+-  margin: 0;
+-  padding: 10px 18px;
+-  color: var(--muted);
+-  font-size: 11px;
+-  border-bottom: 1px solid var(--border);
+-}
+-.systems-body {
+-  display: flex;
+-  flex: 1;
+-  min-height: 0;
+-  min-width: 0;
+-  position: relative;
+-}
+-.systems-desktop {
+-  display: flex;
+-  flex: 1;
+-  min-width: 0;
+-  min-height: 0;
+-  overflow: hidden;
+-}
+-.systems-state {
+-  display: flex;
+-  flex: 1;
+-  min-height: 180px;
+-  align-items: center;
+-  justify-content: center;
+-  flex-direction: column;
+-  padding: 28px;
+-  text-align: center;
+-  color: var(--muted);
+-  overflow: auto;
+-}
+-.systems-state__icon svg {
+-  width: 34px;
+-  height: 34px;
+-}
+-.systems-state h2 {
+-  font-size: 18px;
+-  color: var(--text-strong);
+-  font-weight: 550;
+-  margin: 18px 0 10px;
+-}
+-.systems-state p {
+-  font-size: 12px;
+-  max-width: 430px;
+-  line-height: 1.7;
+-  margin: 0;
+-}
+-.systems-text-button {
+-  background: transparent;
+-  border: 1px solid var(--border-strong);
+-  padding: 8px 12px;
+-  border-radius: 6px;
+-  color: var(--text);
+-  margin-top: 18px;
+-  font-size: 12px;
+-}
+-.systems-callout {
+-  padding: 8px 18px;
+-  font-size: 12px;
+-  line-height: 1.5;
+-  color: var(--muted);
+-  background: var(--bg-elevated);
+-  overflow-wrap: anywhere;
+-}
+-.systems-callout--error {
+-  color: var(--danger);
+-}
+-.systems-callout button {
+-  margin-left: 10px;
+-  color: var(--text);
+-  background: transparent;
+-  border: 1px solid var(--border-strong);
+-  border-radius: 4px;
+-  padding: 3px 8px;
+-}
+-.systems-callout p {
+-  margin: 5px 0;
+-}
+-.systems-details {
+-  flex: 0 0 260px;
+-  width: 260px;
+-  padding: 16px;
+-  background: var(--card);
+-  border-left: 1px solid var(--border);
+-  overflow: auto;
+-}
+-.systems-details header {
+-  display: flex;
+-  align-items: center;
+-  justify-content: space-between;
+-  gap: 8px;
+-}
+-.systems-details h2 {
+-  font-size: 13px;
+-  font-weight: 600;
+-  color: var(--text-strong);
+-  margin: 0;
+-}
+-.systems-details h3 {
+-  font-size: 11px;
+-  font-weight: 600;
+-  color: var(--text);
+-  margin: 22px 0 9px;
+-}
+-.systems-details dl {
+-  display: grid;
+-  grid-template-columns: 1fr;
+-  gap: 4px;
+-  margin: 18px 0;
+-  font-size: 11px;
+-}
+-.systems-details dt {
+-  color: var(--muted);
+-  margin-top: 9px;
+-}
+-.systems-details dd {
+-  margin: 0;
+-  color: var(--text);
+-  overflow-wrap: anywhere;
+-}
+-.systems-details .systems-metrics {
+-  padding: 0;
+-  gap: 12px;
+-  border: 0;
+-  flex-direction: column;
+-  align-items: stretch;
+-}
+-.systems-details .systems-metrics > div {
+-  justify-content: space-between;
+-  flex-wrap: wrap;
+-}
+-.systems-details .systems-sample-time {
+-  margin: 0;
+-}
+-.systems-details .systems-no-telemetry {
+-  padding: 0;
+-  border: 0;
+-  line-height: 1.6;
+-}
+-.systems-details ul {
+-  font-size: 10px;
+-  padding-left: 15px;
+-  overflow-wrap: anywhere;
+-  color: var(--muted);
+-}
+-.systems-detail-hint {
+-  font-size: 10px;
+-  line-height: 1.6;
+-  color: var(--muted);
+-  margin: 7px 0;
+-}
+-.systems-capabilities {
+-  display: flex;
+-  flex-wrap: wrap;
+-  gap: 5px;
+-}
+-.systems-capabilities span {
+-  border: 1px solid var(--border-strong);
+-  border-radius: 4px;
+-  padding: 3px 5px;
+-  font-family: var(--mono);
+-  font-size: 9px;
+-  overflow-wrap: anywhere;
+-}
+-.systems-session-link {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 4px;
+-  margin: 10px 0;
+-  text-decoration: none;
+-  font-size: 10px;
+-  overflow-wrap: anywhere;
+-}
+-.systems-session-link strong {
+-  color: var(--text);
+-  font-weight: 500;
+-}
+-.systems-session-link span {
+-  color: var(--muted);
+-}
+-.systems-session-link:hover strong {
+-  color: var(--accent);
+-}
+-.systems-mobile-picker {
+-  display: none;
+-  min-width: 0;
+-  max-width: 230px;
+-  background: var(--bg-elevated);
+-  color: var(--text);
+-  border: 1px solid var(--border-strong);
+-  border-radius: 5px;
+-  padding: 6px;
+-  font-size: 12px;
+-}
+-.systems-sidebar {
+-  padding: 14px 0 12px;
+-  min-width: 0;
+-}
+-.systems-sidebar__header {
+-  display: flex;
+-  align-items: center;
+-  gap: 8px;
+-  padding: 0 8px 8px;
+-}
+-.systems-sidebar__header h2 {
+-  margin: 0;
+-  font-weight: 600;
+-  font-size: 12px;
+-  color: var(--text);
+-}
+-.systems-sidebar__header > span {
+-  color: var(--muted);
+-  font-size: 10px;
+-}
+-.systems-sidebar__header > button {
+-  margin-left: auto;
+-  width: 26px;
+-  height: 26px;
+-}
+-.systems-search {
+-  display: flex;
+-  gap: 7px;
+-  align-items: center;
+-  padding: 7px 9px;
+-  margin: 0 8px 16px;
+-  border: 1px solid var(--border-strong);
+-  border-radius: 6px;
+-  background: var(--bg);
+-}
+-.systems-search svg {
+-  width: 13px;
+-  height: 13px;
+-  color: var(--muted);
+-}
+-.systems-search input {
+-  background: transparent;
+-  border: 0;
+-  min-width: 0;
+-  width: 100%;
+-  font-size: 11px;
+-  color: var(--text);
+-  outline: none;
+-}
+-.systems-search:focus-within {
+-  outline: 2px solid var(--accent);
+-  outline-offset: 1px;
+-}
+-.systems-group {
+-  margin: 0 0 16px;
+-}
+-.systems-group h3 {
+-  margin: 0 8px 7px;
+-  font-size: 10px;
+-  font-weight: 550;
+-  color: var(--muted);
+-}
+-.systems-machine {
+-  display: flex;
+-  align-items: flex-start;
+-  gap: 9px;
+-  padding: 9px 8px;
+-  width: 100%;
+-  border: 1px solid transparent;
+-  border-radius: 7px;
+-  background: transparent;
+-  text-align: left;
+-  color: var(--text);
+-  margin-bottom: 3px;
+-}
+-.systems-machine:hover {
+-  background: var(--bg-hover);
+-}
+-.systems-machine[aria-pressed="true"] {
+-  background: var(--accent-subtle);
+-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+-}
+-.systems-machine__icon {
+-  flex: 0 0 26px;
+-  height: 26px;
+-  display: grid;
+-  place-items: center;
+-  color: var(--muted);
+-  background: var(--bg-elevated);
+-  border-radius: 5px;
+-}
+-.systems-machine__icon svg {
+-  width: 16px;
+-  height: 16px;
+-}
+-.systems-machine__copy {
+-  display: flex;
+-  flex-direction: column;
+-  min-width: 0;
+-  gap: 4px;
+-}
+-.systems-machine__copy strong {
+-  font-size: 11px;
+-  line-height: 1.5;
+-  font-weight: 550;
+-  overflow-wrap: anywhere;
+-}
+-.systems-machine__copy > span {
+-  display: flex;
+-  align-items: center;
+-  gap: 5px;
+-  font-size: 10px;
+-  color: var(--muted);
+-}
+-.systems-machine__copy small {
+-  font-size: 9px;
+-  line-height: 1.5;
+-  color: var(--muted);
+-  overflow-wrap: anywhere;
+-}
+-.systems-status-dot {
+-  display: inline-block;
+-  width: 5px;
+-  height: 5px;
+-  border-radius: 50%;
+-  background: var(--muted);
+-}
+-.systems-status-dot[data-online="true"] {
+-  background: var(--ok);
+-}
+-.systems-sidebar__empty {
+-  padding: 10px;
+-  color: var(--muted);
+-  font-size: 11px;
+-  line-height: 1.6;
+-}
+-@media (max-width: 900px) {
+-  .systems-details {
+-    width: 230px;
+-    flex-basis: 230px;
+-  }
+-  .systems-metrics {
+-    gap: 12px;
+-  }
+-}
+-@media (max-width: 768px) {
+-  .systems-heading {
+-    display: none;
+-  }
+-  .systems-mobile-picker {
+-    display: block;
+-    flex: 1;
+-    max-width: none;
+-  }
+-  .systems-toolbar {
+-    padding: 10px;
+-    gap: 7px;
+-  }
+-  .systems-details {
+-    position: absolute;
+-    inset: 0 0 0 auto;
+-    z-index: 2;
+-    width: min(300px, 90%);
+-    box-shadow: var(--shadow-lg);
+-  }
+-  .systems-metrics {
+-    padding: 8px 10px;
+-    gap: 8px 14px;
+-  }
+-  .systems-sample-time {
+-    margin-left: 0;
+-  }
+-}
+diff --git a/ui/src/test-helpers/app-sidebar-cases/sidebar-scroll.ts b/ui/src/test-helpers/app-sidebar-cases/sidebar-scroll.ts
+index 7d4913b62c059fc2060fc2df1d2a8f8209a19e26..ebff05254c4fbcf169f6e2b3079a353e8240a876 100644
+--- a/ui/src/test-helpers/app-sidebar-cases/sidebar-scroll.ts
++++ b/ui/src/test-helpers/app-sidebar-cases/sidebar-scroll.ts
+@@ -1,88 +1,37 @@
+-import { html } from "lit";
+ import { describe, expect, it } from "vitest";
+ import type { GatewayBrowserClient } from "../../api/gateway.ts";
+ import { createGateway, createSessions, mountSidebar } from "../app-sidebar.ts";
+ import "../../components/app-sidebar.ts";
+ 
+ describe("AppSidebar scroll", () => {
+-  it("swaps only the lower content and restores each destination's scroll position", async () => {
++  it("shows fades only toward additional session content", async () => {
+     const gateway = createGateway({} as GatewayBrowserClient);
+     const { sidebar } = await mountSidebar(gateway, createSessions("main", ["agent:main:main"]));
+-    const nav = sidebar.querySelector(".sidebar-nav");
+-    const footer = sidebar.querySelector(".sidebar-shell__footer");
+-    const scroller = sidebar.querySelector<HTMLElement>(".sidebar-shell__body")!;
+-    const sessions = sidebar.querySelector<HTMLElement>(".sidebar-session-content")!;
+-    scroller.scrollTop = 75;
+-    scroller.dispatchEvent(new Event("scroll"));
+-    sidebar.contextualSidebar = {
+-      key: "systems",
+-      data: undefined,
+-      loaderPending: false,
+-      render: () => html`<p>Gateway machine</p>`,
+-    };
+-    await sidebar.updateComplete;
+-    expect(sessions.hidden).toBe(true);
+-    expect(scroller.textContent).toContain("Gateway machine");
+-    expect(scroller.scrollTop).toBe(0);
+-    scroller.scrollTop = 35;
+-    scroller.dispatchEvent(new Event("scroll"));
+-    sidebar.contextualSidebar = undefined;
+-    await sidebar.updateComplete;
+-    expect(sidebar.querySelector(".sidebar-session-content")).toBe(sessions);
+-    expect(sessions.hidden).toBe(false);
+-    expect(scroller.scrollTop).toBe(75);
+-    sidebar.contextualSidebar = {
+-      key: "systems",
+-      data: undefined,
+-      loaderPending: false,
+-      render: () => html`<p>Gateway machine</p>`,
+-    };
+-    await sidebar.updateComplete;
+-    expect(scroller.scrollTop).toBe(35);
+-    expect(sidebar.querySelector(".sidebar-nav")).toBe(nav);
+-    expect(sidebar.querySelector(".sidebar-shell__footer")).toBe(footer);
+-  });
++    const scroller = sidebar.querySelector<HTMLElement>(".sidebar-shell__body");
++    if (!scroller) {
++      throw new Error("Expected sidebar body scroller");
++    }
+ 
+-  it.each(["sessions", "systems"])(
+-    "shows fades only toward additional %s content",
+-    async (content) => {
+-      const gateway = createGateway({} as GatewayBrowserClient);
+-      const { sidebar } = await mountSidebar(gateway, createSessions("main", ["agent:main:main"]));
+-      if (content === "systems") {
+-        sidebar.contextualSidebar = {
+-          key: "systems",
+-          data: undefined,
+-          loaderPending: false,
+-          render: () => html`<p>Gateway machine</p>`,
+-        };
+-        await sidebar.updateComplete;
+-      }
+-      const scroller = sidebar.querySelector<HTMLElement>(".sidebar-shell__body");
+-      if (!scroller) {
+-        throw new Error("Expected sidebar body scroller");
+-      }
++    let scrollHeight = 100;
++    Object.defineProperties(scroller, {
++      clientHeight: { configurable: true, value: 100 },
++      scrollHeight: { configurable: true, get: () => scrollHeight },
++    });
+ 
+-      let scrollHeight = 100;
+-      Object.defineProperties(scroller, {
+-        clientHeight: { configurable: true, value: 100 },
+-        scrollHeight: { configurable: true, get: () => scrollHeight },
+-      });
+-
+-      const expectScrollState = async (
+-        scrollTop: number,
+-        expected: "none" | "top" | "middle" | "bottom",
+-      ) => {
+-        scroller.scrollTop = scrollTop;
+-        scroller.dispatchEvent(new Event("scroll"));
+-        await sidebar.updateComplete;
+-        expect(scroller.classList.contains(`sidebar-shell__body--scroll-${expected}`)).toBe(true);
+-      };
++    const expectScrollState = async (
++      scrollTop: number,
++      expected: "none" | "top" | "middle" | "bottom",
++    ) => {
++      scroller.scrollTop = scrollTop;
++      scroller.dispatchEvent(new Event("scroll"));
++      await sidebar.updateComplete;
++      expect(scroller.classList.contains(`sidebar-shell__body--scroll-${expected}`)).toBe(true);
++    };
+ 
+-      await expectScrollState(0, "none");
+-      scrollHeight = 300;
+-      await expectScrollState(0, "top");
+-      await expectScrollState(80, "middle");
+-      await expectScrollState(200, "bottom");
+-    },
+-  );
++    await expectScrollState(0, "none");
++    scrollHeight = 300;
++    await expectScrollState(0, "top");
++    await expectScrollState(80, "middle");
++    await expectScrollState(200, "bottom");
++  });
+ });
+diff --git a/ui/src/test-helpers/app-sidebar.ts b/ui/src/test-helpers/app-sidebar.ts
+index 6e6423746c5180cb162f6e5a24445d1395c86901..d5ed39873dba43daea40fb6816703be4ea6a0c97 100644
+--- a/ui/src/test-helpers/app-sidebar.ts
++++ b/ui/src/test-helpers/app-sidebar.ts
+@@ -20,7 +20,6 @@ import type { ApplicationOverlays } from "../app/overlays-types.ts";
+ import type { AppSidebarSessionNavigationElement } from "../components/app-sidebar-session-navigation.ts";
+ import type { SessionDataController } from "../components/session-data-controller.ts";
+ import type { SessionOrganizerController } from "../components/session-organizer-controller.ts";
+-import type { ContextualSidebar } from "../components/sidebar-context-state.ts";
+ import type { AgentIdentityCapability } from "../lib/agents/identity.ts";
+ import {
+   createSessionCapability,
+@@ -55,8 +54,6 @@ export type SidebarLifecycleState = HTMLElement & {
+   basePath: string;
+   hiddenSessionCatalogIds: ReadonlySet<string>;
+   activeRouteId?: string;
+-  contextualSidebar?: ContextualSidebar;
+-  router?: AppSidebarSessionNavigationElement["router"];
+   enabledRouteIds?: readonly NavigationRouteId[];
+   connected: boolean;
+   offline: boolean;
