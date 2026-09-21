@@ -150,8 +150,9 @@ CSRF requirements.
 
 The runtime connection uses the [OpenShell transport](../../deploy/openshell/README.md#application-transport).
 That guide owns the forwarding implementation; Access owns HTTP/WebSocket authorization.
-Ingress reuses upstream HTTP connections and queues bursts behind an eight-socket
-pool per protocol (at most two idle sockets). This limits asset-download fan-out
+Ingress queues upstream HTTP bursts behind an eight-socket pool per protocol and
+closes completed HTTP connections. Forwarded sockets can remain open after the
+upstream’s idle timeout; reusing them can stall the next request. This limits asset-download fan-out
 within the controller’s shared connection budget; it does not remove that budget
 or reserve capacity for an unlimited number of WebSockets. Its ten-second deadline
 covers connecting, not waiting for response headers or a valid stream to finish.
@@ -260,6 +261,14 @@ handlers: browser-cookie binding, callback replay, two identities, CSRF, uncerta
 native enrollment remaining closed, removal/rejoin without old-session revival,
 and the provider logout return. Native authority is controlled in these Postgres
 cases; OpenClaw/browser/production qualification is separate.
+
+[The forwarding regression](../../tests/access/forward-live.test.ts) checks the real
+OpenShell/native widget path after seven seconds idle and under a concurrent request
+burst. Set `CLAWSCARF_TEST_WIDGET_FORWARD` to the loopback HTTP origin published by
+the installation’s widget forwarder, then run
+`pnpm exec tsx --test tests/access/forward-live.test.ts`. It makes read-only requests
+and closes its temporary ingress; it does not change the installation or authenticate
+an application user. Without that variable the test is skipped.
 
 [The opt-in native regression](../../tests/access/native-live.test.ts) uses
 `CLAWSCARF_NATIVE_TEST_CONFIG` and `CLAWSCARF_NATIVE_TEST_SESSION_FILE` for a

@@ -67,12 +67,13 @@ export function createIngress(
   }
   const streams = new SessionStreams(authority);
   // OpenShell forwards share a 20-connection sandbox budget with WebSockets.
-  // Queue HTTP bursts instead of opening a tunnel for every UI chunk at once.
+  // Queue bursts and close completed HTTP connections: a forwarded socket can
+  // outlive the upstream's idle timeout without notifying Node's keep-alive pool.
+  // Upgraded WebSockets and active response streams retain their normal lifetime.
   const agentOptions = {
-    keepAlive: true,
+    keepAlive: false,
     maxSockets: 8,
     maxTotalSockets: 8,
-    maxFreeSockets: 2,
   };
   const httpAgent = new HttpAgent(agentOptions);
   const httpsAgent = new HttpsAgent(agentOptions);
