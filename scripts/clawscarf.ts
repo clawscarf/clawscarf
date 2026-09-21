@@ -8,7 +8,13 @@ import { LocalSetupError } from "./deployment/process.js";
 import { LocalDatabaseError } from "./deployment/database.js";
 import { InstallerCancelled } from "./installation/installer/prompts.js";
 import { installationCommand } from "./installation/command.js";
-const program = installationCommand();
+import { CliTelemetry } from "./telemetry.js";
+const telemetry = new CliTelemetry();
+const program = installationCommand(telemetry);
+program.hook("preAction", async (_program, command) =>
+  telemetry.start(command),
+);
+let failureCode: string | undefined;
 const commands = [program];
 for (const command of commands) {
   command.exitOverride().configureOutput({ outputError: () => {} });
@@ -92,10 +98,13 @@ try {
                 ? error.message
                 : "Check the configuration, file permissions and local prerequisites. No operation was automatically retried."),
   };
+  failureCode = failure.code;
   process.stderr.write(
     (program.opts<{ json?: boolean }>().json
       ? JSON.stringify(failure)
       : `Error: ${failure.detail}`) + "\n",
   );
   process.exitCode = error instanceof InstallerCancelled ? 130 : 1;
+} finally {
+  await telemetry.finish(process.exitCode, failureCode);
 }

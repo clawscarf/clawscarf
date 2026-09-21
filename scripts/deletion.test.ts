@@ -16,6 +16,8 @@ import {
 } from "./deployment/state.js";
 import { run } from "./deployment/process.js";
 
+process.env.CLAWSCARF_TELEMETRY_DISABLED = "1";
+
 await test("deletion requires both confirmations; declining or Esc cancels", async () => {
   for (const answers of [[false], [true, false], [true, true]]) {
     let calls = 0;

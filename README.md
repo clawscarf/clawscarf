@@ -80,6 +80,9 @@ For automation, the same configuration choices are available as command-line fla
 with `--non-interactive`, and commands support `--json`.
 [CLI reference and examples →](deploy/deployment/installation.md#configure-without-prompts)
 
+See [CLI telemetry](deploy/deployment/installation.md#telemetry) for usage reporting
+and how to disable it.
+
 ## Your server, your team
 
 An installation serves **one trusted team**: separate logins and roles, shared

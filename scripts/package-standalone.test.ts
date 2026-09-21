@@ -80,6 +80,7 @@ cp "$CLAWSCARF_TEST_ASSETS/$file" "$destination"
       ...process.env,
       PATH: `${bin}:/usr/bin:/bin`,
       CLAWSCARF_TEST_ASSETS: assets,
+      CLAWSCARF_TELEMETRY_DISABLED: "1",
     };
     const prefix = join(directory, "installation with spaces");
     const installed = await execute(

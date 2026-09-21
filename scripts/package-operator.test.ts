@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
+import { createServer } from "node:http";
+import { z } from "zod";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +13,9 @@ import { promisify } from "node:util";
 import { releaseTools } from "./release/definition.js";
 import { packageOperator } from "./release/operator.js";
 import { postgresImage } from "./deployment/images.js";
+
+// Test CLI invocations never report to the packaged production destination.
+process.env.CLAWSCARF_TELEMETRY_DISABLED = "1";
 
 const execute = promisify(execFile);
 await test(
@@ -49,6 +55,8 @@ await test(
     assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));
+    assert.ok(listing.includes("package/release/telemetry.json"));
+    assert.ok(listing.includes("package/scripts/telemetry.js"));
     assert.ok(listing.includes("package/recipes/team-server/recipe.json"));
     assert.ok(listing.includes("package/packs/research-team/pack.json"));
     assert.ok(listing.includes("package/runtime/releases/0.1.0-dev.json"));
@@ -195,6 +203,7 @@ await test(
       { cwd },
     );
     assert.ok(!stdout.includes('"typescript"') && !stdout.includes('"tsx"'));
+    await verifyPackagedTelemetry(cwd, t);
   },
 );
 
@@ -265,3 +274,170 @@ await test(
     );
   },
 );
+
+async function verifyPackagedTelemetry(
+  cwd: string,
+  t: import("node:test").TestContext,
+) {
+  const events: { event: string; properties: Record<string, unknown> }[] = [];
+  let status = 200;
+  const receiver = createServer((request, response) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk: string) => {
+      body += chunk;
+    });
+    request.on("end", () => {
+      const payload = z
+        .object({
+          batch: z.array(
+            z.object({
+              event: z.string(),
+              properties: z.record(z.string(), z.unknown()),
+            }),
+          ),
+        })
+        .parse(JSON.parse(body));
+      events.push(...payload.batch);
+      response.writeHead(status);
+      response.end(status === 200 ? '{"status":1}' : "private upstream error");
+    });
+  });
+  receiver.listen(0, "127.0.0.1");
+  await once(receiver, "listening");
+  t.after(() => {
+    receiver.closeAllConnections();
+    receiver.close();
+  });
+  const address = receiver.address();
+  assert.ok(address && typeof address !== "string");
+  await writeFile(
+    join(cwd, "release/telemetry.json"),
+    JSON.stringify({
+      host: `http://127.0.0.1:${String(address.port)}`,
+      projectToken: "phc_test",
+    }),
+  );
+  const env = {
+    ...process.env,
+    XDG_CONFIG_HOME: join(cwd, "test-config"),
+    CLAWSCARF_TELEMETRY_DISABLED: "",
+  };
+  const invoke = (...args: string[]) =>
+    execute(process.execPath, ["scripts/clawscarf.js", ...args], {
+      cwd,
+      env,
+      timeout: 10000,
+    });
+  const first = await invoke("recipes", "--json");
+  assert.match(first.stderr, /CLAWSCARF_TELEMETRY_DISABLED=1/);
+  assert.ok(JSON.parse(first.stdout));
+  assert.equal(events.length, 2);
+  assert.equal(events[1]?.properties.outcome, "success");
+  await assert.rejects(
+    invoke("status", "--directory", "/nonexistent/private-team", "--json"),
+    (error: unknown) => {
+      assert.ok(
+        error instanceof Error &&
+          "stderr" in error &&
+          typeof error.stderr === "string",
+      );
+      assert.ok(JSON.parse(error.stderr));
+      return true;
+    },
+  );
+  assert.equal(events.length, 4);
+  assert.equal(events[3]?.properties.outcome, "failure");
+  assert.equal(events[3].properties.error_code, "unavailable");
+  assert.doesNotMatch(
+    JSON.stringify(events),
+    /private-team|private upstream error/,
+  );
+  status = 503;
+  const unavailable = await invoke("recipes", "--json");
+  assert.equal(unavailable.stdout, first.stdout);
+  assert.equal(unavailable.stderr, "");
+  assert.equal(events.length, 6);
+  const help = await invoke("--help");
+  assert.equal(help.stderr, "");
+  assert.equal(events.length, 6);
+  await assert.rejects(invoke("secret-invalid-command"));
+  assert.equal(events.length, 6);
+  const disabled = await execute(
+    process.execPath,
+    ["scripts/clawscarf.js", "recipes", "--json"],
+    {
+      cwd,
+      env: {
+        ...env,
+        CLAWSCARF_TELEMETRY_DISABLED: "1",
+        XDG_CONFIG_HOME: join(cwd, "disabled-config"),
+      },
+    },
+  );
+  assert.equal(disabled.stdout, first.stdout);
+  assert.equal(disabled.stderr, "");
+  assert.equal(events.length, 6);
+  await assert.rejects(
+    readFile(join(cwd, "disabled-config/clawscarf/telemetry-id")),
+    { code: "ENOENT" },
+  );
+  status = 200;
+  const installation = join(cwd, "private-installation");
+  for (const mode of ["new", "edit"] as const) {
+    if (mode === "edit") {
+      await mkdir(join(installation, "state"), { recursive: true });
+      await writeFile(
+        join(installation, "installation.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          name: "private-team",
+          releaseFile: "release.json",
+          stateDirectory: "state",
+          exposure: {
+            mode: "local",
+            applicationPort: 18800,
+            widgetPort: 18802,
+          },
+          access: { mode: "hosted", administratorName: "Private Owner" },
+          resources: { runtime: { cpu: "2", memory: "2Gi" } },
+          browser: { enabled: false },
+          models: {
+            mode: "litellm",
+            configurationFile: "models.json",
+            upstreamEnvironmentFile: "secret.env",
+          },
+          connections: { mode: "disabled" },
+          packs: [],
+        }),
+      );
+      await writeFile(join(installation, "state/settings.json"), "{}");
+    }
+    // Missing Docker for new setup, and missing --yes for edits: neither can mutate a runtime.
+    await assert.rejects(
+      execute(
+        process.execPath,
+        [
+          "scripts/clawscarf.js",
+          "configure",
+          "--directory",
+          installation,
+          "--non-interactive",
+          "--json",
+        ],
+        {
+          cwd,
+          env: { ...env, PATH: join(cwd, "empty-path") },
+          timeout: 10000,
+        },
+      ),
+    );
+    assert.equal(events.at(-1)?.properties.configuration_mode, mode);
+    assert.equal(events.at(-1)?.properties.outcome, "failure");
+  }
+  assert.equal(events.length, 10);
+  assert.doesNotMatch(
+    JSON.stringify(events),
+    /private-team|Private Owner|secret.env|private-installation/,
+  );
+}

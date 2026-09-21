@@ -242,7 +242,10 @@ function quote(value: string) {
 }
 
 /** The command selects the workflow; users never manipulate preparation files. */
-export async function runConfiguration(options: InstallOptions) {
+export async function runConfiguration(
+  options: InstallOptions,
+  observeMode?: (mode: "new" | "edit") => void,
+) {
   options = {
     ...options,
     directory: options.directory ?? defaultInstallationDirectory,
@@ -281,6 +284,7 @@ export async function runConfiguration(options: InstallOptions) {
           throw error;
       }
     }
+    observeMode?.(existing ? "edit" : "new");
     let result =
       existing && state
         ? await editInstallationSettings(state, ui, options)

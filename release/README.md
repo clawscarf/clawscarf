@@ -159,3 +159,19 @@ an existing output directory and removes incomplete output on failure. It does n
 build images, copy recipes/packs or publish artifacts. A custom recipe can point to
 the resulting runtime definition. The [component pins](components.json) record
 upstream sources; [operator packaging](operator.md) describes the CLI archive.
+
+## CLI telemetry destination
+
+[telemetry.json](telemetry.json) is copied unchanged into the compiled operator,
+npm CLI and standalone CLI payload. It is currently `null`, so this checkout and
+packages built from it do not report until a destination is selected. To enable
+reporting, maintainers replace it with an object containing `host` (the PostHog
+HTTPS ingestion origin) and `projectToken` (the public `phc_` project token).
+Never put a personal or project-secret API key in this public file. A loopback
+HTTP origin is accepted for local receiver tests only.
+
+The [CLI telemetry guide](../deploy/deployment/installation.md#telemetry) owns event
+fields, user opt-out, local identity and delivery limits. Destination changes need
+a new CLI build/package; they do not change running team servers or cloud-service
+configuration. Tests use local receivers; they do not establish receipt in a
+production PostHog project.
