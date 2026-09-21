@@ -4,5 +4,8 @@ import { fileURLToPath } from "node:url";
 export function nodeEntrypoint(relative: string): string[] {
   const source = import.meta.url.endsWith(".ts");
   const file = new URL(relative + (source ? ".ts" : ".js"), import.meta.url);
-  return [...(source ? ["--import", "tsx"] : []), fileURLToPath(file)];
+  return [
+    ...(source ? ["--import", import.meta.resolve("tsx")] : []),
+    fileURLToPath(file),
+  ];
 }

@@ -82,7 +82,9 @@ pnpm add --global --config.global-bin-dir="$HOME/.local/bin" \
 The linked [launcher](clawscarf.mjs) runs this checkout's TypeScript source with its
 local dependencies from any working directory. CLI source edits take effect on the
 next invocation without rebuilding or relinking. Relative command arguments resolve
-from the caller's directory. `pnpm clawscarf` uses the same launcher without a global link.
+from the caller's directory. The [controller subprocess](deployment/entrypoint.ts)
+also resolves its source loader from the checkout, independently of that directory.
+`pnpm clawscarf` uses the same launcher without a global link.
 Changes to container contents still require rebuilding the affected images.
 The [operator archive](#operator-archive) continues to ship compiled JavaScript and
 does not need this development launcher or tsx.
