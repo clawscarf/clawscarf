@@ -7,7 +7,6 @@ RUN corepack enable && pnpm install --frozen-lockfile
 COPY services ./services
 COPY generated/http ./generated/http
 COPY apps ./apps
-COPY ui ./ui
 COPY scripts/build-companion.ts ./scripts/build-companion.ts
 COPY scripts/release/dependencies.ts scripts/release/runtime-package.ts ./scripts/release/
 RUN pnpm exec tsc -b tsconfig.sdk.json && pnpm exec tsc -p tsconfig.build.json \
@@ -30,7 +29,6 @@ COPY services/access/openapi.json ./services/access/openapi.json
 COPY services/access/migrations ./services/access/migrations
 COPY services/connections/cloud/openapi.json ./services/connections/cloud/openapi.json
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/
-COPY ui/shadcn/LICENSE.md /usr/share/licenses/clawscarf/shadcn-MIT.txt
 USER node
 ENV NODE_ENV=production
 EXPOSE 18800

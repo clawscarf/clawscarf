@@ -12,7 +12,7 @@ the operator, companion and Connections plugin artifacts.
 AGENTS.md is adapted from RawClaw's contributor guide at commit
 [`f37a6e786fdd88857c21bd32140567874e281a8c`](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/AGENTS.md),
 with the project owner's authorization. The Connections plugin and companion,
-access service, UI primitives and development checks also extract or adapt donor
+access service, native page flows and development checks also extract or adapt donor
 source and regressions. Their local READMEs identify the incorporated paths and
 deliberate boundary changes.
 The reviewed donor has no top-level license file; do not infer a blanket license
@@ -67,12 +67,10 @@ qualification reports. Debian package copyright files remain under `/usr/share/d
 This initial inventory does not establish complete transitive license review;
 that release requirement remains in [TODO.md](TODO.md).
 
-The Gateway and companion image recipes copy this file and the root [license](LICENSE) verbatim
-to `/usr/share/licenses/clawscarf`. The companion recipe additionally copies the
-incorporated [shadcn notice](ui/shadcn/LICENSE.md)
-there as `shadcn-MIT.txt`. A local runtime rebuild verified the root notices against its build inputs.
-A local companion rebuild also verified the root and shadcn notices against build inputs. Relative
-source links in this file refer to the source checkout, not image filesystem paths.
+The Gateway and companion image recipes copy this file and the root [license](LICENSE)
+verbatim to `/usr/share/licenses/clawscarf`. Native plugin pages use the shared
+[page renderer](plugins/common/native-page.ts) and OpenClaw's host UI components.
+Relative source links in this file refer to the source checkout, not image filesystem paths.
 
 When bundling or adapting software, record its exact version and source, retain its
 license and required notices, and identify modifications where required. Review
@@ -94,7 +92,7 @@ provenance. Paths below are relative to that donor, not files already present he
 | Runtime/defaults and plugin packaging | runtime/openclaw/, deploy/images/hetzner/scripts/install-runtime.sh, plugins/connections/                                           | Reuse defaults, integrity checks and packaging; replace Hetzner, systemd, rootless-engine and host-path assumptions for the selected target.                 |
 | Company login and entry               | src/domains/access/, src/domains/installations/service/openclaw/entry/, src/apps/ingress/, src/composition/ingress.ts               | Reuse OIDC/session/ingress mechanics and native identity semantics; replace organization/admission/placement wiring with standalone ownership.               |
 | Connections                           | plugins/connections/, src/domains/connections/, src/composition/connections/, catalogs/connections/, scripts/connectors-catalog*.ts | Preserve REST tools, Composio adapter, callbacks, account selection and grants; extract required persistence without the fleet control plane.                |
-| Connection account UI                 | src/apps/web/domains/connections/ and its shared visual/form dependencies                                                           | Copy the working flow and visual primitives; remove organization routing through explicit standalone composition.                                            |
+| Connection account UI                 | src/apps/web/domains/connections/                                                                                                   | Adapt the account-management flow to native OpenClaw plugin pages and generated clients; omit the donor web shell.                                           |
 | Model gateway                         | runtime/ai-gateway/, deploy/ai-gateway/, src/composition/ai/ and applicable src/domains/ai/ code                                    | Reuse LiteLLM integration/configuration and tests; replace hosted-source/admission/catalog wiring where needed. Do not recreate the removed inference proxy. |
 | Acceptance                            | tests/ and corresponding helpers for identity, logout, ingress, native roles, connections, model gateway and browser flows          | Transfer regressions with each capability; adapt fixtures and run against the new runtime. Donor success is not new-target acceptance.                       |
 

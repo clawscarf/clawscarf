@@ -9,6 +9,6 @@
     "scripts/**/*.test.ts",
     "tests/**/*.ts",
     "services/access/generated",
-    "ui"
+    "plugins/common"
   ]
 }

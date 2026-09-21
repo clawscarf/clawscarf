@@ -16,19 +16,16 @@
     "types": ["node"],
     "rootDir": ".",
     "outDir": "dist",
-    "disableSourceOfProjectReferenceRedirect": true,
-    "jsx": "react-jsx"
+    "disableSourceOfProjectReferenceRedirect": true
   },
   "include": [
     "scripts/**/*.ts",
     "services/**/*.ts",
     "tests/**/*.ts",
-    "services/**/*.tsx",
     "runtime/**/*.ts",
     "apps/**/*.ts",
     "deploy/execution/**/*.ts",
-    "ui/**/*.ts",
-    "ui/**/*.tsx"
+    "plugins/common/**/*.ts"
   ],
   "exclude": [
     "services/access/generated",

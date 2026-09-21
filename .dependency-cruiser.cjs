@@ -17,19 +17,22 @@ module.exports = {
       to: { path: "^apps/", pathNot: "^apps/process-lifecycle\\.ts$" },
     },
     {
-      name: "shared-ui-is-domain-independent",
+      name: "plugin-common-is-domain-independent",
       severity: "error",
-      from: { path: "^ui/" },
-      to: { path: "^(apps|services|scripts|runtime|plugins)/" },
+      from: { path: "^plugins/common/" },
+      to: {
+        path: "^(apps|services|scripts|runtime|plugins)/",
+        pathNot: "^plugins/common/",
+      },
     },
     {
-      name: "only-web-imports-shared-ui",
+      name: "only-plugins-import-common",
       severity: "error",
       from: {
         path: "^(apps|services|scripts|runtime|plugins)/",
-        pathNot: "^plugins/(access|connections)/src/",
+        pathNot: "^plugins/(common/|(access|connections)/src/)",
       },
-      to: { path: "^ui/" },
+      to: { path: "^plugins/common/" },
     },
     {
       name: "operator-internals-do-not-import-cli-entries",
@@ -157,7 +160,7 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {
-      extensions: [".ts", ".tsx", ".js", ".mjs", ".json"],
+      extensions: [".ts", ".js", ".mjs", ".json"],
       conditionNames: ["import", "node", "default"],
       exportsFields: ["exports"],
       mainFields: ["module", "main", "types"],

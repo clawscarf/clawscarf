@@ -150,8 +150,9 @@ The executable rules cover both companions. `types/` and `shared/` cannot import
 implementations; `service/` uses those ports and its own service modules, never
 repositories, providers, transports or generated API models. `repo/` owns SQL and
 uses domain ports, while `providers/` owns external adapters and cannot import
-repositories or services. Browser modules use the shared [UI primitives](../ui/shadcn/components/ui/button.tsx) and their own generated
-REST clients. Entry/composition modules wire these layers. Portable `runtime/`
+repositories or services. Native plugin pages use the shared
+[page renderer](../plugins/common/native-page.ts) and generated REST clients.
+Entry/composition modules wire these layers. Portable `runtime/`
 payloads cannot import companions, plugins or host tooling.
 
 The Connections HTTP composition uses only the access companion's public
@@ -172,7 +173,11 @@ flags. The access UI plugin has its own install/build/check commands, and upstre
 excluded from formatting; source OpenAPI contracts remain formatted and generated
 clients are checked for drift.
 
-Shared frontend primitives and theme live in `ui/`; they cannot import service or operator code. Both browser builds consume those same sources. Operator internals cannot import CLI entrypoints or installation menus, and service access is restricted to named composition/configuration/storage boundaries. Import regressions cover permitted and forbidden directions.
+Shared native page helpers live in `plugins/common/`; they cannot import concrete
+plugin, service or operator code. The Access and Connections native UI builds
+bundle them. Operator internals cannot import CLI entrypoints or installation
+menus, and service access is restricted to named composition/configuration/storage
+boundaries. Import regressions cover permitted and forbidden directions.
 
 Retained installation editing uses `clawscarf configure --directory <installation>`; its
 noninteractive flags share the same operations. Validation and preview/apply stay internal. See the

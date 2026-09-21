@@ -4,8 +4,6 @@
 !LICENSE
 !THIRD_PARTY_NOTICES.md
 !tsconfig*.json
-!ui/
-!ui/**
 !apps/
 !apps/process-lifecycle.ts
 !apps/companion/
@@ -18,6 +16,8 @@
 !deploy/
 !deploy/**
 !plugins/
+!plugins/common/
+!plugins/common/**
 !plugins/connections/
 !plugins/connections/**
 !plugins/access/

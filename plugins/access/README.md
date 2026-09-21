@@ -22,6 +22,8 @@ Optional Connections also renders through its native plugin.
 Build with `pnpm access:plugin:build`; validate with `pnpm access:plugin:check`.
 The native builder bundles the shared generated REST client and records hashed assets
 in [the plugin manifest](openclaw.plugin.json). There is no separately hosted frontend or injected DOM.
-The plugin uses native page/navigation registrations and host dialogs, with a small
-page renderer. See [Access](../../services/access/README.md) for backend behavior and
+The plugin uses native page/navigation registrations and host dialogs. Its
+[page renderer](../common/native-page.ts) is shared with Connections and bundled
+into both native UI artifacts; it has no React runtime or separate frontend build.
+See [Access](../../services/access/README.md) for backend behavior and
 [upstream's plugin UI contract](https://docs.openclaw.ai/plugins/feature-plugins).

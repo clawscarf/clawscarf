@@ -16,7 +16,7 @@ WORKDIR /build/plugins/connections
 COPY plugins/connections/ ./
 COPY services/connections/cloud/generated/ /build/services/connections/cloud/generated/
 COPY services/access/generated/ /build/services/access/generated/
-COPY ui/native-page.ts /build/ui/native-page.ts
+COPY plugins/common/native-page.ts /build/plugins/common/native-page.ts
 COPY generated/http/ /build/generated/http/
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
     && npm run artifact \
@@ -37,7 +37,7 @@ FROM upstream AS access
 USER root
 WORKDIR /build/plugins/access
 COPY plugins/access/ ./
-COPY ui/native-page.ts /build/ui/native-page.ts
+COPY plugins/common/native-page.ts /build/plugins/common/native-page.ts
 COPY services/access/generated/ /build/services/access/generated/
 COPY generated/http/ /build/generated/http/
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \

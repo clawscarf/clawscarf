@@ -6,7 +6,7 @@ import {
   button,
   confirm,
   failure,
-} from "../../../ui/native-page.js";
+} from "../../common/native-page.js";
 import { session } from "../../../services/access/generated/sdk.gen.js";
 import * as api from "../../../services/connections/cloud/generated/sdk.gen.js";
 import type {

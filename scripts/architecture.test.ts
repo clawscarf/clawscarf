@@ -264,7 +264,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
   }
 });
 
-await test("operator and shared UI boundaries cover allowed imports and reject reverse dependencies", async () => {
+await test("operator and shared plugin boundaries cover allowed imports and reject reverse dependencies", async () => {
   const root = await mkdtemp(join(tmpdir(), "clawscarf-operator-boundaries-"));
   const write = async (path: string, content: string) => {
     await mkdir(dirname(join(root, path)), { recursive: true });
@@ -285,7 +285,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       "scripts/installation/command",
       "scripts/deployment/prepare",
       "scripts/clawscarf",
-      "ui/button",
+      "plugins/common/button",
       "plugins/connections/src/page",
       "services/access/repo/postgres",
       "services/access/repo/private",
@@ -296,7 +296,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
       command,
       "scripts",
       "services",
-      "ui",
+      "plugins",
       "--config",
       ".dependency-cruiser.cjs",
     ];
@@ -320,19 +320,19 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
         "operator-internals-do-not-import-cli-entries",
       ],
       [
-        "ui/button",
+        "plugins/common/button",
         "./input.js",
-        "../plugins/connections/src/page.js",
-        "shared-ui-is-domain-independent",
+        "../connections/src/page.js",
+        "plugin-common-is-domain-independent",
       ],
       [
         "services/access/repo/postgres",
         "./private.js",
-        "../../../ui/button.js",
-        "only-web-imports-shared-ui",
+        "../../../plugins/common/button.js",
+        "only-plugins-import-common",
       ],
     ] as const) {
-      await write("ui/input.ts", "export const value = 1;");
+      await write("plugins/common/input.ts", "export const value = 1;");
       await write(`${source}.ts`, `export {value} from "${allowed}";`);
       await run(process.execPath, args, { cwd: root });
       await write(`${source}.ts`, `export {value} from "${forbidden}";`);
@@ -352,7 +352,7 @@ await test("operator and shared UI boundaries cover allowed imports and reject r
     }
     await write(
       "plugins/connections/src/page.ts",
-      'export {value} from "../../../ui/button.js";',
+      'export {value} from "../../common/button.js";',
     );
     await run(process.execPath, args, { cwd: root });
   } finally {

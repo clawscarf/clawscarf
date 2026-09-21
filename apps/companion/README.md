@@ -20,10 +20,9 @@ This compiles Access and the management adapter into a production image with onl
 production dependencies. The local development tag is not a published release.
 The recipe copies the root [license](../../LICENSE) and
 [third-party notices](../../THIRD_PARTY_NOTICES.md) verbatim to
-`/usr/share/licenses/clawscarf`, together with the incorporated
-[shadcn notice](../../ui/shadcn/LICENSE.md) as
-`shadcn-MIT.txt`. A local rebuild verified these retained files against build inputs;
-complete release license qualification remains open in the [remaining work](../../TODO.md).
+`/usr/share/licenses/clawscarf`. Native page assets are built into the OpenClaw
+plugins, not this backend image. Complete release license qualification remains
+open in the [remaining work](../../TODO.md).
 
 Set `CLAWSCARF_COMPANION_CONFIG` to a private configuration file, then run
 `pnpm companion:start`. The [Compose fragment](../../deploy/compose/companion.yaml)

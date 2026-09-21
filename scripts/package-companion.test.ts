@@ -27,8 +27,6 @@ await test(
     for (const name of ["fastify", "pg", "node-pg-migrate", "zod"])
       assert.ok(manifest.dependencies[name], name);
     for (const name of [
-      "react",
-      "react-dom",
       "typescript",
       "@clack/prompts",
       "commander",
