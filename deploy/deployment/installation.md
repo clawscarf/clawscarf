@@ -40,6 +40,55 @@ build those images and regenerate the development release if they are missing.
 The CLI does not install Docker. `start` verifies retained runtime tools; use `configure`
 to acquire missing downloadable tools. Checksummed files that have changed fail visibly.
 
+## Telemetry
+
+A CLI release with a configured PostHog destination reports command usage and
+failure codes by default. Disable all reporting before running any command:
+
+```sh
+export CLAWSCARF_TELEMETRY_DISABLED=1
+```
+
+The first reporting invocation prints a notice on stderr. JSON results stay on
+stdout. Reporting runs on the machine executing the CLI, independently of team
+login and Connections. It does not instrument OpenClaw, conversations or teammates.
+
+Each dispatched command sends `cli_command_started` and, on normal completion or a
+handled failure/cancellation, `cli_command_finished`. Both include the registered
+command/subcommand name, a shared invocation ID, CLI version, OS, architecture,
+whether stdin/stdout are terminals without `--non-interactive`, and a timestamp.
+`stop` also distinguishes stopping from `--delete`. The finished event adds elapsed
+milliseconds and success, failure, cancelled or action-required outcome. Failures
+include a predefined error code (unknown codes become `operation_failed`) and the
+command that failed. Configuration records new setup versus editing an installed
+server when that choice is known, and saved, unchanged or ready when reached.
+A resumed unfinished installation counts as new setup. A successful status query
+is recorded as success even if the observed server is stopped; start/configure
+returning incomplete readiness is action required.
+
+A random UUID is stored in `$XDG_CONFIG_HOME/clawscarf/telemetry-id`, or
+`~/.config/clawscarf/telemetry-id` when XDG_CONFIG_HOME is unset, with mode 600.
+It persists across CLI upgrades and installations under that OS account. It
+approximates returning operators, not distinct people or team members. Removing
+this file resets the identifier and first-run notice. No identity file is accessed
+or created when opted out. Invalid or inaccessible telemetry configuration/state
+silently disables reporting for that invocation.
+
+Events exclude arguments, raw configuration, paths, account identities,
+credentials, logs, exception messages and stacks. The PostHog SDK adds its library
+name/version; person-profile processing and GeoIP enrichment are disabled and the
+event IP property is null. The configured PostHog project discards client IPs
+from stored events; the ingestion server still receives the network connection's
+source IP. See the release guide below for the required destination setting.
+
+Delivery is best effort, with a 500 ms request timeout, no retries, no persistent
+event queue and no ingestion redirects. Network failures never change command
+output or exit status. Help, argument-validation failures before command dispatch,
+and abrupt process termination may produce no events or only a started event;
+a missing finished event is not proof of a failure. Reporting is not an audit log.
+The [release guide](../../release/README.md#cli-telemetry-destination) owns destination
+configuration and enablement status.
+
 ## Terminal installer
 
 ```sh

@@ -9,6 +9,9 @@ import { test } from "node:test";
 import { promisify } from "node:util";
 import { initializeState } from "./deployment/state.js";
 
+// Test CLI invocations never report to the packaged production destination.
+process.env.CLAWSCARF_TELEMETRY_DISABLED = "1";
+
 const execute = promisify(execFile);
 let commandEnvironment: NodeJS.ProcessEnv | undefined;
 const cli = (...args: string[]) =>

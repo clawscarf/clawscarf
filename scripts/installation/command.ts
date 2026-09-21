@@ -24,8 +24,9 @@ import { runConfiguration } from "./installer/run.js";
 import { installationOptions, type ConfigureOptions } from "./options.js";
 import { InstallationError } from "./errors.js";
 import { administratorSetup } from "./administrator.js";
+import type { CommandObservation } from "../telemetry.js";
 
-export function installationCommand() {
+export function installationCommand(observation?: CommandObservation) {
   const program = new Command("clawscarf")
     .description("Install and operate a protected OpenClaw team server.")
     .option(
@@ -34,6 +35,7 @@ export function installationCommand() {
     );
   program.addCommand(peopleCommand(program));
   const output = (value: unknown, human?: string) => {
+    observation?.result(value);
     writeResult(program, value, human);
   };
   installationOptions(program.command("configure"))
@@ -68,11 +70,15 @@ export function installationCommand() {
     .option("--start", "Start after configuration")
     .option("--no-start", "Leave the installation stopped")
     .action(async (options: ConfigureOptions) => {
-      const result = await runConfiguration({
-        ...options,
-        ...program.opts<{ json?: boolean }>(),
-      });
+      const result = await runConfiguration(
+        {
+          ...options,
+          ...program.opts<{ json?: boolean }>(),
+        },
+        (mode) => observation?.configurationMode(mode),
+      );
       if (options.nonInteractive) output(result);
+      else observation?.result(result);
     });
   program
     .command("recipes")

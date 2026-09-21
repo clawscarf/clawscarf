@@ -59,6 +59,14 @@ Recipes and packs are CLI assets from [recipes](../recipes/README.md) and [packs
 Each recipe pins a runtime definition in [runtime/releases](../runtime/releases/0.1.0-dev.json).
 Run `clawscarf configure` after linking the development command below.
 
+[CLI telemetry](telemetry.ts) owns the PostHog adapter, local random identity and
+command events. The CLI entrypoint owns its lifetime; configuration supplies only
+its mode and outcome. [Receiver regressions](telemetry.test.ts) check the actual
+HTTP payload, opt-out, concurrent identity creation and failed/stalled delivery.
+The operator archive acceptance also checks the packaged command entrypoint against
+a local receiver. See the [user contract](../deploy/deployment/installation.md#telemetry)
+and [release destination](../release/README.md#cli-telemetry-destination).
+
 ## Development command
 
 After installing the checkout's dependencies, expose its CLI on your PATH:
