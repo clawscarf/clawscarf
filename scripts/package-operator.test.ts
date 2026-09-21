@@ -412,6 +412,7 @@ async function verifyPackagedTelemetry(
         }),
       );
       await writeFile(join(installation, "state/settings.json"), "{}");
+      await writeFile(join(installation, "state/prepared.json"), "{}");
     }
     // Missing Docker for new setup, and missing --yes for edits: neither can mutate a runtime.
     await assert.rejects(
@@ -431,6 +432,15 @@ async function verifyPackagedTelemetry(
           timeout: 10000,
         },
       ),
+      (error: unknown) => {
+        assert.ok(
+          error instanceof Error &&
+            "stderr" in error &&
+            typeof error.stderr === "string",
+        );
+        if (mode === "edit") assert.match(error.stderr, /requires --yes/);
+        return true;
+      },
     );
     assert.equal(events.at(-1)?.properties.configuration_mode, mode);
     assert.equal(events.at(-1)?.properties.outcome, "failure");
