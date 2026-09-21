@@ -1,11 +1,11 @@
 # OpenClaw curation
 
-**Implementation baseline:** this review describes the
+**Source review baseline:** the findings below describe the
 [reviewed working-branch implementation](https://github.com/clawscarf/clawscarf/tree/30dbebc13d39e46b99c3fc06b4d69af93edaca80)
 on `codex/team-runtime-boundary`, including its unified team runtime and recipe
 changes, now integrated for release preparation. References to reviewed behavior
-below refer to that revision; source links pin it explicitly. Curation remains
-proposed work, separate from release packaging.
+below refer to that revision; source links pin it explicitly. The current
+downstream implementation is distinguished from that baseline below.
 
 This document owns the source findings and implementation design for reducing
 OpenClaw's built-in product surface in ClawScarf. Proposed behavior is explicitly
@@ -21,10 +21,32 @@ document when changing the pin, packaging or preset.
 The evidence is source inspection of navigation, routes, settings, configuration,
 packaging and relevant backend handlers. It is not a live inventory of every
 installation, a screenshot review of every page, or acceptance of a curated image.
-The [maintained patch series](openclaw/README.md) now contains optional native
-marketplace availability and the separately owned browser-guidance fix. These are
-source changes with regression evidence, not a fully curated or published runtime.
-The broader dispositions and package selection below remain proposed.
+
+## Current implementation
+
+The [maintained patch series](openclaw/README.md) contains two source changes:
+
+- [Optional native marketplace](openclaw/patches/optional-marketplace.prompt.md)
+  adds `marketplace.enabled: false` to suppress native marketplace discovery and
+  promotion and reject catalog-backed operations at their backend owners. The
+  setting defaults to enabled; the ClawScarf preset has not yet selected false.
+  This patch does not physically exclude bundled plugins or skills.
+- [Browser routing guidance](openclaw/patches/browser-routing-guidance.prompt.md)
+  corrects the browser tool's instructions for a configured browser node. It
+  preserves routing and permissions and is separate from product curation.
+
+Ordered patch files, paired intent documents and the expected source tree are
+implemented release inputs. A freshly reconstructed OpenClaw checkout passed its
+full source build, browser regressions and a disabled-marketplace Gateway smoke
+test; ClawScarf checks and build also passed. The release CI integration is
+implemented locally, but has not yet been pushed or exercised in a patched image
+candidate. Published alpha.3 predates these patches. A real model-selected browser
+turn through the patched deployment remains unqualified.
+
+The broader UI dispositions, administrator forms and package selection below
+remain proposed. Adding this patch workflow does not complete those changes or
+change existing installations. [Release documentation](../release/README.md#build-and-publish)
+owns the build and publication process; [TODO.md](../TODO.md) owns outstanding work.
 
 ## Intended product
 
@@ -318,6 +340,12 @@ supported extension/configuration points where they cover the actual requirement
 
 ## ClawHub and installation entry points
 
+The optional-marketplace patch implements the native switch described in
+[Current implementation](#current-implementation). The following findings explain
+the required scope. Distribution-wide removal still requires selecting the
+disabled preset, curating supplied packages and addressing any independently
+shipped harness marketplace; the native switch alone does not establish that result.
+
 ClawHub removal spans more than its bundled skill or Plugins page. The review
 identified catalog/search/detail UI, command-palette search, chat cards and
 setup references, plus backend skill and plugin operations. For example,
@@ -570,19 +598,29 @@ selection, and package selection. Each needs its own behavior and regression
 evidence. Upstream PRs can seek reusable configuration or plugin seams; ClawScarf
 must not depend on their acceptance to reproduce its release.
 
-The [patch workflow](openclaw/README.md) now owns maintenance commands and release
-integration. Its canonical inputs are the pinned upstream revision, ordered Git
+The [patch workflow](openclaw/README.md) owns maintenance commands. Its canonical
+inputs are the pinned upstream revision, ordered Git
 mail patches, paired intent documents, and expected resulting source tree.
 Development checkouts are reconstructed from those inputs; Git or optional StGit
 edits their commits, then the exporter verifies exact replay before updating the
 saved series. Do not independently maintain a divergent fork as another release
 source. Upstream submission is optional and currently not requested.
 
+The manually dispatched [release candidate CI](../release/README.md#build-and-publish)
+fetches the pinned upstream commit, applies the saved patches in series order and
+verifies the expected tree before building the Gateway image on each architecture.
+An application failure or tree mismatch stops the build. Paired intent documents
+guide future maintenance; CI does not execute prompts or regenerate patches.
+The two architectures must agree on source provenance and the patch archive before
+image indexes are published. Candidate assembly validates and packages that
+evidence. Publication then uses the built candidate without rebuilding it.
+There is no automatic upstream-pin update or agent-driven repair in this workflow.
+
 Record the upstream base, reconstructed revision, source tree, patch-set digest
 and final image digest. A version label such as 2026.9.4 alone does not identify
-patched content. The release pipeline carries the source provenance and exact
-patch/intent archive. Published alpha.3 and existing installations predate these
-patches; new source packaging has not been published by this task.
+patched content. The source patches affect the Gateway image; the separate browser
+controller retains its published upstream image pin. See
+[Current implementation](#current-implementation) for tested and published status.
 
 This is the useful part of the Linux-distribution analogy: upstream sources,
 downstream changes and packaging are explicit. Debian documents patch series in
