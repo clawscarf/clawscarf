@@ -225,6 +225,10 @@ Fleet route publication, central-portal ticket delegation, organization policy,
 WorkOS-specific provider and host-side native launchers are intentionally omitted.
 Native authority adapters must verify current Gateway authority; the persisted
 bootstrap administrator reference is not a reusable administrator permission grant.
+The maintained [membership patch](../../runtime/openclaw/patches/membership-hot-reload.prompt.md)
+hot-applies native identity grants without restarting the shared Gateway; changed
+or removed identities reconnect while unrelated users stay connected. The patch
+intent owns its native policy and regression requirements.
 After a new identity’s read-only grant is persisted, enrollment briefly observes
 its effective native admission while native auth reloads. Every attempt rechecks
 the acting administrator and exact grant; persistent denial fails without admitting

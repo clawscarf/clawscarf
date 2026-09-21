@@ -61,6 +61,7 @@ await test("hosted ingress can supply its identity without standalone account na
 });
 await test("native Codex keeps bundled provenance while Lobster is explicitly loaded", () => {
   const config = initialConfiguration(input);
+  assert.equal(config.gateway.cliAgents.enabled, false);
   assert.equal(config.plugins.entries.codex.enabled, true);
   assert.equal(
     config.plugins.entries.codex.config.sessionCatalog.enabled,

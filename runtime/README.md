@@ -35,6 +35,8 @@ packaging and registration. Browser integration and its limits belong to the
 [browser-node guide](../deploy/execution/browser-node/README.md#verified-release-limits).
 Connections starts disabled in the native preset; selecting that capability enables
 its plugin. Native administrators can deliberately change application settings.
+The preset sets `gateway.cliAgents.enabled: false` to disable catalog-backed CLI
+agents while retaining the native Codex agent plugin.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
 Use it for the canonical Gateway command and operator CLI execution. It sets the

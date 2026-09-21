@@ -42,8 +42,8 @@ patch maintenance. Requirements below are unimplemented or unqualified; establis
 retained administration before removing its old entry points. These tasks do not
 authorize release publication or upstream PRs.
 
-- [ ] **Configuration:** Set `gateway.cliAgents.enabled: false` in the preset;
-      verify picker suppression and retained managed model routes.
+- [ ] **Configuration verification:** Qualify CLI-agent picker suppression and retained
+      managed model routes in a released image using the [native preset](runtime/README.md).
 - [ ] **Documentation:** Expand [native configuration](runtime/README.md) into a
       complete map of configured settings, purpose and source owners. Distinguish
       initial defaults, installation-dependent settings, administrator edits and

@@ -1,0 +1,1982 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Mon, 21 Sep 2026 14:32:03 +0200
+Subject: [PATCH] fix(gateway): hot-apply identity membership without
+ restarting peers
+
+Keep committed per-identity admission and scope policy for proxy sessions, preserve unrelated connections and signed plugin cookies, and retain structural credential revocation. Cover real enrollment, removal and publication races.
+
+ClawScarf-Patch: membership-hot-reload
+---
+ docs/gateway/configuration/hot-reload.md      |  13 +
+ src/gateway/config-reload-plan.ts             |   2 +
+ src/gateway/control-ui-plugin-assets.ts       |   2 +
+ .../control-ui-plugin-auth-cookie.test.ts     | 111 +++++++-
+ src/gateway/control-ui-plugin-auth-cookie.ts  |  18 +-
+ src/gateway/control-ui.ts                     |   6 +
+ src/gateway/http-auth-utils.test.ts           | 189 +++++++++++++-
+ src/gateway/http-auth-utils.ts                |  52 +++-
+ src/gateway/identity-policy.test.ts           | 102 ++++++++
+ src/gateway/identity-policy.ts                |  64 +++++
+ src/gateway/plugin-icon-http.ts               |   2 +
+ src/gateway/server-http.ts                    |   1 +
+ .../server-methods/session-mutation-guards.ts |  19 +-
+ src/gateway/server-runtime-state-prepare.ts   |   1 +
+ src/gateway/server-shared-auth-generation.ts  |   3 +
+ src/gateway/server-startup-finish.ts          |   7 +
+ .../server.membership-hot-reload.test.ts      | 225 +++++++++++++++++
+ ...d-request-dispatch.identity-policy.test.ts | 168 +++++++++++++
+ .../authenticated-request-dispatch.ts         |  32 ++-
+ .../connect-admission.identity-policy.test.ts | 237 ++++++++++++++++++
+ .../server/ws-connection/connect-admission.ts |  33 ++-
+ .../server/ws-connection/connect-auth.ts      |  37 ++-
+ .../server/ws-connection/connect-session.ts   |   2 +
+ .../ws-connection/message-handler-types.ts    |   1 +
+ src/gateway/server/ws-identity-policy.ts      |  60 +++++
+ src/gateway/server/ws-types.ts                |   7 +
+ src/gateway/user-profiles-http.ts             |   2 +
+ 27 files changed, 1373 insertions(+), 23 deletions(-)
+ create mode 100644 src/gateway/identity-policy.test.ts
+ create mode 100644 src/gateway/identity-policy.ts
+ create mode 100644 src/gateway/server.membership-hot-reload.test.ts
+ create mode 100644 src/gateway/server/ws-connection/authenticated-request-dispatch.identity-policy.test.ts
+ create mode 100644 src/gateway/server/ws-connection/connect-admission.identity-policy.test.ts
+ create mode 100644 src/gateway/server/ws-identity-policy.ts
+
+diff --git a/docs/gateway/configuration/hot-reload.md b/docs/gateway/configuration/hot-reload.md
+index 7b3b6b66c4f68870ad45059b86a0bc56205f44a1..e58e5ac6f0e0bd0b0b1d1184095f5366c1572ff2 100644
+--- a/docs/gateway/configuration/hot-reload.md
++++ b/docs/gateway/configuration/hot-reload.md
+@@ -98,6 +98,7 @@ back to OpenClaw.
+ | Discovery visibility      | `discovery.mdns.mode`                                                                                                                                                                                                                                              | No (replaces discovery advertisements) |
+ | Browser defaults          | `browser.profiles`, `browser.defaultProfile`, `browser.headless`, `browser.executablePath`, `browser.attachOnly`, `browser.cdpUrl`, `browser.noSandbox`, `browser.extraArgs`, `browser.snapshotDefaults`, `browser.tabCleanup`, `browser.allowSystemProfileImport` | No                                     |
+ | Browser control policy    | `browser.enabled`, `browser.evaluateEnabled`, `browser.ssrfPolicy`                                                                                                                                                                                                 | No (replaces Browser control service)  |
++| Identity membership       | `gateway.auth.trustedProxy.allowUsers`, `gateway.auth.identityScopes`                                                                                                                                                                                              | No (affected identities reconnect)     |
+ | Gateway server            | Other `gateway.*` settings (port, bind, auth mode, roles, tailscale, TLS)                                                                                                                                                                                          | **Yes**                                |
+ | Infrastructure            | Other `discovery` and `browser` settings, MCP Apps listener settings, `secrets.egressProxy`                                                                                                                                                                        | **Yes**                                |
+ 
+@@ -219,6 +220,18 @@ Browser device tokens derived from the old shared credential are revoked too.
+ For SecretRef credentials, set `gateway.auth.mode` explicitly to make rotation
+ eligible for hot reload. Auth-mode changes still restart the Gateway.
+ 
++Identity allowlist and scope changes hot-apply without restarting the Gateway.
++Already authenticated trusted-proxy users whose own admission and grants are
++unchanged stay connected, including while another user joins. Removed identities
++and identities whose grants changed reconnect under the current policy; native
++role changes retain their existing targeted reconnect behavior. In-flight
++handshakes and requests recheck committed policy, so a rejected configuration
++publication does not revoke users. Trusted-proxy plugin cookies are bound to the
++individual identity's policy. Shared credential-derived device tokens and cookies
++without a trusted-proxy identity retain their full credential-generation checks.
++Changing proxy headers, trusted proxies or auth mode retains its existing restart
++and revocation behavior.
++
+ <Note>
+ Changing `gateway.reload` or `gateway.remote` also does **not** trigger a restart.
+ </Note>
+diff --git a/src/gateway/config-reload-plan.ts b/src/gateway/config-reload-plan.ts
+index af4ab556bc9d7c40e532e6e5fbc9063e59ba17cf..380a004163282123ccd2baedeb31b2de0606ea8e 100644
+--- a/src/gateway/config-reload-plan.ts
++++ b/src/gateway/config-reload-plan.ts
+@@ -171,6 +171,8 @@ const CORE_RELOAD_POLICIES: ReloadPolicy[] = [
+       "gateway.push.apns.relay",
+       "gateway.terminal",
+       "gateway.auth.rateLimit",
++      "gateway.auth.trustedProxy.allowUsers",
++      "gateway.auth.identityScopes",
+       "diagnostics.enabled",
+       "discovery.mdns.mode",
+       "mcp.apps.sandboxOrigin",
+diff --git a/src/gateway/control-ui-plugin-assets.ts b/src/gateway/control-ui-plugin-assets.ts
+index 885e5fea0deecc81cc8c208192ef13e9b6207071..767ab3d8da834d5d784b9a7335a3cc5e132e7462 100644
+--- a/src/gateway/control-ui-plugin-assets.ts
++++ b/src/gateway/control-ui-plugin-assets.ts
+@@ -329,6 +329,7 @@ export async function handleControlUiPluginAssetRequest(
+   res: ServerResponse,
+   params: {
+     auth: ResolvedGatewayAuth;
++    getResolvedAuth?: () => ResolvedGatewayAuth;
+     basePath: string;
+     trustedProxies?: string[];
+     allowRealIpFallback?: boolean;
+@@ -364,6 +365,7 @@ export async function handleControlUiPluginAssetRequest(
+   const cookieAuth = authorizeControlUiPluginCookieRequest(req, {
+     requestPath: pathname,
+     authGeneration: resolveSharedGatewaySessionGeneration(params.auth, params.trustedProxies),
++    resolvedAuth: params.getResolvedAuth?.() ?? params.auth,
+   });
+   if (cookieAuth) {
+     const grant = cookieAuth.requestAuth.controlUiPluginGrants?.find(
+diff --git a/src/gateway/control-ui-plugin-auth-cookie.test.ts b/src/gateway/control-ui-plugin-auth-cookie.test.ts
+index 96905d122a5ae09f8b13586e83be656d6bea49f9..c6542394f017c74a18e4b6fd63a8e9ca48da9de2 100644
+--- a/src/gateway/control-ui-plugin-auth-cookie.test.ts
++++ b/src/gateway/control-ui-plugin-auth-cookie.test.ts
+@@ -1,12 +1,15 @@
+ import type { IncomingMessage } from "node:http";
+-import { describe, expect, it } from "vitest";
++import { describe, expect, it, vi } from "vitest";
++import type { OpenClawConfig } from "../config/types.openclaw.js";
+ import { ensureProfileForEmail, setUserProfileRole } from "../state/user-profiles.js";
+ import { withOpenClawTestState } from "../test-utils/openclaw-test-state.js";
++import type { ResolvedGatewayAuth } from "./auth.js";
+ import {
+   resolveControlUiPluginAuthCookieGrants,
+   setControlUiPluginAuthCookie,
+ } from "./control-ui-plugin-auth-cookie.js";
+ import { authorizeControlUiPluginCookieRequest } from "./http-auth-utils.js";
++import { resolveGatewayIdentityPolicyGeneration } from "./identity-policy.js";
+ import { invalidateOperatorRolePolicy } from "./operator-role-policy.js";
+ import { makeMockHttpResponse } from "./test-http-response.js";
+ import { withTempConfig } from "./test-temp-config.js";
+@@ -142,3 +145,109 @@ describe("Control UI plugin auth cookie profile binding", () => {
+     });
+   });
+ });
++
++describe("Control UI plugin auth cookie identity-local revocation", () => {
++  const grants = [
++    {
++      pluginId: "example",
++      path: "/plugins/example",
++      match: "prefix" as const,
++      scopes: ["operator.read" as const],
++    },
++  ];
++  const proxyAuth: ResolvedGatewayAuth = {
++    mode: "trusted-proxy",
++    allowTailscale: false,
++    trustedProxy: { userHeader: "x-user", allowUsers: ["alice", "bob"] },
++  };
++  const config: OpenClawConfig = {
++    gateway: { auth: { identityScopes: { alice: ["operator.admin"], bob: ["operator.read"] } } },
++  };
++  function mint(identity?: string) {
++    const { res, setHeader } = makeMockHttpResponse();
++    setControlUiPluginAuthCookie(res, grants, {
++      generation: identity
++        ? resolveGatewayIdentityPolicyGeneration({
++            config,
++            auth: proxyAuth,
++            identity,
++            method: "trusted-proxy",
++          })
++        : "shared",
++      ...(identity ? { trustedProxyIdentity: identity } : {}),
++    });
++    const values = setHeader.mock.calls.at(-1)?.[1];
++    const cookie = Array.isArray(values) ? values[0] : values;
++    if (typeof cookie !== "string") {
++      throw new Error("expected cookie");
++    }
++    return cookie.split(";", 1)[0]!;
++  }
++  function resolve(cookie: string, cfg = config, auth = proxyAuth, shared = "shared") {
++    return resolveControlUiPluginAuthCookieGrants({ headers: { cookie } } as IncomingMessage, {
++      requestPath: "/plugins/example/session",
++      generation: shared,
++      resolveTrustedProxyIdentityGeneration: (identity) =>
++        resolveGatewayIdentityPolicyGeneration({
++          config: cfg,
++          auth,
++          identity,
++          method: "trusted-proxy",
++        }),
++    });
++  }
++  it("keeps Alice's existing plugin cookie across Bob's enrollment and scope changes", () => {
++    const cookie = mint("alice");
++    expect(
++      resolve(
++        cookie,
++        {
++          gateway: {
++            auth: { identityScopes: { alice: ["operator.admin"], bob: ["operator.admin"] } },
++          },
++        },
++        {
++          ...proxyAuth,
++          trustedProxy: { ...proxyAuth.trustedProxy!, allowUsers: ["alice", "bob", "charlie"] },
++        },
++        "new-shared",
++      ),
++    ).toEqual(grants);
++  });
++  it("revokes Alice's cookie when Alice is removed or her grants change", () => {
++    const cookie = mint("alice");
++    expect(
++      resolve(cookie, config, {
++        ...proxyAuth,
++        trustedProxy: { ...proxyAuth.trustedProxy!, allowUsers: ["bob"] },
++      }),
++    ).toEqual([]);
++    expect(
++      resolve(cookie, { gateway: { auth: { identityScopes: { alice: ["operator.read"] } } } }),
++    ).toEqual([]);
++    expect(resolve(cookie, config, { mode: "token", token: "new", allowTailscale: false })).toEqual(
++      [],
++    );
++  });
++  it("never trusts tampered identity before validating its signature", () => {
++    const cookie = mint("alice");
++    const [nameAndVersion, encoded, signature] = cookie.split(".");
++    const payload = JSON.parse(Buffer.from(encoded!, "base64url").toString("utf8"));
++    payload.trustedProxyIdentity = "bob";
++    const resolver = vi.fn(() => "whatever");
++    const tampered = `${nameAndVersion}.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.${signature}`;
++    expect(
++      resolveControlUiPluginAuthCookieGrants({ headers: { cookie: tampered } } as IncomingMessage, {
++        requestPath: "/plugins/example",
++        generation: "shared",
++        resolveTrustedProxyIdentityGeneration: resolver,
++      }),
++    ).toEqual([]);
++    expect(resolver).not.toHaveBeenCalled();
++  });
++  it("preserves full shared-generation revocation for cookies without an attested identity", () => {
++    const cookie = mint();
++    expect(resolve(cookie)).toEqual(grants);
++    expect(resolve(cookie, config, proxyAuth, "rotated")).toEqual([]);
++  });
++});
+diff --git a/src/gateway/control-ui-plugin-auth-cookie.ts b/src/gateway/control-ui-plugin-auth-cookie.ts
+index d9140f3f694072071b6477471ff5a8034e8a9394..4d1c43e3d48845d7b386f13eb73c32e2992337d1 100644
+--- a/src/gateway/control-ui-plugin-auth-cookie.ts
++++ b/src/gateway/control-ui-plugin-auth-cookie.ts
+@@ -31,11 +31,13 @@ type PluginAuthCookiePayload = {
+   generation: string;
+   exp: number;
+   profileId?: string;
++  trustedProxyIdentity?: string;
+ };
+ 
+ type PluginAuthCookieOptions = {
+   generation: string | undefined;
+   profileId?: string;
++  trustedProxyIdentity?: string;
+   nowMs?: number;
+   basePath?: string;
+   request?: IncomingMessage;
+@@ -125,6 +127,7 @@ function createControlUiPluginAuthCookie(
+     generation: params.generation,
+     exp,
+     ...(params.profileId ? { profileId: params.profileId } : {}),
++    ...(params.trustedProxyIdentity ? { trustedProxyIdentity: params.trustedProxyIdentity } : {}),
+   };
+   const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+   const sig = signPayload(encodedPayload);
+@@ -194,6 +197,7 @@ export function resolveControlUiPluginAuthCookieGrants(
+   params: {
+     requestPath: string;
+     generation: string | undefined;
++    resolveTrustedProxyIdentityGeneration?: (identity: string) => string | undefined;
+     nowMs?: number;
+   },
+ ): ControlUiPluginTabAuthGrant[] {
+@@ -202,7 +206,7 @@ export function resolveControlUiPluginAuthCookieGrants(
+     return [];
+   }
+   const requestPath = normalizeCookiePath(params.requestPath);
+-  if (!requestPath || !params.generation) {
++  if (!requestPath) {
+     return [];
+   }
+   const requestPathContext = resolvePluginRoutePathContext(requestPath);
+@@ -229,7 +233,10 @@ export function resolveControlUiPluginAuthCookieGrants(
+       if (
+         payload?.scope !== CONTROL_UI_PLUGIN_AUTH_COOKIE_SCOPE ||
+         payload.exp <= now ||
+-        payload.generation !== params.generation ||
++        typeof payload.generation !== "string" ||
++        (payload.trustedProxyIdentity !== undefined &&
++          (typeof payload.trustedProxyIdentity !== "string" ||
++            payload.trustedProxyIdentity.length === 0)) ||
+         typeof payload.pluginId !== "string" ||
+         payload.pluginId.length === 0 ||
+         (payload.profileId !== undefined &&
+@@ -241,6 +248,13 @@ export function resolveControlUiPluginAuthCookieGrants(
+       ) {
+         continue;
+       }
++      // Identity is authoritative only after the signed payload has been verified.
++      const generation = payload.trustedProxyIdentity
++        ? params.resolveTrustedProxyIdentityGeneration?.(payload.trustedProxyIdentity)
++        : params.generation;
++      if (!generation || payload.generation !== generation) {
++        continue;
++      }
+       const grantPathContext = resolvePluginRoutePathContext(payload.path);
+       if (
+         grantPathContext.malformedEncoding ||
+diff --git a/src/gateway/control-ui.ts b/src/gateway/control-ui.ts
+index 03be651840a847289e2151722eebdd069d3e358c..fa701c89f4cc0d62e197f6a36fbe04710c84b8dc 100644
+--- a/src/gateway/control-ui.ts
++++ b/src/gateway/control-ui.ts
+@@ -132,6 +132,7 @@ type ControlUiRequestOptions = {
+   agentId?: string;
+   root?: ControlUiRootState;
+   auth?: ResolvedGatewayAuth;
++  getResolvedAuth?: () => ResolvedGatewayAuth;
+   trustedProxies?: string[];
+   allowRealIpFallback?: boolean;
+   rateLimiter?: AuthRateLimiter;
+@@ -535,6 +536,7 @@ export async function handleControlUiAssistantMediaRequest(
+     config?: OpenClawConfig;
+     agentId?: string;
+     auth?: ResolvedGatewayAuth;
++    getResolvedAuth?: () => ResolvedGatewayAuth;
+     trustedProxies?: string[];
+     allowRealIpFallback?: boolean;
+     rateLimiter?: AuthRateLimiter;
+@@ -575,6 +577,7 @@ export async function handleControlUiAssistantMediaRequest(
+           req,
+           res,
+           auth: opts?.auth,
++          getResolvedAuth: opts?.getResolvedAuth,
+           trustedProxies: opts?.trustedProxies,
+           allowRealIpFallback: opts?.allowRealIpFallback,
+           rateLimiter: opts?.rateLimiter,
+@@ -740,6 +743,7 @@ export async function handleControlUiAvatarRequest(
+     basePath?: string;
+     config: OpenClawConfig;
+     auth?: ResolvedGatewayAuth;
++    getResolvedAuth?: () => ResolvedGatewayAuth;
+     trustedProxies?: string[];
+     allowRealIpFallback?: boolean;
+     rateLimiter?: AuthRateLimiter;
+@@ -773,6 +777,7 @@ export async function handleControlUiAvatarRequest(
+       req,
+       res,
+       auth: opts.auth,
++      getResolvedAuth: opts.getResolvedAuth,
+       trustedProxies: opts.trustedProxies,
+       allowRealIpFallback: opts.allowRealIpFallback,
+       rateLimiter: opts.rateLimiter,
+@@ -1061,6 +1066,7 @@ export async function handleControlUiHttpRequest(
+         req,
+         res,
+         auth: opts?.auth,
++        getResolvedAuth: opts?.getResolvedAuth,
+         trustedProxies: opts?.trustedProxies,
+         allowRealIpFallback: opts?.allowRealIpFallback,
+         rateLimiter: opts?.rateLimiter,
+diff --git a/src/gateway/http-auth-utils.test.ts b/src/gateway/http-auth-utils.test.ts
+index 6c6c8d2a4c89322991ea2cbd5e61b9a1186d507c..f23906c86e3b18bd53f09ad1112c4a48c477e782 100644
+--- a/src/gateway/http-auth-utils.test.ts
++++ b/src/gateway/http-auth-utils.test.ts
+@@ -1,18 +1,31 @@
+ import type { IncomingMessage } from "node:http";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
++import { createDeferred } from "../../test/helpers/promise.js";
+ import type { OpenClawConfig } from "../config/types.openclaw.js";
++import { createEmptyPluginRegistry } from "../plugins/registry-empty.js";
++import { resetPluginRuntimeStateForTest, setActivePluginRegistry } from "../plugins/runtime.js";
+ import { setDisplayName } from "../state/user-profiles.js";
+ import { withOpenClawTestState } from "../test-utils/openclaw-test-state.js";
+-import type { GatewayAuthResult } from "./auth.js";
++import type { GatewayAuthResult, ResolvedGatewayAuth } from "./auth.js";
++import * as profileAuth from "./http-auth-user-profile.js";
+ import {
++  authorizeControlUiPluginCookieRequest,
++  authorizeControlUiReadRequestOrReply,
+   checkGatewayHttpRequestAuth,
+   resolveSharedSecretHttpOperatorScopes,
+ } from "./http-auth-utils.js";
++import { makeMockHttpResponse } from "./test-http-response.js";
++import { withTempConfig } from "./test-temp-config.js";
+ 
+-const { authorize, ensureOwner } = vi.hoisted(() => ({ authorize: vi.fn(), ensureOwner: vi.fn() }));
++const { authorize, authorizeRead, ensureOwner } = vi.hoisted(() => ({
++  authorize: vi.fn(),
++  authorizeRead: vi.fn(),
++  ensureOwner: vi.fn(),
++}));
+ vi.mock("./auth.js", async (importOriginal) => ({
+   ...(await importOriginal<typeof import("./auth.js")>()),
+   authorizeHttpGatewayConnect: authorize,
++  authorizeControlUiReadHttpGatewayConnect: authorizeRead,
+ }));
+ vi.mock("../infra/host-account-name.js", () => ({
+   resolveHostAccountName: async () => "Gateway Person",
+@@ -130,3 +143,175 @@ describe("HTTP gateway owner profiles", () => {
+     },
+   );
+ });
++
++describe("Control UI proxy cookie admission fence", () => {
++  it.each([false, true])(
++    "rechecks identity policy after authentication yields (removed=%s)",
++    async (removed) => {
++      await withOpenClawTestState({ label: "http-cookie-policy" }, async () => {
++        await withTempConfig({
++          cfg: {},
++          run: async () => {
++            const initial: ResolvedGatewayAuth = {
++              mode: "trusted-proxy",
++              allowTailscale: false,
++              trustedProxy: { userHeader: "x-user", allowUsers: ["alice", "bob"] },
++            };
++            let current = initial;
++            const pendingAuth = createDeferred<GatewayAuthResult>();
++            authorizeRead.mockReturnValueOnce(pendingAuth.promise);
++            const { res } = makeMockHttpResponse();
++            const onPluginFrameGrants = vi.fn();
++            const result = authorizeControlUiReadRequestOrReply({
++              req,
++              res,
++              auth: initial,
++              getResolvedAuth: () => current,
++              onPluginFrameGrants,
++            });
++            current = {
++              ...initial,
++              trustedProxy: {
++                ...initial.trustedProxy!,
++                allowUsers: removed ? ["bob"] : ["alice", "bob", "charlie"],
++              },
++            };
++            pendingAuth.resolve({ ok: true, method: "trusted-proxy", user: "alice" });
++            if (removed) {
++              expect(await result).toBeNull();
++              expect(onPluginFrameGrants).not.toHaveBeenCalled();
++            } else {
++              expect(await result).toMatchObject({ authMethod: "trusted-proxy" });
++              expect(onPluginFrameGrants).toHaveBeenCalledOnce();
++            }
++          },
++        });
++      });
++    },
++  );
++});
++
++it("mints an attested proxy cookie through HTTP admission and rechecks the live identity", async () => {
++  await withOpenClawTestState({ label: "http-cookie-identity" }, async () => {
++    await withTempConfig({
++      cfg: {},
++      run: async () => {
++        const registry = createEmptyPluginRegistry();
++        registry.controlUiDescriptors.push({
++          pluginId: "example",
++          source: "fixture",
++          descriptor: {
++            surface: "tab",
++            id: "example",
++            label: "Example",
++            path: "/example/panel",
++            requiredScopes: ["operator.read"],
++          },
++        });
++        registry.httpRoutes.push({
++          pluginId: "example",
++          source: "fixture",
++          path: "/example",
++          auth: "gateway",
++          match: "prefix",
++          handler: async () => true,
++        });
++        setActivePluginRegistry(registry);
++        try {
++          const initial: ResolvedGatewayAuth = {
++            mode: "trusted-proxy",
++            allowTailscale: false,
++            trustedProxy: { userHeader: "x-user", allowUsers: ["alice", "bob"] },
++          };
++          authorizeRead.mockResolvedValueOnce({ ok: true, method: "trusted-proxy", user: "alice" });
++          const { res, setHeader } = makeMockHttpResponse();
++          const onPluginFrameGrants = vi.fn();
++          expect(
++            await authorizeControlUiReadRequestOrReply({
++              req,
++              res,
++              auth: initial,
++              getResolvedAuth: () => initial,
++              onPluginFrameGrants,
++            }),
++          ).not.toBeNull();
++          const values = setHeader.mock.calls.find(([name]) => name === "Set-Cookie")?.[1];
++          const cookie = Array.isArray(values) ? values[0] : values;
++          if (typeof cookie !== "string") {
++            throw new Error("expected signed cookie");
++          }
++          const cookieRequest = {
++            method: "GET",
++            headers: { cookie: cookie.split(";", 1)[0] },
++          } as IncomingMessage;
++          expect(
++            authorizeControlUiPluginCookieRequest(cookieRequest, {
++              requestPath: "/example/panel",
++              authGeneration: "changed shared",
++              resolvedAuth: {
++                ...initial,
++                trustedProxy: { ...initial.trustedProxy!, allowUsers: ["alice", "bob", "charlie"] },
++              },
++            }),
++          ).not.toBeNull();
++          expect(
++            authorizeControlUiPluginCookieRequest(cookieRequest, {
++              requestPath: "/example/panel",
++              authGeneration: "changed shared",
++              resolvedAuth: {
++                ...initial,
++                trustedProxy: { ...initial.trustedProxy!, allowUsers: ["bob"] },
++              },
++            }),
++          ).toBeNull();
++        } finally {
++          resetPluginRuntimeStateForTest();
++        }
++      },
++    });
++  });
++});
++
++it("does not mint a plugin cookie after identity removal during awaited profile lookup", async () => {
++  await withOpenClawTestState({ label: "http-cookie-profile-fence" }, async () => {
++    await withTempConfig({
++      cfg: {},
++      run: async () => {
++        const initial: ResolvedGatewayAuth = {
++          mode: "trusted-proxy",
++          allowTailscale: false,
++          trustedProxy: { userHeader: "x-user", allowUsers: ["alice", "bob"] },
++        };
++        let current = initial;
++        const started = createDeferred();
++        const pendingProfile =
++          createDeferred<
++            Awaited<ReturnType<typeof profileAuth.resolveAuthenticatedHttpUserProfile>>
++          >();
++        const profileSpy = vi
++          .spyOn(profileAuth, "resolveAuthenticatedHttpUserProfile")
++          .mockImplementationOnce(() => {
++            started.resolve();
++            return pendingProfile.promise;
++          });
++        try {
++          authorizeRead.mockResolvedValueOnce({ ok: true, method: "trusted-proxy", user: "alice" });
++          const { res, setHeader } = makeMockHttpResponse();
++          const result = authorizeControlUiReadRequestOrReply({
++            req,
++            res,
++            auth: initial,
++            getResolvedAuth: () => current,
++          });
++          await started.promise;
++          current = { ...initial, trustedProxy: { ...initial.trustedProxy!, allowUsers: ["bob"] } };
++          pendingProfile.resolve({});
++          expect(await result).toBeNull();
++          expect(setHeader.mock.calls.some(([name]) => name === "Set-Cookie")).toBe(false);
++        } finally {
++          profileSpy.mockRestore();
++        }
++      },
++    });
++  });
++});
+diff --git a/src/gateway/http-auth-utils.ts b/src/gateway/http-auth-utils.ts
+index 82f0555a3e1e879d7ac0f9771e779b933166d2ae..1adda40a3e0da663cd542515634dc96e496873c9 100644
+--- a/src/gateway/http-auth-utils.ts
++++ b/src/gateway/http-auth-utils.ts
+@@ -44,6 +44,7 @@ import {
+   sendMissingScopeForbidden,
+   sendUnauthorized,
+ } from "./http-common.js";
++import { resolveGatewayIdentityPolicyGeneration } from "./identity-policy.js";
+ import {
+   prepareGatewayIngressAttribution,
+   PROXY_ATTRIBUTION_REQUIRED_REASON,
+@@ -111,6 +112,7 @@ type GatewayHttpRequestAuthParams = {
+   req: IncomingMessage;
+   res: ServerResponse;
+   auth: ResolvedGatewayAuth;
++  getResolvedAuth?: () => ResolvedGatewayAuth;
+   trustedProxies?: string[];
+   allowRealIpFallback?: boolean;
+   rateLimiter?: AuthRateLimiter;
+@@ -346,6 +348,7 @@ export async function authorizeControlUiReadRequestOrReply(
+     params.onPluginFrameGrants?.([]);
+     return { authMethod: "none", operatorScopes: [...CLI_DEFAULT_OPERATOR_SCOPES] };
+   }
++  const initialConfig = getRuntimeConfig();
+   const token = resolveControlUiReadAuthToken(params.req, params.allowQueryToken);
+   const { authResult, authGeneration, deviceOperatorScopes } = await checkHttpOperatorCredentials(
+     { ...params, auth, token, rateLimiter: token ? params.rateLimiter : undefined },
+@@ -375,15 +378,43 @@ export async function authorizeControlUiReadRequestOrReply(
+     deviceOperatorScopes,
+     authenticatedProfile,
+   );
++  let pluginAuthGeneration = authGeneration;
++  const trustedProxyIdentity = authMethod === "trusted-proxy" ? authResult.user : undefined;
++  if (authMethod === "trusted-proxy") {
++    const initialGeneration = trustedProxyIdentity
++      ? resolveGatewayIdentityPolicyGeneration({
++          config: initialConfig,
++          auth,
++          identity: trustedProxyIdentity,
++          method: "trusted-proxy",
++        })
++      : undefined;
++    const currentGeneration = trustedProxyIdentity
++      ? resolveGatewayIdentityPolicyGeneration({
++          config: getRuntimeConfig(),
++          auth: params.getResolvedAuth?.() ?? auth,
++          identity: trustedProxyIdentity,
++          method: "trusted-proxy",
++        })
++      : undefined;
++    // Authentication and profile lookup can yield while admission policy changes.
++    // Never attest a stale identity under the newly published policy.
++    if (!initialGeneration || initialGeneration !== currentGeneration) {
++      sendGatewayAuthFailure(params.res, { ok: false, reason: "auth_policy_changed" });
++      return null;
++    }
++    pluginAuthGeneration = currentGeneration;
++  }
+   params.onPluginFrameGrants?.(
+     setControlUiPluginAuthCookieForRequest(
+       params.req,
+       params.res,
+       authMethod,
+       trustDeclaredOperatorScopes,
+-      authGeneration,
++      pluginAuthGeneration,
+       operatorScopes,
+       authenticatedProfile.authenticatedUserProfile?.profileId,
++      trustedProxyIdentity,
+     ),
+   );
+   const scopeAuth = authorizeOperatorScopesForMethod(
+@@ -445,6 +476,7 @@ export function setControlUiPluginAuthCookieForRequest(
+   authGeneration: string | undefined,
+   authenticatedScopes?: readonly string[],
+   authenticatedProfileId?: string,
++  trustedProxyIdentity?: string,
+ ): ControlUiPluginTabAuthGrant[] {
+   const scopes =
+     authenticatedScopes ??
+@@ -461,6 +493,7 @@ export function setControlUiPluginAuthCookieForRequest(
+       generation: authGeneration,
+       basePath: getRuntimeConfig().gateway?.controlUi?.basePath,
+       request: req,
++      ...(authMethod === "trusted-proxy" && trustedProxyIdentity ? { trustedProxyIdentity } : {}),
+       ...(authenticatedProfileId ? { profileId: authenticatedProfileId } : {}),
+     });
+   }
+@@ -469,7 +502,11 @@ export function setControlUiPluginAuthCookieForRequest(
+ 
+ export function authorizeControlUiPluginCookieRequest(
+   req: IncomingMessage,
+-  params: { requestPath: string; authGeneration: string | undefined },
++  params: {
++    requestPath: string;
++    authGeneration: string | undefined;
++    resolvedAuth?: ResolvedGatewayAuth;
++  },
+ ): {
+   requestAuth: AuthorizedGatewayHttpRequest;
+   operatorScopes: string[];
+@@ -485,6 +522,15 @@ export function authorizeControlUiPluginCookieRequest(
+   const grants = resolveControlUiPluginAuthCookieGrants(req, {
+     requestPath: params.requestPath,
+     generation: params.authGeneration,
++    resolveTrustedProxyIdentityGeneration: (identity) =>
++      params.resolvedAuth
++        ? resolveGatewayIdentityPolicyGeneration({
++            config: getRuntimeConfig(),
++            auth: params.resolvedAuth,
++            identity,
++            method: "trusted-proxy",
++          })
++        : undefined,
+   });
+   if (grants.length === 0) {
+     return null;
+@@ -520,7 +566,6 @@ export function authorizeControlUiPluginCookieRequest(
+ 
+ export async function authorizePluginGatewayHttpRequestOrReply(
+   params: GatewayHttpRequestAuthParams & {
+-    getResolvedAuth?: () => ResolvedGatewayAuth;
+     requestPath: string;
+     resolveOperatorScopes: (
+       req: IncomingMessage,
+@@ -535,6 +580,7 @@ export async function authorizePluginGatewayHttpRequestOrReply(
+   const cookieAuth = authorizeControlUiPluginCookieRequest(params.req, {
+     requestPath: params.requestPath,
+     authGeneration,
++    resolvedAuth: params.getResolvedAuth?.() ?? params.auth,
+   });
+   if (cookieAuth) {
+     return cookieAuth;
+diff --git a/src/gateway/identity-policy.test.ts b/src/gateway/identity-policy.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..3abe508fb33975e39ac297bb1dbbfe9f4a1c1f67
+--- /dev/null
++++ b/src/gateway/identity-policy.test.ts
+@@ -0,0 +1,102 @@
++import { describe, expect, it } from "vitest";
++import type { OpenClawConfig } from "../config/types.openclaw.js";
++import type { ResolvedGatewayAuth } from "./auth.js";
++import {
++  resolveGatewayIdentityPolicyGeneration,
++  resolveIdentityScopeGrant,
++} from "./identity-policy.js";
++
++const auth: ResolvedGatewayAuth = {
++  mode: "trusted-proxy",
++  allowTailscale: false,
++  trustedProxy: { userHeader: "x-user", allowUsers: ["alice", "bob"] },
++};
++const config: OpenClawConfig = {
++  gateway: {
++    auth: { identityScopes: { alice: ["operator.admin"], bob: ["operator.read"] } },
++    trustedProxies: ["127.0.0.1"],
++  },
++};
++const generation = (cfg = config, resolvedAuth = auth, identity = "alice", role = "operator") =>
++  resolveGatewayIdentityPolicyGeneration({
++    config: cfg,
++    auth: resolvedAuth,
++    identity,
++    role,
++    method: "trusted-proxy",
++  });
++
++describe("identity-local gateway policy generation", () => {
++  it("preserves Alice when Bob's membership or grants change", () => {
++    expect(
++      generation(config, {
++        ...auth,
++        trustedProxy: { ...auth.trustedProxy!, allowUsers: ["alice"] },
++      }),
++    ).toBe(generation());
++    expect(
++      generation({
++        gateway: {
++          ...config.gateway,
++          auth: { identityScopes: { alice: ["operator.admin"], bob: ["operator.admin"] } },
++        },
++      }),
++    ).toBe(generation());
++  });
++  it("invalidates the affected identity and shared trust changes", () => {
++    expect(
++      generation(config, { ...auth, trustedProxy: { ...auth.trustedProxy!, allowUsers: ["bob"] } }),
++    ).toBeUndefined();
++    expect(
++      generation({
++        gateway: { ...config.gateway, auth: { identityScopes: { alice: ["operator.read"] } } },
++      }),
++    ).not.toBe(generation());
++    expect(
++      generation(config, {
++        ...auth,
++        trustedProxy: { ...auth.trustedProxy!, userHeader: "new-user" },
++      }),
++    ).not.toBe(generation());
++    expect(generation({ gateway: { ...config.gateway, trustedProxies: ["10.0.0.1"] } })).not.toBe(
++      generation(),
++    );
++  });
++  it("uses exact identity first, with an email-only case-insensitive fallback", () => {
++    const grants = {
++      "Alice@example.test": ["operator.read"],
++      "alice@example.test": ["operator.admin"],
++      ALICE: ["operator.admin"],
++    } satisfies Record<string, ("operator.read" | "operator.admin")[]>;
++    expect(resolveIdentityScopeGrant(grants, "alice@example.test")).toEqual(["operator.admin"]);
++    expect(resolveIdentityScopeGrant(grants, "ALICE@example.test")).toEqual(["operator.read"]);
++    expect(resolveIdentityScopeGrant(grants, "alice")).toEqual([]);
++  });
++  it("normalizes grants and excludes operator identity grants from node policy", () => {
++    const reordered: OpenClawConfig = {
++      gateway: {
++        ...config.gateway,
++        auth: { identityScopes: { alice: ["operator.admin", "operator.admin"] } },
++      },
++    };
++    expect(generation(reordered)).toBe(generation());
++    expect(generation({ gateway: { ...config.gateway, auth: {} } }, auth, "alice", "node")).toBe(
++      generation(config, auth, "alice", "node"),
++    );
++  });
++  it("keeps Tailscale independent of bearer rotation but revokes when disabled", () => {
++    const params = { config, identity: "alice", method: "tailscale" as const };
++    expect(
++      resolveGatewayIdentityPolicyGeneration({
++        ...params,
++        auth: { mode: "token", token: "first", allowTailscale: true },
++      }),
++    ).toBe(
++      resolveGatewayIdentityPolicyGeneration({
++        ...params,
++        auth: { mode: "token", token: "second", allowTailscale: true },
++      }),
++    );
++    expect(resolveGatewayIdentityPolicyGeneration({ ...params, auth })).toBeUndefined();
++  });
++});
+diff --git a/src/gateway/identity-policy.ts b/src/gateway/identity-policy.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5fde277ca5fb61b16ccc8d7f4f2ece64c97bf4b5
+--- /dev/null
++++ b/src/gateway/identity-policy.ts
+@@ -0,0 +1,64 @@
++// Identity-local grants must not revoke unrelated authenticated sessions.
++import type { OpenClawConfig } from "../config/types.openclaw.js";
++import { sha256Base64Url } from "../infra/crypto-digest.js";
++import type { ResolvedGatewayAuth } from "./auth.js";
++import type { OperatorScope } from "./operator-scopes.js";
++import { resolveSharedGatewaySessionGeneration } from "./server/ws-shared-generation.js";
++
++export function resolveIdentityScopeGrant(
++  identityScopes: Record<string, OperatorScope[]> | undefined,
++  identity: string,
++): OperatorScope[] {
++  const exact = identityScopes?.[identity];
++  if (exact !== undefined) {
++    return exact;
++  }
++  if (!identity.includes("@")) {
++    return [];
++  }
++  const normalized = identity.toLowerCase();
++  return (
++    Object.entries(identityScopes ?? {}).find(
++      ([key]) => key.includes("@") && key.toLowerCase() === normalized,
++    )?.[1] ?? []
++  );
++}
++
++export function resolveGatewayIdentityPolicyGeneration(params: {
++  config: OpenClawConfig;
++  auth: ResolvedGatewayAuth;
++  identity: string;
++  method: "trusted-proxy" | "tailscale";
++  role?: string;
++}): string | undefined {
++  const { config, auth, identity, method } = params;
++  if (!identity) {
++    return undefined;
++  }
++  let shared: string | undefined;
++  if (method === "trusted-proxy") {
++    const allowUsers = auth.trustedProxy?.allowUsers;
++    if (auth.mode !== "trusted-proxy" || (allowUsers?.length && !allowUsers.includes(identity))) {
++      return undefined;
++    }
++    shared = resolveSharedGatewaySessionGeneration(
++      {
++        ...auth,
++        trustedProxy: auth.trustedProxy
++          ? { ...auth.trustedProxy, allowUsers: undefined }
++          : undefined,
++      },
++      config.gateway?.trustedProxies,
++    );
++  } else if (!auth.allowTailscale) {
++    return undefined;
++  }
++  const role = params.role ?? "operator";
++  const scopes =
++    role === "operator"
++      ? resolveIdentityScopeGrant(config.gateway?.auth?.identityScopes, identity)
++      : [];
++  return sha256Base64Url(
++    JSON.stringify({ method, shared, identity, role, scopes: [...new Set(scopes)].toSorted() }),
++  );
++}
+diff --git a/src/gateway/plugin-icon-http.ts b/src/gateway/plugin-icon-http.ts
+index d3bd2730969d672b5a2834e55bd435b25a597529..39e406baded90b25df0360fcee459db8960191b6 100644
+--- a/src/gateway/plugin-icon-http.ts
++++ b/src/gateway/plugin-icon-http.ts
+@@ -292,6 +292,7 @@ export async function handlePluginIconHttpRequest(
+   res: ServerResponse,
+   opts: {
+     auth: ResolvedGatewayAuth;
++    getResolvedAuth?: () => ResolvedGatewayAuth;
+     config: OpenClawConfig;
+     basePath?: string;
+     trustedProxies?: string[];
+@@ -335,6 +336,7 @@ export async function handlePluginIconHttpRequest(
+     req,
+     res,
+     auth: opts.auth,
++    getResolvedAuth: opts.getResolvedAuth,
+     trustedProxies: opts.trustedProxies,
+     allowRealIpFallback: opts.allowRealIpFallback,
+     rateLimiter: opts.rateLimiter,
+diff --git a/src/gateway/server-http.ts b/src/gateway/server-http.ts
+index d6c5e3b7681ac108e83d368e21ed659fcdff8bac..7a70b1a6885bd4aec30e6962aa3580d76ebcffa7 100644
+--- a/src/gateway/server-http.ts
++++ b/src/gateway/server-http.ts
+@@ -346,6 +346,7 @@ export function createGatewayHttpServer(opts: {
+       const resolvedAuthValue = getResolvedAuth();
+       const routeAuth = {
+         auth: resolvedAuthValue,
++        getResolvedAuth,
+         trustedProxies,
+         allowRealIpFallback,
+         rateLimiter,
+diff --git a/src/gateway/server-methods/session-mutation-guards.ts b/src/gateway/server-methods/session-mutation-guards.ts
+index 9d2f1eed9ab45520d28241f99478b5e70468489c..3aaaa4eeae899b02091855882a69d5b6a86f902f 100644
+--- a/src/gateway/server-methods/session-mutation-guards.ts
++++ b/src/gateway/server-methods/session-mutation-guards.ts
+@@ -5,6 +5,7 @@ import {
+   getRequiredSharedGatewaySessionGeneration,
+   getSharedGatewaySessionGenerationReaderState,
+ } from "../server-shared-auth-generation.js";
++import { isGatewayIdentityPolicyCurrent } from "../server/ws-identity-policy.js";
+ import type { GatewayWsClient } from "../server/ws-types.js";
+ import type {
+   GatewayRequestHandlerOptions,
+@@ -91,9 +92,21 @@ export function bindWebSocketRequestMutationAuthority<T extends GatewayRequestOp
+     ) {
+       throw new Error("Gateway requester authority changed");
+     }
+-    const requiredGeneration = client.usesSharedGatewayAuth
+-      ? getRequiredSharedGatewaySessionGeneration(generationState)
+-      : undefined;
++    if (
++      client.identityPolicy &&
++      (!generationState.identityPolicy ||
++        !isGatewayIdentityPolicyCurrent(
++          client.identityPolicy,
++          generationState.identityPolicy.config,
++          generationState.identityPolicy.auth,
++        ))
++    ) {
++      throw new Error("Gateway requester authority changed");
++    }
++    const requiredGeneration =
++      client.usesSharedGatewayAuth && !client.identityPolicy
++        ? getRequiredSharedGatewaySessionGeneration(generationState)
++        : undefined;
+     if (
+       requiredGeneration !== undefined &&
+       client.sharedGatewaySessionGeneration !== requiredGeneration
+diff --git a/src/gateway/server-runtime-state-prepare.ts b/src/gateway/server-runtime-state-prepare.ts
+index f0bc1cf45a82d1d48fa1cb085c91de2c28f7dc20..6873d3c26fef1cb3aedb9896d767d209e842abc1 100644
+--- a/src/gateway/server-runtime-state-prepare.ts
++++ b/src/gateway/server-runtime-state-prepare.ts
+@@ -343,6 +343,7 @@ export async function prepareGatewayKernelState(params: {
+   const sharedGatewaySessionGenerationState: SharedGatewaySessionGenerationState = {
+     current: resolveCurrentSharedGatewaySessionGeneration(),
+     required: null,
++    identityPolicy: { config: getRuntimeConfig(), auth: getResolvedAuth() },
+   };
+   const preauthHandshakeTimeoutMs = undefined;
+   const initialHooksConfig = runtimeConfig.hooksConfig;
+diff --git a/src/gateway/server-shared-auth-generation.ts b/src/gateway/server-shared-auth-generation.ts
+index 9e81bd41227c6dd36c74f4337423e57df976ae7a..716e8aa9a9c5969ed4eba5c3c075107abe783c7e 100644
+--- a/src/gateway/server-shared-auth-generation.ts
++++ b/src/gateway/server-shared-auth-generation.ts
+@@ -2,6 +2,7 @@
+ // Disconnects clients when config writes invalidate shared credentials.
+ import type { OpenClawConfig } from "../config/types.openclaw.js";
+ import { resolveGlobalSingleton } from "../shared/global-singleton.js";
++import type { ResolvedGatewayAuth } from "./auth.js";
+ import { resolveGatewayReloadSettings } from "./config-reload-settings.js";
+ import {
+   invalidateGatewayPolicyClient,
+@@ -18,6 +19,8 @@ export type SharedGatewayAuthClient = GatewayPolicyClient & {
+ export type SharedGatewaySessionGenerationState = {
+   current: string | undefined;
+   required: string | undefined | null;
++  /** Committed identity policy; prepared secrets snapshots are not admission authority. */
++  identityPolicy?: { config: OpenClawConfig; auth: ResolvedGatewayAuth };
+ };
+ 
+ export type SharedGatewaySessionGenerationOwnership = {
+diff --git a/src/gateway/server-startup-finish.ts b/src/gateway/server-startup-finish.ts
+index 14695dce6c4798d1546e2ad209bd55f5a0df6720..b4f6d472a3f14d5fec4f511ebbe4293a098f1376 100644
+--- a/src/gateway/server-startup-finish.ts
++++ b/src/gateway/server-startup-finish.ts
+@@ -32,6 +32,7 @@ import { createRequiredSharedGatewaySessionGenerationReader } from "./server-sha
+ import { startGatewayTlsRenewal } from "./server-tls-renewal.js";
+ import type { GatewayHttpTransport } from "./server-transport-bridge.js";
+ import { collectGatewayWorkerPoolMetrics } from "./server/process-vitals.js";
++import { reconcileGatewayIdentityPolicyClients } from "./server/ws-identity-policy.js";
+ import { disconnectDisallowedGatewayBrowserOriginClients } from "./server/ws-origin-policy.js";
+ import { DEFAULT_TERMINAL_DETACH_SECONDS } from "./terminal/session-limits.js";
+ 
+@@ -554,6 +555,12 @@ export async function finishGatewayStartup(params: {
+       ]);
+     },
+     commitRuntimePolicy: (nextConfig) => {
++      const identityAuth = getResolvedAuth();
++      sharedGatewaySessionGenerationState.identityPolicy = {
++        config: nextConfig,
++        auth: identityAuth,
++      };
++      reconcileGatewayIdentityPolicyClients(clients, nextConfig, identityAuth);
+       controlUiRootLifecycle.setEnabled(
+         opts.controlUiEnabled ?? nextConfig.gateway?.controlUi?.enabled ?? true,
+       );
+diff --git a/src/gateway/server.membership-hot-reload.test.ts b/src/gateway/server.membership-hot-reload.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..94d6e884a6ee462a46085c70faebd1669d85a2a0
+--- /dev/null
++++ b/src/gateway/server.membership-hot-reload.test.ts
+@@ -0,0 +1,225 @@
++import { afterEach, beforeEach, describe, expect, it } from "vitest";
++// Exercise enrollment through real config RPCs and managed runtime publication.
++import { WebSocket } from "ws";
++import { z } from "zod";
++import { withTestTimeout } from "../../test/helpers/promise.js";
++import { runQaGatewayFixture } from "../../test/helpers/qa-gateway-cleanup.js";
++import { resetLogger } from "../logging/logger.js";
++import { clearPluginMetadataLifecycleCaches } from "../plugins/plugin-metadata-lifecycle.js";
++import { createDeferredCore } from "../shared/deferred.js";
++import { createOpenClawTestState } from "../test-utils/openclaw-test-state.js";
++import { getFreePort } from "../test-utils/ports.js";
++import { buildGatewayReloadPlan } from "./config-reload-plan.js";
++import { startGatewayServerCore } from "./server-start.js";
++
++const ALICE = "alice@example.test";
++const BOB = "bob@example.test";
++
++describe("membership hot reload", () => {
++  let state: Awaited<ReturnType<typeof createOpenClawTestState>>;
++  let server: Awaited<ReturnType<typeof startGatewayServerCore>> | undefined;
++  let port: number;
++  const clients: WebSocket[] = [];
++  beforeEach(async () => {
++    state = await createOpenClawTestState({
++      label: "membership-hot-reload",
++      env: {
++        OPENCLAW_GATEWAY_TOKEN: undefined,
++        OPENCLAW_GATEWAY_PASSWORD: undefined,
++        OPENCLAW_TEST_MINIMAL_GATEWAY: "0",
++        OPENCLAW_SKIP_BROWSER_CONTROL_SERVER: "1",
++        OPENCLAW_SKIP_CANVAS_HOST: "1",
++        OPENCLAW_SKIP_CHANNELS: "1",
++        OPENCLAW_SKIP_CRON: "1",
++        OPENCLAW_SKIP_GMAIL_WATCHER: "1",
++        OPENCLAW_SKIP_PROVIDERS: "1",
++        OPENCLAW_DISABLE_BUNDLED_PLUGINS: "1",
++      },
++    });
++    port = await getFreePort();
++  });
++  afterEach(async () => {
++    await runQaGatewayFixture(
++      async () => {},
++      ...clients.splice(0).map((client) => () => client.close()),
++      async () => {
++        await server?.close();
++        server = undefined;
++      },
++      () => state.cleanup(),
++      () => resetLogger(),
++      () => clearPluginMetadataLifecycleCaches(),
++    );
++  });
++  async function connect(identity: string) {
++    const socket = new WebSocket(`ws://127.0.0.1:${port}`, {
++      headers: {
++        "x-openclaw-user": identity,
++        "x-forwarded-for": "192.0.2.10",
++        "x-forwarded-proto": "http",
++        "x-forwarded-host": `127.0.0.1:${port}`,
++      },
++    });
++    clients.push(socket);
++    const closed = createDeferredCore<void>();
++    const closeEvents: number[] = [];
++    const pending = new Map<string, ReturnType<typeof createDeferredCore<unknown>>>();
++    let sequence = 0;
++    socket.on("message", (data) => {
++      const parsed = z
++        .object({
++          type: z.literal("res"),
++          id: z.string(),
++          ok: z.boolean(),
++          payload: z.unknown().optional(),
++          error: z.object({ message: z.string() }).optional(),
++        })
++        .safeParse(JSON.parse(data.toString()));
++      if (!parsed.success) return;
++      const frame = parsed.data;
++      const request = pending.get(frame.id);
++      if (!request) return;
++      pending.delete(frame.id);
++      if (frame.ok) request.resolve(frame.payload);
++      else request.reject(new Error(frame.error?.message ?? "Gateway rejected request"));
++    });
++    socket.on("close", (code) => {
++      closeEvents.push(code);
++      closed.resolve();
++      for (const request of pending.values()) request.reject(new Error(`closed ${code}`));
++      pending.clear();
++    });
++    await new Promise<void>((resolve, reject) => {
++      socket.once("open", resolve);
++      socket.once("error", reject);
++    });
++    const client = {
++      request(method: string, params: unknown = {}) {
++        const id = String(++sequence);
++        const result = createDeferredCore<unknown>();
++        pending.set(id, result);
++        socket.send(JSON.stringify({ type: "req", id, method, params }));
++        return withTestTimeout(result.promise, 10_000, `membership ${method} timeout`);
++      },
++      async stopAndWait() {
++        if (socket.readyState !== WebSocket.CLOSED) {
++          socket.close();
++          await closed.promise;
++        }
++      },
++    };
++    const hello = z.object({ auth: z.object({ scopes: z.array(z.string()) }).optional() }).parse(
++      await client.request("connect", {
++        minProtocol: 4,
++        maxProtocol: 4,
++        client: { id: "gateway-client", version: "1.0.0", platform: "test", mode: "backend" },
++        role: "operator",
++        scopes: [],
++      }),
++    );
++    return { client, hello, closeEvents, closed: closed.promise };
++  }
++
++  it("enrolls, changes roles and removes a teammate without restarting or disconnecting the administrator", async () => {
++    // This also fails cleanly on the original restart policy, before scheduling SIGUSR1.
++    expect(
++      buildGatewayReloadPlan([
++        "gateway.auth.trustedProxy.allowUsers",
++        "gateway.auth.identityScopes",
++      ]).restartGateway,
++    ).toBe(false);
++    await state.writeConfig({
++      gateway: {
++        mode: "local",
++        bind: "loopback",
++        trustedProxies: ["127.0.0.1"],
++        auth: {
++          mode: "trusted-proxy",
++          trustedProxy: {
++            userHeader: "x-openclaw-user",
++            allowLoopback: true,
++            allowUsers: [ALICE],
++          },
++          identityScopes: { [ALICE]: ["operator.admin"] },
++        },
++        roles: {
++          default: "admin",
++          definitions: {
++            admin: { agents: "*", scopes: ["operator.admin"], sessions: { others: "write" } },
++            member: {
++              agents: "*",
++              scopes: ["operator.read", "operator.write"],
++              sessions: { others: "none" },
++            },
++          },
++        },
++        controlUi: { enabled: false },
++        reload: { mode: "hybrid" },
++      },
++      logging: { level: "silent", consoleLevel: "silent" },
++      agents: { defaults: { workspace: state.workspaceDir } },
++    });
++    server = await startGatewayServerCore(port, { controlUiEnabled: false });
++    await server.startupSettled;
++    const alice = await connect(ALICE);
++    async function patch(raw: unknown, replacePaths: string[] = []) {
++      const before = z.object({ hash: z.string() }).parse(await alice.client.request("config.get"));
++      const ack = await alice.client.request("config.patch", {
++        baseHash: before.hash,
++        raw: JSON.stringify(raw),
++        replacePaths,
++      });
++      expect(ack).toMatchObject({ sentinel: { payload: { stats: { requiresRestart: false } } } });
++      expect(alice.closeEvents).toEqual([]);
++      await alice.client.request("users.self", {});
++    }
++    await patch({
++      gateway: {
++        auth: {
++          trustedProxy: { allowUsers: [ALICE, BOB] },
++          identityScopes: { [BOB]: ["operator.read"] },
++        },
++      },
++    });
++    const bob = await connect(BOB);
++    expect(bob.hello.auth?.scopes).toEqual(["operator.read"]);
++    const self = z
++      .object({ profile: z.object({ id: z.string() }) })
++      .parse(await bob.client.request("users.self", {}));
++    await alice.client.request("users.setRole", { profileId: self.profile.id, role: "member" });
++    await withTestTimeout(bob.closed, 5_000, "role update must retire Bob");
++    await bob.client.stopAndWait();
++    await patch({
++      gateway: { auth: { identityScopes: { [BOB]: ["operator.read", "operator.write"] } } },
++    });
++    const member = await connect(BOB);
++    expect(member.hello.auth?.scopes).toContain("operator.write");
++    // Reordering the set must not retire either identity.
++    await patch({
++      gateway: {
++        auth: {
++          trustedProxy: { allowUsers: [BOB, ALICE] },
++          identityScopes: { [BOB]: ["operator.write", "operator.read"] },
++        },
++      },
++    });
++    expect(member.closeEvents).toEqual([]);
++    await patch({ gateway: { auth: { identityScopes: { [BOB]: ["operator.read"] } } } }, [
++      `gateway.auth.identityScopes.${BOB}`,
++    ]);
++    await withTestTimeout(member.closed, 5_000, "scope reduction must retire Bob");
++    await member.client.stopAndWait();
++    const reader = await connect(BOB);
++    expect(reader.hello.auth?.scopes).toEqual(["operator.read"]);
++    await expect(reader.client.request("config.patch", { raw: "{}" })).rejects.toThrow(
++      /scope|permission|authorized/i,
++    );
++    await patch({ gateway: { auth: { trustedProxy: { allowUsers: [ALICE] } } } }, [
++      "gateway.auth.trustedProxy.allowUsers",
++    ]);
++    await withTestTimeout(reader.closed, 5_000, "removal must retire Bob");
++    await reader.client.stopAndWait();
++    await expect(connect(BOB)).rejects.toThrow();
++    expect(alice.closeEvents).toEqual([]);
++  }, 60_000);
++});
+diff --git a/src/gateway/server/ws-connection/authenticated-request-dispatch.identity-policy.test.ts b/src/gateway/server/ws-connection/authenticated-request-dispatch.identity-policy.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..23a69283d71847f2080f4aa77e4cfc5369ba5cd4
+--- /dev/null
++++ b/src/gateway/server/ws-connection/authenticated-request-dispatch.identity-policy.test.ts
+@@ -0,0 +1,168 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import {
++  clearRuntimeConfigSnapshot,
++  setRuntimeConfigSnapshot,
++} from "../../../config/runtime-snapshot.js";
++import type { OpenClawConfig } from "../../../config/types.openclaw.js";
++import { resetGatewayWorkAdmission } from "../../../process/gateway-work-admission.js";
++import { createDeferredCore } from "../../../shared/deferred.js";
++import { resolveGatewayAuth } from "../../auth.js";
++import { resolveGatewayIdentityPolicyGeneration } from "../../identity-policy.js";
++import { readGatewayRequestMutationAuthority } from "../../server-methods/session-mutation-guards.js";
++import {
++  createRequiredSharedGatewaySessionGenerationReader,
++  type SharedGatewaySessionGenerationState,
++} from "../../server-shared-auth-generation.js";
++import { resolveSharedGatewaySessionGeneration } from "../ws-shared-generation.js";
++import {
++  createDispatchTestHarness,
++  createOperatorWsClient,
++} from "./authenticated-request-dispatch.test-support.js";
++
++const ALICE = "alice@example.test";
++const BOB = "bob@example.test";
++
++function policy(allowUsers: string[], requiredHeaders?: string[]) {
++  const config: OpenClawConfig = {
++    gateway: {
++      trustedProxies: ["127.0.0.1"],
++      auth: {
++        mode: "trusted-proxy",
++        trustedProxy: { userHeader: "x-openclaw-user", allowUsers, requiredHeaders },
++        identityScopes: { [ALICE]: ["operator.admin"], [BOB]: ["operator.admin"] },
++      },
++    },
++  };
++  const auth = resolveGatewayAuth({ authConfig: config.gateway?.auth, env: {} });
++  return { config, auth };
++}
++
++beforeEach(() => {
++  resetGatewayWorkAdmission();
++});
++afterEach(() => {
++  clearRuntimeConfigSnapshot();
++});
++
++describe("request authority during identity-policy publication", () => {
++  it.each([
++    "unrelated addition",
++    "rejected removal",
++    "committed removal",
++    "committed proxy policy change",
++  ] as const)("uses committed policy for an in-flight request during %s", async (scenario) => {
++    const initial = policy([ALICE, BOB]);
++    const candidate = policy(
++      scenario === "unrelated addition"
++        ? [ALICE, BOB, "carol@example.test"]
++        : scenario === "committed proxy policy change"
++          ? [ALICE, BOB]
++          : [ALICE],
++      scenario === "committed proxy policy change" ? ["x-authenticated-proxy"] : undefined,
++    );
++    const generationState: SharedGatewaySessionGenerationState = {
++      current: resolveSharedGatewaySessionGeneration(
++        initial.auth,
++        initial.config.gateway?.trustedProxies,
++      ),
++      required: null,
++      identityPolicy: initial,
++    };
++    setRuntimeConfigSnapshot(initial.config, initial.config);
++    const identity = scenario === "unrelated addition" ? ALICE : BOB;
++    const client = createOperatorWsClient();
++    const identityGeneration = resolveGatewayIdentityPolicyGeneration({
++      ...initial,
++      identity,
++      method: "trusted-proxy",
++      role: "operator",
++    });
++    if (!identityGeneration) throw new Error("fixture identity was not admitted");
++    client.identityPolicy = {
++      identity,
++      method: "trusted-proxy",
++      role: "operator",
++      generation: identityGeneration,
++    };
++    client.usesSharedGatewayAuth = true;
++    client.sharedGatewaySessionGeneration = generationState.current;
++    const entered = createDeferredCore();
++    const release = createDeferredCore();
++    const persisted = vi.fn();
++    let mutationError: unknown;
++    const harness = createDispatchTestHarness({
++      getRequiredSharedGatewaySessionGeneration:
++        createRequiredSharedGatewaySessionGenerationReader(generationState),
++      extraHandlers: {
++        "test.identity-publication": async (options) => {
++          const authority = readGatewayRequestMutationAuthority(options);
++          expect(authority.family).toBe("worker");
++          entered.resolve();
++          await release.promise;
++          try {
++            if (authority.family !== "worker") throw new Error("missing worker authority");
++            authority.assertWorkerCurrent();
++            persisted();
++          } catch (error) {
++            mutationError = error;
++          }
++          options.respond(true, { persisted: persisted.mock.calls.length });
++        },
++      },
++    });
++    const dispatch = harness.dispatcher.dispatch(
++      { type: "req", id: "publication", method: "test.identity-publication", params: {} },
++      client,
++    );
++    try {
++      await Promise.race([
++        entered.promise,
++        dispatch.then(() => {
++          throw new Error("request did not reach handler");
++        }),
++      ]);
++      // Snapshot activation precedes runtime publication. Simulate its microtask
++      // boundary without treating a prepared candidate as committed authority.
++      setRuntimeConfigSnapshot(candidate.config, candidate.config);
++      generationState.current = resolveSharedGatewaySessionGeneration(
++        candidate.auth,
++        candidate.config.gateway?.trustedProxies,
++      );
++      if (scenario.startsWith("committed")) generationState.identityPolicy = candidate;
++    } finally {
++      release.resolve();
++      await dispatch;
++    }
++    if (scenario.startsWith("committed")) {
++      expect(mutationError).toBeInstanceOf(Error);
++      expect(persisted).not.toHaveBeenCalled();
++      expect(harness.send).not.toHaveBeenCalled();
++      expect(client.invalidated).toBe(true);
++      expect(harness.close).toHaveBeenCalledWith(4001, "identity policy changed");
++    } else {
++      expect(mutationError).toBeUndefined();
++      expect(persisted).toHaveBeenCalledOnce();
++      expect(client.invalidated).not.toBe(true);
++      expect(harness.close).not.toHaveBeenCalled();
++      expect(harness.send).toHaveBeenCalledWith(
++        expect.objectContaining({ id: "publication", ok: true }),
++      );
++      if (scenario === "rejected removal") {
++        setRuntimeConfigSnapshot(initial.config, initial.config);
++        generationState.current = resolveSharedGatewaySessionGeneration(
++          initial.auth,
++          initial.config.gateway?.trustedProxies,
++        );
++        await harness.dispatcher.dispatch(
++          { type: "req", id: "after-rollback", method: "test.identity-publication", params: {} },
++          client,
++        );
++        expect(persisted).toHaveBeenCalledTimes(2);
++        expect(harness.close).not.toHaveBeenCalled();
++        expect(harness.send).toHaveBeenCalledWith(
++          expect.objectContaining({ id: "after-rollback", ok: true }),
++        );
++      }
++    }
++  });
++});
+diff --git a/src/gateway/server/ws-connection/authenticated-request-dispatch.ts b/src/gateway/server/ws-connection/authenticated-request-dispatch.ts
+index f102f067482cc9915c53fa0a05cd6b7db16711cf..78c5c272b32a26abffd0b34c0543743b11dd506c 100644
+--- a/src/gateway/server/ws-connection/authenticated-request-dispatch.ts
++++ b/src/gateway/server/ws-connection/authenticated-request-dispatch.ts
+@@ -27,6 +27,10 @@ import { bindWebSocketRequestMutationAuthority } from "../../server-methods/sess
+ import type { GatewayRequestEntry } from "../../server-request-entry.js";
+ import { classifyGatewayStaleInstall } from "../../stale-install.js";
+ import { formatForLog, logWs } from "../../ws-log.js";
++import {
++  isGatewayIdentityPolicyCurrent,
++  readCommittedGatewayIdentityPolicy,
++} from "../ws-identity-policy.js";
+ import {
+   invalidateGatewayPolicyClient,
+   registerGatewayPolicyResponse,
+@@ -117,9 +121,33 @@ export function createGatewayAuthenticatedRequestDispatcher(params: {
+         if (closeInvalidatedClient(client, req.method)) {
+           return false;
+         }
+-        const requiredGeneration = client.usesSharedGatewayAuth
+-          ? getRequiredSharedGatewaySessionGeneration?.()
++        const identityAuthority = client.identityPolicy
++          ? readCommittedGatewayIdentityPolicy(
++              getRequiredSharedGatewaySessionGeneration,
++              params.handler.getResolvedAuth,
++            )
+           : undefined;
++        if (
++          client.identityPolicy &&
++          identityAuthority &&
++          !isGatewayIdentityPolicyCurrent(
++            client.identityPolicy,
++            identityAuthority.config,
++            identityAuthority.auth,
++          )
++        ) {
++          invalidateGatewayPolicyClient(client, {
++            reason: "identity-policy-changed",
++            code: 4001,
++            message: "identity policy changed",
++            close: () => close(4001, "identity policy changed"),
++          });
++          return false;
++        }
++        const requiredGeneration =
++          client.usesSharedGatewayAuth && !client.identityPolicy
++            ? getRequiredSharedGatewaySessionGeneration?.()
++            : undefined;
+         if (
+           requiredGeneration !== undefined &&
+           client.sharedGatewaySessionGeneration !== requiredGeneration
+diff --git a/src/gateway/server/ws-connection/connect-admission.identity-policy.test.ts b/src/gateway/server/ws-connection/connect-admission.identity-policy.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ed826240abec4c24323af7f14aed230b6ea09bdf
+--- /dev/null
++++ b/src/gateway/server/ws-connection/connect-admission.identity-policy.test.ts
+@@ -0,0 +1,237 @@
++import { afterEach, describe, expect, it } from "vitest";
++import {
++  clearRuntimeConfigSnapshot,
++  setRuntimeConfigSnapshot,
++} from "../../../config/runtime-snapshot.js";
++import type { OpenClawConfig } from "../../../config/types.openclaw.js";
++import { createDeferredCore } from "../../../shared/deferred.js";
++import { resolveGatewayAuth } from "../../auth.js";
++import { resolveGatewayIdentityPolicyGeneration } from "../../identity-policy.js";
++import {
++  createRequiredSharedGatewaySessionGenerationReader,
++  type SharedGatewaySessionGenerationState,
++} from "../../server-shared-auth-generation.js";
++import { resolveSharedGatewaySessionGeneration } from "../ws-shared-generation.js";
++import { resolveGatewayConnectPolicyFailure } from "./connect-admission.js";
++import type {
++  AuthenticatedGatewayConnect,
++  GatewayConnectPhaseContext,
++  GatewayWsMessageHandlerParams,
++} from "./message-handler-types.js";
++
++const ALICE = "alice@example.test";
++const BOB = "bob@example.test";
++
++function unexpected(): never {
++  throw new Error("Policy fence accessed unrelated handshake infrastructure");
++}
++
++function createContext(
++  config: OpenClawConfig,
++  generation: SharedGatewaySessionGenerationState,
++): GatewayConnectPhaseContext {
++  // Unused infrastructure fails loudly instead of bypassing the fixture's types.
++  const handler: GatewayWsMessageHandlerParams = {
++    get socket() {
++      return unexpected();
++    },
++    get connectionWork() {
++      return unexpected();
++    },
++    get upgradeReq() {
++      return unexpected();
++    },
++    get ingressAttribution() {
++      return unexpected();
++    },
++    get nodeLifecycleDispatch() {
++      return unexpected();
++    },
++    get logGateway() {
++      return unexpected();
++    },
++    get logHealth() {
++      return unexpected();
++    },
++    get logWsControl() {
++      return unexpected();
++    },
++    prepareAuthenticatedReceive: unexpected,
++    connId: "delayed-handshake",
++    bootId: "test-boot",
++    connectNonce: "test-nonce",
++    getResolvedAuth: () => resolveGatewayAuth({ authConfig: config.gateway?.auth, env: {} }),
++    getRequiredSharedGatewaySessionGeneration:
++      createRequiredSharedGatewaySessionGenerationReader(generation),
++    gatewayMethods: [],
++    events: [],
++    extraHandlers: {},
++    buildRequestContext: unexpected,
++    refreshHealthSnapshot: unexpected,
++    send: unexpected,
++    close: unexpected,
++    isClosed: unexpected,
++    clearHandshakeTimer: unexpected,
++    getClient: unexpected,
++    setClient: unexpected,
++    setHandshakeState: unexpected,
++    advanceHandshakePhase: unexpected,
++    setCloseCause: unexpected,
++    setLastFrameMeta: unexpected,
++    originCheckMetrics: { hostHeaderFallbackAccepted: 0 },
++  };
++  return {
++    handler,
++    frame: { type: "req", id: "connect", method: "connect", params: {} },
++    connectParams: {
++      minProtocol: 1,
++      maxProtocol: 1,
++      client: { id: "gateway-client", mode: "backend", platform: "test", version: "dev" },
++      role: "operator",
++      scopes: [],
++    },
++    configSnapshot: config,
++    trustedProxies: ["127.0.0.1"],
++    allowRealIpFallback: false,
++    peerLabel: "test",
++    hasProxyHeaders: true,
++    isLocalClient: false,
++    reportedClientIpSource: "trusted-proxy",
++    hasBrowserOriginHeader: false,
++    clientLabel: "test",
++    clientMeta: {},
++    markHandshakeFailure: unexpected,
++    sendHandshakeErrorResponse: unexpected,
++    sendFrame: unexpected,
++    onHelloDelivered: unexpected,
++    isWebchatConnect: unexpected,
++    runDetachedConnectWork: unexpected,
++    pendingNodePairingCleanup: {},
++    broadcastNodePairingResult: unexpected,
++    releasePendingNodePairingCleanup: unexpected,
++  };
++}
++
++afterEach(clearRuntimeConfigSnapshot);
++
++describe("identity policy after awaited handshake work", () => {
++  it.each([
++    "other identity added",
++    "own identity removed",
++    "own scopes reduced",
++    "structural rotation pending",
++    "removal candidate rejected",
++  ] as const)("revalidates when %s", async (scenario) => {
++    const config: OpenClawConfig = {
++      gateway: {
++        trustedProxies: ["127.0.0.1"],
++        auth: {
++          mode: "trusted-proxy",
++          trustedProxy: { userHeader: "x-openclaw-user", allowUsers: [ALICE, BOB] },
++          identityScopes: {
++            [ALICE]: ["operator.admin"],
++            [BOB]: ["operator.read", "operator.write"],
++          },
++        },
++      },
++    };
++    const auth = resolveGatewayAuth({ authConfig: config.gateway?.auth, env: {} });
++    const sharedGeneration = resolveSharedGatewaySessionGeneration(
++      auth,
++      config.gateway?.trustedProxies,
++    );
++    const generation: SharedGatewaySessionGenerationState = {
++      current: sharedGeneration,
++      required: null,
++      identityPolicy: { config, auth },
++    };
++    setRuntimeConfigSnapshot(config, config);
++    const identityGeneration = resolveGatewayIdentityPolicyGeneration({
++      config,
++      auth,
++      identity: BOB,
++      method: "trusted-proxy",
++      role: "operator",
++    });
++    if (!identityGeneration) throw new Error("fixture identity was not admitted");
++    const state: AuthenticatedGatewayConnect = {
++      resolvedAuth: auth,
++      minProtocol: 1,
++      maxProtocol: 1,
++      usesLegacyNodeProtocol: false,
++      role: "operator",
++      scopes: ["operator.read", "operator.write"],
++      hasRequestedScopes: true,
++      isControlUi: true,
++      isBrowserOperatorUi: true,
++      isWebchat: false,
++      isNativeAppUi: false,
++      startupPending: false,
++      device: null,
++      devicePublicKey: null,
++      deviceAuthPayloadVersion: null,
++      hasTokenAuth: false,
++      hasPasswordAuth: false,
++      authResult: { ok: true, method: "trusted-proxy", user: BOB },
++      authOk: true,
++      authMethod: "trusted-proxy",
++      pairingLocality: "remote",
++      usesSharedGatewayAuth: true,
++      sessionUsesSharedGatewayAuth: true,
++      sessionSharedGatewaySessionGeneration: sharedGeneration,
++      identityPolicy: {
++        identity: BOB,
++        method: "trusted-proxy",
++        role: "operator",
++        generation: identityGeneration,
++      },
++      issuedBootstrapProfile: null,
++      handoffBootstrapProfile: null,
++      trustedProxyAuthOk: true,
++      controlUiPairingKind: null,
++      skipLocalBackendSelfPairing: false,
++      rejectUnauthorized: unexpected,
++    };
++    const context = createContext(config, generation);
++    expect(resolveGatewayConnectPolicyFailure(context, state)).toBeUndefined();
++    const release = createDeferredCore();
++    const delayedFence = release.promise.then(() =>
++      resolveGatewayConnectPolicyFailure(context, state),
++    );
++    const next = structuredClone(config);
++    const nextAuthConfig = next.gateway?.auth;
++    if (!nextAuthConfig?.trustedProxy) throw new Error("fixture proxy config missing");
++    if (scenario === "other identity added") {
++      nextAuthConfig.trustedProxy.allowUsers = [ALICE, BOB, "carol@example.test"];
++    } else if (scenario === "own scopes reduced") {
++      nextAuthConfig.identityScopes = { [ALICE]: ["operator.admin"], [BOB]: ["operator.read"] };
++    } else if (scenario === "structural rotation pending") {
++      nextAuthConfig.trustedProxy.requiredHeaders = ["x-authenticated-proxy"];
++    } else {
++      nextAuthConfig.trustedProxy.allowUsers = [ALICE];
++    }
++    const nextAuth = resolveGatewayAuth({ authConfig: nextAuthConfig, env: {} });
++    const nextGeneration = resolveSharedGatewaySessionGeneration(
++      nextAuth,
++      next.gateway?.trustedProxies,
++    );
++    setRuntimeConfigSnapshot(next, next);
++    if (scenario === "structural rotation pending") {
++      generation.required = nextGeneration;
++    } else if (scenario !== "removal candidate rejected") {
++      generation.current = nextGeneration;
++      generation.identityPolicy = { config: next, auth: nextAuth };
++    }
++    release.resolve();
++    const failure = await delayedFence;
++    if (scenario === "other identity added") {
++      expect(failure).toBeUndefined();
++      expect(state.sessionSharedGatewaySessionGeneration).toBe(nextGeneration);
++    } else if (scenario === "removal candidate rejected") {
++      expect(failure).toBeUndefined();
++      expect(state.sessionSharedGatewaySessionGeneration).toBe(sharedGeneration);
++    } else {
++      expect(failure).toEqual({ kind: "auth" });
++    }
++  });
++});
+diff --git a/src/gateway/server/ws-connection/connect-admission.ts b/src/gateway/server/ws-connection/connect-admission.ts
+index 712b326a4136cdc0e51d21938538a4b914ab0537..308c39900741c956915d8fbc652a2d5bb1074797 100644
+--- a/src/gateway/server/ws-connection/connect-admission.ts
++++ b/src/gateway/server/ws-connection/connect-admission.ts
+@@ -30,13 +30,19 @@ import {
+   isOperatorUiClient,
+ } from "../../../utils/message-channel.js";
+ import { ControlUiGitHubError } from "../../control-ui-github-api.js";
++import { resolveIdentityScopeGrant } from "../../identity-policy.js";
+ import type { OperatorScope } from "../../operator-scopes.js";
+ import { normalizeChromeExtensionOrigin } from "../../origin-check.js";
+ import { parseGatewayRole } from "../../role-policy.js";
+ import { authenticatedProfileUnavailableError } from "../../server-methods/gateway-client-identity.js";
+ import { formatForLog } from "../../ws-log.js";
+ import { truncateCloseReason } from "../close-reason.js";
++import {
++  isGatewayIdentityPolicyCurrent,
++  readCommittedGatewayIdentityPolicy,
++} from "../ws-identity-policy.js";
+ import { checkGatewayWsBrowserOrigin } from "../ws-origin-policy.js";
++import { resolveSharedGatewaySessionGeneration } from "../ws-shared-generation.js";
+ import { isNativeAppUiClient } from "./handshake-auth-helpers.js";
+ import type {
+   AuthenticatedGatewayConnect,
+@@ -137,15 +143,7 @@ export function resolveEffectiveConnectionScopes(params: {
+   const verifiedIdentity = params.verifiedIdentity;
+   let identityScopes: OperatorScope[] = [];
+   if (params.role === "operator" && verifiedIdentity) {
+-    const exactIdentityScopes = params.identityScopes?.[verifiedIdentity];
+-    identityScopes = exactIdentityScopes ?? [];
+-    if (exactIdentityScopes === undefined && verifiedIdentity.includes("@")) {
+-      const normalizedIdentity = verifiedIdentity.toLowerCase();
+-      identityScopes =
+-        Object.entries(params.identityScopes ?? {}).find(
+-          ([identity]) => identity.includes("@") && identity.toLowerCase() === normalizedIdentity,
+-        )?.[1] ?? [];
+-    }
++    identityScopes = resolveIdentityScopeGrant(params.identityScopes, verifiedIdentity);
+   }
+   const scopes = applyConnectionScopeCap({
+     scopes: [...new Set([...params.deviceScopes, ...identityScopes])],
+@@ -185,6 +183,23 @@ export function resolveGatewayConnectPolicyFailure(
+   context: GatewayConnectPhaseContext,
+   state: AuthenticatedGatewayConnect,
+ ): { kind: "auth" } | { kind: "origin"; reason: string } | undefined {
++  if (state.identityPolicy) {
++    const { config, auth } = readCommittedGatewayIdentityPolicy(
++      context.handler.getRequiredSharedGatewaySessionGeneration,
++      context.handler.getResolvedAuth,
++    );
++    if (!isGatewayIdentityPolicyCurrent(state.identityPolicy, config, auth)) {
++      return { kind: "auth" };
++    }
++    // A membership-only publication can advance the credential generation while
++    // this identity remains unchanged. Never bypass a pending structural rotation.
++    if (state.sessionUsesSharedGatewayAuth) {
++      state.sessionSharedGatewaySessionGeneration = resolveSharedGatewaySessionGeneration(
++        auth,
++        config.gateway?.trustedProxies,
++      );
++    }
++  }
+   if (
+     state.sessionUsesSharedGatewayAuth &&
+     context.handler.getRequiredSharedGatewaySessionGeneration &&
+diff --git a/src/gateway/server/ws-connection/connect-auth.ts b/src/gateway/server/ws-connection/connect-auth.ts
+index fa6f4f76615a7bff2327d1efa4e2eaac0fb516a6..044e58bef5ae4693a584a11d14fa668c7e9444ab 100644
+--- a/src/gateway/server/ws-connection/connect-auth.ts
++++ b/src/gateway/server/ws-connection/connect-auth.ts
+@@ -16,9 +16,11 @@ import {
+ } from "../../../shared/device-bootstrap-profile.js";
+ import { AUTH_RATE_LIMIT_SCOPE_SHARED_SECRET } from "../../auth-rate-limit.js";
+ import type { GatewayAuthResult } from "../../auth.js";
++import { resolveGatewayIdentityPolicyGeneration } from "../../identity-policy.js";
+ import { withSerializedCredentialFallbackAttempt } from "../../rate-limit-attempt-serialization.js";
+ import { formatForLog } from "../../ws-log.js";
+ import { truncateCloseReason } from "../close-reason.js";
++import { readCommittedGatewayIdentityPolicy } from "../ws-identity-policy.js";
+ import { resolveSharedGatewaySessionGeneration } from "../ws-shared-generation.js";
+ import { resolveConnectAuthDecision, resolveConnectAuthState } from "./auth-context.js";
+ import { formatGatewayAuthFailureMessage } from "./auth-messages.js";
+@@ -495,10 +497,42 @@ async function authenticateGatewayConnectCore(
+     usesSharedGatewayAuth ||
+     deviceTokenSharedGatewaySessionGeneration !== undefined ||
+     controlUiBootstrapSharedGatewaySessionGeneration !== undefined;
+-  const sessionSharedGatewaySessionGeneration =
++  let sessionSharedGatewaySessionGeneration =
+     sharedGatewaySessionGeneration ??
+     deviceTokenSharedGatewaySessionGeneration ??
+     controlUiBootstrapSharedGatewaySessionGeneration;
++  let identityPolicy: AuthenticatedGatewayConnect["identityPolicy"];
++  if ((authMethod === "trusted-proxy" || authMethod === "tailscale") && authResult.user) {
++    const inputs = { identity: authResult.user, method: authMethod, role };
++    const generation = resolveGatewayIdentityPolicyGeneration({
++      ...inputs,
++      config: context.configSnapshot,
++      auth: resolvedAuth,
++    });
++    const { config: currentConfig, auth: currentAuth } = readCommittedGatewayIdentityPolicy(
++      getRequiredSharedGatewaySessionGeneration,
++      getResolvedAuth,
++    );
++    if (
++      !generation ||
++      generation !==
++        resolveGatewayIdentityPolicyGeneration({
++          ...inputs,
++          config: currentConfig,
++          auth: currentAuth,
++        })
++    ) {
++      close(4001, "identity policy changed");
++      return undefined;
++    }
++    identityPolicy = { ...inputs, generation };
++    if (sessionUsesSharedGatewayAuth) {
++      sessionSharedGatewaySessionGeneration = resolveSharedGatewaySessionGeneration(
++        currentAuth,
++        currentConfig.gateway?.trustedProxies,
++      );
++    }
++  }
+   if (sessionUsesSharedGatewayAuth) {
+     const requiredSharedGatewaySessionGeneration = getRequiredSharedGatewaySessionGeneration?.();
+     if (
+@@ -557,6 +591,7 @@ async function authenticateGatewayConnectCore(
+     authMethod,
+     pairingLocality,
+     usesSharedGatewayAuth,
++    identityPolicy,
+     sessionUsesSharedGatewayAuth,
+     sessionSharedGatewaySessionGeneration,
+     issuedBootstrapProfile,
+diff --git a/src/gateway/server/ws-connection/connect-session.ts b/src/gateway/server/ws-connection/connect-session.ts
+index e1aa7842394035857ba031312085bf4bafe3d3d6..4bce96f91cd82d74b1d6a1008e70eff902b6369a 100644
+--- a/src/gateway/server/ws-connection/connect-session.ts
++++ b/src/gateway/server/ws-connection/connect-session.ts
+@@ -417,6 +417,7 @@ export async function attachAuthenticatedGatewayConnect(
+     pairedClientId: isBrowserCopilotClient(connectParams.client)
+       ? connectParams.client.id
+       : undefined,
++    identityPolicy: state.identityPolicy,
+     usesSharedGatewayAuth: sessionUsesSharedGatewayAuth,
+     sharedGatewaySessionGeneration: sessionSharedGatewaySessionGeneration,
+     presenceKey,
+@@ -535,6 +536,7 @@ export async function attachAuthenticatedGatewayConnect(
+     }
+     return;
+   }
++  nextClient.sharedGatewaySessionGeneration = state.sessionSharedGatewaySessionGeneration;
+   const handoffReceiver = context.handler.prepareAuthenticatedReceive(role);
+   if (!handoffReceiver.ok) {
+     const { cause, message } = handoffReceiver.error;
+diff --git a/src/gateway/server/ws-connection/message-handler-types.ts b/src/gateway/server/ws-connection/message-handler-types.ts
+index 792b1e9f65a5f293ff84d2d082848a84aee26840..d38df1304d3a98f7a5820f23e32e71d34e0b48fd 100644
+--- a/src/gateway/server/ws-connection/message-handler-types.ts
++++ b/src/gateway/server/ws-connection/message-handler-types.ts
+@@ -154,6 +154,7 @@ export type AuthenticatedGatewayConnect = {
+   usesSharedGatewayAuth: boolean;
+   sessionUsesSharedGatewayAuth: boolean;
+   sessionSharedGatewaySessionGeneration?: string;
++  identityPolicy?: GatewayWsClient["identityPolicy"];
+   issuedBootstrapProfile: DeviceBootstrapProfile | null;
+   handoffBootstrapProfile: DeviceBootstrapProfile | null;
+   trustedProxyAuthOk: boolean;
+diff --git a/src/gateway/server/ws-identity-policy.ts b/src/gateway/server/ws-identity-policy.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1a3858f85b867b29faa80ac210d709e144a5118d
+--- /dev/null
++++ b/src/gateway/server/ws-identity-policy.ts
+@@ -0,0 +1,60 @@
++import { getRuntimeConfig } from "../../config/io.js";
++import type { OpenClawConfig } from "../../config/types.openclaw.js";
++import type { ResolvedGatewayAuth } from "../auth.js";
++import { resolveGatewayIdentityPolicyGeneration } from "../identity-policy.js";
++import { getSharedGatewaySessionGenerationReaderState } from "../server-shared-auth-generation.js";
++import { invalidateGatewayPolicyClient } from "./ws-policy-close.js";
++import { resolveSharedGatewaySessionGeneration } from "./ws-shared-generation.js";
++import type { GatewayWsClient } from "./ws-types.js";
++
++export function isGatewayIdentityPolicyCurrent(
++  policy: NonNullable<GatewayWsClient["identityPolicy"]>,
++  config: OpenClawConfig,
++  auth: ResolvedGatewayAuth,
++): boolean {
++  return policy.generation === resolveGatewayIdentityPolicyGeneration({ ...policy, config, auth });
++}
++
++/** Called after committed publication, before shared-credential eviction. */
++export function reconcileGatewayIdentityPolicyClients(
++  clients: Iterable<
++    Pick<
++      GatewayWsClient,
++      | "identityPolicy"
++      | "usesSharedGatewayAuth"
++      | "sharedGatewaySessionGeneration"
++      | "invalidated"
++      | "invalidatedReason"
++    > & { socket: Pick<GatewayWsClient["socket"], "close"> }
++  >,
++  config: OpenClawConfig,
++  auth: ResolvedGatewayAuth,
++): void {
++  for (const client of clients) {
++    if (!client.identityPolicy || client.invalidated) continue;
++    if (!isGatewayIdentityPolicyCurrent(client.identityPolicy, config, auth)) {
++      invalidateGatewayPolicyClient(client, {
++        reason: "identity-policy-changed",
++        code: 4001,
++        message: "identity policy changed",
++      });
++    } else if (client.usesSharedGatewayAuth) {
++      // Keep credential/token generations strict; only this already authenticated
++      // socket can survive another identity's membership change.
++      client.sharedGatewaySessionGeneration = resolveSharedGatewaySessionGeneration(
++        auth,
++        config.gateway?.trustedProxies,
++      );
++    }
++  }
++}
++
++/** The shared-auth owner publishes policy only after the runtime commit succeeds. */
++export function readCommittedGatewayIdentityPolicy(
++  readGeneration: (() => string | undefined) | undefined,
++  getResolvedAuth: () => ResolvedGatewayAuth,
++): { config: OpenClawConfig; auth: ResolvedGatewayAuth } {
++  const committed =
++    readGeneration && getSharedGatewaySessionGenerationReaderState(readGeneration)?.identityPolicy;
++  return committed ?? { config: getRuntimeConfig(), auth: getResolvedAuth() };
++}
+diff --git a/src/gateway/server/ws-types.ts b/src/gateway/server/ws-types.ts
+index b7fc899cf7ffcca5556f566cdd70a114107ba1d7..93c79eb931db6dbed257036798e02ae5a021ed18 100644
+--- a/src/gateway/server/ws-types.ts
++++ b/src/gateway/server/ws-types.ts
+@@ -41,6 +41,13 @@ export type GatewayWsClient = PluginNodeCapabilityClient & {
+   pairedClientId?: string;
+   usesSharedGatewayAuth: boolean;
+   sharedGatewaySessionGeneration?: string;
++  /** Server-attested admission and identity grants used by this connection. */
++  identityPolicy?: {
++    identity: string;
++    method: "trusted-proxy" | "tailscale";
++    role: string;
++    generation: string;
++  };
+   presenceKey?: string;
+   /** Connection-owned timing facts, reconciled across live peers independently of the TTL cache. */
+   personPresence?: { onlineSince: number; lastActivityAt?: number };
+diff --git a/src/gateway/user-profiles-http.ts b/src/gateway/user-profiles-http.ts
+index 9255049edfac4bd5f46c43da577368deeb1e2308..4037f3383ff4eb89ab63c0a696e95f02cb744697 100644
+--- a/src/gateway/user-profiles-http.ts
++++ b/src/gateway/user-profiles-http.ts
+@@ -287,6 +287,7 @@ export async function handleUserProfileAvatarHttpRequest(
+   pathname: string,
+   opts: {
+     auth: ResolvedGatewayAuth;
++    getResolvedAuth?: () => ResolvedGatewayAuth;
+     basePath?: string;
+     trustedProxies?: string[];
+     allowRealIpFallback?: boolean;
+@@ -324,6 +325,7 @@ export async function handleUserProfileAvatarHttpRequest(
+     req,
+     res,
+     auth: opts.auth,
++    getResolvedAuth: opts.getResolvedAuth,
+     trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
+     allowRealIpFallback: opts.allowRealIpFallback ?? cfg.gateway?.allowRealIpFallback,
+     rateLimiter: opts.rateLimiter,

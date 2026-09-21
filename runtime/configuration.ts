@@ -49,6 +49,7 @@ export function initialConfiguration(
       bind: "loopback",
       port: 18789,
       terminal: { enabled: false },
+      cliAgents: { enabled: false },
       trustedProxies: ["127.0.0.1"],
       controlUi: {
         allowedOrigins: [settings.publicOrigin],

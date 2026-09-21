@@ -120,8 +120,8 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 
 ```sh
 stg init
-# Names are given newest first for these two commits.
-stg uncommit browser-routing-guidance optional-marketplace
+# Supply every series entry in reverse order (newest first), without .patch.
+stg uncommit membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 
