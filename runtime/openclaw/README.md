@@ -1,4 +1,4 @@
-# Maintaining OpenClaw patches
+# OpenClaw distribution and patches
 
 ClawScarf maintains Git mail patches against the exact OpenClaw source revision
 in [components.json](../../release/components.json). The ordered [series](patches/series),
@@ -11,9 +11,74 @@ and [browser routing guidance](patches/browser-routing-guidance.prompt.md). Thes
 downstream changes; no upstream submission is required. The marketplace setting
 defaults to enabled, preserving OpenClaw's native default. Set
 `marketplace.enabled: false` in native configuration to exercise the disabled
-surface, then restart the Gateway and reload the UI. The ClawScarf preset is not
-changed by this tooling slice. Broader curation and package exclusion remain in
-the [curation design](../curation.md).
+surface, then restart the Gateway and reload the UI. The preset does not yet select
+false. [TODO.md](../../TODO.md#openclaw-curation) owns unimplemented curation,
+package selection and release qualification. Individual patch intents own their
+implemented requirements; this README owns the general approach and maintenance.
+
+## Configuration, patches and packages
+
+ClawScarf retains OpenClaw's native chat, agents, files, tools and administration.
+The distribution selects built-ins while allowing administrators to deliberately
+add plugins, skills and MCP servers. Native Lobster is required, People mandatory
+and Connections optional. Curation preserves the [team security boundary](../../README.md):
+runtime code holds Gateway authority; native roles and UI controls are not
+isolation from that code. Entry/revocation and outer protection remain external.
+
+Use existing configuration when it covers the behavior, source patches for missing
+feature controls, and packaging to exclude files. These mechanisms are distinct:
+
+| Mechanism            | Meaning                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Native configuration | Controls availability/eligibility; files remain installed and administrators can change the setting           |
+| Source patch         | Changes the owning UI/backend implementation; hiding navigation alone does not disable RPC/HTTP, CLI or tools |
+| Package selection    | Determines shipped files and dependencies; a disabled catalog or missing executable does not remove them      |
+
+The [preset and capability guide](../README.md#capability-controls) owns current
+configuration: the community invitation, operator terminal and Codex/Anthropic
+external session catalogs are already disabled. Presets apply once; refresh does
+not overwrite unrelated administrator edits. Relevant native semantics are:
+
+- `skills.entries.<name>.enabled: false` changes eligibility, not installation.
+  A nonempty `skills.allowBundled` restricts bundled/Custodian skills; omitted or
+  `[]` is unrestricted. It does not cover every plugin/workspace/user skill.
+- Empty `plugins.allow` is unrestricted. Activation also considers explicit
+  deny/disable decisions, selected slots and enabled bundled channels.
+- `security.installPolicy` is installation approval, not marketplace removal;
+  catalog access can precede policy evaluation. Missing credentials or CLIs likewise
+  do not establish curation.
+- `gateway.controlUi.root` serves separately built native UI assets. It does not
+  disable backends or avoid maintaining compatible UI code.
+
+Optional-looking features are not necessarily plugins. GitHub account/session/tool
+integration, previews and OAuth background work have core owners. Device pairing
+has plugin, core RPC and HTTP entry points; it is distinct from teammate enrollment.
+[Browser enrollment](../../deploy/execution/browser-node/operator.ts) uses native
+bootstrap-token and pairing operations. Messaging channels are alternative inbound
+conversation paths with their own identity/admission rules, not merely Connections.
+
+Feature patches keep one native availability decision shared with the UI. Cover
+direct routes, search/palette/contextual links, prompts, RPC/HTTP, CLI/tools,
+background work and outbound calls. Disabled operations reject before effects;
+document restart requirements. Preserve shared administration APIs, native
+authorization and required attribution; do not add ingress RPC filters or a
+replacement dashboard/role database. New feature requirements start in TODO and
+move into paired patch intents as implemented.
+
+`OPENCLAW_EXTENSIONS=codex` retains that optional extension alongside upstream's
+default packaged set; it is not an exclusive image inventory. A catalog listing
+does not prove a plugin is installed or active. Inspect package output, separately
+downloaded artifacts, ClawScarf plugins and packs. Deletion in a later image layer
+leaves bytes in inherited layers. Built-in selection and administrator additions
+have different owners; inventory checks must not delete user-installed packages.
+
+[Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
+[packs](../../packs/README.md) supply native files. Several recipes can share an
+image; executable dependency differences can justify a variant. Skills do not
+install their required CLIs. Gateway/local tools/shell/Lobster share the team
+filesystem; the browser controller remains separate. Package downloads and MCP
+transports remain subject to outer network policy, without controller authority
+inside the runtime.
 
 ## Source of truth and order
 
@@ -134,7 +199,8 @@ behavior before dropping a patch already implemented upstream.
 Export updates the expected tree after exact replay. Run relevant upstream tests,
 type checks, full build and ClawScarf acceptance against the reconstructed source.
 A clean application cannot detect a newly introduced marketplace path or unwanted
-built-in; preserve the curation contract and image inventory checks. Upgrade
+built-in; requalify implemented feature contracts and review the
+[pending inventory requirements](../../TODO.md#openclaw-curation). Upgrade
 candidate automation and a real newer-upstream qualification are not implemented
 by this initial workflow; the tooling trial exercised conflicting synthetic bases.
 
@@ -155,6 +221,8 @@ revision metadata agrees across builders; user Git identity/environment is ignor
 
 The initial marketplace experiment passed its disabled/enabled UI and native
 operation checks. Browser guidance regressions exercise actual registration and
-routing owners with controlled transports. A real model-selected browser turn
-through the confined deployment remains required before enabling browsing by
-default. No existing installation is modified by prepare, export or verify.
+routing owners with controlled transports. A reconstructed source build and
+ClawScarf checks/build passed locally. The source/CI changes are still unpushed;
+no patched candidate has run through remote CI, and published alpha.3 predates
+these patches. [TODO.md](../../TODO.md) tracks release and real browser qualification.
+No existing installation is modified by prepare, export or verify.

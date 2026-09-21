@@ -1,9 +1,9 @@
 # Native configuration
 
-The [curation review](curation.md) distinguishes existing configuration from
-proposed changes to OpenClaw packaging, UI and backend capabilities. The
-[maintained source series](openclaw/README.md) currently adds optional marketplace
-availability and corrects browser-routing guidance; broader curation remains proposed.
+The [OpenClaw distribution guide](openclaw/README.md) explains configuration,
+packaging and source patch maintenance. The maintained series adds optional
+marketplace availability and corrects browser-routing guidance;
+[TODO.md](../TODO.md#openclaw-curation) owns remaining curation work.
 
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 

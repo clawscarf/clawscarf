@@ -34,7 +34,8 @@ belongs to ClawScarf's configuration. No other patch in this series is required.
 This patch does not physically remove bundled packages, curate every channel or
 provider setup choice, rewrite publishing templates, or control an independently
 installed harness's marketplace. It is not a shell/network security boundary.
-The broader [curation design](../../curation.md) owns those separate decisions.
+[TODO.md](../../../TODO.md#openclaw-curation) owns those separate decisions;
+the [distribution guide](../README.md) explains the general approach.
 
 Do not import broad configuration loading into low-level catalog/worker modules:
 that previously pulled unrelated runtime assets into the worker deployment.

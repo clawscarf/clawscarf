@@ -32,40 +32,87 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## OpenClaw curation
 
-The [curation design](runtime/curation.md) owns selection and acceptance requirements;
-its [status table](runtime/curation.md#current-status) separates implemented work from
-these open tasks. Establish retained administration before removing its old entry
-points. These tasks do not authorize release publication or upstream PRs.
+The [distribution guide](runtime/openclaw/README.md) owns general principles and
+patch maintenance. Requirements below are unimplemented or unqualified; establish
+retained administration before removing its old entry points. These tasks do not
+authorize release publication or upstream PRs.
 
 - [ ] **Configuration:** Set `gateway.cliAgents.enabled: false` in the preset;
       verify picker suppression and retained managed model routes.
-- [ ] **Patch:** Add the native `agents.create` form and preserve the existing agent
-      editor before removing or narrowing Custodian and its setup skills.
-- [ ] **Patch:** Provide installed-only plugin administration and pinned npm
-      installation, retaining custom skills, scoped MCP and the operator's local-artifact path.
+- [ ] **Patch:** Add a native `agents.create` form followed by the existing editor,
+      workspace and tool/skill controls before removing or narrowing Custodian and
+      its setup skills. Preserve native authorization; do not create a new agent store.
+- [ ] **Patch:** Provide installed-only plugin inspect/enable/disable/reload/update/
+      uninstall and an explicit pinned npm package/version form using native
+      `plugins.install`, without discovery or catalog fallback. Retain selected plugin
+      settings and the CLI local-artifact path; web users cannot bypass local-client checks.
+- [ ] **Patch:** Preserve native source trust, capability consent, install policy,
+      integrity and transactional publication in the curated install/update paths.
+      Keep explicit source/version choices, reject ambiguous plugin-ID collisions and
+      avoid update-all catalog fetches. Browser archive upload needs a separate contract.
+- [ ] **Verification:** Preserve custom skill authoring/upload/workspace files,
+      agent assignment and eligibility feedback, plus scoped stdio/remote MCP,
+      enablement/tool controls and credentials/OAuth. Test actual dependency fetches
+      and blocked destinations without widening egress; a new package registry is not required.
 - [ ] **Configuration + patch completion:** Select `marketplace.enabled: false` once
-      retained administration works; remove remaining ClawHub promotion/setup references
-      and cover independent marketplaces in retained harnesses. Reuse the existing native patch.
-- [ ] **Patch + configuration:** Make core GitHub integration optional, covering
-      account/session/tool APIs, previews, credentials and background OAuth; disable it
-      in the base while preserving ordinary links and deliberate Git CLI use.
-- [ ] **Patch:** Remove personal-device setup UI and backend entry points while
-      preserving browser-node enrollment. Qualify identity/admission before admitting channels.
-- [ ] **Patch:** Apply the remaining UI/settings selection, including provider onboarding,
-      Labs, raw-config catch-all, extra workspace pages and promotion; cover routes/search/
-      palette/contextual links and preserve People, optional Connections and native administration.
+      retained administration works; remove remaining ClawHub promotion/setup/publishing
+      references and independent marketplaces in retained harnesses, including
+      `codex_plugins`. Reuse the existing native patch; retain required attribution.
+- [ ] **Patch + configuration:** Make core GitHub integration optional and disable it
+      in the base: account/session/tool APIs, authenticated previews, credential injection,
+      profile synchronization and background OAuth. Choose a core switch or plugin seam;
+      preserve ordinary links and deliberate Git CLI use, without automatic authenticated previews.
+- [ ] **Patch:** Remove personal-device onboarding and native-client settings from the
+      base, including plugin, core setup RPC and join-HTTP entry points. Preserve required
+      browser-node bootstrap-token/pairing operations and review each retained flow's scopes.
+- [ ] **Packaging + configuration:** Include no messaging channels by default. Before
+      admitting a recipe channel, qualify sender identity/admission; expose Communications/
+      Talk and related setup only for supported capabilities. Connections grants are separate.
+- [ ] **Patch:** Keep managed LiteLLM model selection while removing independent provider
+      onboarding and personal direct-provider accounts from Profile, model setup and backends.
+- [ ] **Patch:** Curate everyday UI: retain chat/sessions/search/uploads/files/artifacts,
+      agent/model selection, identity and relevant appearance/notification preferences.
+      Remove CLI-session controls, Gateway URL/token switching and unrelated About/Apps/
+      community/download/browser-extension promotion; retain version, provenance and licenses.
+- [ ] **Patch:** Retain intentional administrator settings for agents, scoped MCP,
+      People, optional Connections, selected memory/import and automation/cron/tasks,
+      security/secrets/approvals, infrastructure and authorized debug/logs/usage. Review
+      engines, hooks, commands and bindings; absent Connections must need no page/tools/calls/credentials.
+- [ ] **Patch:** Remove Labs, Advanced/raw-config catch-all, cloud-worker provisioning,
+      cosmetic Lobsterdex and unselected Dashboards/Systems/Activity/Meetings/Portals/Worktrees.
+      Preserve custom-plugin support for People/Connections and required Lobster workflows.
+      Cover direct routes/search/palette/contextual links/prompts; no automatic catch-all for new sections.
 - [ ] **Patch:** Remove competing upstream self-update UI and gate its backend operations;
-      keep runtime version ownership in ClawScarf releases.
-- [ ] **Packaging:** Inventory and qualify the candidate plugin/skill selection and
-      dependency closure; exclude unwanted files before final image layers, and reject
-      unexpected built-ins or route/feature additions during upgrades. Preserve required Lobster.
-- [ ] **Recipe + packaging:** Select and exercise document-analysis tools and skills;
-      decide whether their executable dependencies justify an additional runtime image.
+      keep runtime version ownership in ClawScarf releases and native lifecycle for user additions.
+- [ ] **Packaging:** Qualify the initial candidate: `clawscarf-access`, official `lobster`
+      with its embedded runtime, `browser` plus node-host registration, `memory-core`,
+      initially `openai`/`codex`, and optional `clawscarf-connections`. Trace managed
+      Responses/Completions dependencies before removing transports; require no new provider secrets.
+- [ ] **Packaging:** Physically omit ordinary bundled/Custodian skills and unselected
+      channels/providers/plugins; keep only selected plugin-owned skills/bundles/pack files.
+      Start with one team image and declared optional Connections; do not restore all upstream
+      defaults to fix missing imports or fetch omitted built-ins on first use.
+- [ ] **Packaging:** Record exact plugin IDs, skill paths, versions/integrities, origins
+      and dependency closure across upstream output, downloaded artifacts, native plugins
+      and packs. Exclude files before final distributed layers; reject extra/missing/duplicate
+      entries and new upstream routes/features. Preserve deliberate administrator additions.
+- [ ] **Recipe + packaging:** Select and exercise document/PDF tools and skills on the
+      shared team filesystem; create a runtime variant only if executable dependencies justify it.
+      A skill does not install its CLI; `clawpdf` was an example, not a selected dependency.
 - [ ] **Verification:** Run the existing two-patch source through release-candidate CI;
       local source tests do not qualify the patched images on both architectures.
-- [ ] **Verification:** Qualify the complete curated image against the design's acceptance
-      cases, including explicit plugin/MCP lifecycle, user-addition retention and zero unwanted
-      catalog traffic. Verify artifact provenance and update publication status when released.
+- [ ] **Verification:** Qualify curated absence across UI, direct RPC/HTTP/CLI/tools,
+      cached paths and cold-start/background services: disabled features reject before
+      effects and produce no unwanted catalog traffic. Exercise enabled/disabled states,
+      required restarts and injected unexpected inventory entries.
+- [ ] **Verification:** Qualify retained chat/upload analysis, shared shell/Lobster files,
+      approval/resume, agents/models, People/revocation and optional Connections on exact images.
+      Cover member/admin and desktop/mobile. Preserve browser enrollment; real browsing/file
+      transfer remains in [Browser qualification](#browser-qualification).
+- [ ] **Verification:** Exercise supplied-plugin install/enable/invoke/restart/explicit
+      update/removal and MCP add/authenticate/invoke/remove, including unauthorized-mutation
+      rejection and user additions/unrelated settings surviving restart and recipe reapplication.
+      Verify artifact provenance and update publication status when released.
 
 ## Future decisions
 
