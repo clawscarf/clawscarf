@@ -46,118 +46,11 @@ Keep existing native plugin management, custom skills and MCP. The
 [deferred decisions](#deferred-product-decisions). No release publication or upstream PRs
 are authorized by this checklist.
 
-### Plugins
+### Retained skills
 
-Retain these 22 plugins without automatically enabling optional capabilities:
-`clawscarf-access`, `clawscarf-connections`, `openai`, `codex`, `litellm`, `browser`,
-`file-transfer`, `document-extract`, `web-readability`, `oc-path`, `memory-core`,
-`active-memory`, `memory-wiki`, `lobster`, `llm-task`, `workboard`, `policy`,
-`telegram`, `a2a`, `reef`, `imap` and `webhooks`.
-Retain the browser-node registration, Lobster's embedded runtime and native PDF
-extraction's bundled `clawpdf`. Retaining model runtime support does not retain
-personal-provider account onboarding.
+The shipped selection lives in the [distribution inventory](runtime/openclaw/inventory.json);
+[image packaging](deploy/images/README.md) owns its application and verification.
 
-Remove each of these plugins from the distributed image, not just its enabled flag:
-
-- [ ] Remove `admin-http-rpc` — unused additional admin HTTP endpoint.
-- [ ] Remove `alibaba` — separate video-provider integration.
-- [ ] Remove `anthropic` — direct Anthropic accounts and Claude CLI; retain Claude models through LiteLLM.
-- [ ] Remove `apple-fm` — Mac-only Apple Intelligence.
-- [ ] Remove `azure-speech` — separate Azure speech setup.
-- [ ] Remove `beam` — external coding-session mirroring.
-- [ ] Remove `bonjour` — local-network Gateway discovery.
-- [ ] Remove `canvas` — paired Mac panels; preserve browser widgets and custom plugin UI.
-- [ ] Remove `clawrouter` — alternative model router.
-- [ ] Remove `copilot-proxy` — separate Copilot model route.
-- [ ] Remove `crabbox` — cloud-worker provisioning.
-- [ ] Remove `cua-computer` — personal desktop-node control.
-- [ ] Remove `deepgram` — separate transcription service.
-- [ ] Remove `device-pair` — personal-device setup; preserve core browser-node pairing.
-- [ ] Remove `elevenlabs` — separate speech service.
-- [ ] Remove `fal` — separate image/music/video provider.
-- [ ] Remove `geolocation` — client-IP location lookup.
-- [ ] Remove `github-copilot` — personal GitHub Copilot provider.
-- [ ] Remove `google` — direct Google accounts; retain Google models through LiteLLM.
-- [ ] Remove `huggingface` — direct model-provider integration.
-- [ ] Remove `linux-node` — desktop notifications, camera and location.
-- [ ] Remove `lmstudio` — personal/local inference-server integration.
-- [ ] Remove `logbook` — personal desktop screenshot capture.
-- [ ] Remove `microsoft` — separate speech-provider integration.
-- [ ] Remove `microsoft-foundry` — direct model-provider integration.
-- [ ] Remove `migrate-claude` — migration from Claude installations.
-- [ ] Remove `migrate-hermes` — migration from Hermes installations.
-- [ ] Remove `minimax` — direct model/media-provider integration.
-- [ ] Remove `nvidia` — direct model-provider integration; preserve NVIDIA OpenShell.
-- [ ] Remove `ollama` — separate local/cloud model integration.
-- [ ] Remove `onepassword` — separate 1Password installation and secrets broker.
-- [ ] Remove `opencode-go` — direct model-provider integration.
-- [ ] Remove `openrouter` — direct integration; retain OpenRouter models through LiteLLM.
-- [ ] Remove `runway` — separate video service.
-- [ ] Remove `senseaudio` — separate transcription service.
-- [ ] Remove `session-share` — sharing between paired Gateways.
-- [ ] Remove `sglang` — separate inference-server integration.
-- [ ] Remove `talk-voice` — voice selection for the unselected Talk setup.
-- [ ] Remove `together` — direct model/video-provider integration.
-- [ ] Remove `tts-local-cli` — unshipped speech executable.
-- [ ] Remove `vault` — separate HashiCorp Vault integration.
-- [ ] Remove `vllm` — separate inference-server integration.
-- [ ] Remove `xai` — direct model/media/search-provider integration.
-
-### Skills
-
-Retain `browser-automation`, `connections`, `wiki-maintainer`, `diagram-maker`,
-`node-inspect-debugger`, `skill-creator`, `spike`, `taskflow`, `visualize` and `weather`.
-Plugin-owned skills follow their owning capability; Connections remains optional.
-Preserve administrator-authored and other user-installed/local/workspace skills.
-
-Remove each of these standalone bundled skills independently of plugin removal:
-
-- [ ] Remove `1password` — missing op executable.
-- [ ] Remove `apple-notes` — Mac application and missing memo executable.
-- [ ] Remove `apple-reminders` — Mac application and missing remindctl executable.
-- [ ] Remove `bear-notes` — Mac application and missing grizzly executable.
-- [ ] Remove `blogwatcher` — missing blogwatcher executable.
-- [ ] Remove `blucli` — personal audio hardware and missing blu executable.
-- [ ] Remove `camsnap` — camera workflow and missing camsnap executable.
-- [ ] Remove `clawhub` — disabled marketplace.
-- [ ] Remove `coding-agent` — separate coding-worker setup and unavailable CLI commands on PATH.
-- [ ] Remove `control-ui` — upstream Gateway/dashboard/setup instructions outside the selected scope.
-- [ ] Remove `eightctl` — Eight Sleep hardware.
-- [ ] Remove `gemini` — missing Gemini CLI and separate model setup.
-- [ ] Remove `gh-issues` — missing GitHub CLI.
-- [ ] Remove `gifgrep` — missing gifgrep executable.
-- [ ] Remove `github` — missing GitHub CLI; core GitHub removal is a separate task.
-- [ ] Remove `gog` — missing Google Workspace CLI.
-- [ ] Remove `goplaces` — missing executable and separate Google Places key.
-- [ ] Remove `healthcheck` — host firewall/SSH administration outside the agent runtime's responsibility.
-- [ ] Remove `himalaya` — missing email CLI.
-- [ ] Remove `mcporter` — missing executable; preserve native MCP support.
-- [ ] Remove `meme-maker` — novelty workflow with browser/service assumptions.
-- [ ] Remove `model-usage` — missing CodexBar and external coding-session cost logs.
-- [ ] Remove `nano-pdf` — missing nano-pdf executable; preserve native PDF extraction.
-- [ ] Remove `node-connect` — personal-device/Gateway setup.
-- [ ] Remove `notion` — separate account/token instructions; use optional Connections.
-- [ ] Remove `obsidian` — missing Obsidian application/CLI.
-- [ ] Remove `openai-whisper` — missing Whisper executable.
-- [ ] Remove `openai-whisper-api` — requires a direct OpenAI key inside the runtime.
-- [ ] Remove `openhue` — personal lighting hardware.
-- [ ] Remove `oracle` — missing executable and separate model/browser setup.
-- [ ] Remove `ordercli` — personal food-order service.
-- [ ] Remove `peekaboo` — Mac desktop automation.
-- [ ] Remove `python-debugpy` — unshipped debugpy for advertised remote debugging; preserve Python execution.
-- [ ] Remove `sag` — missing executable and separate ElevenLabs setup.
-- [ ] Remove `sherpa-onnx-tts` — missing speech runtime/models.
-- [ ] Remove `songsee` — missing audio-analysis executable.
-- [ ] Remove `sonoscli` — personal speaker hardware.
-- [ ] Remove `spotify-player` — missing playback executables.
-- [ ] Remove `summarize` — missing summarize executable; preserve ordinary summarization.
-- [ ] Remove `taskflow-inbox-triage` — synthetic demonstration, not working inbox integration.
-- [ ] Remove `things-mac` — Mac application.
-- [ ] Remove `tmux` — unshipped executable.
-- [ ] Remove `trello` — missing jq and separate account credentials.
-- [ ] Remove `xurl` — missing X CLI and separate account setup.
-- [ ] Remove the `canvas` skill with its owning Canvas plugin.
-- [ ] Remove `obsidian-vault-maintainer` from `memory-wiki`; retain `wiki-maintainer`.
 - [ ] Change `skill-creator` instructions to use installed `python3` instead of `python`;
       exercise its packaged validator.
 - [ ] Fix `taskflow` example paths to use packaged files rather than assuming the
@@ -193,8 +86,8 @@ Remove each of these standalone bundled skills independently of plugin removal:
 
 ### Completion checks
 
-- [ ] Build the selected image with no removed files in distributed layers or automatic
-      first-use restoration. Check exact plugin IDs, skill paths, dependency versions,
+- [ ] Qualify the curated inventory on both released architectures, including no removed
+      files in distributed layers or automatic first-use restoration. Check dependency versions,
       integrity and origins across upstream output, downloads and packs; reject unexpected,
       missing or duplicate entries. Preserve licenses and administrator additions.
 - [ ] Update shipped docs/help, tool descriptions, prompts and skill instructions with

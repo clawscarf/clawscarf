@@ -1,0 +1,535 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Mon, 21 Sep 2026 19:14:50 +0200
+Subject: [PATCH] Support exclusive Docker plugin and skill inventories
+
+ClawScarf-Patch: curated-image-inventory
+---
+ Dockerfile                                   |  16 +-
+ scripts/lib/docker-plugin-selection.mjs      |   2 +-
+ scripts/prune-docker-plugin-dist.mjs         |  26 ++-
+ scripts/prune-docker-skills.mjs              | 113 ++++++++++++
+ src/plugins/prune-docker-plugin-dist.test.ts |  47 +++++
+ test/scripts/docker-plugin-selection.test.ts |  11 ++
+ test/scripts/prune-docker-skills.test.ts     | 178 +++++++++++++++++++
+ 7 files changed, 389 insertions(+), 4 deletions(-)
+ create mode 100644 scripts/prune-docker-skills.mjs
+ create mode 100644 test/scripts/prune-docker-skills.test.ts
+
+diff --git a/Dockerfile b/Dockerfile
+index db11ff7ece84abfc3d80f349280951959be6f472..50c12f0355b32d0ce77933b040e330115a0f7c8c 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -9,6 +9,10 @@
+ #
+ # Build stages use full bookworm; the runtime image is always bookworm-slim.
+ ARG OPENCLAW_EXTENSIONS=""
++# Distribution builds can make the selection exclusive and curate bundled skills.
++# Empty skill selection preserves upstream defaults; these affect image files only.
++ARG OPENCLAW_EXTENSIONS_ONLY=0
++ARG OPENCLAW_DOCKER_SKILLS=""
+ ARG OPENCLAW_BUNDLED_PLUGIN_DIR=extensions
+ ARG OPENCLAW_DOCKER_BUILD_NODE_OPTIONS="--max-old-space-size=8192"
+ ARG OPENCLAW_DOCKER_BUILD_TSDOWN_MAX_OLD_SPACE_MB=""
+@@ -29,6 +33,7 @@ ARG OPENCLAW_BUN_IMAGE="docker.io/oven/bun:1.4.0@sha256:5ff609364c049b54eb0ff560
+ 
+ FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS workspace-deps
+ ARG OPENCLAW_EXTENSIONS
++ARG OPENCLAW_EXTENSIONS_ONLY
+ ARG OPENCLAW_BUNDLED_PLUGIN_DIR
+ # Copy package.json files for workspace packages used by the install layer.
+ # Manifest-only bundled plugins remain valid selections but need no workspace metadata.
+@@ -52,7 +57,7 @@ RUN mkdir -p /out/packages "/out/${OPENCLAW_BUNDLED_PLUGIN_DIR}" && \
+       > /out/openclaw-selected-plugin-dirs && \
+     node /tmp/docker-plugin-selection.mjs "/tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}" "$OPENCLAW_EXTENSIONS" \
+       --required-platform-packages > /out/openclaw-required-platform-packages && \
+-    node /tmp/docker-plugin-selection.mjs "/tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}" "$OPENCLAW_EXTENSIONS" \
++    OPENCLAW_EXTENSIONS_ONLY="$OPENCLAW_EXTENSIONS_ONLY" node /tmp/docker-plugin-selection.mjs "/tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}" "$OPENCLAW_EXTENSIONS" \
+       --required-bundled /tmp/package.json > /tmp/openclaw-workspace-plugin-dirs && \
+     while IFS= read -r ext; do \
+       ext_dir="/tmp/${OPENCLAW_BUNDLED_PLUGIN_DIR}/$ext"; \
+@@ -103,6 +108,7 @@ RUN sh scripts/docker/verify-native-addons.sh
+ # ── Build ──────────────────────────────────────────────────────
+ FROM ${OPENCLAW_BUN_IMAGE} AS bun-binary
+ FROM dependency-inputs AS build
++ARG OPENCLAW_EXTENSIONS_ONLY
+ ARG OPENCLAW_DOCKER_BUILD_NODE_OPTIONS
+ ARG OPENCLAW_DOCKER_BUILD_TSDOWN_MAX_OLD_SPACE_MB
+ ARG OPENCLAW_DOCKER_BUILD_SKIP_DTS
+@@ -158,6 +164,9 @@ ENV OPENCLAW_PREFER_PNPM=1
+ # stamp the complete release version before generating their build metadata.
+ RUN set -eu; \
+     selected_plugin_dirs="$(cat /tmp/openclaw-selected-plugin-dirs)"; \
++    if [ "$OPENCLAW_EXTENSIONS_ONLY" = 1 ]; then \
++      export OPENCLAW_BUNDLED_PLUGIN_BUILD_IDS="$(printf '%s' "$selected_plugin_dirs" | tr '\n' ',')"; \
++    fi; \
+     if [ -n "$OPENCLAW_DOCKER_BUILD_VERSION" ]; then \
+       pnpm pkg set "version=$OPENCLAW_DOCKER_BUILD_VERSION"; \
+     fi; \
+@@ -188,6 +197,8 @@ RUN rm -rf node_modules ui/node_modules && \
+ # The build overlay also carries the stamped release package.json.
+ FROM production-deps AS runtime-assets
+ ARG OPENCLAW_BUNDLED_PLUGIN_DIR
++ARG OPENCLAW_EXTENSIONS_ONLY
++ARG OPENCLAW_DOCKER_SKILLS
+ COPY --from=runtime-build-output /app/ ./
+ 
+ # Prune omitted plugins and build metadata, then link the selected plugins'
+@@ -195,7 +206,8 @@ COPY --from=runtime-build-output /app/ ./
+ # cleanup so the packaged roots keep them. Keep SDK-native binaries only for
+ # selected plugins that explicitly require them.
+ RUN node scripts/postinstall-bundled-plugins.mjs && \
+-    OPENCLAW_EXTENSIONS="$(cat /tmp/openclaw-selected-plugin-dirs)" OPENCLAW_BUNDLED_PLUGIN_DIR="$OPENCLAW_BUNDLED_PLUGIN_DIR" node scripts/prune-docker-plugin-dist.mjs && \
++    OPENCLAW_EXTENSIONS_ONLY="$OPENCLAW_EXTENSIONS_ONLY" OPENCLAW_EXTENSIONS="$(cat /tmp/openclaw-selected-plugin-dirs)" OPENCLAW_BUNDLED_PLUGIN_DIR="$OPENCLAW_BUNDLED_PLUGIN_DIR" node scripts/prune-docker-plugin-dist.mjs && \
++    OPENCLAW_DOCKER_SKILLS="$OPENCLAW_DOCKER_SKILLS" OPENCLAW_BUNDLED_PLUGIN_DIR="$OPENCLAW_BUNDLED_PLUGIN_DIR" node scripts/prune-docker-skills.mjs && \
+     find dist -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete && \
+     if [ -L /app/node_modules/@openclaw/ai ]; then \
+       ai_runtime_target="$(readlink -f /app/node_modules/@openclaw/ai)" && \
+diff --git a/scripts/lib/docker-plugin-selection.mjs b/scripts/lib/docker-plugin-selection.mjs
+index eee3e61b1a8123f3a8c186e352181311dbe8801a..cd50f077eb91dd512fb638e20f558a5ee25000b6 100644
+--- a/scripts/lib/docker-plugin-selection.mjs
++++ b/scripts/lib/docker-plugin-selection.mjs
+@@ -101,7 +101,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+       selection: process.argv[3] ?? "",
+     };
+     let resolved = resolveDockerPluginSelection(params);
+-    if (process.argv[4] === "--required-bundled") {
++    if (process.argv[4] === "--required-bundled" && process.env.OPENCLAW_EXTENSIONS_ONLY !== "1") {
+       resolved = [
+         ...new Set([
+           ...resolved,
+diff --git a/scripts/prune-docker-plugin-dist.mjs b/scripts/prune-docker-plugin-dist.mjs
+index 323711c5b9d61dd4af60cdf4fcf87c3ec9ac4e9f..5ce019b70e53ca1243436e33cbfaba56b8530183 100644
+--- a/scripts/prune-docker-plugin-dist.mjs
++++ b/scripts/prune-docker-plugin-dist.mjs
+@@ -6,6 +6,7 @@ import path from "node:path";
+ import { pathToFileURL } from "node:url";
+ import { collectRootPackageExcludedExtensionDirs } from "./lib/bundled-plugin-build-entries.mjs";
+ import { linkSourcePluginDependencies } from "./lib/bundled-plugin-dependency-links.mjs";
++import { resolveDockerPluginSelection } from "./lib/docker-plugin-selection.mjs";
+ import { assertRealOutputRoot } from "./lib/output-root-guard.mjs";
+ import { removePathIfExists } from "./runtime-postbuild-shared.mjs";
+ 
+@@ -241,8 +242,24 @@ export function pruneDockerPluginDist(params = {}) {
+   const repoRoot = params.cwd ?? params.repoRoot ?? process.cwd();
+   const env = params.env ?? process.env;
+   const bundledPluginDir = env.OPENCLAW_BUNDLED_PLUGIN_DIR ?? "extensions";
+-  const keepPluginIds = parseDockerPluginKeepList(env.OPENCLAW_EXTENSIONS);
++  const exclusive = env.OPENCLAW_EXTENSIONS_ONLY === "1";
++  if (exclusive) assertRealOutputRoot(path.join(repoRoot, bundledPluginDir));
++  const keepPluginIds = exclusive
++    ? new Set(
++        resolveDockerPluginSelection({
++          extensionsRoot: path.join(repoRoot, bundledPluginDir),
++          selection: env.OPENCLAW_EXTENSIONS,
++        }),
++      )
++    : parseDockerPluginKeepList(env.OPENCLAW_EXTENSIONS);
+   const excludedPluginIds = collectRootPackageExcludedExtensionDirs({ cwd: repoRoot });
++  if (exclusive) {
++    for (const entry of fs.readdirSync(path.join(repoRoot, bundledPluginDir), {
++      withFileTypes: true,
++    })) {
++      if (entry.isDirectory()) excludedPluginIds.add(entry.name);
++    }
++  }
+   const omittedPluginIds = new Set(
+     [...excludedPluginIds].filter((pluginId) => !keepPluginIds.has(pluginId)),
+   );
+@@ -252,6 +269,13 @@ export function pruneDockerPluginDist(params = {}) {
+   // refuse to follow a symlinked output root into its target.
+   assertRealOutputRoot(path.join(repoRoot, "dist"));
+   assertRealOutputRoot(path.join(repoRoot, "dist-runtime"));
++  if (exclusive) {
++    // Generated from the full source channel inventory before image selection.
++    // Missing metadata uses native runtime discovery from the surviving plugins.
++    for (const root of ["dist", "dist-runtime"]) {
++      removePathIfExists(path.join(repoRoot, root, "cli-startup-metadata.json"));
++    }
++  }
+ 
+   removed.push(...pruneNodeModulesForOmittedPlugins(repoRoot, bundledPluginDir, omittedPluginIds));
+ 
+diff --git a/scripts/prune-docker-skills.mjs b/scripts/prune-docker-skills.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..b1d2e87c4afd8aadd0c583d519a7c2c68519e10e
+--- /dev/null
++++ b/scripts/prune-docker-skills.mjs
+@@ -0,0 +1,113 @@
++// Select the native skills shipped in an image, without modifying runtime/user skills.
++import fs from "node:fs";
++import path from "node:path";
++import { pathToFileURL } from "node:url";
++import { assertRealOutputRoot } from "./lib/output-root-guard.mjs";
++
++function directoryEntries(directory) {
++  assertRealOutputRoot(directory);
++  try {
++    return fs.readdirSync(directory, { withFileTypes: true });
++  } catch (error) {
++    if (error?.code === "ENOENT") {
++      return [];
++    }
++    throw error;
++  }
++}
++
++function isDirectoryEntry(root, entry) {
++  const entryPath = path.join(root, entry.name);
++  // Documentation links such as CLAUDE.md -> AGENTS.md are not trees to prune.
++  // Inspect their type only; linked directories must still fail closed.
++  if (entry.isSymbolicLink() && fs.statSync(entryPath).isFile()) {
++    return false;
++  }
++  assertRealOutputRoot(entryPath);
++  return entry.isDirectory();
++}
++
++/**
++ * An unset/empty OPENCLAW_DOCKER_SKILLS preserves the upstream inventory.
++ * Otherwise it is an explicit comma/whitespace-separated list of skill directory
++ * names. A single "-" selects no skills. Plugin collection directories remain
++ * present because retained plugin manifests can still reference them.
++ */
++export function pruneDockerSkills(params = {}) {
++  const repoRoot = fs.realpathSync(params.cwd ?? process.cwd());
++  const env = params.env ?? process.env;
++  const selection = env.OPENCLAW_DOCKER_SKILLS;
++  if (selection === undefined || selection.trim() === "") {
++    return [];
++  }
++  const names = selection.trim() === "-" ? [] : selection.split(/[\s,]+/u).filter(Boolean);
++  if (names.length === 0 && selection.trim() !== "-") {
++    throw new Error("OPENCLAW_DOCKER_SKILLS must list skill names or '-' for no skills");
++  }
++  for (const name of names) {
++    if (!/^[a-z0-9][a-z0-9-]*$/u.test(name)) {
++      throw new Error(`Invalid OPENCLAW_DOCKER_SKILLS name: ${name}`);
++    }
++  }
++  const selected = new Set(names);
++  const bundledPluginDir = env.OPENCLAW_BUNDLED_PLUGIN_DIR ?? "extensions";
++  const pluginParts = bundledPluginDir.split(/[\\/]/u);
++  if (
++    path.isAbsolute(bundledPluginDir) ||
++    pluginParts.some((part) => !part || part === "." || part === "..")
++  ) {
++    throw new Error("OPENCLAW_BUNDLED_PLUGIN_DIR must be a directory within the build root");
++  }
++  let sourceRoot = repoRoot;
++  for (const part of pluginParts) {
++    sourceRoot = path.join(sourceRoot, part);
++    assertRealOutputRoot(sourceRoot);
++  }
++  const roots = [path.join(repoRoot, "skills")];
++  for (const output of ["", "dist", "dist-runtime"]) {
++    const outputRoot = path.join(repoRoot, output);
++    assertRealOutputRoot(outputRoot);
++    const extensionRoot = output === "" ? sourceRoot : path.join(outputRoot, "extensions");
++    for (const plugin of directoryEntries(extensionRoot)) {
++      const pluginRoot = path.join(extensionRoot, plugin.name);
++      if (isDirectoryEntry(extensionRoot, plugin)) {
++        roots.push(path.join(pluginRoot, "skills"));
++      }
++    }
++  }
++
++  // Discover and validate everything before deleting anything. In particular,
++  // a misspelled selection or symlinked build tree must leave the image intact.
++  const candidates = [];
++  for (const root of roots) {
++    for (const entry of directoryEntries(root)) {
++      const skillRoot = path.join(root, entry.name);
++      if (!isDirectoryEntry(root, entry)) {
++        continue;
++      }
++      const skillFile = path.join(skillRoot, "SKILL.md");
++      assertRealOutputRoot(skillFile);
++      if (fs.existsSync(skillFile)) {
++        candidates.push({ name: entry.name, directory: skillRoot });
++      }
++    }
++  }
++  const available = new Set(candidates.map((skill) => skill.name));
++  const unknown = [...selected].filter((name) => !available.has(name));
++  if (unknown.length > 0) {
++    throw new Error(`Unknown OPENCLAW_DOCKER_SKILLS names: ${unknown.join(", ")}`);
++  }
++
++  const removed = [];
++  for (const skill of candidates) {
++    if (!selected.has(skill.name)) {
++      fs.rmSync(skill.directory, { recursive: true });
++      removed.push(path.relative(repoRoot, skill.directory).replaceAll("\\", "/"));
++    }
++  }
++  return removed.sort();
++}
++
++if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
++  pruneDockerSkills();
++}
+diff --git a/src/plugins/prune-docker-plugin-dist.test.ts b/src/plugins/prune-docker-plugin-dist.test.ts
+index 006734902a918b234d7bf8db0821433380dbea4c..6a9ff12fe5b90a592500a310aea9dc12e9f49d37 100644
+--- a/src/plugins/prune-docker-plugin-dist.test.ts
++++ b/src/plugins/prune-docker-plugin-dist.test.ts
+@@ -51,6 +51,53 @@ afterEach(() => {
+ });
+ 
+ describe("pruneDockerPluginDist", () => {
++  it("exclusive Docker selection removes default bundled plugins and preserves selected dependencies", () => {
++    const repoRoot = makeRepoRoot("openclaw-docker-exclusive-");
++    writeJsonFile(path.join(repoRoot, "package.json"), { files: ["dist/**"] });
++    for (const id of ["browser", "device-pair", "future-default"]) {
++      writePluginSourcePackage(repoRoot, id);
++      writeDistPluginFile(repoRoot, "dist", id);
++      writeDistPluginFile(repoRoot, "dist-runtime", id);
++    }
++    writeJsonFile(path.join(repoRoot, "extensions/browser/package.json"), {
++      name: "@openclaw/browser",
++      dependencies: { "shared-runtime": "0.0.0" },
++    });
++    writeJsonFile(path.join(repoRoot, "extensions/device-pair/package.json"), {
++      name: "@openclaw/device-pair",
++      dependencies: { "shared-runtime": "0.0.0", "removed-runtime": "0.0.0" },
++    });
++    writeNodePackage(repoRoot, "shared-runtime");
++    writeNodePackage(repoRoot, "removed-runtime");
++    const workspace = path.join(repoRoot, "workspace/plugins/custom");
++    fs.mkdirSync(workspace, { recursive: true });
++    pruneDockerPluginDist({
++      repoRoot,
++      env: { OPENCLAW_EXTENSIONS_ONLY: "1", OPENCLAW_EXTENSIONS: "browser" },
++    });
++    for (const root of ["extensions", "dist/extensions", "dist-runtime/extensions"]) {
++      expect(fs.readdirSync(path.join(repoRoot, root))).toEqual(["browser"]);
++    }
++    expect(fs.existsSync(path.join(repoRoot, "node_modules/shared-runtime"))).toBe(true);
++    expect(fs.existsSync(path.join(repoRoot, "node_modules/removed-runtime"))).toBe(false);
++    expect(fs.existsSync(workspace)).toBe(true);
++  });
++
++  it("rejects unknown exclusive selections before pruning", () => {
++    const repoRoot = makeRepoRoot("openclaw-docker-unknown-");
++    writePluginSourcePackage(repoRoot, "browser");
++    expect(() =>
++      pruneDockerPluginDist({
++        repoRoot,
++        env: {
++          OPENCLAW_EXTENSIONS_ONLY: "1",
++          OPENCLAW_EXTENSIONS: "typo",
++        },
++      }),
++    ).toThrow(/unknown OPENCLAW_EXTENSIONS/u);
++    expect(fs.existsSync(path.join(repoRoot, "extensions/browser"))).toBe(true);
++  });
++
+   it("parses space and comma separated Docker plugin keep lists", () => {
+     expect([...parseDockerPluginKeepList("diagnostics-otel feishu,discord")]).toEqual([
+       "diagnostics-otel",
+diff --git a/test/scripts/docker-plugin-selection.test.ts b/test/scripts/docker-plugin-selection.test.ts
+index 657ca5bede3c586b6dacd5deb292f68f98280bc7..cb843a5223f5b28a4fb70ad4ac55089e0814d439 100644
+--- a/test/scripts/docker-plugin-selection.test.ts
++++ b/test/scripts/docker-plugin-selection.test.ts
+@@ -121,6 +121,17 @@ describe("Docker plugin selection", () => {
+     expect(install.status).toBe(0);
+     expect(install.stdout).toBe("bundled-provider\noptional-provider\n");
+ 
++    const exclusive = spawnSync(
++      process.execPath,
++      [selectorScript, extensionsRoot, "optional", "--required-bundled", rootPackagePath],
++      {
++        encoding: "utf8",
++        env: { ...process.env, OPENCLAW_EXTENSIONS_ONLY: "1" },
++      },
++    );
++    expect(exclusive.status).toBe(0);
++    expect(exclusive.stdout).toBe("optional-provider\n");
++
+     const selected = runSelector(extensionsRoot, "optional");
+     expect(selected.status).toBe(0);
+     expect(selected.stdout).toBe("optional-provider\n");
+diff --git a/test/scripts/prune-docker-skills.test.ts b/test/scripts/prune-docker-skills.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b302603f1a504ad052446f092d4e6ff7df4c9672
+--- /dev/null
++++ b/test/scripts/prune-docker-skills.test.ts
+@@ -0,0 +1,178 @@
++import fs from "node:fs";
++import path from "node:path";
++import { describe, expect, it } from "vitest";
++import { pruneDockerSkills } from "../../scripts/prune-docker-skills.mjs";
++import { createScriptTestHarness } from "./test-helpers.js";
++
++const { createTempDir } = createScriptTestHarness();
++
++function write(root: string, relative: string, content = "fixture\n"): string {
++  const file = path.join(root, relative);
++  fs.mkdirSync(path.dirname(file), { recursive: true });
++  fs.writeFileSync(file, content);
++  return file;
++}
++
++describe("pruneDockerSkills", () => {
++  it.each([undefined, "", " \n "])("preserves the upstream default for %j", (selection) => {
++    const root = createTempDir("openclaw-docker-skills-");
++    const file = write(root, "skills/weather/SKILL.md");
++    expect(pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: selection } })).toEqual(
++      [],
++    );
++    expect(fs.readFileSync(file, "utf8")).toBe("fixture\n");
++  });
++
++  it("prunes all packaged copies while preserving selected content, collection roots and user files", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    const removed = ["skills/weather", "extensions/browser/skills/obsolete"];
++    const kept = ["skills/skill-creator/SKILL.md", "skills/skill-creator/scripts/helper.py"];
++    for (const output of ["extensions", "dist/extensions", "dist-runtime/extensions"]) {
++      removed.push(`${output}/chat/skills/chat`);
++      kept.push(`${output}/browser/skills/browser-automation/SKILL.md`);
++      kept.push(`${output}/lobster/SKILL.md`);
++      kept.push(`${output}/chat/openclaw.plugin.json`);
++    }
++    kept.push("workspace/skills/custom/SKILL.md", ".openclaw/skills/custom/SKILL.md");
++    for (const directory of removed) {
++      write(root, `${directory}/SKILL.md`);
++      write(root, `${directory}/references/detail.md`);
++    }
++    for (const file of kept) {
++      write(
++        root,
++        file,
++        file.endsWith("openclaw.plugin.json") ? '{"skills":["./skills"]}' : "fixture\n",
++      );
++    }
++    expect(
++      pruneDockerSkills({
++        cwd: root,
++        env: { OPENCLAW_DOCKER_SKILLS: "skill-creator, browser-automation\nskill-creator" },
++      }),
++    ).toEqual(removed.sort());
++    for (const directory of removed) {
++      expect(fs.existsSync(path.join(root, directory))).toBe(false);
++    }
++    for (const file of kept) {
++      const contents = fs.readFileSync(path.join(root, file), "utf8");
++      if (file.endsWith("openclaw.plugin.json")) {
++        expect(JSON.parse(contents)).toEqual({ skills: ["./skills"] });
++        expect(fs.statSync(path.join(root, path.dirname(file), "skills")).isDirectory()).toBe(true);
++      } else {
++        expect(contents).toBe("fixture\n");
++      }
++    }
++    expect(fs.statSync(path.join(root, "dist/extensions/chat/skills")).isDirectory()).toBe(true);
++  });
++
++  it("allows an explicitly empty inventory", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    write(root, "skills/weather/SKILL.md");
++    expect(pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: "-" } })).toEqual([
++      "skills/weather",
++    ]);
++  });
++
++  it("ignores documentation symlinks alongside plugins and skill directories", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    write(root, "skills/weather/SKILL.md");
++    write(root, "extensions/browser/skills/browser-automation/SKILL.md");
++    for (const directory of ["extensions", "skills", "extensions/browser/skills"]) {
++      write(root, `${directory}/AGENTS.md`, "Documentation\n");
++      fs.symlinkSync("AGENTS.md", path.join(root, directory, "CLAUDE.md"));
++    }
++    expect(pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: "-" } })).toEqual([
++      "extensions/browser/skills/browser-automation",
++      "skills/weather",
++    ]);
++    for (const directory of ["extensions", "skills", "extensions/browser/skills"]) {
++      expect(fs.readlinkSync(path.join(root, directory, "CLAUDE.md"))).toBe("AGENTS.md");
++      expect(fs.readFileSync(path.join(root, directory, "AGENTS.md"), "utf8")).toBe(
++        "Documentation\n",
++      );
++    }
++  });
++
++  it("uses the configured bundled source directory without changing packaged output roots", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    write(root, "bundled/plugins/browser/skills/browser-automation/SKILL.md");
++    write(root, "bundled/plugins/chat/skills/chat/SKILL.md");
++    write(root, "dist/extensions/chat/skills/chat/SKILL.md");
++    expect(
++      pruneDockerSkills({
++        cwd: root,
++        env: {
++          OPENCLAW_DOCKER_SKILLS: "browser-automation",
++          OPENCLAW_BUNDLED_PLUGIN_DIR: "bundled/plugins",
++        },
++      }),
++    ).toEqual(["bundled/plugins/chat/skills/chat", "dist/extensions/chat/skills/chat"]);
++    expect(
++      fs.existsSync(path.join(root, "bundled/plugins/browser/skills/browser-automation/SKILL.md")),
++    ).toBe(true);
++  });
++
++  it("refuses a configured source directory outside the build root", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    const file = write(root, "skills/weather/SKILL.md");
++    expect(() =>
++      pruneDockerSkills({
++        cwd: root,
++        env: { OPENCLAW_DOCKER_SKILLS: "-", OPENCLAW_BUNDLED_PLUGIN_DIR: "../external" },
++      }),
++    ).toThrow(/within the build root/u);
++    expect(fs.readFileSync(file, "utf8")).toBe("fixture\n");
++  });
++
++  it.each(["weather,missing", "../weather", "weather,-", ",,,"])(
++    "rejects %j before removing any files",
++    (selection) => {
++      const root = createTempDir("openclaw-docker-skills-");
++      const file = write(root, "skills/unselected/SKILL.md");
++      write(root, "skills/weather/SKILL.md");
++      expect(() =>
++        pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: selection } }),
++      ).toThrow(/OPENCLAW_DOCKER_SKILLS/u);
++      expect(fs.readFileSync(file, "utf8")).toBe("fixture\n");
++    },
++  );
++
++  it.each([
++    "skills",
++    "dist",
++    "dist/extensions",
++    "extensions/browser",
++    "extensions/browser/skills",
++    "extensions/browser/skills/browser-automation",
++  ])("refuses symlinked %s before mutating any files", (relative) => {
++    const root = createTempDir("openclaw-docker-skills-");
++    const external = createTempDir("openclaw-docker-skills-external-");
++    const externalFile = write(external, "SKILL.md");
++    const untouched = write(root, "extensions/other/skills/other/SKILL.md");
++    const link = path.join(root, relative);
++    fs.mkdirSync(path.dirname(link), { recursive: true });
++    fs.symlinkSync(external, link, "dir");
++    expect(() => pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: "-" } })).toThrow(
++      /symbolic link/u,
++    );
++    expect(fs.readFileSync(externalFile, "utf8")).toBe("fixture\n");
++    expect(fs.readFileSync(untouched, "utf8")).toBe("fixture\n");
++    expect(fs.readlinkSync(link)).toBe(external);
++  });
++
++  it("still rejects a linked SKILL.md inside a skill directory", () => {
++    const root = createTempDir("openclaw-docker-skills-");
++    const external = createTempDir("openclaw-docker-skills-external-");
++    const externalFile = write(external, "SKILL.md");
++    const untouched = write(root, "skills/weather/SKILL.md");
++    const skillRoot = path.join(root, "skills/linked");
++    fs.mkdirSync(skillRoot);
++    fs.symlinkSync(externalFile, path.join(skillRoot, "SKILL.md"));
++    expect(() => pruneDockerSkills({ cwd: root, env: { OPENCLAW_DOCKER_SKILLS: "-" } })).toThrow(
++      /symbolic link/u,
++    );
++    expect(fs.readFileSync(externalFile, "utf8")).toBe("fixture\n");
++    expect(fs.readFileSync(untouched, "utf8")).toBe("fixture\n");
++  });
++});

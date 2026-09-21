@@ -16,9 +16,12 @@ node --import tsx scripts/openclaw-patches.ts prepare \
 revision="$(jq -er .revision .local/openclaw-source.json)"
 tree="$(jq -er .tree .local/openclaw-source.json)"
 base="clawscarf-openclaw:source-$tree"
+plugins="$(jq -er '.bundledPlugins | join(",")' runtime/openclaw/inventory.json)"
+skills="$(jq -er '.bundledSkills | join(",")' runtime/openclaw/inventory.json)"
 docker build --build-arg GIT_COMMIT="$revision" \
   --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(TZ=UTC git -C .local/openclaw-source show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" \
-  --build-arg OPENCLAW_EXTENSIONS=codex \
+  --build-arg "OPENCLAW_EXTENSIONS=$plugins" --build-arg OPENCLAW_EXTENSIONS_ONLY=1 \
+  --build-arg "OPENCLAW_DOCKER_SKILLS=$skills" \
   -t "$base" .local/openclaw-source
 docker build --build-arg OPENCLAW_IMAGE="$base" \
   -f deploy/images/Dockerfile -t clawscarf-runtime:local .
@@ -34,7 +37,15 @@ archive; see [release assembly](../../release/README.md#build-and-publish).
 These are reproducible source inputs, not a promise of bit-identical image output:
 the upstream Dockerfile also resolves system packages at build time.
 
-The image includes:
+Built-in plugins and skills are selected by the
+[distribution inventory](../../runtime/openclaw/inventory.json). The
+[packaging patch](../../runtime/openclaw/patches/curated-image-inventory.prompt.md)
+applies that selection before final image layers are copied. The release build runs
+the [inventory check](../../tests/runtime/inventory.mjs) against each architecture:
+source/compiled manifests, native plugin discovery and skill files must match.
+This is image selection, not a runtime restriction on administrator additions.
+
+Additional runtime components are:
 
 - The built [Connections plugin](../../plugins/connections/README.md), at
   `/app/clawscarf/connections`. Its operator configuration helper resolves the

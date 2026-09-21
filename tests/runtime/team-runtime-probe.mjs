@@ -87,6 +87,9 @@ await mkdir(workspace, { recursive: true });
 await writeFile(
   join(state, "openclaw.json"),
   JSON.stringify({
+    // This probe's model lives on runtime loopback, not beyond OpenShell's proxy.
+    // Public egress has its own live test; outer confinement still applies here.
+    proxy: { enabled: false },
     gateway: {
       ...preset.gateway,
       auth: {

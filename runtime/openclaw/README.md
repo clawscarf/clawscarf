@@ -49,12 +49,13 @@ authorization and required attribution; do not add ingress RPC filters or a
 replacement dashboard/role database. New feature requirements start in TODO and
 move into paired patch intents as implemented.
 
-`OPENCLAW_EXTENSIONS=codex` retains that optional extension alongside upstream's
-default packaged set; it is not an exclusive image inventory. A catalog listing
-does not prove a plugin is installed or active. Inspect package output, separately
-downloaded artifacts, ClawScarf plugins and packs. Deletion in a later image layer
-leaves bytes in inherited layers. Built-in selection and administrator additions
-have different owners; inventory checks must not delete user-installed packages.
+The [inventory](inventory.json) is the single built-in plugin/skill selection.
+The [image builder](../../deploy/images/README.md) uses the
+[exclusive packaging patch](patches/curated-image-inventory.prompt.md) to apply it
+before final layers are copied, and checks actual files and native discovery.
+Additional plugins are ClawScarf's own packages and the separately pinned Lobster.
+A catalog listing does not prove a plugin is installed or active. Built-in selection
+does not restrict administrator additions or delete user-installed packages.
 
 [Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
 [packs](../../packs/README.md) supply native files. Several recipes can share an
@@ -121,7 +122,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 

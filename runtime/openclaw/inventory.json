@@ -1,0 +1,36 @@
+{
+  "bundledPlugins": [
+    "a2a",
+    "active-memory",
+    "browser",
+    "codex",
+    "document-extract",
+    "file-transfer",
+    "imap",
+    "litellm",
+    "llm-task",
+    "memory-core",
+    "memory-wiki",
+    "oc-path",
+    "openai",
+    "policy",
+    "reef",
+    "telegram",
+    "web-readability",
+    "webhooks",
+    "workboard"
+  ],
+  "bundledSkills": [
+    "browser-automation",
+    "diagram-maker",
+    "node-inspect-debugger",
+    "skill-creator",
+    "spike",
+    "taskflow",
+    "visualize",
+    "weather",
+    "wiki-maintainer"
+  ],
+  "additionalPlugins": ["clawscarf-access", "clawscarf-connections", "lobster"],
+  "additionalSkills": ["connections"]
+}

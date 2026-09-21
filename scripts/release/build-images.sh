@@ -13,6 +13,8 @@ upstream_revision="$(jq -er '.upstreamRevision' "$output/openclaw-source.json")"
 source_tree="$(jq -er '.tree' "$output/openclaw-source.json")"
 patch_set="$(jq -er '.patchSetSha256' "$output/openclaw-source.json")"
 base="clawscarf-openclaw:source-$source_tree"
+plugins="$(jq -er '.bundledPlugins | join(",")' runtime/openclaw/inventory.json)"
+skills="$(jq -er '.bundledSkills | join(",")' runtime/openclaw/inventory.json)"
 tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
   -cf - -C runtime/openclaw/patches . | gzip -n > "$output/openclaw-patches.tgz"
 docker build --build-arg "GIT_COMMIT=$revision" \
@@ -21,7 +23,8 @@ docker build --build-arg "GIT_COMMIT=$revision" \
   --label "io.clawscarf.openclaw.source-tree=$source_tree" \
   --label "io.clawscarf.openclaw.patch-set=$patch_set" \
   --build-arg "OPENCLAW_BUILD_TIMESTAMP=$(TZ=UTC git -C "$upstream" show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" \
-  --build-arg OPENCLAW_EXTENSIONS=codex -t "$base" "$upstream"
+  --build-arg "OPENCLAW_EXTENSIONS=$plugins" --build-arg OPENCLAW_EXTENSIONS_ONLY=1 \
+  --build-arg "OPENCLAW_DOCKER_SKILLS=$skills" -t "$base" "$upstream"
 rm -rf "$upstream"
 echo '{}' > "$output/images.json"
 while read -r name dockerfile; do
@@ -41,6 +44,10 @@ while read -r name dockerfile; do
   if [[ "$name" == runtime ]]; then
     docker run --rm --network none --read-only --tmpfs /tmp:rw,size=256m \
       --entrypoint node -v "$PWD/tests/runtime/capabilities.mjs:/tmp/check.mjs:ro" "$image" /tmp/check.mjs
+    docker run --rm --network none --read-only --tmpfs /tmp:rw,size=256m \
+      --entrypoint node \
+      -v "$PWD/tests/runtime/inventory.mjs:/tmp/check.mjs:ro" \
+      -v "$PWD/runtime/openclaw/inventory.json:/tmp/inventory.json:ro" "$image" /tmp/check.mjs
   fi
   if [[ "$name" == browser ]]; then
     CLAWSCARF_TEST_BROWSER_IMAGE="$image" node --import tsx --test tests/runtime/browser.test.ts
