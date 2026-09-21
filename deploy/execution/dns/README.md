@@ -11,6 +11,6 @@ query logging and remote administration are disabled. No DNS port is published.
 
 [Dockerfile](Dockerfile) pins the resolver package and base image.
 [Tests](../../../tests/runtime/browser-dns.test.ts), enabled with
-`CLAWSCARF_TEST_BROWSER_DNS_IMAGE`, passed public resolution, source refusal,
-private-answer filtering and denied direct public TCP. The combined local node
-assembly also passed native browser navigation. Linux/release qualification remains open.
+`CLAWSCARF_TEST_BROWSER_DNS_IMAGE`, exercise public resolution, source refusal,
+private-answer filtering and denied direct public TCP. Native integration acceptance
+belongs to the [browser-node owner](../browser-node/README.md#verified-release-limits).

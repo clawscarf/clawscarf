@@ -1,14 +1,11 @@
 # Native runtime image
 
-[Dockerfile](Dockerfile) extends an OpenClaw source build based on
-[`7bc487d39dc9e059bb9b19ea08152883022f83fe`](https://github.com/openclaw/openclaw/commit/7bc487d39dc9e059bb9b19ea08152883022f83fe) with
-the ordered ClawScarf [patch series](../../runtime/openclaw/README.md) and immutable
-runtime dependencies. Customer configuration, identities, model keys,
-connection credentials and writable state are initialized separately.
-This commit fixes optional tool arguments on custom Responses routes. Its package
-version is still 2026.9.4; the source revision distinguishes it from the published image.
-Plugin build SDKs remain pinned to the published 2026.9.4 API. The optional browser
-node and network-build base retain their published image pins.
+[Dockerfile](Dockerfile) extends the OpenClaw source build selected by
+[components.json](../../release/components.json) and the ordered
+[patch series](../../runtime/openclaw/README.md), with immutable runtime dependencies.
+Customer configuration, identities, model keys, connection credentials and writable
+state are initialized separately. SDK package locks and the browser-node Dockerfile
+own their separate pins; source/package versions are not interchangeable.
 OpenShell owns the runtime container. Its outer Docker health check is disabled;
 use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.
@@ -68,8 +65,8 @@ The image includes:
   [locked build dependencies](pack-tools/package-lock.json) are isolated from the
   runtime's one OpenClaw installation; only the compiled tool and production
   dependency closure ship.
-- Upstream's bundled Codex plugin at `/app/dist/extensions/codex`, with Codex CLI
-  0.154.0 and its native platform payload already supplied by the pinned source build.
+- Upstream's bundled Codex plugin and CLI at `/app/dist/extensions/codex`,
+  supplied by the pinned source build with their native platform payload.
   Its command is `node /app/dist/extensions/codex/node_modules/@openai/codex/bin/codex.js`.
 - The official Lobster plugin at
   `/app/clawscarf/native-plugins/node_modules/@openclaw/lobster`.
@@ -77,11 +74,11 @@ The image includes:
   native PDF extraction. They come from the pinned OpenClaw build; no separate
   `clawpdf` CLI installation is required. A native allowlist must include
   `document-extract` when PDF extraction is selected.
-- Debian Python 3, version 3.11.2-1+b1, for local code execution.
-- Debian Chromium and its sandbox helper, version 153.0.8010.52-1~deb12u1.
+- Debian Python 3 for local code execution.
+- Debian Chromium and its sandbox helper; exact packages are pinned in the Dockerfile.
   The browser executable is `/usr/bin/chromium`.
 - OpenShell's iproute2 and [Netfilter dependencies](network-tools/README.md),
-  including unmodified nftables 1.1.3 built for the image's Debian 12 runtime.
+  including unmodified nftables built for the image's Debian runtime.
   `SQLITE_TMPDIR=/tmp` keeps native
   SQLite temporary files within the permitted writable paths.
 
@@ -95,7 +92,7 @@ package or an alternate OpenClaw installation.
 
 Codex uses the pinned upstream image's complete plugin-local runtime dependencies.
 No extra Codex npm installation or explicit discovery path is needed. Lobster's
-separate official release contains its embedded `@clawdbot/lobster` 2026.6.11
+separate official release contains its embedded `@clawdbot/lobster`
 runtime and dependencies: the build verifies
 [its release integrity](native-plugins/lobster.json) with
 [the downloader](native-plugins/download.mjs), then extracts the archive verbatim.
@@ -104,8 +101,8 @@ installation. Neither plugin needs an upstream source patch.
 The recipe copies the root [license](../../LICENSE),
 [third-party notices](../../THIRD_PARTY_NOTICES.md) and pinned upstream license/notice
 files verbatim to `/usr/share/licenses/clawscarf`. Debian package copyright files
-are retained. A local runtime rebuild verified the root notices against build inputs;
-complete release license qualification remains open in the [remaining work](../../TODO.md).
+are retained. [Third-party notices](../../THIRD_PARTY_NOTICES.md) own attribution
+and redistribution requirements.
 
 ## Native registration
 
@@ -135,17 +132,9 @@ launching it inside OpenShell; see the limits below.
 
 ## Verified limits
 
-The image evidence below was established before introducing the patch series.
-Candidates built from the patched source must repeat the affected runtime checks;
-source regressions alone do not qualify rebuilt images.
-
-The image built on Linux arm64. On the current pinned OpenShell Docker driver and
-[policy](../openshell/policy.yaml), native plugin discovery loads both exact
-versions. The capability probe checks bundled Codex provenance, successful
-runtime harness registration with no diagnostics, the pinned Codex CLI, and a
-Lobster deterministic pipeline returning its expected JSON. These checks use
-temporary configuration with no model calls and are reproduced by
-[the capability probe](../../tests/runtime/capabilities.mjs).
+The [capability probe](../../tests/runtime/capabilities.mjs) checks bundled Codex
+provenance, runtime harness registration, the pinned CLI, and a deterministic Lobster
+pipeline using temporary configuration and no model calls.
 The probe captures the actual Responses request builder before HTTP and verifies that
 optional tool arguments retain `strict: false` on our custom model route. It also
 checks plugin disable/enable and skill eligibility using native CLI
@@ -162,13 +151,12 @@ docker run --rm --network none --read-only --tmpfs /tmp:rw,size=256m \
 This command uses no existing installation state and makes no provider calls. It
 does not run the OpenShell supervisor or qualify its execution boundary.
 The [native runtime test](../openshell/README.md#repeatable-boundary-and-retention-check)
-qualifies shared upload/file/shell/Lobster execution, PDF extraction and outer
-confinement with a deterministic model fixture inside the real supervisor.
-Codex model execution and its filesystem/network isolation still require runtime
-qualification; CLI startup is not evidence of those properties.
+owns shared upload/file/shell/Lobster, PDF and outer-boundary acceptance with a
+deterministic model fixture inside the real supervisor. CLI startup alone is not
+model-driven execution or isolation evidence; consult [release evidence](../../release/README.md#release-evidence).
 
 The [Connections image regression](../../tests/runtime/connections-image.test.ts)
-passed configuration and scoped credential/CA delivery through the real launcher,
+exercises configuration and scoped credential/CA delivery through the real launcher,
 native `connections_search` with agent context, and retained Gateway restart:
 
 ```sh
@@ -183,9 +171,9 @@ This qualifies image packaging, not the complete OpenShell/companion account jou
 
 Chromium is installed but does **not** launch under that policy: `no_new_privs`
 prevents its setuid sandbox and user-namespace creation is denied. Keep the browser
-sandbox enabled. A supported browser placement or namespace configuration must be
-qualified before advertising browser automation; this image does not silently
-fall back to `--no-sandbox`.
+sandbox enabled. Native browser integration and support limits belong to the
+[browser-node owner](../execution/browser-node/README.md#verified-release-limits);
+this image does not fall back to `--no-sandbox`.
 
 The baseline is adapted from the Raw Labs pilot's
 [Codex runtime helper](https://github.com/raw-labs/claw/blob/45d6b16b8c2d062141d70152e36ad9195846cfb6/scripts/install-codex-runtime-artifacts.sh)
@@ -204,7 +192,8 @@ docker image inspect clawscarf-openshell-client:dev --format '{{.Id}}'
 ```
 
 Put that exact image ID in the development release's `images.openshellClient`.
-The image contains the checksum-pinned OpenShell 0.0.116 Linux CLI, OpenSSH and full
+The [forwarder Dockerfile](openshell-client.Dockerfile) selects the checksum-pinned
+OpenShell Linux CLI, OpenSSH and full
 `lsof` (BusyBox's implementation does not support OpenShell's port checks). It carries
 no credentials. Compose mounts only the installation's controller client configuration.
 The controller uses the upstream gateway image pinned in the [component manifest](../../release/components.json);

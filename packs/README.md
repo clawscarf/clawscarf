@@ -26,7 +26,7 @@ It preserves edited and unmanaged files, checks plan integrity and does not repl
 uncertain mutations. Removing an agent remains destructive. Native monitor cleanup
 uses OpenClaw's direct-local password authentication supplied by the
 [runtime launcher](../runtime/README.md); trusted-proxy login remains in place for
-people. Retained installations need the updated runtime image and a Gateway restart.
+people. Use a runtime release containing that launcher contract.
 
 The private runtime helper only inspects packaged source. Individual portable Claws
 can be built with native `openclaw claws build <member-directory> --out <artifact.tgz>`.
@@ -106,8 +106,7 @@ after a Gateway restart, preservation of edited files and rejection of forwarded
 password authentication. The copied fixture omits the model prerequisite; no model
 inference is purchased. Set `CLAWSCARF_TEST_NATIVE_PACKS=1` to run it, optionally
 with `CLAWSCARF_TEST_OPENCLAW` pointing at the packaged runtime launcher. The same
-fixture has passed inside a disposable OpenShell runtime using the pinned upstream
-image plus the updated launcher.
+fixture can also run inside a disposable OpenShell runtime to verify its packaged launcher.
 [Operator binding checks](../tests/packs/connections.test.ts) cover current session,
 exact grants and revision drift. [Transport checks](../tests/packs/transport.test.ts)
 cover UUID dispatch and uncertain failure without replay. The optional
@@ -120,11 +119,5 @@ qualify trusted-proxy removal, external OAuth or connector execution.
 [Execution-target checks](../tests/packs/execution-target.test.ts) use controlled operator
 processes to verify unified runtime dispatch, missing binaries, denied policy
 and runtime replacement. They do not replace live OpenShell qualification.
-A disposable runtime with the image's nftables 1.1.3/libnftnl 1.2.9 dependencies
-loaded an explicit TCP policy: verification accepted its exact process/host/port
-and rejected a different port. This qualifies policy observation and matching;
-it does not establish a successful connector request or application execution.
-
-Run `CLAWSCARF_TEST_NATIVE_PACKS=1 pnpm exec tsx --test tests/packs/native.test.ts`
-for the disposable native test. It writes isolated temporary state and uses the
-pinned OpenClaw dependency installed for the Connections plugin.
+[Network-tool verification](../deploy/images/network-tools/README.md) owns the native
+TCP dependency check; successful policy matching does not establish endpoint reachability.

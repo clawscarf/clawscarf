@@ -17,13 +17,10 @@ Connectors added independently by a broker remain usable without a packaged icon
 The same operations are available through `clawscarf connections`; see the
 [CLI guide](../../deploy/deployment/installation.md#connections).
 
-The installer enables hosted Connections independently of hosted login or custom OIDC.
-The cloud owns accounts and quotas; the installation contains its native page and
-authority adapter. Fresh/retained installer acceptance is tracked in [TODO](../../TODO.md). Real Outlook consent, reconnect, read-only execution and
-disconnect/revocation passed locally; native-page packaging and authorization are tested.
-The skill survives normal stop/start, but pinned OpenClaw’s remote read tool fails on
-the advertised `~/…` skill path; absolute and workspace-relative paths work. This
-upstream path-resolution issue remains in TODO.
+Capability selection belongs to the [installation guide](../../deploy/deployment/installation.md#connections).
+The [management adapter](../../services/connections/README.md) owns browser-session
+authority, account callbacks and cloud dispatch. This guide owns the packaged UI,
+runtime tools and configuration helper.
 The bundled [skill](skills/connections/SKILL.md) explains exact account selection,
 advisory provider schemas, saved results and uncertain outcomes.
 
@@ -81,7 +78,7 @@ readiness; the caller owns restart and native execution verification. See
 
 ## Build and verify
 
-Use Node 24.16 or newer in the 24.x line, or Node 26.1 or newer. From this directory:
+Use Node matching [package.json](package.json). From this directory:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
@@ -92,8 +89,8 @@ npm run test:native
 npm run artifact
 ```
 
-OpenClaw **2026.9.4** is the exact development and peer SDK candidate. The generated
-client uses Hey API. [The cloud contract](../../services/cloud/openapi.json)
+[package.json](package.json) and its lockfile pin the development and peer SDK.
+The generated client uses Hey API. [The cloud contract](../../services/cloud/openapi.json)
 is the source: `npm run api:generate` derives [the portable contract](openapi/broker.yaml) from its runtime
 security declarations and referenced components, then generates `generated/`.
 Run generation from this source checkout and commit both artifacts. Building and

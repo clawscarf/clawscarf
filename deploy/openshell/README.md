@@ -9,12 +9,8 @@ a Docker socket.
 software and a writable home/workspace. Landlock is a hard startup requirement.
 Egress is denied until explicit endpoint policies are configured; no provider
 credentials are baked into the [image](../images/Dockerfile).
-The image bundles the built [Connections plugin](../../plugins/connections/README.md)
-at `/app/clawscarf/connections`; native registration and the optional broker binding
-are installation configuration, not baked customer state. Unconfigured Connections
-exposes no executable tools.
-The image sets `SQLITE_TMPDIR=/tmp`: native SQLite maintenance needs writable
-temporary files, and `/var/tmp` is outside the permitted filesystem paths.
+The [image inventory](../images/README.md) and [runtime launcher](../../runtime/README.md)
+own packaged tools, native registration and temporary-file configuration.
 Read-only cgroup and CPU metadata let Node inspect its actual resource limits.
 
 OpenShell's own supervisor is privileged during setup and then confines the
@@ -28,8 +24,8 @@ The runtime's `/home/node` needs its own named volume. It includes OpenClaw stat
 workspaces, native credentials, extensions and browser state. The image's
 `/workspace` is not the durable OpenClaw workspace. OpenShell stop/start retains
 compute; replacing compute must explicitly reattach the application volume.
-Controller identity/state and companion state also need retention. No backup or
-rollback feature is implied.
+The [deployment data map](../deployment/README.md#stored-data-and-credentials) owns
+controller and companion persistence. Retention is not backup or rollback.
 
 The [component manifest](../../release/components.json) records exact candidates.
 Download hashes were checked against upstream release checksums. The recipe and
@@ -86,30 +82,25 @@ do not replace it.
 
 ## Application transport
 
-Expose the native application and widget listeners to the access companion using
-OpenShell's standard SSH port forwarding. With the isolated CLI configuration above
-and an existing sandbox named `clawscarf`, run each command in a supervised terminal:
+The [controller composition](../../scripts/deployment/controller-compose.ts) runs
+OpenShell's native `forward service` in separate application/widget services. It
+forwards their native ports through authenticated gRPC to the protected runtime;
+private Compose DNS lets Access reach them. Operator-facing published ports bind
+host loopback. The forwarders mount only controller client configuration, not the
+controller signing key. Replacing compute requires restarting its forwards.
 
-```sh
-/absolute/path/to/openshell forward start 18789 clawscarf --gateway clawscarf
-/absolute/path/to/openshell forward start 18790 clawscarf --gateway clawscarf
-```
+The pinned controller's [connection admission](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/crates/openshell-server/src/grpc/sandbox.rs#L1313)
+limits forwarded connections to 20 per sandbox. The service forward consumes a slot
+for each application TCP connection, including long-lived streams. This is a
+capacity risk for concurrent UI traffic; earlier SSH `forward start` experiments
+do not qualify this path.
+The [installation test](../../tests/deployment/platform-live.test.ts) covers native
+WebSocket forwarding and authenticated administrator access through the companion;
+[TODO](../../TODO.md#installer-and-releases) owns remaining concurrency qualification.
 
-These listeners bind host loopback. The first reaches OpenClaw; the second reaches
-its separate widget sandbox. Each command remains running for the lifetime of its
-forward. Stop the process to close its listener; restart forwards after replacing
-compute. They neither initialize state nor replace session authorization.
-The installation CLI runs native gRPC service forwards as Compose services under
-the installation owner, avoiding SSH’s requirement for a matching container passwd entry. The companion reaches
-`application` and `widgets` through private Compose DNS. The OpenShell controller
-uses an explicit address on the owned runtime bridge for sandbox callbacks; its
-forwarders use the private `controller.clawscarf.internal` name. Bundled LiteLLM
-is reachable at `models.clawscarf.internal` over authenticated TLS. This avoids
-Docker Desktop-specific routing while keeping published ports on loopback.
-Docker 29+ allocates these service subnets from its own address pools with
-`--subnet 0.0.0.0/24`, allowing fixed endpoints without hardcoded network ranges.
-Public application access and the widget origin go through the
-[access companion](../../services/access/README.md), never directly to these listeners.
+[Deployment networking](../deployment/README.md#ownership-and-recovery) owns bridge
+allocation and fixed service addresses. Public application/widget entry always goes
+through [Access](../../services/access/README.md#security-and-state).
 
 Probe Gateway health inside its application namespace:
 
@@ -125,17 +116,6 @@ tool execution. OpenShell's `Ready` phase describes its sandbox, not application
 The runtime image disables the upstream Docker `HEALTHCHECK`: Docker executes it in
 the outer supervisor namespace, where it cannot reach the confined Gateway's loopback
 listener. Do not treat Docker container status as Gateway readiness.
-
-Standard forwarding multiplexes application TCP connections over one SSH transport
-per listener. Forty concurrent native CSS requests pass through the application
-companion without truncation. The alternative `forward service` command consumes
-one controller forwarding slot per application TCP connection; the pinned controller
-limits that path to 20 simultaneous connections per sandbox, which can reject a
-normal browser's assets and streams. Do not use it as application ingress.
-The implementation is upstream
-[standard forwarding](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/crates/openshell-cli/src/ssh.rs#L336),
-with the controller limit in
-[connection admission](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/crates/openshell-server/src/grpc/sandbox.rs#L1432).
 
 ## Repeatable boundary and retention check
 
@@ -170,11 +150,8 @@ false network-isolation pass.
 A marker under the home volume survives native `sandbox stop`/`sandbox start`.
 This proves retained-compute restart, not replacement/relink, backup restoration,
 Gateway crash consistency, browser isolation or isolation between team members.
-The current run passed on macOS arm64/Docker Desktop with OpenShell 0.0.116 and
-its Docker driver. These specific isolation checks have not been repeated on Linux.
-The separate [platform installation test](../../tests/deployment/platform-live.test.ts)
-passes on native Linux ARM64/x86-64 with Docker 29: protected runtime startup,
-native forwarding, authenticated model-gateway TLS, retained restart and cleanup.
+Exact candidate/platform results belong to [release evidence](../../release/README.md#release-evidence),
+not a second support matrix here.
 
 The [native runtime test](../../tests/runtime/team-runtime.test.ts) starts the real
 Gateway in a separate disposable sandbox using the same controller and image:
@@ -183,7 +160,7 @@ Gateway in a separate disposable sandbox using the same controller and image:
 CLAWSCARF_TEST_TEAM_RUNTIME=1 pnpm exec tsx --test tests/runtime/team-runtime.test.ts
 ```
 
-This passed with the single-runtime image. After initial file-tool use, it uploads
+After initial file-tool use, the test uploads
 a text file through native chat, reads it with the native file tool, edits it using
 Python and reads the result through native Lobster. It also checks an output-file
 reference in chat, native PDF extraction, Lobster approval/resume without replay,
@@ -199,22 +176,6 @@ preset retains `"auto"`. These checks establish native execution and file placem
 not model quality, a real inference route, browser file transfer or a complete
 installer/login journey. The member RPC check is an application permission check;
 it does not make code execution safe against hostile teammates.
-
-## Development footprint
-
-The arm64 team runtime image occupies approximately 1.19 GB of unpacked Docker image
-data; the companion image is approximately 414 MB. These are not compressed
-download sizes. Earlier idle local development measurements reported
-roughly 600 MiB for the OpenShell/OpenClaw container, 43 MiB for Access/Connections,
-136 MiB for the test PostgreSQL container and 878 MiB for optional LiteLLM. The
-host-side controller uses about 50 MiB RSS; forwarding processes and Docker Desktop
-add their own overhead. Local model weights and inference are additional.
-
-These observations establish a development baseline, not a minimum hardware spec,
-peak-load budget or supported user count. Measure cold installation, active model/tool
-execution and the current team runtime/browser layout before publishing
-capacity guidance. Image size comes from `docker image inspect`; container usage
-comes from `docker stats --no-stream`, and controller RSS from the host process table.
 
 ## Execution placement
 
@@ -232,10 +193,7 @@ Core commands and plugin children inherit OpenShell confinement. They can read
 Gateway-local data and reach its loopback listener; they must still be denied host
 private files, Docker/controller authority and undeclared external destinations.
 
-The optional [browser node](../execution/browser-node/README.md) and
-[Chromium service](../execution/browser/README.md) remain separate. Chromium needs
-namespace operations that this OpenShell policy denies, so it retains its own
-sandbox and restricted [public-web proxy](../execution/network/README.md).
-The browser node retains immutable shell denial and scoped enrollment. The
-[downstream routing-guidance fix](../execution/browser-node/README.md#upstream-browser-routing-bug)
-preserves this boundary; live model-selected browser qualification remains pending.
+The separate [browser integration](../execution/browser-node/README.md) owns its
+controller policy, enrollment and Chromium placement. It retains the browser's own
+sandbox because this OpenShell policy denies the namespace operations Chromium
+needs. Consult that owner for current browser support.

@@ -126,9 +126,8 @@ before opening Access. Stop/start preserves team cookies and logins.
 The browser proxy permits public HTTP/HTTPS and blocks private destinations; it is
 not a domain allowlist. See the [browser network](../execution/network/README.md) and
 [native node](../execution/browser-node/README.md) for topology and credentials.
-The [released browser qualification](../execution/browser-node/README.md#verified-release-limits)
-passes administrator model-selected browsing and staged uploads. Member permissions
-and downloads still fail, so the recipe leaves browser disabled.
+Current support and failure analysis belong to the
+[browser-node owner](../execution/browser-node/README.md#verified-release-limits).
 
 ## Runtime upgrade
 
@@ -157,4 +156,4 @@ use the opt-in [platform installation test](../../tests/deployment/platform-live
 [replacement](../../tests/deployment/upgrade-live.test.ts) tests deliberately interrupt
 operations; their source files specify required inputs and disposable state.
 Those fixtures can retain resources for inspection: delete them after testing.
-[Release results](../../release/README.md#build-and-publish) belong in the release guide.
+[Release evidence](../../release/README.md#release-evidence) is kept with the candidate.

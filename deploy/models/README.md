@@ -48,41 +48,18 @@ a request and explicit trust succeeds.
 input validation, definite dry-run failure, missing executables, uncertain applies,
 credential retention and structured failure transport without replay.
 
-[Gateway tests](../../tests/models/gateway.test.ts) passed against the pinned
-LiteLLM image and real Postgres, with a controlled upstream: discovery, text and
-tool responses, streaming, upstream failure without replay, model/management denial
-and revocation. A separate OpenShell proof passed native OpenClaw model streaming and a successful
-native read tool through this gateway over private TLS. It also verified CA trust
-failure, unauthenticated denial, model/management denial and credential revocation.
-An additional actual-model run used Qwen3 1.7B through LiteLLM's standard Ollama
-provider: native inference and a read tool completed without execution errors.
-The small model misquoted the file and made an invalid read invocation on a repeat
-run. This qualifies the successful transport/tool execution, not repeatable model
-quality or a production model recommendation. These isolated controlled/Ollama
-tests required no paid provider credentials.
+[Gateway tests](../../tests/models/gateway.test.ts) exercise LiteLLM with real
+Postgres and a controlled upstream: discovery, text/tool responses, streaming,
+errors without replay, model/management denial and revocation. The
+[OpenShell probe](../../tests/models/openshell-probe.mjs) exercises native inference
+and tool execution over the configured TLS route. Provider/model availability is
+not implied by a selectable catalog entry; selected-release evidence belongs to
+[release acceptance](../../release/README.md#release-evidence).
 
-A fresh installation from rebuilt development images passed direct OpenAI GPT-6 Astra
-with medium reasoning and a native `session_status` tool call from the browser through
-LiteLLM Responses. The previous universal Chat Completions setting failed this combination.
-Custom Responses routes explicitly enable `supportsStrictMode` so OpenClaw can send
-`strict: false` for tools with optional arguments. The [pinned source build](../images/README.md)
-contains the upstream fix that propagates this flag. Its real request builder is
-covered by the image probe (the published 2026.9.4 image fails that regression).
-A browser chat through GPT-6 Astra / medium, LiteLLM and the cloud broker successfully
-searched real Outlook operations and described `OUTLOOK_LIST_CALENDARS`, omitting
-optional IDs/cursors. No external account operation was executed. Local file
-execution follows the [team runtime contract](../../runtime/README.md).
-
-The fresh local assembly passed integrated initial model/credential/policy setup
-and a native administrator browser conversation through the rebuilt runtime,
-private-TLS LiteLLM and OpenRouter GPT-5.4 Mini. Native
-transcript records confirm `clawscarf/team-model`, successful read-tool execution
-and the exact synthetic file contents in the final response. Both the inherited
-OpenShell CA and private gateway CA remained active. The scoped runtime key was
-then revoked; the gateway rejected it with HTTP 401. This was an isolated acceptance
-installation, not a production model default. The actual browser path is qualified
-for that administrator configuration; member execution and release-artifact
-clean-machine acceptance remain separate.
+Custom Responses routes enable `supportsStrictMode` so optional tool arguments can
+use `strict: false`. The runtime [capability probe](../../tests/runtime/capabilities.mjs)
+checks the actual request builder before HTTP. Protocol selection belongs to the
+[model catalog](#installer-choices), not a separate provider bypass.
 
 For isolated gateway tests, render [gateway.fixture.json](../../tests/models/gateway.fixture.json)
 as its generated route configuration, set `TEST_PROVIDER_KEY=test-provider` in its private environment,
@@ -153,8 +130,8 @@ Each model can select the native `api` protocol (`openai-completions` or
 Responses so tool calls and reasoning work together; other offerings use Chat
 Completions unless specified. LiteLLM owns upstream translation.
 Catalog order controls model/provider menu order, with direct providers first and
-OpenRouter last. Recipes choose defaults from those offerings; Team server selects
-direct OpenAI GPT-6 Astra with medium reasoning. Model limits are explicit data, not
+OpenRouter last. [Recipes](../../recipes/README.md) select defaults from those offerings.
+Model limits are explicit data, not
 a discovery call made during installation. The current catalog conservatively enables
 text input; it does not claim tested image handling or every upstream model capability.
 

@@ -1,7 +1,8 @@
 # Native Account and People
 
 The bundled `clawscarf-access` plugin renders **Account** and **People** inside
-OpenClaw, using its public experimental Control UI plugin API in pinned 2026.9.4.
+OpenClaw, using its public experimental Control UI plugin API. The
+[package manifest](package.json) pins the SDK.
 Account shows the signed-in identity and sign-out. People is visible to native
 administrators: it lists members and their observed native roles, assigns existing
 roles, creates copyable invitations, revokes invitations and removes access.

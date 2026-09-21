@@ -1,7 +1,6 @@
 # Repository checks
 
-Run from the repository root with Node 24.16 or later in the Node 24 line, or Node 26.1 or later and
-pnpm 10.33.0:
+Run from the repository root with Node and pnpm matching [package.json](../package.json):
 
 ```sh
 pnpm install --frozen-lockfile
@@ -97,15 +96,10 @@ ignored output directory:
 pnpm exec tsx scripts/package-operator.ts --output .local/operator-artifacts
 ```
 
-The command uses the system tar utility and emits a development `.tgz` plus `SHA256SUMS`.
-It refuses an existing output directory. The archive includes its frozen dependency
-lockfile, required migrations/policies/SDK clients, browser seccomp profile, native
-browser-node helpers/private-ingress configuration, Python transport and notices; it
-excludes companion servers, contributor tooling and installation state. It does not
-download images, include provider credentials, publish a release or build missing
-components. The package uses the root README, with documentation links pointing to
-GitHub so they work on npm. Detailed [archive instructions](../release/operator.md)
-are also included.
+The command uses the system tar utility, refuses an existing output directory and
+emits a development `.tgz` plus `SHA256SUMS`. The [archive guide](../release/operator.md)
+owns its payload and extraction; [release assembly](../release/README.md) owns published
+assets. Packaging consumes an existing build and contains no installation state.
 The shared [runtime package writer](release/runtime-package.ts) builds operator and
 companion manifests/lockfile importers from their executable dependency closures.
 The publisher scans staged JavaScript imports, rejects missing relative modules,
@@ -123,11 +117,8 @@ CLAWSCARF_TEST_OPERATOR_ARCHIVE=1 pnpm exec tsx --test scripts/package-operator.
 CLAWSCARF_TEST_COMPANION_PACKAGE=1 pnpm exec tsx --test scripts/package-companion.test.ts
 ```
 
-These packaging checks alone do not establish installation/startup acceptance.
-The first candidate also passed a fresh installation, hosted administrator login,
-real inference and retained-state restart on the development Mac; see
-[release verification](../release/README.md#build-and-publish). Published release
-upgrades and a newly provisioned host remain untested.
+These packaging checks do not establish installation/startup acceptance; use the
+[release evidence contract](../release/README.md#release-evidence).
 
 ## Provenance
 
@@ -180,11 +171,6 @@ plugin, service or operator code. The Access and Connections native UI builds
 bundle them. Operator internals cannot import CLI entrypoints or installation
 menus, and service access is restricted to named composition/configuration/storage
 boundaries. Import regressions cover permitted and forbidden directions.
-
-Retained installation editing uses `clawscarf configure --directory <installation>`; its
-noninteractive flags share the same operations. Validation and preview/apply stay internal. See the
-[installation guide](../deploy/deployment/installation.md#change-an-existing-installation)
-for supported changes, persistence and failure handling.
 
 The [cloud client guide](../services/cloud/README.md) owns API snapshot provenance
 and regeneration instructions. Hosted browser authorization and registration live

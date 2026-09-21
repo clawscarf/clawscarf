@@ -5,14 +5,17 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Installer and releases
 
-- [ ] Verify hosted login and real model inference on Linux ARM64/x86-64, and the full
-      installation journey on Windows through WSL2. Native Linux CI covers protected
-      runtime startup, private model routing, stop/start and deletion.
+- [ ] Qualify clean-machine installation on supported hosts, hosted login and real
+      inference on Linux ARM64/x86-64, and the full Windows/WSL2 journey.
+- [ ] Qualify concurrent native UI requests and long-lived streams through the shipped
+      gRPC service forwards and address the [controller connection limit](deploy/openshell/README.md#application-transport).
+- [ ] Qualify hosted signup/email verification, recovery, logout and account switching,
+      plus customer OIDC callbacks/TLS, on a fresh installation.
 - [ ] Add Intel Mac support when compatible upstream OpenShell tools are available;
       the pinned release supplies no Intel Mac binaries.
 - [ ] Finish release distribution review: transitive licenses/source obligations,
       durable acquisition of pinned OS packages and a self-contained Python prerequisite
-      for optional pack operations. The basic Team server recipe selects no packs.
+      for optional pack operations.
 
 ## Upgrade decision
 
@@ -23,17 +26,14 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Browser qualification
 
-- [ ] Define narrow native permission for member browser use: alpha.4 browser proxy
-      commands require `operator.admin`. Preserve administrative node/profile controls;
-      do not grant members full administrator authority.
-- [ ] Fix browser downloads across separate Chromium/controller filesystems; the file
-      exists in Chromium but native `download.saveAs` reads the controller's absent path.
-      Preserve isolated networks and keep team files/controller credentials out of Chromium.
-- [ ] Requalify member/admin browsing and upload/download round trips on exact release
-      images before enabling the recipe's browser default. Administrator navigation,
-      staged uploads, explicit host separation, unavailable-node failure and network
-      confinement passed on macOS ARM64; see [verified limits](deploy/execution/browser-node/README.md#verified-release-limits).
-      Linux browser acceptance remains open. Upstream submission requires the owner's request.
+- [ ] Add narrow native permission for member browser use without granting full
+      administrator authority; preserve administrative node/profile controls.
+- [ ] Fix download transfer between Chromium, browser controller and runtime while
+      preserving network isolation and excluding team files/credentials from Chromium.
+- [ ] Qualify member/admin browsing and upload/download round trips on macOS and Linux
+      release images before enabling the recipe default. Preserve explicit target
+      semantics and unavailable-node failure; see the [browser owner](deploy/execution/browser-node/README.md#verified-release-limits).
+      Upstream submission requires the owner's request.
 
 ## OpenClaw curation
 
@@ -109,8 +109,9 @@ authorize release publication or upstream PRs.
       required restarts and injected unexpected inventory entries.
 - [ ] **Verification:** Qualify retained chat/upload analysis, shared shell/Lobster files,
       approval/resume, agents/models, People/revocation and optional Connections on exact images.
-      Cover member/admin and desktop/mobile. Preserve browser enrollment; real browsing/file
-      transfer remains in [Browser qualification](#browser-qualification).
+      Cover member/admin, desktop/mobile and advertised skill paths after restart.
+      Preserve browser enrollment; real browsing/file transfer remains in
+      [Browser qualification](#browser-qualification).
 - [ ] **Verification:** Exercise supplied-plugin install/enable/invoke/restart/explicit
       update/removal and MCP add/authenticate/invoke/remove, including unauthorized-mutation
       rejection and user additions/unrelated settings surviving restart and recipe reapplication.

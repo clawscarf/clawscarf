@@ -12,8 +12,8 @@ logins and files. This is not per-person browser isolation.
 docker build -f deploy/execution/browser/Dockerfile -t clawscarf-browser:local .
 ```
 
-[Dockerfile](Dockerfile) pins Node 24.19.0 and Debian Chromium/sandbox
-153.0.8010.52-1~deb12u1. The process runs as UID/GID 1000. Mount persistent state
+[Dockerfile](Dockerfile) pins Node and the Debian Chromium/sandbox packages.
+The process runs as UID/GID 1000. Mount persistent state
 at `/state`, owned by that user, and a read-only private credential file. Set
 `CLAWSCARF_BROWSER_TOKEN_FILE` to that file; it must have no group/other permissions
 and contain at least 32 non-whitespace characters. Generate a random credential,
@@ -26,7 +26,7 @@ The container requires:
 - Private `/tmp` tmpfs (512 MiB), private shared memory (256 MiB), an init process,
   and bounded memory/PIDs (the local test uses 1 GiB and 256 PIDs).
 - A stop grace period of at least 12 seconds.
-- A private network route from the Gateway to TCP 9223. Do not publish CDP publicly.
+- A private network route from the browser controller to TCP 9223. Do not publish CDP publicly.
 
 Chromium listens only on loopback 9222. The proxy on 9223 authenticates **each HTTP
 request and WebSocket upgrade**, accepting Basic `openclaw:<token>` or Bearer
@@ -48,28 +48,9 @@ is type-checked with the repository and stripped by pinned Node during image bui
 This image serves private HTTP/WebSocket CDP; HTTPS termination with different
 advertised schemes needs an explicit deployment configuration and qualification.
 
-Configure vanilla OpenClaw using its supported remote profile:
-
-```json5
-{
-  browser: {
-    enabled: true,
-    defaultProfile: "team",
-    profiles: {
-      team: {
-        cdpUrl: "http://openclaw:<private-token>@browser:9223",
-        attachOnly: true,
-      },
-    },
-  },
-}
-```
-
-Keep the actual profile URL in private native configuration. The upstream
-[remote-browser documentation](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/docs/tools/browser/remote.md)
-confirms Basic authentication is preserved for discovery and WebSocket requests.
-Native sandbox/role permission to use this host browser is configured by the
-installation's execution composition, not this image.
+The [native browser-node owner](../browser-node/README.md#image-and-immutable-configuration)
+defines the OpenClaw profile, credentials and authorization. This image only serves
+Chromium/CDP; it does not own Gateway configuration or native role policy.
 
 `CLAWSCARF_BROWSER_PROXY_SERVER` optionally supplies an HTTP egress-proxy origin
 without credentials. The launcher configures Chromium to proxy loopback targets as
@@ -95,32 +76,14 @@ CLAWSCARF_TEST_BROWSER_IMAGE=clawscarf-browser:local \
 
 It creates only labeled disposable containers/volumes, publishes a random loopback
 port, uses a synthetic cookie, and does not connect an external user account.
-On Docker Desktop/Linux ARM64, the component regression passed native
-namespace/seccomp sandbox status, HTTP/WebSocket authentication (including
-pipelined requests and browser-Origin rejection) and profile persistence across
-graceful restart. Discovery tests connect to the complete advertised browser/page
-URLs without replacing the host or port; browser IDs change after restart. The
-[focused tests](../../../tests/runtime/browser-discovery.test.ts) cover invalid
-authorities, unexpected upstream endpoints, response bounds and UTF-8 framing.
-The [isolated network test](../../../tests/runtime/browser-network.test.ts) also uses
-advertised endpoints for browser discovery and page commands through the TCP relay.
-Idle usage in the component test was approximately 254 MiB within its 1 GiB cap;
-real websites can consume substantially more. Integrated native member actions,
-egress denial and Linux host qualification are additional acceptance requirements.
-
-A disposable native browser-node trial passed public page opening, navigation and
-snapshots, with native rejection of loopback, private and metadata destinations.
-It used scoped node pairing, immutable command-execution denial and this isolated
-Chromium composition. Raising native execution approvals to full did not permit
-commands on that node. The trial used administrator-authorized native RPC; it is
-not a member-tool or production-assembly qualification. The browser controller in
-that candidate runs outside OpenShell, with the team runtime still
-inside OpenShell. A separate [private browser-node assembly](../browser-node/README.md)
-also passed private ingress and member/admin native tool calls with explicit node
-selection. The local operator enrolls that native node and Compose runs it;
-ordinary model-selected `host` control still encounters the Gateway DNS-preflight
-limitation described in
-[execution placement](../../openshell/README.md#execution-placement).
+The test exercises native namespace/seccomp sandbox status, HTTP/WebSocket
+authentication (including pipelining and browser-Origin rejection), advertised
+browser/page URLs and profile persistence across graceful restart. The
+[discovery tests](../../../tests/runtime/browser-discovery.test.ts) cover invalid
+authorities, upstream endpoints, response bounds and UTF-8 framing.
+[Network acceptance](../network/README.md#build-and-test) owns egress checks;
+[native integration limits](../browser-node/README.md#verified-release-limits) own
+model-driven browsing and file transfer. Component tests do not establish those journeys.
 
 ## Provenance
 

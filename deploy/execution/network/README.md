@@ -78,10 +78,9 @@ ordinary container before testing denial from the isolated browser.
 The repeatable test covers actual Chromium/CDP, public HTTPS, direct host/metadata
 denial, private and mixed-address DNS fixtures, unresolved names, restricted
 ports, relay authentication, absence of an SSH listener and retained profiles.
-The relay uses the same fixed configuration as the deployment operator. DNS rebinding across changing
-authoritative answers and IPv6-enabled deployment remain unqualified; neither
-is claimed by static host fixtures. This packaging is not yet evidence of the
-assembled local distribution or a published release.
+The relay uses the deployment operator's configuration. Static host fixtures do not
+qualify changing-answer DNS rebinding or IPv6-enabled deployment. Native integration
+results belong to the [browser-node owner](../browser-node/README.md#verified-release-limits).
 
 ## Private native node ingress
 
@@ -104,8 +103,8 @@ The composition must supply these operator-owned settings:
 - `/run/clawscarf/node-ingress.pem`: private read-only server certificate/key PEM,
   readable by the nonroot HAProxy user. Supply the CA or native certificate pin to
   the node; do not disable certificate checking.
-- Native `gateway.nodes.pairing.autoApproveLocal: false`, without trusted-CIDR
-  auto-approval. Forwarding to loopback must not create pairing authority.
+- The [native pairing policy](../browser-node/README.md#pairing-and-connection).
+  Forwarding to loopback must not create pairing authority.
 
 The listener must not bind the Chromium or application-facing network.
 The operator gives ingress a separate internal machine interface and an upstream
@@ -113,14 +112,14 @@ network attachment; it binds only the machine address and publishes no port.
 Team runtime OpenShell policy must deny this machine listener. The native
 paired-node credential authorizes the connection; network placement alone does not.
 
-The [ingress regression](../../../tests/runtime/machine-ingress.test.ts) passed TLS,
+The [ingress regression](../../../tests/runtime/machine-ingress.test.ts) exercises TLS,
 HTTP/browser-Origin denial, case-insensitive removal of impersonation headers and
 native upgrade forwarding using the actual HAProxy image. Set
 `CLAWSCARF_TEST_BROWSER_RELAY_IMAGE` and run that test with `node --import tsx --test`.
 Its upstream is a controlled handshake fixture; it does not establish native pairing,
 revocation or production network isolation. It publishes only a disposable loopback
-test listener. Combined local private-node enrollment/navigation passed; ordinary model-selected
-routing and release qualification remain open. See the browser-node owner.
+test listener. Pairing and revocation belong to the
+[browser-node owner](../browser-node/README.md#pairing-and-connection).
 
 ## Sources and rights
 

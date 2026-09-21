@@ -7,8 +7,8 @@ Access owns its database pool; broker storage and maintenance run in the cloud.
 
 ## Build and start
 
-The [component manifest](../../release/components.json) pins the exercised Node
-24.19.0 build/runtime image. From the repository root:
+The [component manifest](../../release/components.json) pins the build/runtime image.
+From the repository root:
 
 ```sh
 docker build \
@@ -69,8 +69,8 @@ The installer generates this adapter configuration when hosted Connections is en
 
 ## Verification
 
-The [management adapter regression](../../tests/connections/cloud-management.test.ts)
-covers native member denial, CSRF, revocation during authority verification and scoped
-cloud dispatch. [Process lifecycle tests](../../tests/companion/process-lifecycle.test.ts)
-cover listener failures and cleanup. Broker/provider tests belong to the cloud service.
-Fresh hosted installation and image acceptance remain tracked in [TODO](../../TODO.md).
+[Process lifecycle tests](../../tests/companion/process-lifecycle.test.ts) cover
+listener failures and cleanup. [Access](../../services/access/README.md#reuse-and-verification)
+and [Connections](../../services/connections/README.md) own service-level tests;
+broker/provider tests belong to the cloud service.
+Installation acceptance uses the [release evidence contract](../../release/README.md#release-evidence).

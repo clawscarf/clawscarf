@@ -53,10 +53,8 @@ asking for missing credentials. Explicit command options preselect those same ch
 **Esc** discards unaccepted section changes and goes back; at the root it exits.
 **Ctrl+C** exits. No services change until the final confirmation.
 
-The **Team server** recipe selects GPT-6 Astra through OpenAI with
-medium reasoning and enables Connections. It does not include a document ingestion
-workflow. All recipe defaults except the runtime can be edited. Recipes
-cannot disable OpenShell protection or authenticated entry.
+The [recipe definition](../../recipes/README.md) supplies editable defaults.
+The runtime selection, OpenShell protection and authenticated entry are fixed.
 
 `--recipe <name-or-file>` skips the picker: use `team-server` for the bundled
 recipe or a path to a custom recipe JSON. Without it the menu lists all bundled
@@ -201,6 +199,26 @@ Packs are CLI-bundled native Claws with explicit member selections. The pinned P
 OpenShell SDK is currently required by their operator. Account-dependent members need
 [bindings](../../packs/README.md); configuration never invents accounts or grants.
 
+## Team administration
+
+Use native [People](../../plugins/access/README.md) for invitations and roles, and
+[Connections](../../plugins/connections/README.md) for external accounts and agent grants.
+
+Authenticated automation uses the same generated REST client:
+
+```sh
+clawscarf people --origin https://team.example --session-file /private/session list
+clawscarf people --origin https://team.example --session-file /private/session invite colleague@example.com
+clawscarf people --origin https://team.example --session-file /private/session invitations
+clawscarf people --origin https://team.example --session-file /private/session role USER_ID admin --expected-role member
+clawscarf people --origin https://team.example --session-file /private/session remove USER_ID
+clawscarf people --origin https://team.example --session-file /private/session revoke-invitation INVITATION_ID
+```
+
+Use `clawscarf connections --help` for account operations. Both command groups use
+a currently signed-in user's private session file and enforce the same native
+authority as their pages; an operator filesystem credential is not a role override.
+
 ## Change an existing installation
 
 ```sh
@@ -283,24 +301,11 @@ state during mutations. A preview is not a port reservation: ports are checked a
 preparation. Retained volumes and stop/start are not backups. Docker restarts Compose
 services unless explicitly stopped; OpenShell owns sandbox lifecycle.
 
-Fresh setup previously passed persistent startup, private administrator claim, WorkOS login
-and a real model response on macOS arm64. The current single-runtime image passed native
-uploads, file tools, Python, Lobster, PDF extraction and persistent restart through the
-[runtime acceptance test](../openshell/README.md#repeatable-boundary-and-retention-check).
-The current installer also passed fresh hosted registration against staging, native
-administrator verification and entry without a second login on macOS arm64. A live
-GPT-6 Astra / medium response passed after correcting the recipe to use the Responses
-API. Production sign-in and sign-up forms render correctly; complete new-account
-email verification remains untested.
-Real Outlook linking, reconnect, execution and revocation passed locally.
-
-Native pack removal uses the runtime’s private local Gateway credential for automation
-cleanup under trusted-proxy login, preserving ownership checks. Removal after Gateway
-restart passed in the protected runtime. Browser routing has its documented upstream
-limitation. The first packaged release passed a fresh installation and retained-state
-restart on the development Mac. Windows WSL2 end-to-end verification, newly provisioned hosts, complete release
-upgrades, external ingress and directory-backed
-hosting storage remain unfinished. [TODO.md](../../TODO.md) owns the open work.
+For capability support, use the owning [runtime](../../runtime/README.md),
+[browser](../execution/browser-node/README.md#verified-release-limits),
+[pack](../../packs/README.md) and [Connections](../../plugins/connections/README.md)
+guides. [Release evidence](../../release/README.md#release-evidence) describes how to
+verify a published artifact; [TODO.md](../../TODO.md) is the only open-work list.
 
 CLI failures identify deliberate configuration errors and file paths without echoing
 file contents, provider responses or subprocess output. `--json` keeps the same

@@ -10,7 +10,8 @@
 - [README.md](README.md) owns product boundaries; component READMEs own usage and implementation.
   [TODO.md](TODO.md) is the only checklist: short unchecked items, removed when verified.
   No parallel plans, frozen reports or changelog prose. Preserve unique open requirements.
-  Use relative links and one owner per explanation. Reports and logs belong in ignored
+  Use relative links and the [documentation ownership map](CONTRIBUTING.md#documentation-ownership);
+  replace repeated explanations and status claims with links. Reports and logs belong in ignored
   .local/ or CI artifacts; retain required manifests, lockfiles and migration history.
 - Update the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md) in the cloud repository
   whenever a change affects its configured integration, callbacks, credentials locations or

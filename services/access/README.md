@@ -11,13 +11,11 @@ Ordinary login never grants admission or administrator authority. People managem
 renders in the native plugin; no identity server or
 password database is bundled with the installation.
 
-The implementation contains a session service, Postgres persistence, generated
-OpenAPI handlers/client, a native streaming reverse proxy and the unified `clawscarf people` commands. Native enrollment has REST, CLI and a People page. Administrator proof and team
-preparation, member enrollment, member administrator denial and administrator
-self-revocation pass against native OpenClaw 2026.9.4. The native Account/People pages
-have passed a two-person browser flow with a signed local OIDC provider and vanilla
-OpenClaw 2026.9.4, including invitations, role handover and revoked-session denial.
-External company-provider configuration must still be verified for each deployment.
+The implementation contains session services, Postgres persistence, generated
+[REST handlers/client](openapi.json) and the streaming reverse proxy. The
+[native plugin](../../plugins/access/README.md) owns Account/People UI;
+[CLI operations](../../deploy/deployment/installation.md#team-administration) share
+the same API. Verification instructions are [below](#reuse-and-verification).
 
 ## Configuration and operation
 
@@ -27,8 +25,6 @@ Set `CLAWSCARF_ACCESS_CONFIG` to an operator-owned JSON file. It contains `origi
 It is not included in an image. The database is a separate persistent Postgres service.
 The access process never runs migrations.
 
-Identity configuration always uses `mode: "oidc"`, whether hosted or customer-owned.
-Loopback HTTP is supported for local installation. Public exposure requires HTTPS.
 In a container, `containerLoopbackPublication: true` permits `host: "0.0.0.0"` with
 loopback-only Compose publication. The operator retains restrictive permissions on
 private configuration and OIDC client credentials.
@@ -88,24 +84,17 @@ unchanged and ingress records the actual network peer.
   durable server ID and initial administrator identity before generating native config.
   Identity and setup commands open only Access storage; they require neither
   browser assets, native runtime availability nor OIDC/TLS secret files.
-- Build the native UI with `pnpm access:plugin:build`; run `pnpm access:start` for the
-  backend alone, or use the companion composition with optional Connections.
-- Open **Account** or **People** inside OpenClaw. People requires current native
-  administrator authority; the CLI commands below enforce the same checks.
+- Run `pnpm access:start` for the backend alone; the [native plugin](../../plugins/access/README.md)
+  owns UI build instructions and the [companion](../../apps/companion/README.md) owns combined startup.
 - Native preparation assigns the initial administrator explicitly before changing the
   default role to pending. Invitation acceptance assigns the existing member role.
 - Run `pnpm access:generate` after changing [the contract](openapi.json).
 
 [The companion application](../../apps/companion/README.md) is the process entry for
 Access plus optional Connections. It serves no management dashboard; Account/People and optional Connections assets ship in native plugins.
-The [Access-only entrypoint](../../apps/access/entry.ts) remains useful for isolated
-component work through `pnpm access:start`. Both application entries
-use the same [process lifecycle](../../apps/process-lifecycle.ts), including cleanup
-after a partially failed startup and one shutdown for simultaneous signals.
-[The Compose fragment](../../deploy/compose/companion.yaml) publishes access on loopback
-and requires an explicit image/configuration mount. It does not install or own the
-OpenShell runtime or Postgres. The container-loopback topology has passed HTTP and native Gateway management
-checks; this fragment is not a finished local installer.
+The [Access-only entrypoint](../../apps/access/entry.ts) is for isolated component
+work. Process configuration and lifecycle belong to the
+[companion application](../../apps/companion/README.md).
 
 The management client uses OpenClaw’s canonical `gateway-client` / `backend`
 identity and advertises the ClawScarf package version. The SDK dependency version
@@ -136,20 +125,7 @@ sessions and closes active ingress streams; it does not delete native profiles, 
 files or automations. Rejoining resets retained native authority before admitting the
 person again. External edits remain visible on refresh; refreshing does not reapply them.
 
-Authenticated automation uses the same generated REST client:
-
-```sh
-pnpm clawscarf people --origin https://team.example --session-file /private/session list
-pnpm clawscarf people --origin https://team.example --session-file /private/session invite colleague@example.com
-pnpm clawscarf people --origin https://team.example --session-file /private/session invitations
-pnpm clawscarf people --origin https://team.example --session-file /private/session role USER_ID admin --expected-role member
-pnpm clawscarf people --origin https://team.example --session-file /private/session remove USER_ID
-pnpm clawscarf people --origin https://team.example --session-file /private/session revoke-invitation INVITATION_ID
-```
-
-Add global `--json` for structured output. The session file is private authentication
-material for a currently signed-in user, not an operator override. Local mode exposes
-Account and its sole administrator, but cannot issue team invitations.
+For authenticated automation, use the [team CLI](../../deploy/deployment/installation.md#team-administration).
 
 ## Security and state
 
@@ -172,7 +148,8 @@ hints are encrypted and bound to their session. Browser mutations require exact
 Origin and CSRF validation; the OpenAPI contract declares both session-cookie and
 CSRF requirements.
 
-The runtime connection uses [standard OpenShell SSH forwarding](../../deploy/openshell/README.md#application-transport), which preserves native HTTP headers and multiplexes concurrent requests.
+The runtime connection uses the [OpenShell transport](../../deploy/openshell/README.md#application-transport).
+That guide owns the forwarding implementation; Access owns HTTP/WebSocket authorization.
 
 Ingress replaces identity and forwarded headers using authenticated session data
 and the actual socket address. It does not invent a remote address to bypass native
@@ -185,9 +162,9 @@ management endpoint must therefore use HTTPS with a trusted certificate. Configu
 handler and revocation tracking as the browser listener. Compose publishes this port
 on host loopback and trusts the private CA through `NODE_EXTRA_CA_CERTS` at
 `/run/clawscarf/management-ca.pem`. Certificate verification remains enabled.
-The companion calls `https://companion:18801` through Docker DNS, with that name
-covered by its certificate. This preserves its actual Docker client address:
-the pinned Gateway rejects loopback addresses in forwarded client attribution.
+The [deployment configuration](../../scripts/deployment/configuration.ts) selects
+the companion's Docker-DNS management endpoint and certificate name, preserving
+its actual client address rather than sending loopback as forwarded attribution.
 
 An application can additionally supply one typed
 [companion API route](types/ingress.ts) with a distinct HTTPS origin and a bounded
@@ -201,14 +178,6 @@ its existing session authorization and native forwarding. The
 path, upgrade and disabled-route rejection. The composing app owns the concrete
 route selection. The current companion does not enable this separate API origin.
 
-OIDC sign-in, native document forwarding, administrator proof and explicit native
-team preparation have passed through this Compose/OpenShell arrangement. The initial
-profile displays the configured administrator name. A real native regression also
-verifies 40 concurrent authenticated page requests, member enrollment, explicit
-administrator promotion, self-revocation and
-closure of an already-open Gateway connection while preserving another administrator.
-See the [deployment team profile](../../deploy/deployment/README.md#team-profile)
-for OIDC, listener and TLS configuration.
 The configured runtime must not be reachable by untrusted
 callers bypassing ingress. Application and widget origins must be distinct; widget
 requests retain native capability authorization rather than receiving user identity.
@@ -220,11 +189,8 @@ configuration; there is no automatic anonymous configuration read. Other paths a
 methods remain behind browser login. Published requests keep their native token
 and signature headers, but never browser cookies or asserted user identity; native
 OpenClaw validates the hook credential. Widget requests also receive no companion
-identity or browser cookie. Hook and widget proxy policy tests pass. The native hook journey also passes:
-missing credentials receive 401, a valid native token reaches `/hooks/wake`, and
-unpublished paths or wrong methods retain login protection. The native dashboard widget also passed an actual browser interaction through the
-separate sandbox origin: its button updated from Count 0 to Count 1 inside the
-native nested iframe.
+identity or browser cookie. The native regression below exercises hook admission;
+its result is distinct from browser widget acceptance.
 
 Active application connections are revalidated every two seconds. Revoked identities
 close; an unresolved authorization check closes only when its freshness expires.
@@ -295,8 +261,8 @@ against the real Gateway: member denial, native administrator promotion and hand
 rejoin resetting prior administrator authority, and logout closing only the affected
 native stream. The test IdP is composed into test handlers without changing the
 running companion's identity configuration. These checks do not qualify an external
-company IdP, its deployed callback/TLS configuration, or a published-release installation. The native-page browser check described above
-was run against an isolated development build.
+company IdP, deployed callback/TLS configuration, or a published-release installation.
+Use the [release evidence](../../release/README.md#release-evidence) for that boundary.
 
 API generation emits one shared schema/type set, the fetch SDK and Fastify handler
 types in `generated/` from this component's OpenAPI contract.

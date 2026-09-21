@@ -1,89 +1,37 @@
-# ClawScarf operator
+# CLI archive
 
-The operator archive contains the compiled configuration/lifecycle CLI and its controller, model and pack
-operators. It runs outside the contributor checkout. It is not the complete
-distribution: runtime/companion images and the pinned OpenShell executables are
-separate inputs. The archive includes recipes, packs, the model catalog and runtime definitions.
-The interactive menu lists those recipes; each fixes its runtime. For a published runtime it downloads missing OpenShell tools by checksum and pulls
-registry images by digest. Local development image IDs cannot be downloaded. The npm
-package is named `@clawscarf/cli` and exposes the `clawscarf` command. Development archives
-remain private; the release candidate builder makes the package publishable. [Release contents](README.md) defines the publication model.
+For normal installation and operation, use the [quickstart](../README.md#get-started)
+and [CLI guide](../deploy/deployment/installation.md). This file describes the archive
+layout; [release assembly](README.md) owns how artifacts are built and published.
+The source links refer to the repository, not additional files in this archive.
 
-## Install from npm
+## Standalone layout
 
-```sh
-npm install -g @clawscarf/cli@next
-clawscarf configure
-```
+The standalone archive contains `clawscarf/` with the command launcher, a private
+`node/bin/node`, Node's license, and `package/` with the CLI, installed dependencies
+and catalogs. Verify it against the same release's `SHA256SUMS`, then extract it.
+Run `./clawscarf/clawscarf configure`; moving the complete directory preserves its
+runtime and dependencies. The release installer performs this verification and
+installation for normal use.
 
-The `next` tag selects the current alpha. Use an exact version instead when needed.
-npm installs the CLI dependencies; runtime images and tools are fetched during setup.
-See [release contents](README.md) for supported platforms and verification.
+## JavaScript archive
 
-## Standalone download
+The development JavaScript archive contains compiled operator code, its production
+dependency lockfile, migrations, policy/helpers, recipes, packs and runtime definitions.
+It excludes companion servers, Docker images, OpenShell executables and installation
+state. Publisher dependencies and TypeScript sources are not runtime requirements.
 
-Standalone CLI archives include Node and installed dependencies. Download the archive
-for your platform and its `SHA256SUMS` from the same GitHub Release. The release's
-[installer](install.sh) selects the correct archive, verifies it and installs
-`clawscarf` under `~/.local/bin`. It accepts `--prefix /absolute/directory`.
-No system Node, npm or pnpm is required. These archives are separate from both the
-npm package and the runtime-tool archives.
-
-The layout is `clawscarf/` containing the launcher, `node/bin/node`, Node's LICENSE,
-and `package/` with the CLI, dependencies and catalogs. You can also verify and
-extract the archive yourself, then run `./clawscarf/clawscarf configure`.
-Moving the whole directory preserves the bundled runtime and dependencies.
-
-## Run the JavaScript archive
-
-Verify the archive against its accompanying `SHA256SUMS`, then extract it into a new
-directory. Unlike the standalone download, this requires Node 24.16 or later in the Node 24 line, or Node 26.1 or later, and
-pnpm 10.33.0. In the extracted `package` directory:
+With Node/pnpm matching [package.json](../package.json), verify the archive against
+its `SHA256SUMS` and extract it into a new directory. Inside `package`:
 
 ```sh
 pnpm install --prod --frozen-lockfile --ignore-scripts
 node scripts/clawscarf.js --help
 node scripts/clawscarf.js configure --directory /absolute/new-team
-node scripts/clawscarf.js configure --help
-node scripts/clawscarf.js people --help
-node scripts/clawscarf.js connections --help
 ```
 
-Dependencies are installed from the included frozen lockfile. Its root importer
-contains only the production dependencies referenced by the staged operator;
-publisher and browser dependencies are omitted. Locked transitive versions are retained.
-No TypeScript compiler, contributor source or build step is needed to run the commands.
-Platform support is determined by the selected runtime definition. Published candidates
-include macOS arm64 and Linux arm64/x86-64 tools; Windows runs the Linux CLI inside WSL2.
-
-The installer reviews recipe settings before credentials, prepares the installation,
-and offers **Start now**. It starts Docker services and protected OpenShell containers, then exits; closing
-the terminal leaves them running. Administrator setup supplies a private sign-in link and waits for successful
-browser setup, with replacement links offered on expiry. The same public
-operations use `configure` for new or existing installations, with `--non-interactive`
-for automation. `start`, `stop`, `status` and `logs` operate the selected `--directory`.
-Validation and preview/apply are internal. See the source installation guide for
-supported retained changes and administrator setup.
-
-Recipes select runtime definitions relative to their own files. New installations
-retain the runtime and selected packs outside the package. The development descriptor
-still uses local image IDs and tools prepared separately; that development archive alone
-cannot install on a clean machine. Published candidates instead contain registry digests
-and checksummed tool download URLs. Custom recipes can point to a separately prepared
-runtime bundle. Team server supplies a basic team server, not a document workflow.
-
-Keep installation data outside this extracted package. Stop retains state; replacing
-an operator archive is not a runtime upgrade or backup. Docker services keep running after
-terminal exit; Docker must remain available. No host service is installed.
-The pack operator additionally needs the pinned Python environment from
-`scripts/packs/requirements.txt`. Models require an external LiteLLM gateway or the unified configuration’s pinned local
-LiteLLM service. This archive contains no model/provider credentials. Unified preparation
-can issue initial scoped model and Connections credentials for fresh installations;
-normal start never rotates or reactivates them. Use `configure` for capability changes;
-`connections` manages application accounts and grants.
-
-The source checkout owns full local setup, model and pack qualification instructions.
-[Third-party notices](../THIRD_PARTY_NOTICES.md) are retained verbatim; their relative source references refer
-to the source checkout, not additional runtime payload in this archive. Installed
-dependencies retain their own notices. Full binary-release license qualification
-remains separate from this operator packaging check.
+Keep installation data outside the extracted package. A development runtime that
+references local image IDs needs those images prepared separately; see
+[development releases](README.md#published-and-development-use).
+The optional pack operator also needs its [Python dependencies](../packs/README.md#requirements-and-bindings).
+Required [notices](../THIRD_PARTY_NOTICES.md) and dependency licenses accompany the payload.

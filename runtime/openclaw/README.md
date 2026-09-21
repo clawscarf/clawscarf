@@ -6,15 +6,11 @@ patch files and matching intent documents are the release inputs. The same manif
 records the expected patched Git tree. A development checkout can always be
 reconstructed; keep it while working, and export changes before discarding it.
 
-The initial series contains [optional marketplace](patches/optional-marketplace.prompt.md)
-and [browser routing guidance](patches/browser-routing-guidance.prompt.md). These are
-downstream changes; no upstream submission is required. The marketplace setting
-defaults to enabled when unset; ClawScarf's fresh-install preset selects
-`marketplace.enabled: false`. Changing this setting in an existing installation
-requires a Gateway restart and UI reload. Published alpha.4 includes the switch
-but predates this preset change. [TODO.md](../../TODO.md#openclaw-curation) owns unimplemented curation,
-package selection and release qualification. Individual patch intents own their
-implemented requirements; this README owns the general approach and maintenance.
+The [series](patches/series) is the patch inventory. Each matching intent document
+owns its feature requirements; [native configuration](../README.md#capability-controls)
+owns preset choices. This guide owns editing and upgrading the stack, not feature
+status or publication. See [release evidence](../../release/README.md#release-evidence)
+for what shipped and [TODO.md](../../TODO.md#openclaw-curation) for open work.
 
 ## Configuration, patches and packages
 
@@ -34,21 +30,9 @@ feature controls, and packaging to exclude files. These mechanisms are distinct:
 | Source patch         | Changes the owning UI/backend implementation; hiding navigation alone does not disable RPC/HTTP, CLI or tools |
 | Package selection    | Determines shipped files and dependencies; a disabled catalog or missing executable does not remove them      |
 
-The [preset and capability guide](../README.md#capability-controls) owns current
-configuration: the community invitation, operator terminal and Codex/Anthropic
-external session catalogs are already disabled. Presets apply once; refresh does
-not overwrite unrelated administrator edits. Relevant native semantics are:
-
-- `skills.entries.<name>.enabled: false` changes eligibility, not installation.
-  A nonempty `skills.allowBundled` restricts bundled/Custodian skills; omitted or
-  `[]` is unrestricted. It does not cover every plugin/workspace/user skill.
-- Empty `plugins.allow` is unrestricted. Activation also considers explicit
-  deny/disable decisions, selected slots and enabled bundled channels.
-- `security.installPolicy` is installation approval, not marketplace removal;
-  catalog access can precede policy evaluation. Missing credentials or CLIs likewise
-  do not establish curation.
-- `gateway.controlUi.root` serves separately built native UI assets. It does not
-  disable backends or avoid maintaining compatible UI code.
+Use the [preset and capability guide](../README.md#capability-controls) for native
+configuration semantics. `gateway.controlUi.root` can serve separately built UI
+assets, but does not disable backends or remove the need to maintain compatible UI.
 
 Optional-looking features are not necessarily plugins. GitHub account/session/tool
 integration, previews and OAuth background work have core owners. Device pairing
@@ -97,8 +81,7 @@ Source patches and tests define the executable result; a prompt never silently
 regenerates code during a build. If upstream changes substantially, an agent uses
 the intent to prepare a reviewed replacement patch and new evidence.
 
-The current two patches are independent. Later patches may depend on earlier ones;
-record that dependency in their intent. Maintain one supported order, not every
+Record dependencies in each patch intent. Maintain one supported order, not every
 permutation or arbitrary recipe subset. Recipes select configuration and packages;
 they do not independently reorder source patches.
 
@@ -214,15 +197,16 @@ the candidate checkout before packaging. [Release documentation](../../release/R
 owns publication. The browser-node controller still uses its separately pinned,
 published upstream image; these patches are built into the Gateway source image.
 
+The [provenance generator](../../scripts/openclaw-patches.ts) records upstream and
+reconstructed commits, the source tree, ordered patch/intent hashes and the complete
+patch-set digest. The archived inputs include the series and every patch/intent pair.
+
 The source tree is the identity of code contents, not a claim of bit-for-bit
 reproducible Docker images. The patch-set digest also covers intent documents and
 series order. Git import uses a fixed committer and author dates so reconstructed
 revision metadata agrees across builders; user Git identity/environment is ignored.
 
-The initial marketplace experiment passed its disabled/enabled UI and native
-operation checks. Browser guidance regressions exercise actual registration and
-routing owners with controlled transports. A reconstructed source build and
-ClawScarf checks/build passed locally. The [release guide](../../release/README.md#build-and-publish)
-records the published image and packaging qualification.
-[TODO.md](../../TODO.md) tracks remaining curation and real browser qualification.
+Feature verification requirements belong to each patch intent. Reconstructed-source
+checks and image acceptance are different boundaries; use the
+[release evidence](../../release/README.md#release-evidence) for a published candidate.
 No existing installation is modified by prepare, export or verify.

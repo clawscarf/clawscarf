@@ -1,9 +1,8 @@
 # Native browser controller
 
 The [local operator](../../deployment/README.md#shared-browser) prepares, enrolls,
-starts and stops this optional controller. Alpha.4 passes administrator model-selected
-browsing, but member permissions and downloads still block default enablement; see
-[verified release limits](#verified-release-limits). The Team server recipe leaves browser disabled.
+starts and stops this optional controller. This guide owns native enrollment,
+controller policy and [current integration limits](#verified-release-limits).
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
@@ -18,8 +17,7 @@ CLAWSCARF_TEST_BROWSER_NODE_IMAGE=clawscarf-browser-node:local \
   node --import tsx --test tests/runtime/browser-node*.test.ts
 ```
 
-The recipe retains the digest-pinned published OpenClaw 2026.9.4 image for
-the browser node. It adds only configuration validation and a small native CLI launcher;
+The [Dockerfile](Dockerfile) retains its own digest-pinned upstream OpenClaw image. It adds only configuration validation and a small native CLI launcher;
 it installs no plugins, browser binary or package dependencies.
 
 The composition uses [browserNodeConfiguration](configuration.ts) to generate
@@ -97,32 +95,17 @@ the actual trusted transport. Never expose raw Gateway access publicly alongside
 session-protected browser access. Gateway and Chromium must not be
 able to connect to that machine ingress.
 
-The node needs authenticated CDP reachability and DNS resolution for native public
-URL preflight. It does not need arbitrary outbound TCP. Docker internal-only DNS
-failed public resolution on the tested Docker Desktop installation, so isolated
-assembly needs an explicit reviewed DNS path. The separate
-[browser network](../network/README.md) owns Chromium's public-web egress and
-private-destination denial. This README is a composition contract, not a claim
-that Linux or production deployment has been qualified.
+The node needs authenticated CDP and DNS for native public-URL preflight, not
+arbitrary outbound TCP. The [DNS owner](../dns/README.md) defines its resolver;
+the [network owner](../network/README.md) defines private ingress and Chromium egress.
 
-## Verification and upstream ownership
+## Verification
 
-The opt-in image regression invokes the pinned native command owner without
-changing its authorization: even after native approvals become `full/off`, shell
-execution is denied; uploads cannot replace config; unconfigured arbitrary MCP
-server names/URLs are rejected. This focused test captures only the RPC transport.
-
-A disposable assembly paired this image with a live OpenShell-contained Gateway
-through the private TLS ingress, using its pinned certificate and scoped native
-setup code. The node had no public TCP route; its private resolver handled public
-URL preflight and Chromium retained its separate public-web proxy. That earlier
-trial explicitly selected a browser node. Native member and administrator sessions
-opened, snapshotted and closed their own public tabs
-with `target=node`. Removing the one-use pairing file and restarting retained the
-node identity. Native `node.pair.remove` disconnected it and restart did not restore
-admission. The earlier paired trial also verified immutable execution denial and
-private/loopback/metadata navigation denial. Test containers and pairings were removed.
-These component trials do not qualify ordinary model-selected browser use or Linux-host deployment.
+The [image regression](../../../tests/runtime/browser-node-image.test.ts) invokes
+native command owners: immutable shell denial survives permissive native execution
+approvals, uploads cannot replace configuration, and arbitrary MCP destinations are
+rejected. It captures only RPC transport; it does not establish a live model journey.
+The [current integration limits](#verified-release-limits) cover that separate boundary.
 
 ## Operator lifecycle
 
@@ -144,49 +127,24 @@ container exit and readiness timeout fail visibly, with retained state for inspe
 No user login, shared Gateway password or administrator credential authorizes the node.
 Compose owns all three services; the CLI stops them before the Gateway.
 
-Fresh-stack automatic enrollment, administrator verification and native public navigation
-passed using exact local images on macOS arm64/Docker Desktop. A full operator
-stop/start retained both the admitted node identity and a browser profile cookie,
-and native public navigation succeeded again. After native revocation, operator
-startup refused to re-enroll the device and stopped its services with data retained.
-
 ## Upstream browser routing bug
 
-The pinned upstream tool advertises `host` as the default even when an omitted
-target selects the configured browser node. An explicit `host` bypasses that node.
-The earlier live model trial selected `host` and hit Gateway DNS denial, whereas
-explicit `target=node` succeeded for members and administrators.
-
-ClawScarf now maintains the [browser routing guidance patch](../../../runtime/openclaw/patches/browser-routing-guidance.patch)
-and its [regeneration instructions](../../../runtime/openclaw/patches/browser-routing-guidance.prompt.md).
-It corrects both lazy registration and the direct tool description to recommend
-omitting `target` and `node` for configured routing. Source regressions cover
-configured auto/manual node routing, unavailable-node failure, explicit host
-selection, sandbox precedence, blocked host/node control, disabled node routing
-and tab-bound guidance. The routing implementation is unchanged.
-
-The patch is published in ClawScarf alpha.4 and has not been submitted upstream.
-It fixes routing guidance, not browser permissions or file transport. Upstream
-submission remains an explicit owner decision.
-
-The team runtime still denies Gateway public DNS/direct CDP; the browser node and
-Chromium retain their separate networks. Explicit host selection remains explicit,
-and an unavailable configured node still fails without host fallback. Sandbox
-`allowHostControl: false` blocks both host and node browsing; it is not a node-only
-selector. The current team preset disables the inner agent sandbox, so that
-restriction does not block its configured node.
+The [browser routing intent](../../../runtime/openclaw/patches/browser-routing-guidance.prompt.md)
+owns the incorrect default guidance, its correction and preserved routing semantics.
+The [patch workflow](../../../runtime/openclaw/README.md) owns its maintenance;
+[release provenance](../../../release/README.md#release-evidence) establishes which
+candidate includes it. A guidance change does not change permissions or file transport.
 
 ## Verified release limits
 
 A disposable macOS ARM64/Docker Desktop installation using the exact alpha.4 images,
-the current marketplace-disabled preset and real GPT-6 Astra inference verified:
+with `marketplace.enabled: false` and real GPT-6 Astra inference verified:
 
 - An administrator opened a public page, read its heading and closed its own tab.
   The prompt supplied no profile, target or node; the model used default routing.
 - A member's first browser status call failed with `missing scope: operator.admin`.
   The pinned native policy explicitly requires administrator scope for `browser.request`
-  and `node.invoke` browser proxy commands. The earlier explicit-node trials do not
-  establish member support in this release.
+  and `node.invoke` browser proxy commands.
 - Uploading a workspace file succeeded after staging a copy in the native inbound
   media directory. The page read and displayed its exact bytes.
 - Downloading failed with `download.saveAs: ENOENT`: the downloaded bytes existed in

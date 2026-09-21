@@ -30,8 +30,9 @@ menu; `--recipe /path/to/recipe.json` uses a custom definition. Both use the sam
 validation and editable settings. `clawscarf recipes` lists available choices.
 Recipe changes never reconfigure an existing server automatically.
 
-**Team server:** GPT-6 Astra through OpenAI, medium reasoning,
-hosted login, Connections enabled, browser off, and no packs selected. It supplies
-a basic team server, not a document ingestion or question-answering workflow. A future document recipe remains separate in [TODO.md](../TODO.md).
+**Team server** supplies a basic team server. Its exact model, reasoning, resource,
+capability and pack defaults are defined in [recipe.json](team-server/recipe.json);
+`clawscarf recipes` displays the bundled selection. Document workflows are separate
+[open work](../TODO.md#openclaw-curation).
 
 See [runtime and package distribution](../release/README.md).

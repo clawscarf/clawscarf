@@ -34,13 +34,8 @@ compatibility are omitted; OpenShell uses none of those features.
 
 ## Source and redistribution
 
-Exact official release inputs and SHA-256 values are enforced in the script:
-
-| Component      | Source                                                                                      | SHA-256                                                            |
-| -------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| nftables 1.1.3 | [Official archive](https://www.netfilter.org/projects/nftables/files/nftables-1.1.3.tar.xz) | `9c8a64b59c90b0825e540a9b8fcb9d2d942c636f81ba50199f068fde44f34ed8` |
-| libnftnl 1.2.9 | [Official archive](https://www.netfilter.org/projects/libnftnl/files/libnftnl-1.2.9.tar.xz) | `e8c216255e129f26270639fee7775265665a31b11aa920253c3e5d5d62dfc4b8` |
-
+[build.sh](build.sh) owns the exact official release URLs, versions and SHA-256
+values. The license/provenance inventory is in [third-party notices](../../../THIRD_PARTY_NOTICES.md).
 Hashes fix the downloaded HTTPS bytes; signature verification is not claimed.
 The archives include the original copyright and license notices. These Netfilter
 components retain their GNU GPL terms; ClawScarf's MIT license does not replace
@@ -57,13 +52,6 @@ docker build --build-arg OPENCLAW_IMAGE="$base" \
   -f deploy/images/Dockerfile --target network-sources \
   --output type=local,dest=.local/release/network-tools-source .
 ```
-
-A disposable Debian 12 build and a disposable Debian 13 official-package probe
-both accepted the exact output-hook rule with nftables 1.1.3 on Docker Desktop
-arm64. The resulting payload also passed disposable OpenShell startup with an explicit
-TCP policy: the verifier accepted its acknowledged revision and exact endpoint,
-and rejected a different port. No provider request was made. This establishes
-loaded policy coverage, not endpoint reachability or isolation under attack.
 
 Repeat the dependency probe against an exact built runtime image without applying
 any rules (`--check` validates the candidate transaction):

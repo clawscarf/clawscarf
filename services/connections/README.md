@@ -14,6 +14,14 @@ search/describe/call tools use a separate installation-scoped runtime credential
 Account linking, reconnecting, grants, removal and usage are application operations;
 the installer only enables the capability and registers the installation.
 
+Account OAuth terminates at the broker. Its opaque receipt returns through the same
+browser to this adapter, which rechecks the session and current native administrator
+authority before activation. Polling cannot complete another browser's callback.
+Expired setups and revoked actors cannot activate accounts; repeated callbacks cannot
+change their bound destination. OAuth success alone is insufficient. This requires
+no inbound broker connection to the installation.
+[cloud/http.ts](cloud/http.ts) and [the local contract](cloud/openapi.json) own these routes.
+
 The [companion](../../apps/companion/README.md) mounts this adapter only when configured.
 Disabled installations require no broker key, catalog, schema or service. An enabled
 capability with no linked accounts is valid. The cloud deployment and credentials are

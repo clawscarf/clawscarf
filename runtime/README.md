@@ -1,9 +1,8 @@
 # Native configuration
 
-The [OpenClaw distribution guide](openclaw/README.md) explains configuration,
-packaging and source patch maintenance. The maintained series adds optional
-marketplace availability and corrects browser-routing guidance;
-[TODO.md](../TODO.md#openclaw-curation) owns remaining curation work.
+This guide owns the native preset and runtime helpers. The
+[distribution guide](openclaw/README.md) owns source patch maintenance;
+[the image guide](../deploy/images/README.md) owns packaged files.
 
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
@@ -31,20 +30,11 @@ rootless-Docker UID mapping does not apply. The preset sets
 OpenShell still encloses the whole runtime. See the [security contract](../README.md)
 for the resulting team trust boundary. Pending identities still have no agent/tool access.
 
-Codex uses the pinned upstream image's bundled plugin and dependency closure.
-Lobster is registered from the separately included official release directory.
-Lobster runs in its ordinary native context inside the outer OpenShell boundary. Chromium is
-configured headless with its sandbox required. The
-[separate browser image](../deploy/execution/browser/README.md) has component
-sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md#verified-release-limits)
-passes administrator browsing with the routing fix, but member permissions and
-download transfer block browser enablement by default; see [TODO.md](../TODO.md).
-Connections is bundled but disabled in the base preset. Selecting the capability enables
-its native page and scoped broker tools; disabling it removes both. Remote model-catalog refresh and mDNS are
-disabled in the denied-egress baseline. Native administrators can explicitly change
-application settings. The [image guide](../deploy/images/README.md#verified-limits)
-owns exercised capability limits; [TODO.md](../TODO.md) tracks combined runtime and
-release qualification.
+The [image guide](../deploy/images/README.md#native-registration) owns native plugin
+packaging and registration. Browser integration and its limits belong to the
+[browser-node guide](../deploy/execution/browser-node/README.md#verified-release-limits).
+Connections starts disabled in the native preset; selecting that capability enables
+its plugin. Native administrators can deliberately change application settings.
 
 [openclaw.sh](openclaw.sh) is the image's `/app/clawscarf/bin/openclaw` launcher.
 Use it for the canonical Gateway command and operator CLI execution. It sets the
@@ -125,7 +115,7 @@ the initial preset.
 | ---------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Plugin activation            | `plugins.entries.<id>.enabled`  | Enable or disable a particular plugin.                                                                                        |
 | Plugin loading               | `plugins.allow`, `plugins.deny` | Native loading policy, with explicit denies; this does not curate the browsing UI.                                            |
-| Bundled skill eligibility    | `skills.allowBundled`           | Restrict bundled skills, without restricting other skill sources.                                                             |
+| Bundled skill eligibility    | `skills.allowBundled`           | A nonempty list restricts bundled/Custodian skills; omitted or empty is unrestricted. Other skill sources are unaffected.     |
 | Individual skill eligibility | `skills.entries.<name>.enabled` | Enable or disable an installed or bundled skill.                                                                              |
 | Installation policy          | `security.installPolicy`        | Native approval policy for skill/plugin installation and updates; it requires a separately configured trusted policy command. |
 
@@ -134,22 +124,17 @@ explicitly enabled bundled channels can take precedence over that allowlist;
 explicit denies and disabled entries are evaluated earlier. Do not describe an
 allowlist alone as a universal execution restriction.
 
-The image's [capability probe](../tests/runtime/capabilities.mjs) exercises native
-CLI plugin disable/enable and individual skill eligibility in a disposable
-configuration. Disabling Lobster removes it from loaded plugins while leaving Codex
-loaded; reenabling restores it. Skill disable/enable changes native eligibility,
-and these edits preserve unrelated configuration. This checks the image's native
-controls, not hot reload, menu hiding or shell authorization.
+Installation policy is an approval mechanism; catalog access can precede its
+checks. Missing credentials or CLIs change eligibility, not what is installed.
+The [capability probe](../tests/runtime/capabilities.mjs) exercises these controls;
+its command and limits belong to the [image guide](../deploy/images/README.md#verified-limits).
 
-The [marketplace patch](openclaw/patches/optional-marketplace.prompt.md) adds
-`marketplace.enabled: false` to suppress native discovery UI and reject its native
-catalog operations. The fresh-install preset selects this setting; native
-explicit-source administration remains available. The cleaner administrator install
-interface and physical package selection remain unfinished. Published alpha.4
-contains the switch but predates the preset change. See the
-[release guide](../release/README.md#build-and-publish) for packaged verification.
-Package removal and wider UI curation remain separate work.
-Loading restrictions alone still do not establish a curated browsing UI.
+The fresh-install preset sets `marketplace.enabled: false`. The paired
+[marketplace intent](openclaw/patches/optional-marketplace.prompt.md) owns exactly
+what the switch disables and preserves. A change to this setting requires Gateway
+restart and UI reload. It does not physically remove packages. Open curation work
+belongs to [TODO.md](../TODO.md#openclaw-curation); published configuration must be
+checked against the selected [release](../release/README.md#release-evidence).
 
 ## External hosting boundary
 

@@ -24,12 +24,8 @@ The terminal setup walks you through it, downloads the runtime, and opens OpenCl
 in your browser. Your sign-in becomes the first administrator account. No checkout,
 Docker configuration files or separate OpenClaw installation required.
 
-You’ll need **Docker Engine 29+ with Compose** (or Docker Desktop) and an **API key
-for your chosen model provider**. The CLI includes its own Node runtime.
-Available for **macOS Apple Silicon and Linux ARM64/x86-64**; Windows runs through
-**WSL2, currently experimental**. Add `~/.local/bin` to your shell's PATH to keep
-the command available in new terminals. The installer requires no sudo.
-[Full platform requirements →](deploy/deployment/installation.md)
+You’ll need Docker and a model-provider API key. Check the
+[platform requirements](deploy/deployment/installation.md) before installing.
 
 <details>
 <summary>Prefer npm?</summary>
@@ -39,23 +35,22 @@ npm install -g @clawscarf/cli@next
 clawscarf configure
 ```
 
-This alternative uses your own Node installation: Node 24.16+ within 24.x or 26.1+.
-The `next` tag installs the current alpha.
+This alternative uses your own Node installation; see the
+[requirements](deploy/deployment/installation.md).
 
 </details>
 
 ## Make it your team’s workspace
 
-| What you want to do                    | Where to do it                                                                                                                                        |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Start working with an agent**        | Open a chat in OpenClaw. Create and configure agents using its native settings.                                                                       |
-| **Bring in your teammates**            | Open **People**, create an invitation link, and assign native OpenClaw roles. Administrators can remove access there too.                             |
-| **Connect Outlook and other services** | Open **Connections**, link an account, and choose which agents can use it. Connections is included in Team server and can be turned off during setup. |
-| **Use your preferred models**          | Choose the provider, model and reasoning level in setup. Run `clawscarf configure` again to change them.                                              |
+| What you want to do                    | Where to do it                                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Start working with an agent**        | Open a chat in OpenClaw. Create and configure agents using its native settings.                                           |
+| **Bring in your teammates**            | Open **People**, create an invitation link, and assign native OpenClaw roles. Administrators can remove access there too. |
+| **Connect Outlook and other services** | Open **Connections**, link an account, and choose which agents can use it. Choose this optional capability during setup.  |
+| **Use your preferred models**          | Choose the provider, model and reasoning level in setup. Run `clawscarf configure` again to change them.                  |
 
-The default recipe uses **GPT-6 Astra through OpenAI, with medium reasoning**.
-Choose another provider or model in the menu; usage is billed by your provider.
-Your provider API key stays outside OpenClaw, in the model gateway.
+Review the [recipe settings](recipes/README.md) and choose your provider and model.
+Usage is billed by your provider; its API key stays outside OpenClaw.
 
 Setup opens **[http://127.0.0.1:18800](http://127.0.0.1:18800)** by default.
 That address is local to your machine. To share the server with teammates, use a
@@ -96,10 +91,10 @@ Default login and optional Connections use **ClawScarf Cloud**. You can use your
 OIDC provider and disable Connections to run without those hosted services. Original
 model-provider keys and Connections management credentials stay outside OpenClaw.
 
-ClawScarf is in alpha. Browser automation is off by default pending release
-qualification; retained data still needs backups. See the [security boundaries](deploy/openshell/README.md),
-[browser support](deploy/execution/browser-node/README.md) and [open work](TODO.md)
-for details.
+See [published releases](https://github.com/clawscarf/clawscarf/releases),
+[security implementation](deploy/openshell/README.md),
+[browser support](deploy/execution/browser-node/README.md#verified-release-limits)
+and [open work](TODO.md) before choosing capabilities. Retained data still needs backups.
 
 ## Explore and contribute
 
