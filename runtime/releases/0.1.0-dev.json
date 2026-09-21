@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
   "version": "0.1.0-dev",
-  "sourceRevision": "06398300846e25258d33cee753d081ff5777ed0f",
+  "sourceRevision": "6ef49bb49eb9cbf67f2dc1fc9cd46bfc37769344",
   "platforms": ["darwin-arm64"],
   "images": {
     "postgres": "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
-    "gateway": "sha256:a39ab02f529177b2437c440c68fba15a74b3527301228e64ba81d2c71152c2b6",
-    "companion": "sha256:df516bec24e7b6e8a7f9bd9046f0f00226c1c6a415649b8313f28cf4b2fab311",
-    "openshellClient": "sha256:92d9fb21a6a8ea860b579f4e1eb195f36c06951b59a35e1954d3b1da544398d3",
-    "relay": "sha256:f262a64e49b6c444786d5040dbedf5fc55bf45db61705d8f5371edfb7d969da6",
+    "gateway": "ghcr.io/clawscarf/clawscarf/runtime@sha256:cd216ee3f3301da011da5b3594ffb94bf8f5b33931ba1a9359f7902beadaf172",
+    "companion": "ghcr.io/clawscarf/clawscarf/companion@sha256:355d032e5d16048b421c909e759774c01472e15f4af3db4cbbeaaafc7bde9b43",
+    "openshellClient": "ghcr.io/clawscarf/clawscarf/openshell-client@sha256:d662ce37531c007180ad08b0e20348a43ed26b7d21edf261550a02a80f1eeaac",
+    "relay": "ghcr.io/clawscarf/clawscarf/browser-relay@sha256:cb6a6021f391ee309236202fb5e7557a22f47825417cea1ebeeefbf5b4fafe78",
     "models": "ghcr.io/berriai/litellm:v1.100.1@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf",
     "browser": {
-      "chromium": "sha256:83902b8ee21b7b9615fbe49d4dcc30df594befefb722adf9c75f4524f69fd96f",
-      "node": "sha256:783399aa742b5a486b5fdcbe0425dfd83af11d01ff7b5fc11aeed044029fc800",
-      "dns": "sha256:4040e18a739d2dc5a3374de7fbfb91d551740b0b2e110908b94926e845622b9f",
-      "egress": "sha256:16c3cd28fe7c585b45164c3fffe0e90cc78fb8959ae929c1231682992aee7267"
+      "chromium": "ghcr.io/clawscarf/clawscarf/browser@sha256:783b32a513a20ca5ae81a3dc9d5e23e7ac736b7130abfd412ca04a336a9bc538",
+      "node": "ghcr.io/clawscarf/clawscarf/browser-node@sha256:89e5c96dd598363bee81f44b585a9340e5449f878daf93a334180ed096250611",
+      "dns": "ghcr.io/clawscarf/clawscarf/browser-dns@sha256:ed44079311c2c245ea303947a4295f1948a182a07d162bedc88bb16ceca81295",
+      "egress": "ghcr.io/clawscarf/clawscarf/browser-egress@sha256:a2c0c18a1a398a6a16a427b6de9aa639cea44fa676679f01b188303cd191cbd5"
     }
   },
   "tools": {
