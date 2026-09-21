@@ -185,6 +185,9 @@ management endpoint must therefore use HTTPS with a trusted certificate. Configu
 handler and revocation tracking as the browser listener. Compose publishes this port
 on host loopback and trusts the private CA through `NODE_EXTRA_CA_CERTS` at
 `/run/clawscarf/management-ca.pem`. Certificate verification remains enabled.
+The companion calls `https://companion:18801` through Docker DNS, with that name
+covered by its certificate. This preserves its actual Docker client address:
+the pinned Gateway rejects loopback addresses in forwarded client attribution.
 
 An application can additionally supply one typed
 [companion API route](types/ingress.ts) with a distinct HTTPS origin and a bounded

@@ -179,7 +179,7 @@ await test("generated configuration separates public, container and native liste
   assert.equal(result.access.port, 18800);
   assert.equal(
     result.access.runtime.managementOrigin,
-    "https://localhost:18801",
+    "https://companion:18801",
   );
   assert.equal(result.access.managementTls?.port, 18801);
   assert.equal(result.access.runtime.origin, "http://application:19789");

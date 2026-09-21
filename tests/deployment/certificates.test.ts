@@ -21,6 +21,7 @@ await test("local TLS supports host forwarding, preserves keys and rejects incom
       "host.docker.internal",
     );
     assert.equal(cert.ca, true);
+    assert.equal(cert.checkHost("companion"), "companion");
     assert.equal(cert.verify(cert.publicKey), true);
     await ensureCertificates(directory);
     assert.deepEqual(await readFile(path), key);

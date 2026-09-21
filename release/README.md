@@ -79,7 +79,8 @@ with an exact version, such as `0.1.0-alpha.1`. It:
    [patch series](../runtime/openclaw/README.md), verifies the resulting source tree,
    then builds ClawScarf images on Linux arm64 and x86-64,
    checks runtime capabilities and the Chromium sandbox, then starts a protected
-   installation with private LiteLLM networking and verifies stop/start retention.
+   installation with private LiteLLM networking, exercises native administrator
+   access through the companion, and verifies stop/start retention.
    Both architectures must report identical OpenClaw source provenance and patch
    archives before it publishes image indexes containing both architectures to GHCR.
 3. Downloads checksum-pinned OpenShell tools, records the image digests, and assembles

@@ -49,6 +49,7 @@ export async function ensureCertificates(directory: string) {
     if (
       !cert.checkPrivateKey(key) ||
       !cert.checkHost("host.docker.internal") ||
+      !cert.checkHost("companion") ||
       !cert.checkIP("127.0.0.1") ||
       !cert.raw.equals(ca.raw) ||
       !cert.ca ||
@@ -85,7 +86,7 @@ export async function ensureCertificates(directory: string) {
     "-subj",
     "/CN=ClawScarf local management",
     "-addext",
-    "subjectAltName=DNS:localhost,DNS:host.docker.internal,DNS:models.clawscarf.internal,IP:127.0.0.1",
+    "subjectAltName=DNS:localhost,DNS:companion,DNS:host.docker.internal,DNS:models.clawscarf.internal,IP:127.0.0.1",
     "-addext",
     "basicConstraints=critical,CA:TRUE",
   ]);

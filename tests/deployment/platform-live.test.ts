@@ -15,6 +15,9 @@ import {
 } from "../../scripts/deployment/images.js";
 import { deleteInstallation } from "../../scripts/installation/delete.js";
 import { checkHost } from "../../scripts/installation/prerequisites.js";
+import { readConfiguration } from "../../services/access/runtime/config.js";
+import { openAccessStorage } from "../../services/access/runtime/storage.js";
+import { hash, token } from "../../services/access/service/session.js";
 
 const imageFile = process.env.CLAWSCARF_TEST_PLATFORM_IMAGES;
 await test(
@@ -194,6 +197,39 @@ await test(
         redirect: "manual",
       });
       assert.equal(response.status, 200);
+      // Exercise the companion's own authenticated native call, not just readiness.
+      const access = await readConfiguration(
+        join(stateDirectory, "private/access.json"),
+      );
+      const database = new URL(access.databaseUrl);
+      database.hostname = "127.0.0.1";
+      database.port = String(state.input.ports.database);
+      const storage = await openAccessStorage({
+        ...access,
+        databaseUrl: database.href,
+        encryptionKeyFile: join(stateDirectory, "private/encryption.key"),
+      });
+      try {
+        const credential = token();
+        await storage.repository.createSession(
+          storage.identity.administrator.id,
+          hash(credential),
+          token(),
+          null,
+        );
+        const people = await fetch("http://127.0.0.1:18405/_clawscarf/people", {
+          headers: { Cookie: `clawscarf_session=${credential}` },
+        });
+        assert.equal(people.status, 200, "Native administrator access");
+        const observed = z
+          .object({
+            people: z.array(z.object({ role: z.string().nullable() })),
+          })
+          .parse(await people.json());
+        assert.ok(observed.people.some((person) => person.role === "admin"));
+      } finally {
+        await storage.close();
+      }
       await stopLocal(stateDirectory);
       await launchLocal(stateDirectory, console.log);
       assert.match(

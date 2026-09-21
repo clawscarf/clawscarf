@@ -235,10 +235,6 @@ export function parseLocalInput(value: unknown): LocalInput {
   return localInput.parse(value);
 }
 
-export function managementOrigin(): string {
-  return "https://localhost:18801";
-}
-
 function mountedPrivateFile(
   directory: string,
   path: string,
@@ -308,7 +304,8 @@ export function generateLocalConfiguration(options: {
     },
     runtime: {
       origin: `http://application:${String(input.ports.native)}`,
-      managementOrigin: managementOrigin(),
+      // Native proxy attribution needs the real Docker peer, not a loopback client.
+      managementOrigin: "https://companion:18801",
       widgetOrigin,
       widgetUpstream: `http://widgets:${String(input.ports.nativeWidgets)}`,
     },
