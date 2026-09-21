@@ -22,7 +22,7 @@ before launch; it is not a reconfiguration or migration command.
 The preset is adapted from RawClaw's
 [`runtime/openclaw/defaults.py`](https://github.com/raw-labs/rawclaw/blob/f37a6e786fdd88857c21bd32140567874e281a8c/runtime/openclaw/defaults.py).
 It retains explicit initial identity, trusted ingress, disabled terminal/community
-invite/external session catalogs, restricted Codex dynamic tools, separate widget
+invite/marketplace/external session catalogs, restricted Codex dynamic tools, separate widget
 origin, self-only sessions, disabled elevated execution and Chrome's sandbox.
 The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. The preset sets
@@ -36,8 +36,9 @@ Lobster is registered from the separately included official release directory.
 Lobster runs in its ordinary native context inside the outer OpenShell boundary. Chromium is
 configured headless with its sandbox required. The
 [separate browser image](../deploy/execution/browser/README.md) has component
-sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md) passed explicit-node browsing; the downstream guidance fix still needs ordinary model-selected deployment acceptance
-before browser is enabled by default; see [TODO.md](../TODO.md).
+sandbox/authentication/persistence acceptance. Its [native node integration](../deploy/execution/browser-node/README.md#verified-release-limits)
+passes administrator browsing with the routing fix, but member permissions and
+download transfer block browser enablement by default; see [TODO.md](../TODO.md).
 Connections is bundled but disabled in the base preset. Selecting the capability enables
 its native page and scoped broker tools; disabling it removes both. Remote model-catalog refresh and mDNS are
 disabled in the denied-egress baseline. Native administrators can explicitly change
@@ -142,8 +143,10 @@ controls, not hot reload, menu hiding or shell authorization.
 
 The [marketplace patch](openclaw/patches/optional-marketplace.prompt.md) adds
 `marketplace.enabled: false` to suppress native discovery UI and reject its native
-catalog operations. It preserves explicit-source administration. The default remains
-enabled, and the preset does not set it to false. See the
+catalog operations. The fresh-install preset selects this setting; native
+explicit-source administration remains available. The cleaner administrator install
+interface and physical package selection remain unfinished. Published alpha.4
+contains the switch but predates the preset change. See the
 [release guide](../release/README.md#build-and-publish) for packaged verification.
 Package removal and wider UI curation remain separate work.
 Loading restrictions alone still do not establish a curated browsing UI.

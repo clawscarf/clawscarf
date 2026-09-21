@@ -251,7 +251,7 @@ await test(
           const browserHistory = await chat(
             probe.gateway,
             session.key,
-            `Use only the native browser tool for this bounded test. With profile team and target node (use the configured browser node; do not select a different node), open ${url} as a new tab, then snapshot that exact returned targetId, then close that same targetId. Do not inspect, navigate, or close other tabs. Do not use exec, curl, or web_fetch. Report the page heading and actual failures truthfully. Do not change configuration or permissions.`,
+            `Use the browser to open ${url} as a new tab, read its heading, then close that same tab. Do not inspect, navigate, or close other tabs. Do not use exec, curl, or web_fetch. Report actual failures truthfully. Do not change configuration or permissions.`,
           );
           const calls = toolCalls(browserHistory).filter(
             (call) => call.name === "browser",
@@ -268,14 +268,15 @@ await test(
           for (const action of actions) {
             const call = successfulCalls.find(
               (entry) =>
-                entry.arguments.action === action &&
-                entry.arguments.profile === "team" &&
-                entry.arguments.target === "node",
+                entry.arguments.action === action ||
+                (action === "snapshot" && entry.arguments.action === "text"),
             );
             assert.ok(
               call,
-              `Native browser ${action} must run with team profile`,
+              `Native browser ${action} must run without routing hints in the prompt`,
             );
+            assert.equal(call.arguments.target, undefined);
+            assert.equal(call.arguments.node, undefined);
             const result = browserHistory.messages.find(
               (message) =>
                 message.role === "toolResult" && message.toolCallId === call.id,
@@ -286,7 +287,9 @@ await test(
             );
           }
           const snapshot = successfulCalls.find(
-            (entry) => entry.arguments.action === "snapshot",
+            (entry) =>
+              entry.arguments.action === "snapshot" ||
+              entry.arguments.action === "text",
           );
           const close = successfulCalls.find(
             (entry) => entry.arguments.action === "close",
@@ -309,7 +312,7 @@ await test(
             /Example Domain/,
           );
           t.diagnostic(
-            `${probe.kind}: native browser opened, observed and closed its own public test page through profile team.`,
+            `${probe.kind}: model-selected browser opened, observed and closed its own public test page using default routing.`,
           );
         }
         if (!executionEnabled) continue;

@@ -9,10 +9,10 @@ reconstructed; keep it while working, and export changes before discarding it.
 The initial series contains [optional marketplace](patches/optional-marketplace.prompt.md)
 and [browser routing guidance](patches/browser-routing-guidance.prompt.md). These are
 downstream changes; no upstream submission is required. The marketplace setting
-defaults to enabled, preserving OpenClaw's native default. Set
-`marketplace.enabled: false` in native configuration to exercise the disabled
-surface, then restart the Gateway and reload the UI. The preset does not yet select
-false. [TODO.md](../../TODO.md#openclaw-curation) owns unimplemented curation,
+defaults to enabled when unset; ClawScarf's fresh-install preset selects
+`marketplace.enabled: false`. Changing this setting in an existing installation
+requires a Gateway restart and UI reload. Published alpha.4 includes the switch
+but predates this preset change. [TODO.md](../../TODO.md#openclaw-curation) owns unimplemented curation,
 package selection and release qualification. Individual patch intents own their
 implemented requirements; this README owns the general approach and maintenance.
 

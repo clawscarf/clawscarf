@@ -23,12 +23,17 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Browser qualification
 
-- [ ] Qualify ordinary model-selected member/admin browsing with the downstream
-      [routing guidance fix](deploy/execution/browser-node/README.md#upstream-browser-routing-bug)
-      in exact release images, preserving explicit target semantics, unavailable-node
-      failure and network confinement. Source regressions pass; live model acceptance
-      and workspace/browser file transfer remain unverified. Keep the Team server recipe's
-      browser off until qualified. Upstream submission requires the owner's explicit request.
+- [ ] Define narrow native permission for member browser use: alpha.4 browser proxy
+      commands require `operator.admin`. Preserve administrative node/profile controls;
+      do not grant members full administrator authority.
+- [ ] Fix browser downloads across separate Chromium/controller filesystems; the file
+      exists in Chromium but native `download.saveAs` reads the controller's absent path.
+      Preserve isolated networks and keep team files/controller credentials out of Chromium.
+- [ ] Requalify member/admin browsing and upload/download round trips on exact release
+      images before enabling the recipe's browser default. Administrator navigation,
+      staged uploads, explicit host separation, unavailable-node failure and network
+      confinement passed on macOS ARM64; see [verified limits](deploy/execution/browser-node/README.md#verified-release-limits).
+      Linux browser acceptance remains open. Upstream submission requires the owner's request.
 
 ## OpenClaw curation
 
@@ -54,8 +59,7 @@ authorize release publication or upstream PRs.
       agent assignment and eligibility feedback, plus scoped stdio/remote MCP,
       enablement/tool controls and credentials/OAuth. Test actual dependency fetches
       and blocked destinations without widening egress; a new package registry is not required.
-- [ ] **Configuration + patch completion:** Select `marketplace.enabled: false` once
-      retained administration works; remove remaining ClawHub promotion/setup/publishing
+- [ ] **Patch completion:** Remove remaining ClawHub promotion/setup/publishing
       references and independent marketplaces in retained harnesses, including
       `codex_plugins`. Reuse the existing native patch; retain required attribution.
 - [ ] **Patch + configuration:** Make core GitHub integration optional and disable it

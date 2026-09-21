@@ -126,9 +126,9 @@ before opening Access. Stop/start preserves team cookies and logins.
 The browser proxy permits public HTTP/HTTPS and blocks private destinations; it is
 not a domain allowlist. See the [browser network](../execution/network/README.md) and
 [native node](../execution/browser-node/README.md) for topology and credentials.
-The [downstream routing-guidance fix](../execution/browser-node/README.md#upstream-browser-routing-bug)
-has source regressions; ordinary model-selected browsing still needs deployment
-acceptance before the recipe enables it by default.
+The [released browser qualification](../execution/browser-node/README.md#verified-release-limits)
+passes administrator model-selected browsing and staged uploads. Member permissions
+and downloads still fail, so the recipe leaves browser disabled.
 
 ## Runtime upgrade
 

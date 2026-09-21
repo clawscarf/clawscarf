@@ -42,6 +42,7 @@ export function initialConfiguration(
   const settings = configurationInput.parse(input);
   const identity = settings.administratorIdentity;
   return {
+    marketplace: { enabled: false },
     gateway: {
       publicOrigin: settings.publicOrigin,
       mode: "local",

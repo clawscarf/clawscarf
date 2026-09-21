@@ -1,10 +1,9 @@
 # Native browser controller
 
 The [local operator](../../deployment/README.md#shared-browser) prepares, enrolls,
-starts and stops this optional controller. Prepared-stack startup and explicit native
-navigation passed locally. The downstream [routing guidance fix](#upstream-browser-routing-bug)
-is regression-tested in source; ordinary model-selected browsing with patched release
-images still needs qualification. The Team server recipe leaves browser disabled.
+starts and stops this optional controller. Alpha.4 passes administrator model-selected
+browsing, but member permissions and downloads still block default enablement; see
+[verified release limits](#verified-release-limits). The Team server recipe leaves browser disabled.
 
 This optional image runs vanilla OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
@@ -116,8 +115,8 @@ server names/URLs are rejected. This focused test captures only the RPC transpor
 A disposable assembly paired this image with a live OpenShell-contained Gateway
 through the private TLS ingress, using its pinned certificate and scoped native
 setup code. The node had no public TCP route; its private resolver handled public
-URL preflight and Chromium retained its separate public-web proxy. The [native tool regression](../../../tests/access/execution-live.test.ts) requires
-an explicitly selected browser node. Native member and administrator sessions
+URL preflight and Chromium retained its separate public-web proxy. That earlier
+trial explicitly selected a browser node. Native member and administrator sessions
 opened, snapshotted and closed their own public tabs
 with `target=node`. Removing the one-use pairing file and restarting retained the
 node identity. Native `node.pair.remove` disconnected it and restart did not restore
@@ -166,12 +165,9 @@ configured auto/manual node routing, unavailable-node failure, explicit host
 selection, sandbox precedence, blocked host/node control, disabled node routing
 and tab-bound guidance. The routing implementation is unchanged.
 
-The patch is implemented and regression-tested, but has not been published in a
-ClawScarf release or submitted upstream. Ordinary model-selected member/admin
-browsing with the patched images remains unqualified; deterministic guidance and
-dispatch tests do not establish that journey or workspace/browser file transfer.
-The Team server recipe keeps browser disabled. Upstream submission remains an
-explicit owner decision.
+The patch is published in ClawScarf alpha.4 and has not been submitted upstream.
+It fixes routing guidance, not browser permissions or file transport. Upstream
+submission remains an explicit owner decision.
 
 The team runtime still denies Gateway public DNS/direct CDP; the browser node and
 Chromium retain their separate networks. Explicit host selection remains explicit,
@@ -180,19 +176,48 @@ and an unavailable configured node still fails without host fallback. Sandbox
 selector. The current team preset disables the inner agent sandbox, so that
 restriction does not block its configured node.
 
+## Verified release limits
+
+A disposable macOS ARM64/Docker Desktop installation using the exact alpha.4 images,
+the current marketplace-disabled preset and real GPT-6 Astra inference verified:
+
+- An administrator opened a public page, read its heading and closed its own tab.
+  The prompt supplied no profile, target or node; the model used default routing.
+- A member's first browser status call failed with `missing scope: operator.admin`.
+  The pinned native policy explicitly requires administrator scope for `browser.request`
+  and `node.invoke` browser proxy commands. The earlier explicit-node trials do not
+  establish member support in this release.
+- Uploading a workspace file succeeded after staging a copy in the native inbound
+  media directory. The page read and displayed its exact bytes.
+- Downloading failed with `download.saveAs: ENOENT`: the downloaded bytes existed in
+  Chromium's temporary artifact directory, but that path was absent in the separate
+  browser controller. No downloaded file reached the team workspace.
+- Native requests rejected loopback, private and metadata destinations. Explicit host
+  selection remained separate from the connected node; stopping the configured node
+  caused requests to fail without host fallback. The released Chromium network
+  regression also passed public HTTPS, destination denial and retained profile checks.
+
+The [native tool regression](../../../tests/access/execution-live.test.ts) now requests
+ordinary browsing without routing hints and checks actual tool results for both roles.
+The Team server recipe keeps browser disabled until member permissions and download
+transfer are fixed and qualified. These results do not qualify Linux browser deployment.
+All disposable installation and network-test resources were removed.
+
+[TODO.md](../../../TODO.md#browser-qualification) owns the remaining work.
+
 Pinned upstream sources:
 
-- [Node CLI and lifecycle entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/cli/node-cli/register.ts)
-  and [public package entry](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/index.ts).
-- [Public device-bootstrap SDK](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/plugin-sdk/device-bootstrap.ts)
-  and [native issuance](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/infra/device-bootstrap.ts).
-- [Trusted-proxy attribution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/ingress-attribution.ts)
-  and [authentication](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/gateway/auth.ts).
+- [Node CLI and lifecycle entry](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/cli/node-cli/register.ts)
+  and [public package entry](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/index.ts).
+- [Public device-bootstrap SDK](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/plugin-sdk/device-bootstrap.ts)
+  and [native issuance](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/infra/device-bootstrap.ts).
+- [Trusted-proxy attribution](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/ingress-attribution.ts)
+  and [authentication](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/gateway/auth.ts).
 - [Browser target guidance](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/src/browser-tool.ts),
   [node routing](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/src/browser-tool.routing.ts)
   and [agent sandbox browser policy](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/agents/agent-tools.ts).
-- [Native node execution](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/src/node-host/invoke-system-run.ts)
-  and [browser proxy](https://github.com/openclaw/openclaw/blob/3a9d69db306cd7f081e06254cb89c4bcc14a7107/extensions/browser/src/node-host/invoke-browser.ts).
+- [Native node execution](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/src/node-host/invoke-system-run.ts)
+  and [browser proxy](https://github.com/openclaw/openclaw/blob/7bc487d39dc9e059bb9b19ea08152883022f83fe/extensions/browser/src/node-host/invoke-browser.ts).
 
 ClawScarf's added files use this repository's MIT license. The upstream image
 retains OpenClaw and dependency notices; release-wide transitive license review

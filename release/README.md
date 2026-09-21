@@ -128,9 +128,9 @@ or the selected runtime changes. Published definitions must not be overwritten.
 The `release-candidate` Actions artifact is the reviewable output. Download it and test
 a fresh supported installation, administrator login, real inference and stop/start
 before publication. GitHub's macOS runner does not provide our Docker Desktop journey;
-its packaging checks alone do not establish that journey. Model-selected browsing
-through the patched release images still needs qualification; the Team server recipe
-leaves browser disabled.
+its packaging checks alone do not establish that journey. Browser default enablement
+is blocked by the [member-permission and download limits](../deploy/execution/browser-node/README.md#verified-release-limits);
+the Team server recipe leaves browser disabled.
 
 [Publish release candidate](../.github/workflows/publish-release.yml) accepts a successful
 build run from `main`. It checks the source commit and artifact checksums, creates the
@@ -172,8 +172,10 @@ restart. Test containers, volumes and networks were deleted afterward.
 The exact ARM64 runtime image also passed disabled marketplace CLI/RPC checks,
 installed-inventory access and a zero-request ClawHub trap. Its Browser registration
 advertised configured-node, disabled-node and sandbox priorities correctly. These
-checks do not qualify model-selected browsing; the recipe still leaves browser off
-and does not yet disable the marketplace.
+checks alone do not qualify model-selected browsing; the [live browser acceptance](../deploy/execution/browser-node/README.md#verified-release-limits)
+records the administrator success and remaining blockers. Alpha.4 shipped with browser off and
+marketplace enabled. The current source preset disables the marketplace for new
+installations; that default change requires a subsequent CLI release.
 
 Staging hosted administrator login and packaged interactive setup previously passed
 on macOS with alpha.1. Hosted login and real provider inference on Linux, actual
