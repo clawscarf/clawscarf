@@ -163,15 +163,18 @@ upstream sources; [operator packaging](operator.md) describes the CLI archive.
 ## CLI telemetry destination
 
 [telemetry.json](telemetry.json) is copied unchanged into the compiled operator,
-npm CLI and standalone CLI payload. It is currently `null`, so this checkout and
-packages built from it do not report until a destination is selected. To enable
-reporting, maintainers replace it with an object containing `host` (the PostHog
-HTTPS ingestion origin) and `projectToken` (the public `phc_` project token).
+npm CLI and standalone CLI payload. It selects the ClawScarf project in PostHog EU
+using `host` (the HTTPS ingestion origin) and `projectToken` (the public `phc_`
+project token). Setting the file to `null` disables reporting for that build.
 Never put a personal or project-secret API key in this public file. A loopback
 HTTP origin is accepted for local receiver tests only.
 
 The [CLI telemetry guide](../deploy/deployment/installation.md#telemetry) owns event
 fields, user opt-out, local identity and delivery limits. Destination changes need
 a new CLI build/package; they do not change running team servers or cloud-service
-configuration. Tests use local receivers; they do not establish receipt in a
-production PostHog project.
+configuration. Automated tests use local receivers. The destination project's
+**Settings → Privacy → Discard client IP data** must stay enabled: a null `$ip`
+property alone does not prevent PostHog from storing the connection IP. The CLI
+also disables GeoIP enrichment. When changing destinations, verify that privacy
+setting and confirm start/finish events and their properties in the target project
+before publishing. An ingestion check does not establish CLI release publication.

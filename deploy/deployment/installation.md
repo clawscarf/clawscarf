@@ -77,8 +77,9 @@ silently disables reporting for that invocation.
 Events exclude arguments, raw configuration, paths, account identities,
 credentials, logs, exception messages and stacks. The PostHog SDK adds its library
 name/version; person-profile processing and GeoIP enrichment are disabled and the
-event IP property is null. The ingestion server still receives the network
-connection's source IP.
+event IP property is null. The configured PostHog project discards client IPs
+from stored events; the ingestion server still receives the network connection's
+source IP. See the release guide below for the required destination setting.
 
 Delivery is best effort, with a 500 ms request timeout, no retries, no persistent
 event queue and no ingestion redirects. Network failures never change command
