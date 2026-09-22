@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.0-alpha.13",
-  "sourceRevision": "97744b85145f4cc472842017f05c37a92098acf8",
+  "version": "0.1.0-alpha.14",
+  "sourceRevision": "6ac5ff8b7cc92d4f9237c1bb6e6ec43618e21dd6",
   "platforms": [
     "darwin-arm64",
     "linux-arm64",
@@ -9,16 +9,16 @@
   ],
   "images": {
     "postgres": "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
-    "gateway": "ghcr.io/clawscarf/clawscarf/runtime@sha256:952eb78513587165230a36ad5bbfba2a0e7c03fefadb2f547798f684066e8ed5",
-    "companion": "ghcr.io/clawscarf/clawscarf/companion@sha256:992518e797537a5b5ce8edb3a27dd26d63b70302a9a73d00502cd422bde34cca",
-    "openshellClient": "ghcr.io/clawscarf/clawscarf/openshell-client@sha256:dc430be277a4840ba307b147eb94c0a30b9786d7582d495c0dfbfe2de70c50f9",
-    "relay": "ghcr.io/clawscarf/clawscarf/browser-relay@sha256:dd02c588b7c59a18e01ff3ea4c26272042de8a5807356cc78d874769b2cafa66",
+    "gateway": "ghcr.io/clawscarf/clawscarf/runtime@sha256:1a4ebb318d8b83a50bf3027f6a8ecd5bb8a3d8f4d12d2f89101a63a65b7651e5",
+    "companion": "ghcr.io/clawscarf/clawscarf/companion@sha256:6e6d6e204a7a0ea8bdbc6afbeac2ea399504d1ff60c944fee0a38ff8eb946710",
+    "openshellClient": "ghcr.io/clawscarf/clawscarf/openshell-client@sha256:887c2596ff11b4d2448752d5f3986282154ae4061cedcf5818606b5372de1989",
+    "relay": "ghcr.io/clawscarf/clawscarf/browser-relay@sha256:5319d09ddfa2d4e9ea44057e4c17a24bf45eeed10820eefa4a78c0a88d3f697c",
     "models": "ghcr.io/berriai/litellm:v1.100.1@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf",
     "browser": {
-      "chromium": "ghcr.io/clawscarf/clawscarf/browser@sha256:490568790e13858e47c45aeaf31ff9dcbaba37b0ff3a49db4e4ee801383a1917",
-      "node": "ghcr.io/clawscarf/clawscarf/browser-node@sha256:cd08c45ffdc6c41908f095ab1bf183285c97d19a70b72e1f0e1737f21caaad56",
-      "dns": "ghcr.io/clawscarf/clawscarf/browser-dns@sha256:508cbcede026d631bbf0e28e9b2968cc0ef13d45ea6150fc8617eca69fdc6379",
-      "egress": "ghcr.io/clawscarf/clawscarf/browser-egress@sha256:2de41cd2ce8773855976b69cf0b28b3e028f9ed8815ade491195b95bc8e61410"
+      "chromium": "ghcr.io/clawscarf/clawscarf/browser@sha256:1010a5db7c89d7aed5dde69c8ebc3781d9913d8542a6d58a6060b4f855d994a9",
+      "node": "ghcr.io/clawscarf/clawscarf/browser-node@sha256:9fb7418195f5b6a82e9849d4d4e29bc3151ba8962c5c76af9173f52a0545ae5e",
+      "dns": "ghcr.io/clawscarf/clawscarf/browser-dns@sha256:e4cd32d2886164001dafc54fb9b4092a4db0a4cd4821b98e49eb352ec9c51f32",
+      "egress": "ghcr.io/clawscarf/clawscarf/browser-egress@sha256:74839bda97529071d0cb67c42c732f524c9c87dd004d5a2e59d8a3bfc2d7088b"
     }
   },
   "tools": {
@@ -28,34 +28,34 @@
         "darwin-arm64": {
           "file": "tools/darwin-arm64/openshell",
           "sha256": "0baeeffe0e4c184b08fde910ac9e8815fb0b8cfb808e49c0e634d7db65fb03bb",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-darwin-arm64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-darwin-arm64"
         },
         "linux-arm64": {
           "file": "tools/linux-arm64/openshell",
           "sha256": "84df9f059b16b66c83748606cc87d9edcda84b57effea19543f5c368aba7eb18",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-linux-arm64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-linux-arm64"
         },
         "linux-x64": {
           "file": "tools/linux-x64/openshell",
           "sha256": "24e85062073d512d1951c76cd3890b7bce1ab01cc36a08f88b3b43c067a402da",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-linux-x64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-linux-x64"
         }
       },
       "gateway": {
         "darwin-arm64": {
           "file": "tools/darwin-arm64/openshell-gateway",
           "sha256": "298706259ef18350f334c222e981e91583558511d50bce22727c689d261203e6",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-gateway-darwin-arm64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-gateway-darwin-arm64"
         },
         "linux-arm64": {
           "file": "tools/linux-arm64/openshell-gateway",
           "sha256": "0e660428e655e7481f34ba8a4b351554400baf791863d32555c98dddb3f09ae2",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-gateway-linux-arm64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-gateway-linux-arm64"
         },
         "linux-x64": {
           "file": "tools/linux-x64/openshell-gateway",
           "sha256": "780fc7ad871e2163f3fb866a2d0254ee682fc0d83e6261a84b350c8dcdd9f47b",
-          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.13/openshell-gateway-linux-x64"
+          "url": "https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/openshell-gateway-linux-x64"
         }
       }
     }
