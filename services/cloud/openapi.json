@@ -2422,6 +2422,1265 @@
           }
         }
       }
+    },
+    "/api/billing/offers": {
+      "get": {
+        "operationId": "getBillingOffers",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "purchasingAvailable": {
+                      "type": "boolean"
+                    },
+                    "offers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BillingOffer"
+                      }
+                    }
+                  },
+                  "required": ["purchasingAvailable", "offers"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/summary": {
+      "get": {
+        "operationId": "getBillingSummary",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingAllowances"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/installations/{id}/allowances": {
+      "get": {
+        "operationId": "getInstallationAllowances",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingAllowances"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/installations/{id}/billing-returns": {
+      "post": {
+        "operationId": "createBillingReturn",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "returnId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": ["returnId", "expiresAt"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                },
+                "required": ["requestId", "path"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/checkouts": {
+      "post": {
+        "operationId": "createBillingCheckout",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "orderId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "creating",
+                        "checkout_ready",
+                        "payment_pending",
+                        "paid",
+                        "fulfilled",
+                        "expired",
+                        "failed",
+                        "uncertain"
+                      ]
+                    },
+                    "checkoutUrl": {
+                      "type": ["string", "null"]
+                    },
+                    "expiresAt": {
+                      "type": ["string", "null"],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": ["orderId", "status", "checkoutUrl", "expiresAt"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "installationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "returnId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "offerId",
+                  "quantity",
+                  "installationId",
+                  "returnId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/orders": {
+      "get": {
+        "operationId": "listBillingOrders",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BillingOrder"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": ["string", "null"],
+                      "format": "uuid"
+                    }
+                  },
+                  "required": ["orders", "nextCursor"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/billing/orders/{orderId}": {
+      "get": {
+        "operationId": "getBillingOrder",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingOrder"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/billing/portal": {
+      "post": {
+        "operationId": "createBillingPortal",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "returnId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": ["returnId"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/webhooks/stripe": {
+      "post": {
+        "operationId": "stripeWebhook",
+        "security": [],
+        "description": "Requires Stripe verification against the exact raw request body.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cron/billing": {
+      "get": {
+        "operationId": "maintainBilling",
+        "security": [
+          {
+            "Maintenance": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["disabled", "completed"]
+                    }
+                  },
+                  "required": ["status"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/models": {
+      "get": {
+        "operationId": "getAiModels",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "defaultModel": {
+                      "type": ["string", "null"],
+                      "description": "Retained for response compatibility; always null. The installation selects a model for each inference request."
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AiModel"
+                      }
+                    }
+                  },
+                  "required": ["defaultModel", "models"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/installations/{id}/ai": {
+      "get": {
+        "operationId": "getInstallationAi",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConfiguration"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "configureInstallationAi",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConfiguration"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "modelIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "maxItems": 100
+                  }
+                },
+                "required": ["requestId", "revision", "enabled", "modelIds"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/installations/{id}/ai/credential": {
+      "put": {
+        "operationId": "rotateAiCredential",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "generation": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": ["generation"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "generation": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "secret": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43,128}$"
+                  }
+                },
+                "required": ["requestId", "generation", "secret"]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeAiCredential",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          },
+          {
+            "InstallationManagement": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "generation",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ]
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "operationId": "aiChatCompletions",
+        "security": [
+          {
+            "Inference": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {},
+                    "maxItems": 10000
+                  },
+                  "input": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "required": ["type"],
+                      "properties": {
+                        "type": {
+                          "const": "function",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "maxItems": 256
+                  },
+                  "tool_choice": {},
+                  "parallel_tool_calls": {
+                    "type": "boolean"
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "top_p": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_completion_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_output_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reasoning": {
+                    "type": "object"
+                  },
+                  "reasoning_effort": {
+                    "type": "string"
+                  },
+                  "response_format": {},
+                  "text": {},
+                  "stop": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "seed": {
+                    "type": "integer"
+                  },
+                  "frequency_penalty": {
+                    "type": "number"
+                  },
+                  "presence_penalty": {
+                    "type": "number"
+                  },
+                  "stream_options": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "include_usage": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["include_usage"]
+                  },
+                  "store": {
+                    "type": "boolean",
+                    "const": false
+                  }
+                },
+                "required": ["messages", "model"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/responses": {
+      "post": {
+        "operationId": "aiResponses",
+        "security": [
+          {
+            "Inference": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {},
+                    "maxItems": 10000
+                  },
+                  "input": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "required": ["type"],
+                      "properties": {
+                        "type": {
+                          "const": "function",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "maxItems": 256
+                  },
+                  "tool_choice": {},
+                  "parallel_tool_calls": {
+                    "type": "boolean"
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "top_p": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_completion_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_output_tokens": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reasoning": {
+                    "type": "object"
+                  },
+                  "reasoning_effort": {
+                    "type": "string"
+                  },
+                  "response_format": {},
+                  "text": {},
+                  "stop": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "seed": {
+                    "type": "integer"
+                  },
+                  "frequency_penalty": {
+                    "type": "number"
+                  },
+                  "presence_penalty": {
+                    "type": "number"
+                  },
+                  "stream_options": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "include_usage": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["include_usage"]
+                  },
+                  "store": {
+                    "type": "boolean",
+                    "const": false
+                  }
+                },
+                "required": ["input", "model"]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2450,6 +3709,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Server-side CRON_SECRET only; no installation credential."
+      },
+      "Inference": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "ClawScarf-issued, revocable installation AI credential. Never an OpenRouter credential."
       }
     },
     "schemas": {
@@ -3647,6 +4911,368 @@
           }
         },
         "required": ["unit", "resetsAt", "limits"]
+      },
+      "BillingOffer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string",
+            "enum": ["connections", "ai"]
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["usd"]
+          },
+          "priceMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxQuantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["usd_micros", "executions"]
+          },
+          "expires": {
+            "type": "boolean",
+            "const": false
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["account"]
+          },
+          "purchaseType": {
+            "type": "string",
+            "enum": ["one_time"]
+          },
+          "taxBehavior": {
+            "type": "string",
+            "enum": ["exclusive"]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "service",
+          "currency",
+          "priceMinor",
+          "amount",
+          "maxQuantity",
+          "unit",
+          "expires",
+          "scope",
+          "purchaseType",
+          "taxBehavior"
+        ]
+      },
+      "BillingOrder": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "service": {
+            "type": "string",
+            "enum": ["connections", "ai"]
+          },
+          "offerId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["usd"]
+          },
+          "amountMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "grantAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "creating",
+              "checkout_ready",
+              "payment_pending",
+              "paid",
+              "fulfilled",
+              "expired",
+              "failed",
+              "uncertain"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "disputedMinor": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "installationId",
+          "service",
+          "offerId",
+          "quantity",
+          "currency",
+          "amountMinor",
+          "grantAmount",
+          "status",
+          "createdAt",
+          "refundedMinor",
+          "disputedMinor"
+        ]
+      },
+      "BillingAllowances": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "connections": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": ["executions"]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "disabled",
+                  "pending",
+                  "available",
+                  "exhausted",
+                  "suspended",
+                  "unavailable"
+                ]
+              },
+              "freeRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "paidRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "resetsAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "unit",
+              "state",
+              "freeRemaining",
+              "paidRemaining",
+              "available",
+              "resetsAt"
+            ]
+          },
+          "ai": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": ["usd_micros"]
+              },
+              "currency": {
+                "type": "string",
+                "enum": ["usd"]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "disabled",
+                  "pending",
+                  "available",
+                  "exhausted",
+                  "suspended",
+                  "unavailable"
+                ]
+              },
+              "freeRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "paidRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "usageAsOf": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "unit",
+              "currency",
+              "state",
+              "freeRemaining",
+              "paidRemaining",
+              "available",
+              "usageAsOf"
+            ]
+          },
+          "purchasingAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": ["connections", "ai", "purchasingAvailable"]
+      },
+      "AiConfiguration": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "modelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "credentialActive": {
+            "type": "boolean"
+          },
+          "inferenceUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "enabled",
+          "revision",
+          "modelIds",
+          "generation",
+          "credentialActive",
+          "inferenceUrl"
+        ]
+      },
+      "AiModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "protocols": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["responses", "chat/completions"]
+            }
+          },
+          "contextTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "inputMicrosPerMillion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outputMicrosPerMillion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rateVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocols",
+          "contextTokens",
+          "maxOutputTokens",
+          "inputMicrosPerMillion",
+          "outputMicrosPerMillion",
+          "rateVersion"
+        ]
+      },
+      "AiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "param": {
+                "type": "null"
+              }
+            },
+            "required": ["message", "type", "code", "param"]
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": ["error", "requestId"]
       }
     },
     "responses": {

@@ -352,6 +352,87 @@ export type ConnectionUsage = {
     }>;
 };
 
+export type BillingOffer = {
+    id: string;
+    title: string;
+    service: 'connections' | 'ai';
+    currency: 'usd';
+    priceMinor: number;
+    amount: number;
+    maxQuantity: number;
+    unit: 'usd_micros' | 'executions';
+    expires: false;
+    scope: 'account';
+    purchaseType: 'one_time';
+    taxBehavior: 'exclusive';
+};
+
+export type BillingOrder = {
+    id: string;
+    installationId: string;
+    service: 'connections' | 'ai';
+    offerId: string;
+    quantity: number;
+    currency: 'usd';
+    amountMinor: number;
+    grantAmount: number;
+    status: 'creating' | 'checkout_ready' | 'payment_pending' | 'paid' | 'fulfilled' | 'expired' | 'failed' | 'uncertain';
+    createdAt: string;
+    refundedMinor: number;
+    disputedMinor: number;
+};
+
+export type BillingAllowances = {
+    connections: {
+        unit: 'executions';
+        state: 'disabled' | 'pending' | 'available' | 'exhausted' | 'suspended' | 'unavailable';
+        freeRemaining: number;
+        paidRemaining: number;
+        available: number;
+        resetsAt: string | null;
+    };
+    ai: {
+        unit: 'usd_micros';
+        currency: 'usd';
+        state: 'disabled' | 'pending' | 'available' | 'exhausted' | 'suspended' | 'unavailable';
+        freeRemaining: number;
+        paidRemaining: number;
+        available: number;
+        usageAsOf: string | null;
+    };
+    purchasingAvailable: boolean;
+};
+
+export type AiConfiguration = {
+    enabled: boolean;
+    revision: number;
+    modelIds: Array<string>;
+    generation: number;
+    credentialActive: boolean;
+    inferenceUrl: string;
+};
+
+export type AiModel = {
+    id: string;
+    name: string;
+    protocols: Array<'responses' | 'chat/completions'>;
+    contextTokens: number;
+    maxOutputTokens: number;
+    inputMicrosPerMillion: number;
+    outputMicrosPerMillion: number;
+    rateVersion: string;
+};
+
+export type AiError = {
+    error: {
+        message: string;
+        type: string;
+        code: string;
+        param: null;
+    };
+    requestId: string;
+};
+
 export type ConnectorId = string;
 
 /**
@@ -2259,3 +2340,568 @@ export type GetConnectionUsageResponses = {
 };
 
 export type GetConnectionUsageResponse = GetConnectionUsageResponses[keyof GetConnectionUsageResponses];
+
+export type GetBillingOffersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/billing/offers';
+};
+
+export type GetBillingOffersErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetBillingOffersError = GetBillingOffersErrors[keyof GetBillingOffersErrors];
+
+export type GetBillingOffersResponses = {
+    /**
+     * Success
+     */
+    200: {
+        purchasingAvailable: boolean;
+        offers: Array<BillingOffer>;
+    };
+};
+
+export type GetBillingOffersResponse = GetBillingOffersResponses[keyof GetBillingOffersResponses];
+
+export type GetBillingSummaryData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/billing/summary';
+};
+
+export type GetBillingSummaryErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetBillingSummaryError = GetBillingSummaryErrors[keyof GetBillingSummaryErrors];
+
+export type GetBillingSummaryResponses = {
+    /**
+     * Success
+     */
+    200: BillingAllowances;
+};
+
+export type GetBillingSummaryResponse = GetBillingSummaryResponses[keyof GetBillingSummaryResponses];
+
+export type GetInstallationAllowancesData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/installations/{id}/allowances';
+};
+
+export type GetInstallationAllowancesErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetInstallationAllowancesError = GetInstallationAllowancesErrors[keyof GetInstallationAllowancesErrors];
+
+export type GetInstallationAllowancesResponses = {
+    /**
+     * Success
+     */
+    200: BillingAllowances;
+};
+
+export type GetInstallationAllowancesResponse = GetInstallationAllowancesResponses[keyof GetInstallationAllowancesResponses];
+
+export type CreateBillingReturnData = {
+    body: {
+        requestId: string;
+        path: string;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/installations/{id}/billing-returns';
+};
+
+export type CreateBillingReturnErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type CreateBillingReturnError = CreateBillingReturnErrors[keyof CreateBillingReturnErrors];
+
+export type CreateBillingReturnResponses = {
+    /**
+     * Success
+     */
+    200: {
+        returnId: string;
+        expiresAt: string;
+    };
+};
+
+export type CreateBillingReturnResponse = CreateBillingReturnResponses[keyof CreateBillingReturnResponses];
+
+export type CreateBillingCheckoutData = {
+    body: {
+        requestId: string;
+        offerId: string;
+        quantity: number;
+        installationId: string;
+        returnId: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/billing/checkouts';
+};
+
+export type CreateBillingCheckoutErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type CreateBillingCheckoutError = CreateBillingCheckoutErrors[keyof CreateBillingCheckoutErrors];
+
+export type CreateBillingCheckoutResponses = {
+    /**
+     * Success
+     */
+    200: {
+        orderId: string;
+        status: 'creating' | 'checkout_ready' | 'payment_pending' | 'paid' | 'fulfilled' | 'expired' | 'failed' | 'uncertain';
+        checkoutUrl: string | null;
+        expiresAt: string | null;
+    };
+};
+
+export type CreateBillingCheckoutResponse = CreateBillingCheckoutResponses[keyof CreateBillingCheckoutResponses];
+
+export type ListBillingOrdersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/billing/orders';
+};
+
+export type ListBillingOrdersErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type ListBillingOrdersError = ListBillingOrdersErrors[keyof ListBillingOrdersErrors];
+
+export type ListBillingOrdersResponses = {
+    /**
+     * Success
+     */
+    200: {
+        orders: Array<BillingOrder>;
+        nextCursor: string | null;
+    };
+};
+
+export type ListBillingOrdersResponse = ListBillingOrdersResponses[keyof ListBillingOrdersResponses];
+
+export type GetBillingOrderData = {
+    body?: never;
+    path: {
+        orderId: string;
+    };
+    query?: never;
+    url: '/api/billing/orders/{orderId}';
+};
+
+export type GetBillingOrderErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetBillingOrderError = GetBillingOrderErrors[keyof GetBillingOrderErrors];
+
+export type GetBillingOrderResponses = {
+    /**
+     * Success
+     */
+    200: BillingOrder;
+};
+
+export type GetBillingOrderResponse = GetBillingOrderResponses[keyof GetBillingOrderResponses];
+
+export type CreateBillingPortalData = {
+    body: {
+        returnId: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/billing/portal';
+};
+
+export type CreateBillingPortalErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type CreateBillingPortalError = CreateBillingPortalErrors[keyof CreateBillingPortalErrors];
+
+export type CreateBillingPortalResponses = {
+    /**
+     * Success
+     */
+    200: {
+        url: string;
+    };
+};
+
+export type CreateBillingPortalResponse = CreateBillingPortalResponses[keyof CreateBillingPortalResponses];
+
+export type StripeWebhookData = {
+    body: {
+        [key: string]: unknown;
+    };
+    headers: {
+        'stripe-signature': string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/billing/webhooks/stripe';
+};
+
+export type StripeWebhookErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type StripeWebhookError = StripeWebhookErrors[keyof StripeWebhookErrors];
+
+export type StripeWebhookResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: true;
+    };
+};
+
+export type StripeWebhookResponse = StripeWebhookResponses[keyof StripeWebhookResponses];
+
+export type MaintainBillingData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/cron/billing';
+};
+
+export type MaintainBillingErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type MaintainBillingError = MaintainBillingErrors[keyof MaintainBillingErrors];
+
+export type MaintainBillingResponses = {
+    /**
+     * Success
+     */
+    200: {
+        status: 'disabled' | 'completed';
+    };
+};
+
+export type MaintainBillingResponse = MaintainBillingResponses[keyof MaintainBillingResponses];
+
+export type GetAiModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ai/models';
+};
+
+export type GetAiModelsErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetAiModelsError = GetAiModelsErrors[keyof GetAiModelsErrors];
+
+export type GetAiModelsResponses = {
+    /**
+     * Success
+     */
+    200: {
+        /**
+         * Retained for response compatibility; always null. The installation selects a model for each inference request.
+         */
+        defaultModel: string | null;
+        models: Array<AiModel>;
+    };
+};
+
+export type GetAiModelsResponse = GetAiModelsResponses[keyof GetAiModelsResponses];
+
+export type GetInstallationAiData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/installations/{id}/ai';
+};
+
+export type GetInstallationAiErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type GetInstallationAiError = GetInstallationAiErrors[keyof GetInstallationAiErrors];
+
+export type GetInstallationAiResponses = {
+    /**
+     * Success
+     */
+    200: AiConfiguration;
+};
+
+export type GetInstallationAiResponse = GetInstallationAiResponses[keyof GetInstallationAiResponses];
+
+export type ConfigureInstallationAiData = {
+    body: {
+        requestId: string;
+        revision: number;
+        enabled: boolean;
+        modelIds: Array<string>;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/installations/{id}/ai';
+};
+
+export type ConfigureInstallationAiErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type ConfigureInstallationAiError = ConfigureInstallationAiErrors[keyof ConfigureInstallationAiErrors];
+
+export type ConfigureInstallationAiResponses = {
+    /**
+     * Success
+     */
+    200: AiConfiguration;
+};
+
+export type ConfigureInstallationAiResponse = ConfigureInstallationAiResponses[keyof ConfigureInstallationAiResponses];
+
+export type RevokeAiCredentialData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query: {
+        generation: number;
+    };
+    url: '/api/installations/{id}/ai/credential';
+};
+
+export type RevokeAiCredentialErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type RevokeAiCredentialError = RevokeAiCredentialErrors[keyof RevokeAiCredentialErrors];
+
+export type RevokeAiCredentialResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: true;
+    };
+};
+
+export type RevokeAiCredentialResponse = RevokeAiCredentialResponses[keyof RevokeAiCredentialResponses];
+
+export type RotateAiCredentialData = {
+    body: {
+        requestId: string;
+        generation: number;
+        secret: string;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/installations/{id}/ai/credential';
+};
+
+export type RotateAiCredentialErrors = {
+    /**
+     * Failure
+     */
+    default: Problem;
+};
+
+export type RotateAiCredentialError = RotateAiCredentialErrors[keyof RotateAiCredentialErrors];
+
+export type RotateAiCredentialResponses = {
+    /**
+     * Success
+     */
+    200: {
+        generation: number;
+    };
+};
+
+export type RotateAiCredentialResponse = RotateAiCredentialResponses[keyof RotateAiCredentialResponses];
+
+export type AiChatCompletionsData = {
+    body: {
+        model: string;
+        stream?: boolean;
+        messages: Array<unknown>;
+        input?: string | Array<unknown>;
+        instructions?: string;
+        tools?: Array<{
+            type: 'function';
+            [key: string]: unknown;
+        }>;
+        tool_choice?: unknown;
+        parallel_tool_calls?: boolean;
+        temperature?: number;
+        top_p?: number;
+        max_tokens?: number;
+        max_completion_tokens?: number;
+        max_output_tokens?: number;
+        reasoning?: {
+            [key: string]: unknown;
+        };
+        reasoning_effort?: string;
+        response_format?: unknown;
+        text?: unknown;
+        stop?: string | Array<string> | null;
+        seed?: number;
+        frequency_penalty?: number;
+        presence_penalty?: number;
+        stream_options?: {
+            include_usage: boolean;
+        };
+        store?: false;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/chat/completions';
+};
+
+export type AiChatCompletionsErrors = {
+    /**
+     * Failure
+     */
+    default: AiError;
+};
+
+export type AiChatCompletionsError = AiChatCompletionsErrors[keyof AiChatCompletionsErrors];
+
+export type AiChatCompletionsResponses = {
+    /**
+     * Success
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type AiChatCompletionsResponse = AiChatCompletionsResponses[keyof AiChatCompletionsResponses];
+
+export type AiResponsesData = {
+    body: {
+        model: string;
+        stream?: boolean;
+        messages?: Array<unknown>;
+        input: string | Array<unknown>;
+        instructions?: string;
+        tools?: Array<{
+            type: 'function';
+            [key: string]: unknown;
+        }>;
+        tool_choice?: unknown;
+        parallel_tool_calls?: boolean;
+        temperature?: number;
+        top_p?: number;
+        max_tokens?: number;
+        max_completion_tokens?: number;
+        max_output_tokens?: number;
+        reasoning?: {
+            [key: string]: unknown;
+        };
+        reasoning_effort?: string;
+        response_format?: unknown;
+        text?: unknown;
+        stop?: string | Array<string> | null;
+        seed?: number;
+        frequency_penalty?: number;
+        presence_penalty?: number;
+        stream_options?: {
+            include_usage: boolean;
+        };
+        store?: false;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/responses';
+};
+
+export type AiResponsesErrors = {
+    /**
+     * Failure
+     */
+    default: AiError;
+};
+
+export type AiResponsesError = AiResponsesErrors[keyof AiResponsesErrors];
+
+export type AiResponsesResponses = {
+    /**
+     * Success
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type AiResponsesResponse = AiResponsesResponses[keyof AiResponsesResponses];

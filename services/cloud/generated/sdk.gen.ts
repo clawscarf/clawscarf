@@ -3,7 +3,7 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from '../../../generated/http/client/index.js';
 
 import { client } from './client.gen.js';
-import type { BeginConnectionSetupBrowserData, BeginConnectionSetupBrowserErrors, BeginConnectionSetupBrowserResponses, CallConnectorRuntimeData, CallConnectorRuntimeErrors, CallConnectorRuntimeResponses, CancelConnectionSetupData, CancelConnectionSetupErrors, CancelConnectionSetupResponses, CompleteConnectionSetupData, CompleteConnectionSetupErrors, CompleteConnectionSetupResponses, CreateConnectionData, CreateConnectionErrors, CreateConnectionResponses, DescribeConnectorRuntimeData, DescribeConnectorRuntimeErrors, DescribeConnectorRuntimeResponses, DisconnectConnectionData, DisconnectConnectionErrors, DisconnectConnectionResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetCliIdentityData, GetCliIdentityErrors, GetCliIdentityResponses, GetConnectionData, GetConnectionErrors, GetConnectionResponses, GetConnectionSetupData, GetConnectionSetupErrors, GetConnectionSetupResponses, GetConnectionUsageData, GetConnectionUsageErrors, GetConnectionUsageResponses, GetConnectorData, GetConnectorErrors, GetConnectorResponses, GetConnectorRuntimeInvocationData, GetConnectorRuntimeInvocationErrors, GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeResultPageData, GetConnectorRuntimeResultPageErrors, GetConnectorRuntimeResultPageResponses, GetInstallationCredentialsData, GetInstallationCredentialsErrors, GetInstallationCredentialsResponses, GetInstallationData, GetInstallationErrors, GetInstallationIdentityData, GetInstallationIdentityErrors, GetInstallationIdentityResponses, GetInstallationResponses, GetProvisionerData, GetProvisionerErrors, GetProvisionerResponses, GetRuntimeScopeData, GetRuntimeScopeErrors, GetRuntimeScopeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, HealthData, HealthResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListConnectorsData, ListConnectorsErrors, ListConnectorsResponses, ListInstallationsData, ListInstallationsErrors, ListInstallationsResponses, LookupConnectorRuntimeInvocationData, LookupConnectorRuntimeInvocationErrors, LookupConnectorRuntimeInvocationResponses, MaintainConnectionsData, MaintainConnectionsErrors, MaintainConnectionsResponses, RefreshConnectionData, RefreshConnectionErrors, RefreshConnectionResponses, RegisterInstallationData, RegisterInstallationErrors, RegisterInstallationResponses, ReturnConnectionCallbackData, ReturnConnectionCallbackErrors, ReturnConnectionCallbackResponses, RevokeInstallationCredentialData, RevokeInstallationCredentialErrors, RevokeInstallationCredentialResponses, RevokeProvisionerData, RevokeProvisionerErrors, RevokeProvisionerResponses, RotateInstallationCredentialData, RotateInstallationCredentialErrors, RotateInstallationCredentialResponses, RotateProvisionerData, RotateProvisionerErrors, RotateProvisionerResponses, SearchConnectorRuntimeData, SearchConnectorRuntimeErrors, SearchConnectorRuntimeResponses, StartConnectionSetupData, StartConnectionSetupErrors, StartConnectionSetupResponses, UpdateConnectionData, UpdateConnectionErrors, UpdateConnectionResponses } from './types.gen.js';
+import type { AiChatCompletionsData, AiChatCompletionsErrors, AiChatCompletionsResponses, AiResponsesData, AiResponsesErrors, AiResponsesResponses, BeginConnectionSetupBrowserData, BeginConnectionSetupBrowserErrors, BeginConnectionSetupBrowserResponses, CallConnectorRuntimeData, CallConnectorRuntimeErrors, CallConnectorRuntimeResponses, CancelConnectionSetupData, CancelConnectionSetupErrors, CancelConnectionSetupResponses, CompleteConnectionSetupData, CompleteConnectionSetupErrors, CompleteConnectionSetupResponses, ConfigureInstallationAiData, ConfigureInstallationAiErrors, ConfigureInstallationAiResponses, CreateBillingCheckoutData, CreateBillingCheckoutErrors, CreateBillingCheckoutResponses, CreateBillingPortalData, CreateBillingPortalErrors, CreateBillingPortalResponses, CreateBillingReturnData, CreateBillingReturnErrors, CreateBillingReturnResponses, CreateConnectionData, CreateConnectionErrors, CreateConnectionResponses, DescribeConnectorRuntimeData, DescribeConnectorRuntimeErrors, DescribeConnectorRuntimeResponses, DisconnectConnectionData, DisconnectConnectionErrors, DisconnectConnectionResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAiModelsData, GetAiModelsErrors, GetAiModelsResponses, GetBillingOffersData, GetBillingOffersErrors, GetBillingOffersResponses, GetBillingOrderData, GetBillingOrderErrors, GetBillingOrderResponses, GetBillingSummaryData, GetBillingSummaryErrors, GetBillingSummaryResponses, GetCliIdentityData, GetCliIdentityErrors, GetCliIdentityResponses, GetConnectionData, GetConnectionErrors, GetConnectionResponses, GetConnectionSetupData, GetConnectionSetupErrors, GetConnectionSetupResponses, GetConnectionUsageData, GetConnectionUsageErrors, GetConnectionUsageResponses, GetConnectorData, GetConnectorErrors, GetConnectorResponses, GetConnectorRuntimeInvocationData, GetConnectorRuntimeInvocationErrors, GetConnectorRuntimeInvocationResponses, GetConnectorRuntimeResultPageData, GetConnectorRuntimeResultPageErrors, GetConnectorRuntimeResultPageResponses, GetInstallationAiData, GetInstallationAiErrors, GetInstallationAiResponses, GetInstallationAllowancesData, GetInstallationAllowancesErrors, GetInstallationAllowancesResponses, GetInstallationCredentialsData, GetInstallationCredentialsErrors, GetInstallationCredentialsResponses, GetInstallationData, GetInstallationErrors, GetInstallationIdentityData, GetInstallationIdentityErrors, GetInstallationIdentityResponses, GetInstallationResponses, GetProvisionerData, GetProvisionerErrors, GetProvisionerResponses, GetRuntimeScopeData, GetRuntimeScopeErrors, GetRuntimeScopeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, HealthData, HealthResponses, ListBillingOrdersData, ListBillingOrdersErrors, ListBillingOrdersResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListConnectorsData, ListConnectorsErrors, ListConnectorsResponses, ListInstallationsData, ListInstallationsErrors, ListInstallationsResponses, LookupConnectorRuntimeInvocationData, LookupConnectorRuntimeInvocationErrors, LookupConnectorRuntimeInvocationResponses, MaintainBillingData, MaintainBillingErrors, MaintainBillingResponses, MaintainConnectionsData, MaintainConnectionsErrors, MaintainConnectionsResponses, RefreshConnectionData, RefreshConnectionErrors, RefreshConnectionResponses, RegisterInstallationData, RegisterInstallationErrors, RegisterInstallationResponses, ReturnConnectionCallbackData, ReturnConnectionCallbackErrors, ReturnConnectionCallbackResponses, RevokeAiCredentialData, RevokeAiCredentialErrors, RevokeAiCredentialResponses, RevokeInstallationCredentialData, RevokeInstallationCredentialErrors, RevokeInstallationCredentialResponses, RevokeProvisionerData, RevokeProvisionerErrors, RevokeProvisionerResponses, RotateAiCredentialData, RotateAiCredentialErrors, RotateAiCredentialResponses, RotateInstallationCredentialData, RotateInstallationCredentialErrors, RotateInstallationCredentialResponses, RotateProvisionerData, RotateProvisionerErrors, RotateProvisionerResponses, SearchConnectorRuntimeData, SearchConnectorRuntimeErrors, SearchConnectorRuntimeResponses, StartConnectionSetupData, StartConnectionSetupErrors, StartConnectionSetupResponses, StripeWebhookData, StripeWebhookErrors, StripeWebhookResponses, UpdateConnectionData, UpdateConnectionErrors, UpdateConnectionResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -540,4 +540,312 @@ export const getConnectionUsage = <ThrowOnError extends boolean = false>(options
         }],
     url: '/api/connections/usage',
     ...options
+});
+
+export const getBillingOffers = <ThrowOnError extends boolean = false>(options?: Options<GetBillingOffersData, ThrowOnError>): RequestResult<GetBillingOffersResponses, GetBillingOffersErrors, ThrowOnError> => (options?.client ?? client).get<GetBillingOffersResponses, GetBillingOffersErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/billing/offers',
+    ...options
+});
+
+export const getBillingSummary = <ThrowOnError extends boolean = false>(options?: Options<GetBillingSummaryData, ThrowOnError>): RequestResult<GetBillingSummaryResponses, GetBillingSummaryErrors, ThrowOnError> => (options?.client ?? client).get<GetBillingSummaryResponses, GetBillingSummaryErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/billing/summary',
+    ...options
+});
+
+export const getInstallationAllowances = <ThrowOnError extends boolean = false>(options: Options<GetInstallationAllowancesData, ThrowOnError>): RequestResult<GetInstallationAllowancesResponses, GetInstallationAllowancesErrors, ThrowOnError> => (options.client ?? client).get<GetInstallationAllowancesResponses, GetInstallationAllowancesErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/installations/{id}/allowances',
+    ...options
+});
+
+export const createBillingReturn = <ThrowOnError extends boolean = false>(options: Options<CreateBillingReturnData, ThrowOnError>): RequestResult<CreateBillingReturnResponses, CreateBillingReturnErrors, ThrowOnError> => (options.client ?? client).post<CreateBillingReturnResponses, CreateBillingReturnErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/installations/{id}/billing-returns',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const createBillingCheckout = <ThrowOnError extends boolean = false>(options: Options<CreateBillingCheckoutData, ThrowOnError>): RequestResult<CreateBillingCheckoutResponses, CreateBillingCheckoutErrors, ThrowOnError> => (options.client ?? client).post<CreateBillingCheckoutResponses, CreateBillingCheckoutErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/billing/checkouts',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const listBillingOrders = <ThrowOnError extends boolean = false>(options?: Options<ListBillingOrdersData, ThrowOnError>): RequestResult<ListBillingOrdersResponses, ListBillingOrdersErrors, ThrowOnError> => (options?.client ?? client).get<ListBillingOrdersResponses, ListBillingOrdersErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/billing/orders',
+    ...options
+});
+
+export const getBillingOrder = <ThrowOnError extends boolean = false>(options: Options<GetBillingOrderData, ThrowOnError>): RequestResult<GetBillingOrderResponses, GetBillingOrderErrors, ThrowOnError> => (options.client ?? client).get<GetBillingOrderResponses, GetBillingOrderErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/billing/orders/{orderId}',
+    ...options
+});
+
+export const createBillingPortal = <ThrowOnError extends boolean = false>(options: Options<CreateBillingPortalData, ThrowOnError>): RequestResult<CreateBillingPortalResponses, CreateBillingPortalErrors, ThrowOnError> => (options.client ?? client).post<CreateBillingPortalResponses, CreateBillingPortalErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/billing/portal',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Requires Stripe verification against the exact raw request body.
+ */
+export const stripeWebhook = <ThrowOnError extends boolean = false>(options: Options<StripeWebhookData, ThrowOnError>): RequestResult<StripeWebhookResponses, StripeWebhookErrors, ThrowOnError> => (options.client ?? client).post<StripeWebhookResponses, StripeWebhookErrors, ThrowOnError>({
+    url: '/api/billing/webhooks/stripe',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const maintainBilling = <ThrowOnError extends boolean = false>(options?: Options<MaintainBillingData, ThrowOnError>): RequestResult<MaintainBillingResponses, MaintainBillingErrors, ThrowOnError> => (options?.client ?? client).get<MaintainBillingResponses, MaintainBillingErrors, ThrowOnError>({
+    security: [{
+            key: 'Maintenance',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/cron/billing',
+    ...options
+});
+
+export const getAiModels = <ThrowOnError extends boolean = false>(options?: Options<GetAiModelsData, ThrowOnError>): RequestResult<GetAiModelsResponses, GetAiModelsErrors, ThrowOnError> => (options?.client ?? client).get<GetAiModelsResponses, GetAiModelsErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/ai/models',
+    ...options
+});
+
+export const getInstallationAi = <ThrowOnError extends boolean = false>(options: Options<GetInstallationAiData, ThrowOnError>): RequestResult<GetInstallationAiResponses, GetInstallationAiErrors, ThrowOnError> => (options.client ?? client).get<GetInstallationAiResponses, GetInstallationAiErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/installations/{id}/ai',
+    ...options
+});
+
+export const configureInstallationAi = <ThrowOnError extends boolean = false>(options: Options<ConfigureInstallationAiData, ThrowOnError>): RequestResult<ConfigureInstallationAiResponses, ConfigureInstallationAiErrors, ThrowOnError> => (options.client ?? client).put<ConfigureInstallationAiResponses, ConfigureInstallationAiErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        }, {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/api/installations/{id}/ai',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const revokeAiCredential = <ThrowOnError extends boolean = false>(options: Options<RevokeAiCredentialData, ThrowOnError>): RequestResult<RevokeAiCredentialResponses, RevokeAiCredentialErrors, ThrowOnError> => (options.client ?? client).delete<RevokeAiCredentialResponses, RevokeAiCredentialErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/installations/{id}/ai/credential',
+    ...options
+});
+
+export const rotateAiCredential = <ThrowOnError extends boolean = false>(options: Options<RotateAiCredentialData, ThrowOnError>): RequestResult<RotateAiCredentialResponses, RotateAiCredentialErrors, ThrowOnError> => (options.client ?? client).put<RotateAiCredentialResponses, RotateAiCredentialErrors, ThrowOnError>({
+    security: [
+        {
+            in: 'cookie',
+            name: '__Host-clawscarf-session',
+            type: 'apiKey'
+        },
+        {
+            key: 'bearer',
+            scheme: 'bearer',
+            type: 'http'
+        },
+        {
+            key: 'InstallationManagement',
+            scheme: 'bearer',
+            type: 'http'
+        }
+    ],
+    url: '/api/installations/{id}/ai/credential',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const aiChatCompletions = <ThrowOnError extends boolean = false>(options: Options<AiChatCompletionsData, ThrowOnError>): RequestResult<AiChatCompletionsResponses, AiChatCompletionsErrors, ThrowOnError> => (options.client ?? client).post<AiChatCompletionsResponses, AiChatCompletionsErrors, ThrowOnError>({
+    security: [{
+            key: 'Inference',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/v1/chat/completions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const aiResponses = <ThrowOnError extends boolean = false>(options: Options<AiResponsesData, ThrowOnError>): RequestResult<AiResponsesResponses, AiResponsesErrors, ThrowOnError> => (options.client ?? client).post<AiResponsesResponses, AiResponsesErrors, ThrowOnError>({
+    security: [{
+            key: 'Inference',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/v1/responses',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
