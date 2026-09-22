@@ -144,6 +144,8 @@ export function page<T extends { csrfToken: string }>(
     HTMLButtonElement | HTMLSelectElement | HTMLInputElement,
     boolean
   >();
+  let focused:
+    HTMLButtonElement | HTMLSelectElement | HTMLInputElement | undefined;
   function pending(value: boolean, text = "") {
     busy = value;
     status.textContent = text;
@@ -152,6 +154,7 @@ export function page<T extends { csrfToken: string }>(
       for (const control of root.querySelectorAll<
         HTMLButtonElement | HTMLSelectElement | HTMLInputElement
       >("button,select,input")) {
+        if (control === document.activeElement) focused = control;
         disabled.set(control, control.disabled);
         control.disabled = true;
       }
@@ -159,6 +162,13 @@ export function page<T extends { csrfToken: string }>(
       for (const [control, wasDisabled] of disabled)
         control.disabled = wasDisabled;
       disabled.clear();
+      if (
+        focused?.isConnected &&
+        !focused.disabled &&
+        document.activeElement === document.body
+      )
+        focused.focus();
+      focused = undefined;
     }
   }
   async function session() {
