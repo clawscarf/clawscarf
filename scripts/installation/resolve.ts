@@ -18,6 +18,7 @@ import { installationSchema } from "./configuration.js";
 import { fingerprint, readInputFile, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { openPack } from "../packs/source.js";
+import { validateCloudRoutes } from "../cloud/models.js";
 
 export async function allocatePorts() {
   const servers = Array.from({ length: 7 }, () => createServer());
@@ -104,6 +105,11 @@ export async function resolveInstallation(
         }
       : config.access;
   const cloudConnections = await hostedConnections(config, configFile);
+  if (config.models.mode === "litellm" && config.models.cloud)
+    validateCloudRoutes(
+      await readJson(path(config.models.configurationFile)),
+      config.models.cloud.url,
+    );
   const input: LocalInput = parseLocalInput({
     name: config.name,
     administratorName: access.administratorName,

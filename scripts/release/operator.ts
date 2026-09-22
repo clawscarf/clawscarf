@@ -33,6 +33,7 @@ const assets = [
   "packs",
   "runtime/current.json",
   "deploy/models/catalog.json",
+  "deploy/models/cloud-catalog.json",
   "deploy/openshell/policy.yaml",
   "deploy/execution/browser/seccomp.json",
   "deploy/execution/network/node-ingress.cfg",

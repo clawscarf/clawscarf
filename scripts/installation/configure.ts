@@ -40,6 +40,10 @@ export function resolveConfigurationInputs<T extends InstallationDraft>(
       config.models.upstreamEnvironmentFile = path(
         config.models.upstreamEnvironmentFile,
       );
+    if (config.models.mode === "litellm" && config.models.cloud)
+      config.models.cloud.registrationFile = path(
+        config.models.cloud.registrationFile,
+      );
   }
   config.connections.registrationFile = path(
     config.connections.registrationFile,
@@ -90,7 +94,11 @@ export async function validateSelections(
       "invalid_configuration",
       "Choose --model or a recipe with a default model.",
     );
-  if (draft.models.mode === "litellm" && !draft.models.upstreamEnvironmentFile)
+  if (
+    draft.models.mode === "litellm" &&
+    !draft.models.cloud &&
+    !draft.models.upstreamEnvironmentFile
+  )
     throw new InstallationError(
       "invalid_configuration",
       "Supply --llm-key-file or --provider-env-file for the selected model provider.",
@@ -162,11 +170,15 @@ export async function configurationChanges(
   const models = async (config: typeof before) => ({
     mode: config.models.mode,
     catalog: await readJson(config.models.configurationFile),
-    key: await secret(
-      config.models.mode === "litellm"
-        ? config.models.upstreamEnvironmentFile
-        : config.models.credentialFile,
-    ),
+    cloud: config.models.mode === "litellm" ? config.models.cloud : undefined,
+    key:
+      config.models.mode === "litellm" && config.models.cloud
+        ? undefined
+        : await secret(
+            config.models.mode === "litellm"
+              ? config.models.upstreamEnvironmentFile
+              : config.models.credentialFile,
+          ),
     ca:
       config.models.mode === "external" && config.models.caFile
         ? fingerprint(await readInputFile(config.models.caFile))

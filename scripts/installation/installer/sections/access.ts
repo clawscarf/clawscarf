@@ -9,6 +9,10 @@ export async function collectAccess(
   current: InstallationDraft,
   cloudUrl = defaultCloudUrl,
 ) {
+  ui.note(
+    "ClawScarf Cloud provides free team sign-in. Login remains available when paid services run out of credit. You can use your own identity provider and still choose Cloud AI or Connections.",
+    "Team login",
+  );
   const custom = await ui.confirm(
     "Use your own OIDC provider?",
     current.access.mode === "oidc",

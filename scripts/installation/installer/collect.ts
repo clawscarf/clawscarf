@@ -21,7 +21,11 @@ import type { InstallerPrompts } from "./prompts.js";
 import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
 import { collectAccess, collectExposure } from "./sections/access.js";
 import { collectConnections } from "./sections/connections.js";
-import { collectModels, collectModelCredentials } from "./sections/models.js";
+import {
+  collectModels,
+  collectModelCredentials,
+  collectAiService,
+} from "./sections/models.js";
 import { collectPacks, collectPackInputs } from "./sections/packs.js";
 import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { installationSummary, modelSummary } from "./summary.js";
@@ -94,7 +98,16 @@ export async function collectInstallation(
     }
     if (!options.existing) await newDirectory(directory);
     const context = await setupContext(
-      { ...options, ...(recipeId ? { recipe: recipeId } : {}) },
+      {
+        ...options,
+        ...(retained?.config.models?.mode === "litellm" &&
+        retained.config.models.cloud
+          ? { cloudUrl: retained.config.models.cloud.url }
+          : retained?.config.access.mode === "hosted"
+            ? { cloudUrl: retained.config.access.cloudUrl }
+            : {}),
+        ...(recipeId ? { recipe: recipeId } : {}),
+      },
       options.existing ? retained?.config.releaseFile : undefined,
     );
     const recipe = context.recipes.find(
@@ -117,9 +130,15 @@ export async function collectInstallation(
         directory,
         "secrets/hosted-login.json",
       );
-    const presetFile = recipe?.models
-      ? recipeModelFile(recipe.models, inputs, context.modelCatalog)
-      : undefined;
+    const presetFile =
+      !config.models && recipe?.models
+        ? recipeModelFile(
+            recipe.models,
+            inputs,
+            context.modelCatalog,
+            context.cloudUrl,
+          )
+        : undefined;
     if (!config.models && presetFile)
       config.models = {
         mode: "litellm",
@@ -206,6 +225,15 @@ export async function collectInstallation(
               presetFile,
               options.existing,
             );
+            break;
+          case "ai-service":
+            if (config.models)
+              config.models = await collectAiService(
+                ui,
+                context.modelCatalog,
+                config.models,
+                inputs,
+              );
             break;
           case "model-credentials":
             if (!config.models)

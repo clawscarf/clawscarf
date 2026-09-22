@@ -1,7 +1,7 @@
 {
   "id": "team-server",
   "name": "Team server",
-  "description": "A protected OpenClaw server for your team, with hosted login, managed models and optional Connections.",
+  "description": "A protected OpenClaw server for your team. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
   "maturity": "supported",
   "defaults": {
     "resources": {
@@ -19,10 +19,11 @@
     "publicWeb": true
   },
   "models": {
-    "model": "gpt-6-astra",
+    "service": "cloud",
+    "model": "openai/gpt-6-astra",
     "provider": "openai",
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }

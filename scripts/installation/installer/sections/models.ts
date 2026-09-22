@@ -1,4 +1,4 @@
-import { selectModel } from "../../models.js";
+import { selectModel, selectAiService } from "../../models.js";
 import type { InstallationConfiguration } from "../../configuration.js";
 import type { ModelCatalog } from "../../../models/catalog.js";
 import type { InstallerPrompts } from "../prompts.js";
@@ -75,6 +75,10 @@ export async function collectModels(
     };
   }
   const file = current?.configurationFile ?? presetFile;
+  const cloud = current?.mode === "litellm" && Boolean(current.cloud);
+  offers = offers.filter(
+    (offer) => (offer.provider === "ClawScarf Cloud") === cloud,
+  );
   const routes = file ? await modelRoutes(file, inputs) : undefined;
   const choices = new Map([
     ...offers.map((offer) => [offer.model.id, offer.model.name] as const),
@@ -106,14 +110,16 @@ export async function collectModels(
       "invalid_configuration",
       "This model has no configured provider. Choose another model or import a catalog under Advanced.",
     );
-  const selectedRoute = await ui.select(
-    "Provider",
-    [...providerOptions].map(([value, offer]) => ({
-      value,
-      label: offer.provider,
-    })),
-    existing?.route?.model,
-  );
+  const selectedRoute = cloud
+    ? (existing?.route?.model ?? matching[0]?.model.route.model ?? "")
+    : await ui.select(
+        "Provider",
+        [...providerOptions].map(([value, offer]) => ({
+          value,
+          label: offer.provider,
+        })),
+        existing?.route?.model,
+      );
   const offer = providerOptions.get(selectedRoute);
   if (!offer?.model.route)
     throw new InstallationError(
@@ -150,6 +156,7 @@ export async function collectModelCredentials(
   current: InstallationConfiguration["models"],
   inputs: SetupInputs,
 ) {
+  if (current.mode === "litellm" && current.cloud) return current;
   if (current.mode === "external")
     return current.credentialFile
       ? current
@@ -212,4 +219,45 @@ export async function collectModelCredentials(
       [...values].map(([name, key]) => `${name}='${key}'`).join("\n") + "\n",
     ),
   };
+}
+
+export async function collectAiService(
+  ui: InstallerPrompts,
+  catalog: ModelCatalog,
+  current: InstallationConfiguration["models"],
+  inputs: SetupInputs,
+) {
+  if (current.mode === "external") {
+    ui.note(
+      "This installation uses an existing LiteLLM gateway. Its operator manages AI providers and billing.",
+      "AI service",
+    );
+    return current;
+  }
+  ui.note(
+    "Cloud AI uses prepaid credits shared across your Cloud account's installations. Usage varies by model. There is no automatic recharge; AI pauses when credits run out. Selecting this service makes no purchase.",
+    "AI usage and payment",
+  );
+  const selected = await ui.select(
+    "AI service",
+    [
+      {
+        value: "cloud",
+        label: "ClawScarf Cloud · Recommended · Prepaid",
+        hint: "No provider API key to manage",
+      },
+      {
+        value: "provider",
+        label: "Use your own API key",
+        hint: "Usage billed by your provider",
+      },
+    ],
+    current.cloud ? "cloud" : "provider",
+  );
+  return selectAiService(
+    selected === "cloud" ? "cloud" : "provider",
+    current,
+    catalog,
+    inputs,
+  );
 }

@@ -17,6 +17,7 @@ import {
 import { readInputFile, readJson } from "../installation/files.js";
 import { writePrivate, ensurePrivateFile } from "../deployment/state.js";
 import { InstallationError } from "../installation/errors.js";
+import { configureCloudAi } from "./ai.js";
 
 const identitySchema = z.strictObject({
   issuer: cloudUrlSchema,
@@ -57,6 +58,20 @@ function connectionsRegistration(config: InstallationConfiguration) {
     : config.connections;
 }
 
+export function aiRegistration(config: InstallationConfiguration) {
+  if (config.models.mode !== "litellm" || !config.models.cloud)
+    return undefined;
+  const cloud = config.models.cloud;
+  if (config.access.mode === "hosted" && config.access.cloudUrl === cloud.url)
+    return config.access;
+  if (
+    config.connections.mode === "hosted" &&
+    config.connections.cloudUrl === cloud.url
+  )
+    return config.connections;
+  return { cloudUrl: cloud.url, registrationFile: cloud.registrationFile };
+}
+
 export async function registerCloudServices(
   configFile: string,
   authorize: (
@@ -64,15 +79,28 @@ export async function registerCloudServices(
     file: string,
     administrator: boolean,
   ) => Promise<string>,
+  report?: (message: string) => void,
 ) {
   const config = installationSchema.parse(await readJson(configFile));
   const connections = connectionsRegistration(config);
+  const ai = aiRegistration(config);
+  const tokens = new Map<string, string>();
+  const authorizeOnce: typeof authorize = async (url, file, administrator) => {
+    const cached = tokens.get(url);
+    if (cached) return cached;
+    const token = await authorize(url, file, administrator);
+    tokens.set(url, token);
+    return token;
+  };
   const selections = [
     ...(config.access.mode === "hosted"
       ? [{ ...config.access, login: true }]
       : []),
     ...(connections && connections !== config.access
       ? [{ ...connections, login: false }]
+      : []),
+    ...(ai && ai !== config.access && ai !== connections
+      ? [{ ...ai, login: false }]
       : []),
   ];
   for (const selection of selections) {
@@ -86,9 +114,21 @@ export async function registerCloudServices(
       selection.cloudUrl,
       config.name,
       origin,
-      authorize,
+      authorizeOnce,
       selection.login && !config.access.administratorSubject,
     );
+  }
+  if (ai) {
+    const file = resolve(dirname(configFile), ai.registrationFile);
+    await configureCloudAi(
+      configFile,
+      config.models,
+      await readHostedRegistration(file),
+      file,
+      authorizeOnce,
+      report,
+    );
+    await rm(file + ".login", { force: true });
   }
 }
 

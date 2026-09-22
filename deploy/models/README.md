@@ -2,7 +2,9 @@
 
 OpenClaw uses its native OpenAI-compatible provider support. Choose an existing
 LiteLLM with a scoped runtime key, or the bundled LiteLLM companion.
-No external hosting control plane or billing hook is required.
+Provider-key and existing-gateway configurations need no Cloud billing integration.
+Cloud AI uses the same bundled LiteLLM with a scoped Cloud inference credential;
+provider credentials remain in Cloud.
 Configuration is operator tooling; people use OpenClaw's model settings afterward.
 
 ## Configuration and credentials
@@ -134,6 +136,14 @@ OpenRouter last. [Recipes](../../recipes/README.md) select defaults from those o
 Model limits are explicit data, not
 a discovery call made during installation. The current catalog conservatively enables
 text input; it does not claim tested image handling or every upstream model capability.
+
+The separate [Cloud catalog snapshot](cloud-catalog.json) supplies initial hosted
+model choices. It was imported from the configured Cloud catalog on 2026-09-22;
+the installer validates availability against the authenticated live API before
+enablement. Its prices are indicative snapshot data, not installer promises.
+Every hosted route uses the selected Cloud origin's `/v1` endpoint through LiteLLM;
+Cloud model IDs cannot select another destination. Catalog selection and account
+enablement have no Cloud default model: the installation sends its chosen model.
 
 Provider route prefixes use LiteLLM's documented
 [OpenAI](https://docs.litellm.ai/docs/providers/openai),

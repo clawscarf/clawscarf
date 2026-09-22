@@ -96,7 +96,10 @@ clawscarf configure \
 ```
 
 Choose a recipe, then review its editable settings. **Accept settings and continue**
-is the first action. The menu shows the selected model, provider and reasoning before
+is the first action. The menu separates team login, AI service and default model.
+Cloud login is free; recommended Cloud AI is prepaid. Connections is optional and
+paid beyond the account’s allowance. Provider-key billing remains selectable.
+The menu shows the selected model and reasoning before
 asking for missing credentials. Explicit command options preselect those same choices.
 **Esc** discards unaccepted section changes and goes back; at the root it exits.
 **Ctrl+C** exits. No services change until the final confirmation.
@@ -155,12 +158,12 @@ clawscarf configure \
   --directory ~/my-team-staging --cloud-url https://cloud-staging.clawscarf.com
 ```
 
-This selects staging for hosted login and Connections. Production remains the default.
+This selects staging for hosted login, Cloud AI and Connections. Production remains the default.
 Existing installations retain their registered environment; this flag does not move
 users, accounts or credentials between environments.
 
-Use the Access menu or `--access oidc` with your issuer/client credentials for company
-OIDC. This avoids hosted login registration; Connections remains independently optional.
+Use the Team login menu or `--access oidc` with your issuer/client credentials for company
+OIDC. This avoids hosted login registration; Cloud AI and Connections remain independent choices.
 Supply administrator subject/email together for unattended bootstrap, or follow the
 private, 15-minute administrator link after startup. The installer waits while that
 identity is bound and verified. Ordinary login cannot claim an uninitialized server.
@@ -214,7 +217,7 @@ Run `clawscarf configure --help` for descriptions. The relevant groups are:
 | Choices                | Options                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Initial setup          | `--directory`, `--recipe`, `--name`, `--administrator-name`                                                                            |
-| Models                 | `--model`, `--provider`, `--reasoning`, `--llm-key-file`, `--provider-env-file`                                                        |
+| Models                 | `--ai-service`, `--model`, `--provider`, `--reasoning`, `--llm-key-file`, `--provider-env-file`                                        |
 | Login                  | `--access hosted\|oidc`, `--oidc-issuer`, `--oidc-client-id`, `--oidc-secret-file`, `--administrator-subject`, `--administrator-email` |
 | Local networking       | `--port`, `--widget-port`                                                                                                              |
 | HTTPS networking       | `--origin`, `--widget-origin`, `--tls-certificate`, `--tls-key-file`                                                                   |
@@ -232,6 +235,21 @@ Models always use bundled or external LiteLLM. An external gateway needs its act
 catalog, HTTPS endpoint ending in `/v1`, and a scoped inference key; never supply its master
 key. Bundled models keep provider keys outside OpenClaw and issue a scoped runtime key.
 See [models](../models/README.md) for catalog and credential contracts.
+
+`--ai-service cloud` uses prepaid ClawScarf Cloud AI through bundled LiteLLM.
+The installer uses the existing Cloud owner approval to enable hosted AI, checks
+the selected model against Cloud's live catalog, and retains a scoped inference
+credential outside OpenClaw. It reports the actual available account balance after
+sign-in without promising a fixed free allocation. Exhausted, pending or suspended
+credit does not disable login. Cloud API credentials and purchased balances never
+become provider keys in the runtime.
+
+`--ai-service provider` selects your own provider billing. Supplying `--provider`,
+`--llm-key-file` or `--provider-env-file` also selects that path. An existing
+installation keeps its accepted service unless you explicitly change it.
+Cloud AI enablement requires the owning Cloud user's authorization; a provisioning
+credential alone cannot authorize spending. Native purchase controls are separate
+from installer registration.
 
 ### Public web
 

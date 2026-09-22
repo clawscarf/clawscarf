@@ -861,7 +861,7 @@ await test(
 );
 
 await test(
-  "recipe reviews defaults before asking for missing credentials; CLI settings skip credential questions",
+  "Cloud recipe reviews prepaid services without asking for provider credentials",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -878,13 +878,10 @@ await test(
       recipe: f.recipe,
       directory: f.directory,
     });
-    assert.ok(ui.questions.includes("secret:OpenAI LLM API key"));
+    assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
-    assert.ok(
-      ui.questions.findIndex((question) =>
-        question.endsWith("— configure installation"),
-      ) < ui.questions.indexOf("secret:OpenAI LLM API key"),
-    );
+    assert.match(ui.notes.join(), /Prepaid usage/);
+    assert.ok(!ui.notes.join().includes("$1"));
     assert.ok(!ui.questions.includes("Connections"));
     const file = await saveConfiguration(
       draft.directory,
@@ -898,10 +895,11 @@ await test(
     const { gatewayRoutesSchema, configurationSchema, nativeAssignments } =
       await import("./models/configuration.js");
     const routes = gatewayRoutesSchema.parse(modelConfig);
-    assert.equal(routes.defaultModel, "gpt-6-astra");
+    assert.equal(routes.defaultModel, "openai/gpt-6-astra");
     assert.deepEqual(routes.models[0]?.route, {
-      model: "openai/gpt-6-astra",
-      apiKeyEnv: "OPENAI_API_KEY",
+      model: "openai/openai/gpt-6-astra",
+      apiKeyEnv: "CLAWSCARF_CLOUD_AI_KEY",
+      apiBase: "https://cloud.clawscarf.com/v1",
     });
     assert.equal(routes.thinkingDefault, "medium");
     assert.ok(
@@ -965,7 +963,7 @@ await test(
 );
 
 await test(
-  "noninteractive setup rejects absent or disabled Models before creating any files",
+  "noninteractive provider setup rejects missing credentials and unknown models before creating files",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -975,6 +973,7 @@ await test(
       prepareConfiguration({
         recipe: f.recipe,
         directory: f.directory,
+        aiService: "provider",
       }),
       { code: "invalid_configuration" },
     );
@@ -1247,6 +1246,7 @@ await test(
             [
               "review",
               "public-web",
+              "ai-service",
               "models",
               "connections",
               "packs",

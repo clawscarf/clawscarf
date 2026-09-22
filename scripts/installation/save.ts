@@ -1,7 +1,7 @@
 import { openPack } from "../packs/source.js";
 import { retainRuntime } from "./runtime.js";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { readInputFile } from "./files.js";
 import {
   installationSchema,
@@ -60,7 +60,27 @@ export async function saveConfiguration(
       config.models.credentialFile,
       "model-key",
     );
-  if (config.models.mode === "litellm")
+  if (config.models.mode === "litellm" && config.models.cloud) {
+    if (retained && isAbsolute(config.models.upstreamEnvironmentFile)) {
+      try {
+        files.set(
+          "secrets/cloud-ai.env.json",
+          await readInputFile(
+            config.models.upstreamEnvironmentFile + ".json",
+            true,
+          ),
+        );
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        ))
+          throw error;
+      }
+    }
+    config.models.upstreamEnvironmentFile = "./secrets/cloud-ai.env";
+  } else if (config.models.mode === "litellm")
     config.models.upstreamEnvironmentFile = await secret(
       config.models.upstreamEnvironmentFile,
       "models.env",
