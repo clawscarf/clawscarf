@@ -8,6 +8,13 @@ import { observedBrowserMachineAddresses } from "./networks.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import { ensurePrivateFile, resourceNames, type LocalState } from "./state.js";
 import { LocalSetupError, run } from "./process.js";
+import { verifyBrowserNodeImage } from "./images.js";
+
+export const browserArtifactsVolumeOptions = {
+  type: "tmpfs",
+  device: "tmpfs",
+  o: "size=64m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev",
+};
 
 export type BrowserMachineAddresses = {
   node: string;
@@ -158,6 +165,11 @@ export async function prepareBrowserNode(
   const names = resourceNames(state);
   for (const name of [names.browserNodeVolume, names.browserNodeConfigVolume])
     await ensureOwnedVolume(name, state.ownerId);
+  await ensureOwnedVolume(
+    names.browserArtifactsVolume,
+    state.ownerId,
+    browserArtifactsVolumeOptions,
+  );
   const configuration = browserNodeConfiguration(
     `http://openclaw:${token}@chromium:9223`,
   );
@@ -196,6 +208,12 @@ export async function prepareBrowserNode(
 }
 export async function verifyBrowserNode(directory: string, state: LocalState) {
   if (!state.input.browser) return;
+  await verifyBrowserNodeImage(state.input.browser.nodeImage);
+  await ensureOwnedVolume(
+    resourceNames(state).browserArtifactsVolume,
+    state.ownerId,
+    browserArtifactsVolumeOptions,
+  );
   const addresses = await observedBrowserMachineAddresses(directory, state);
   if (!addresses)
     throw new LocalSetupError(

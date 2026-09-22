@@ -216,5 +216,6 @@ export function resourceNames(state: Pick<LocalState, "ownerId">) {
     browserVolume: `clawscarf-${suffix}-browser`,
     browserNodeVolume: `clawscarf-${suffix}-browser-node`,
     browserNodeConfigVolume: `clawscarf-${suffix}-browser-node-config`,
+    browserArtifactsVolume: `clawscarf-${suffix}-browser-artifacts`,
   };
 }

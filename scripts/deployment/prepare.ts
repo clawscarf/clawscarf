@@ -3,7 +3,11 @@ import {
   withProductTelemetry,
 } from "../product-telemetry.js";
 import { validatePublicWebServices } from "./service-network.js";
-import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
+import {
+  openshellGatewayImage,
+  verifyRuntimeImage,
+  verifyBrowserNodeImage,
+} from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import {
   prepareModelGateway,
@@ -96,6 +100,7 @@ export async function prepareLocal(
   ])
     await run("docker", ["image", "inspect", image]);
   await verifyRuntimeImage(input.runtimeImage);
+  if (input.browser) await verifyBrowserNodeImage(input.browser.nodeImage);
   const state = await initializeState(directory, input);
   const telemetry = await prepareProductTelemetry(directory);
   try {

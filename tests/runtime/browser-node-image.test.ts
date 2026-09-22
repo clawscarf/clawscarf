@@ -28,8 +28,18 @@ async function docker(args: string[], input = ""): Promise<string> {
 // The packaged native invocation owner is exercised unchanged. Only its RPC
 // transport is captured; configuration and command authorization are real.
 const nativeProbe = String.raw`import assert from 'node:assert/strict';
-import {readFile,access,writeFile} from 'node:fs/promises';
-import {f as prepareNodeHostRuntime} from '/app/dist/daemon-DW2kkFGl.mjs';
+import {readFile,readdir,access,writeFile} from 'node:fs/promises';
+// Resolve the test-only internal entry by its exported function, not a build hash.
+let prepareNodeHostRuntime;
+for(const name of await readdir('/app/dist')){
+ if(!/\.(?:mjs|js)$/.test(name))continue;
+ const source=await readFile('/app/dist/'+name,'utf8');
+ if(!source.includes('async function prepareNodeHostRuntime('))continue;
+ const loaded=await import('/app/dist/'+name);
+ prepareNodeHostRuntime=Object.values(loaded).find(value=>typeof value==='function'&&value.name==='prepareNodeHostRuntime');
+ if(prepareNodeHostRuntime)break;
+}
+assert.equal(typeof prepareNodeHostRuntime,'function');
 const configPath=process.env.OPENCLAW_CONFIG_PATH;
 const original=await readFile(configPath,'utf8');
 const config=JSON.parse(original);

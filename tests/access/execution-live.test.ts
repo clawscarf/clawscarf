@@ -246,7 +246,19 @@ await test(
         );
         sessions.push(session.key);
         currentSession = session.key;
-        if (browserEnabled) {
+        if (browserEnabled && probe.kind === "member") {
+          await assert.rejects(
+            probe.gateway.request("browser.request", {
+              method: "GET",
+              path: "/",
+            }),
+            /missing scope: operator.admin/,
+          );
+          t.diagnostic(
+            "Member browser requests retain the native administrator requirement.",
+          );
+        }
+        if (browserEnabled && probe.kind === "administrator") {
           const url = `https://example.com/?clawscarf-test=${nonce}-${probe.kind}`;
           const browserHistory = await chat(
             probe.gateway,

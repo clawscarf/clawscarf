@@ -6,3 +6,4 @@ curated-image-inventory.patch
 plugin-navigation-selection.patch
 remove-labs.patch
 disable-server-updates.patch
+browser-shared-artifacts.patch
