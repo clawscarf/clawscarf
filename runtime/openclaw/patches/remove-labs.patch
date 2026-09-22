@@ -1,0 +1,2121 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Tue, 22 Sep 2026 16:18:43 +0200
+Subject: [PATCH] feat(ui): remove Labs and retain custom plugin controls
+
+ClawScarf-Patch: remove-labs
+---
+ docs/cli/plugins/authoring.md                 |   2 +-
+ docs/concepts/experimental-features.md        |  35 +-
+ docs/gateway/config-browser-ui-desktop.md     |   2 +-
+ docs/gateway/config-gateway.md                |   4 +-
+ docs/plugins/feature-plugins.md               |   2 +-
+ docs/plugins/manifest/surfaces.md             |   2 +-
+ docs/tools/code-mode.md                       |   5 +-
+ docs/tools/code-mode/quickstart.md            |   7 +-
+ docs/web/control-ui/feature-reference.md      |   3 +-
+ docs/web/control-ui/settings.md               |   6 +-
+ docs/web/urls.md                              |   1 -
+ src/agents/tools/system-agent-tool.ts         |   2 +-
+ src/cli/plugins-feature-scaffold.ts           |   2 +-
+ src/gateway/control-ui-plugin-assets.test.ts  |   2 +-
+ src/gateway/control-ui-plugin-policy.ts       |   2 +-
+ .../environments.desktop.test.ts              |   4 +-
+ .../server-methods/environments.desktop.ts    |   2 +-
+ .../environment-access.test.ts                |   2 +-
+ .../worker-environments/environment-access.ts |   4 +-
+ src/system-agent/assistant-prompts.ts         |   2 +-
+ ui/src/app-navigation.test.ts                 |   7 -
+ ui/src/app-navigation.ts                      |   3 +-
+ ui/src/app-route-paths.ts                     |   1 -
+ ui/src/app-routes.ts                          |   2 -
+ .../board/board-widget-cell-plugin.test.ts    |  24 +-
+ ui/src/e2e/config-safe-write.e2e.test.ts      |  46 +-
+ .../e2e/curated-settings-defaults.e2e.test.ts |  53 +--
+ ui/src/e2e/native-embed-settings.e2e.test.ts  |   1 -
+ ...session-page.catalog-reconnect.e2e.test.ts |   2 +-
+ ui/src/e2e/settings-layout.e2e.test.ts        |   4 -
+ ui/src/e2e/sidebar-customization.e2e.test.ts  |   1 -
+ ui/src/i18n/locales/en-plugin-management.ts   |   3 +
+ ui/src/i18n/locales/en.ts                     |  43 +-
+ ui/src/pages/labs/labs-page.test.ts           | 417 ------------------
+ ui/src/pages/labs/labs-page.ts                | 185 --------
+ ui/src/pages/labs/labs-registry.ts            | 265 -----------
+ ui/src/pages/labs/route.ts                    |  14 -
+ .../pages/new-session/model-control.test.ts   |   2 +-
+ ui/src/pages/plugin/plugin-page.test.ts       |  16 +-
+ .../plugins/plugins-page.test-support.ts      |   3 +
+ ui/src/pages/plugins/plugins-page.test.ts     |  80 +++-
+ ui/src/pages/plugins/settings-view.ts         |  12 +
+ .../plugins/control-ui-contributions.test.ts  |  14 +-
+ ui/src/plugins/control-ui-disabled.ts         |  11 +-
+ 44 files changed, 176 insertions(+), 1124 deletions(-)
+ delete mode 100644 ui/src/pages/labs/labs-page.test.ts
+ delete mode 100644 ui/src/pages/labs/labs-page.ts
+ delete mode 100644 ui/src/pages/labs/labs-registry.ts
+ delete mode 100644 ui/src/pages/labs/route.ts
+
+diff --git a/docs/cli/plugins/authoring.md b/docs/cli/plugins/authoring.md
+index e99ff154a19e8c5ca64bf6edab8818810919746b..9013e81f7a975d60c4f4a93cecaefd25c7ed8e25 100644
+--- a/docs/cli/plugins/authoring.md
++++ b/docs/cli/plugins/authoring.md
+@@ -51,7 +51,7 @@ and composer replacement. Run `npm install`, `npm run build`, and
+ assets and their manifest declaration.
+ 
+ Plugin APIs are [experimental](/plugins/sdk-overview#api-stability). To load the
+-scaffold's native browser UI, enable **Settings → Labs → Custom plugin UI**, then
++scaffold's native browser UI, enable **Settings → Plugins → Advanced → Custom plugin UI**, then
+ restart the Gateway and reload the browser. See
+ [Enable custom plugin UI](/plugins/feature-plugins#enable-custom-plugin-ui).
+ 
+diff --git a/docs/concepts/experimental-features.md b/docs/concepts/experimental-features.md
+index 74ce1714326b84f466a5fdb09951383e44159742..4c042d44e30b8f40cb8868102867c14537252cbc 100644
+--- a/docs/concepts/experimental-features.md
++++ b/docs/concepts/experimental-features.md
+@@ -15,7 +15,7 @@ Experimental features are preview surfaces controlled by config flags. They need
+ - Roll out broadly only after testing in a smaller environment first.
+ 
+ All [plugin APIs](/plugins/sdk-overview#api-stability) are also experimental.
+-That stability label does not require a Labs switch for ordinary plugins; the
++That stability label does not require an experimental flag for ordinary plugins; the
+ Custom plugin UI flag below controls user-installed native browser code only.
+ 
+ ## Currently documented flags
+@@ -29,35 +29,20 @@ Custom plugin UI flag below controls user-installed native browser code only.
+ | Host Desktop     | `desktop.host.enabled`                                                  | You want to watch or control the Gateway host through its VNC or Screen Sharing server                                            | [Desktop](/gateway/configuration-reference#desktop)                                    |
+ | Tool Search      | `tools.toolSearch.enabled`                                              | You want to defer tool schemas for all models instead of using each model's default                                               | [Tool Search](/tools/tool-search)                                                      |
+ 
+-## Control UI Labs
++## Configuration
+ 
+-Open **Settings → Agents & Tools → Labs** to manage experiments that have a
+-Control UI switch. Enabling or disabling a lab patches the canonical Gateway
+-config immediately; the page shows a restart hint only when a feature requires
+-one.
++Enable trusted custom plugin UI through **Settings → Plugins → Advanced → Custom plugin UI**.
++Restart the Gateway and reload connected browser tabs after changing it. Enabled
++bundled plugins retain their native UI with the setting off. Installing or
++approving a plugin artifact does not change this setting.
+ 
+-Labs includes Code Mode, Tool Search for all models, Custom plugin UI,
+-Host Desktop, and Cloud Worker Desktop. Custom plugin UI and both desktop
+-features require a Gateway restart. Custom plugin UI also requires reloading
+-connected browser tabs. Code Mode and Tool Search changes normally take effect
+-for future agent runs without restarting.
+-
+-Custom plugin UI is off by default. Enabled bundled plugins, including
+-Workboard, retain their native UI with the setting off. Backend APIs and
+-ordinary plugins remain available, and installing or approving a plugin
+-artifact does not enable the lab.
+-
+-Code Mode remains disabled until you turn on its Labs switch or explicitly set
+-`tools.codeMode` to `true` or `"auto"`. The Labs switch writes `"auto"`, so it
+-engages only for models marked as preferred Code Mode performers; it does not
+-force Code Mode on for every model.
+-
+-Local models use Tool Search automatically when `tools.toolSearch` is unset.
+-The Labs switch enables an override for all models.
++Configure the other experimental flags directly in Gateway configuration; this
++build has no Labs page. Code Mode and Tool Search changes take effect for future
++agent runs. Desktop features require a Gateway restart.
+ 
+ ## Local model lean mode
+ 
+-Lean mode is an advanced troubleshooting override, configured outside Labs.
++Lean mode is an advanced troubleshooting override, configured through Gateway configuration.
+ Its existing `experimental.localModelLean` keys remain supported. See
+ [Local model lean mode](/gateway/local-models#local-model-lean-mode) for capability
+ restrictions, config examples, and recovery guidance.
+diff --git a/docs/gateway/config-browser-ui-desktop.md b/docs/gateway/config-browser-ui-desktop.md
+index 47c6c850f29b8baf1e2be526017dea6b4545f6d5..120185f46b6f4a261c3b442521896c5959021781 100644
+--- a/docs/gateway/config-browser-ui-desktop.md
++++ b/docs/gateway/config-browser-ui-desktop.md
+@@ -177,7 +177,7 @@ Agent display names, emoji, and avatars belong to each agent's `identity` block
+ 
+ The host desktop source lets the Control UI Desktop panel connect to the Gateway
+ machine. It can attach to an existing loopback RFB server, or supervise a
+-headless TigerVNC/XFCE desktop on Linux. It is a Labs feature and is off by
++headless TigerVNC/XFCE desktop on Linux. It is an experimental feature and is off by
+ default.
+ 
+ Observer tokens and observer connections are bound to the Gateway connection
+diff --git a/docs/gateway/config-gateway.md b/docs/gateway/config-gateway.md
+index 9a48450148b2371d798c3b26045960749a4a31e2..9a6f09db01ff4cdf6d4865b1b2adf58024e41f6c 100644
+--- a/docs/gateway/config-gateway.md
++++ b/docs/gateway/config-gateway.md
+@@ -59,7 +59,7 @@ For the full key index and the other top-level config domains, see [Configuratio
+     controlUi: {
+       enabled: true,
+       basePath: "/openclaw",
+-      // experimental: { customPlugins: false }, // Labs: native UI from user-installed plugins
++      // experimental: { customPlugins: false }, // Native UI from user-installed plugins
+       // environment: { label: "edge", color: "amber" },
+       // communityInvite: true, // show the sidebar Discord invitation unless dismissed
+       // root: "dist/control-ui",
+@@ -171,7 +171,7 @@ For the full key index and the other top-level config domains, see [Configuratio
+   `OPENCLAW_GATEWAY_PASSWORD`, and set `gateway.auth.mode` to `password`. Then
+   run `openclaw config set gateway.tailscale.mode funnel`, followed by
+   `openclaw config unset gateway.tailscale.preserveFunnel`. Default `false`.
+-- `controlUi.experimental.customPlugins`: allow native browser UI from user-installed plugins, including local development plugins. Default: `false`. Enable through **Settings → Labs → Custom plugin UI** or set this boolean to `true`. Native UI runs with the signed-in operator's Gateway authority, so enable it only for trusted plugins. Native UI from enabled bundled plugins remains available with the setting off; backend plugin APIs, ordinary plugin loading, sandboxed dashboard widgets, and MCP Apps are unaffected. Restart the Gateway and reload connected browser tabs after changing it. See [Feature plugins](/plugins/feature-plugins#enable-custom-plugin-ui).
++- `controlUi.experimental.customPlugins`: allow native browser UI from user-installed plugins, including local development plugins. Default: `false`. Enable through **Settings → Plugins → Advanced → Custom plugin UI** or set this boolean to `true`. Native UI runs with the signed-in operator's Gateway authority, so enable it only for trusted plugins. Native UI from enabled bundled plugins remains available with the setting off; backend plugin APIs, ordinary plugin loading, sandboxed dashboard widgets, and MCP Apps are unaffected. Restart the Gateway and reload connected browser tabs after changing it. See [Feature plugins](/plugins/feature-plugins#enable-custom-plugin-ui).
+ - `controlUi.allowedOrigins`: explicit browser-origin allowlist for Gateway WebSocket connects. Required for public non-loopback browser origins. Private same-origin LAN/Tailnet UI loads from loopback, RFC1918/link-local, `.local`, `.ts.net`, or Tailscale CGNAT hosts are accepted without enabling Host-header fallback.
+ - `controlUi.environment`: optional visual identity for distinguishing Gateway environments. Set `{ label: "edge", color: "amber" }` to show a matching top stripe, agent-avatar ring, environment pills, browser-title suffix, and tinted favicon. `label` is trimmed and must contain 1–24 characters. `color` must be `teal`, `amber`, `purple`, `coral`, `pink`, `blue`, `green`, `red`, or `gray`. The label and color are visible before sign-in; omit the setting to keep the default appearance unchanged.
+ - `controlUi.communityInvite`: show the Discord community invitation in the sidebar. Default: `true`. Set `false` on the Gateway serving the UI to hide it for every browser using that deployment, including browsers connected to a different remote Gateway. The setting hot-reloads; existing pages pick it up after browser refresh or reconnect. Re-enabling preserves browser-local dismissals.
+diff --git a/docs/plugins/feature-plugins.md b/docs/plugins/feature-plugins.md
+index 3098a549470f2938ee3470c7d2934de7f3e793c3..28e50d32d1e9efce2e8303a752ea8aa2039871a1 100644
+--- a/docs/plugins/feature-plugins.md
++++ b/docs/plugins/feature-plugins.md
+@@ -34,7 +34,7 @@ backend operations remain available.
+ 
+ ## Enable custom plugin UI
+ 
+-In the Control UI, open **Settings → Labs → Custom plugin UI**. The setting
++In the Control UI, open **Settings → Plugins → Advanced → Custom plugin UI**. The setting
+ defaults to off and controls native browser code from user-installed plugins,
+ including local development plugins. The equivalent config is:
+ 
+diff --git a/docs/plugins/manifest/surfaces.md b/docs/plugins/manifest/surfaces.md
+index 91f2ad240edec7a0d8f149a123d4d8d1b987d741..8299c108d887d75de0bf775f6e418ba622cde927 100644
+--- a/docs/plugins/manifest/surfaces.md
++++ b/docs/plugins/manifest/surfaces.md
+@@ -274,7 +274,7 @@ JavaScript and CSS. Assets follow the Gateway's authentication policy, are
+ captured as immutable revisions, and refresh only through the explicit UI reload
+ flow.
+ 
+-User-installed native UI requires **Settings → Labs → Custom plugin UI**
++User-installed native UI requires **Settings → Plugins → Advanced → Custom plugin UI**
+ (`gateway.controlUi.experimental.customPlugins`, default `false`). Native UI
+ from enabled bundled plugins remains available. See
+ [Enable custom plugin UI](/plugins/feature-plugins#enable-custom-plugin-ui) for
+diff --git a/docs/tools/code-mode.md b/docs/tools/code-mode.md
+index 148fe1f279cc32b5e6726c411c9478bbdc37049e..ff8561f038a64d11d65d92a6302ca0fd318b3037 100644
+--- a/docs/tools/code-mode.md
++++ b/docs/tools/code-mode.md
+@@ -15,9 +15,8 @@ the JSON-only guest bridge. The model writes a small JavaScript or TypeScript
+ program that searches, describes, and calls the hidden tool catalog.
+ 
+ <Note>
+-OpenClaw Code Mode is off by default. To try it, open **Settings → Agents &
+-Tools → Labs** and turn on **Code Mode**. The Labs switch writes the `"auto"`
+-tier, which engages only for models marked as preferred Code Mode performers.
++OpenClaw Code Mode is off by default. Set `tools.codeMode` to `"auto"` to
++engage it only for models marked as preferred Code Mode performers.
+ This is the global default. Agent and model overrides take precedence.
+ </Note>
+ 
+diff --git a/docs/tools/code-mode/quickstart.md b/docs/tools/code-mode/quickstart.md
+index f430484d6496b542f18d8c3c94fbb4b0d2a0305b..898b4e1a530d2aee29472f46c6e1af44fa32c877 100644
+--- a/docs/tools/code-mode/quickstart.md
++++ b/docs/tools/code-mode/quickstart.md
+@@ -9,11 +9,8 @@ read_when:
+ 
+ ## Enable code mode
+ 
+-The recommended path is **Settings → Agents & Tools → Labs → Code Mode**. The
+-switch takes effect for future agent runs without restarting the Gateway and
+-selects the `"auto"` tier.
+-
+-To enable the same tier without the Control UI, set it in config:
++Set the `"auto"` tier in configuration. It takes effect for future agent runs
++without restarting the Gateway:
+ 
+ ```json5
+ {
+diff --git a/docs/web/control-ui/feature-reference.md b/docs/web/control-ui/feature-reference.md
+index a367d843c1f2c4ce9c3a02fc3185f2c8a6645af0..afe51eb11e39341db3bc3d2cd80b06d43d30cd1d 100644
+--- a/docs/web/control-ui/feature-reference.md
++++ b/docs/web/control-ui/feature-reference.md
+@@ -58,11 +58,10 @@ Control UI capabilities grouped by area, each with the Gateway RPC methods behin
+   <Accordion title="Config">
+     - View/edit `~/.openclaw/openclaw.json` (`config.get`, `config.set`).
+     - Structured settings show default hints on individual fields, without repeating the whole object's defaults as JSON above the controls.
+-    - Settings navigation starts with Ask OpenClaw, Profile, Appearance, and Notifications up top; Connections (Gateway, Channels, Communications, Talk, Devices); Agents & Tools (Agents, Labs, Models, MCP, Memory, Automation); Privacy & Security (Security, Secrets, Approvals); and System (Infrastructure, Advanced, Debug, Logs, About). Language leads the Appearance page, model defaults live on Models, and Gateway host details live on Gateway.
++    - Settings navigation starts with Ask OpenClaw, Profile, Appearance, and Notifications up top; Connections (Gateway, Channels, Communications, Talk, Devices); Agents & Tools (Agents, Models, MCP, Memory, Automation); Privacy & Security (Security, Secrets, Approvals); and System (Infrastructure, Advanced, Debug, Logs, About). Language leads the Appearance page, model defaults live on Models, and Gateway host details live on Gateway.
+     - Privacy & Security: curated rows for gateway auth, exec policy, browser enablement, tool profile, device auth, and mobile pairing, above the schema-backed `security`/`approvals` sections.
+     - Secrets (`/settings/secrets`) manages team-scoped secret and environment entries through `secrets.store.*`. Environment values remain visible, secret values are never returned after saving, Bulk Add accepts quoted multiline dotenv values, and mutation actions are hidden when the connected Gateway does not advertise them.
+     - Approvals includes newest-first, 30-day history for resolved exec, plugin, and system-agent requests. Filter by kind or page through older rows to review the decision, reason, source session, and resolver attribution recorded by the Gateway.
+-    - Labs exposes Code Mode, Tool Search for all models, Custom plugin UI, Host Desktop, and Cloud Worker Desktop. Code Mode defaults off; turning it on writes `tools.codeMode.enabled: "auto"`, which engages only for models marked as preferred Code Mode performers. Changes save immediately; features that require a Gateway restart show a restart hint. Swarm and CLI agents are available by default, with their existing configuration opt-outs and tool permissions.
+     - Swarm and tool-loop detection live in **Settings → Agent Defaults → Tools**. CLI agents live in **Settings → Infrastructure → Gateway**. Message audit metadata lives in **Settings → Advanced → Logging** and remains off by default; restart the Gateway after changing it. Lean local-model mode remains an advanced troubleshooting setting under **Settings → Agent Defaults → Agents**.
+     - Notifications: browser web-push status, subscribe/unsubscribe, and a test send.
+     - Advanced: every config section without a curated home, plus the raw JSON5 editor.
+diff --git a/docs/web/control-ui/settings.md b/docs/web/control-ui/settings.md
+index 375825c86a9c2ae32830b63174412af6e75861c3..72a40cf738150497c28fe84044daf227d8d8d834 100644
+--- a/docs/web/control-ui/settings.md
++++ b/docs/web/control-ui/settings.md
+@@ -382,16 +382,14 @@ Voice Wake, Talk mode, Talk button, background Talk, and speakerphone controls.
+ 
+ ## Custom plugin UI
+ 
+-Find **Labs** in the **System** section of the Settings sidebar, after **Infrastructure**.
+-
+-**Settings → Labs → Custom plugin UI** enables native pages, widgets, actions,
++**Settings → Plugins → Advanced → Custom plugin UI** enables native pages, widgets, actions,
+ and view replacements from user-installed plugins. It defaults to off and
+ writes `gateway.controlUi.experimental.customPlugins`. Restart the Gateway and
+ reload connected browser tabs after changing it.
+ 
+ Only enable it for plugin authors you trust: native UI runs in the Control UI
+ origin with the signed-in operator's Gateway authority. Native UI from enabled
+-bundled plugins, including Workboard, remains available with the lab off.
++bundled plugins, including Workboard, remains available with this setting off.
+ Backend plugin APIs, ordinary plugin loading, sandboxed dashboard widgets, and
+ MCP Apps are unaffected. All plugin APIs are experimental; see
+ [Feature plugins](/plugins/feature-plugins) for authoring and the trust model.
+diff --git a/docs/web/urls.md b/docs/web/urls.md
+index 3f62e5b4c96b2d953f6932cb063942e415176620..da2a3e773f1ca3025836a9b0731c603de08233fc 100644
+--- a/docs/web/urls.md
++++ b/docs/web/urls.md
+@@ -458,7 +458,6 @@ no route-specific URL parameters.
+ | MCP                 | `/settings/mcp`                                | `/mcp`                    | Shared settings parameters below                                                  |
+ | Memory              | `/settings/memory`                             | -                         | `/settings/memory/memories\|dreams\|settings`                                     |
+ | Infrastructure      | `/settings/infrastructure`                     | `/infrastructure`         | Shared settings parameters below                                                  |
+-| Labs                | `/settings/labs`                               | -                         | Shared settings parameters below                                                  |
+ | About               | `/settings/about`                              | -                         | Shared settings parameters below                                                  |
+ | AI and agents       | `/settings/ai-agents`                          | `/ai-agents`              | Shared settings parameters below                                                  |
+ | Model setup         | `/settings/model-setup`                        | `/model-setup`            | `?firstRun=1`                                                                     |
+diff --git a/src/agents/tools/system-agent-tool.ts b/src/agents/tools/system-agent-tool.ts
+index f20565b26a68b62def8d9e10f7e6ccb6759a98fc..337b5f44b7a4f0f0ac5d965fed29fe040707e682 100644
+--- a/src/agents/tools/system-agent-tool.ts
++++ b/src/agents/tools/system-agent-tool.ts
+@@ -442,7 +442,7 @@ export function createSystemAgentTool(options: SystemAgentToolOptions): AnyAgent
+       "Model providers: configure_model_provider returns protected Settings → Models sign-in guidance without changing credentials or selecting a model. Personal accounts: manage_model_accounts opens the human-owned account controls. Never request credentials in chat.",
+       "Write: setup, set_default_model (agentId optional; live-tested), config_set, config_set_ref, create_agent (optional role), create_team, gateway_*, plugin_install, plugin_activate_artifact, plugin_uninstall. Submit the exact proposal first. Direct chat: exact user approval, then approved=true. Delegated requests: host applies session permission policy and returns the final outcome. Host applies after turn; rechecks inference owner.",
+       "plugin_install: ClawHub/bundled/official only. Arbitrary source: exit, trusted shell.",
+-      "plugin_activate_artifact: for a task-authored plugin built with openclaw plugins pack, pass its absolute archive path and sha256. Copies and reviews exact bytes before proposing; approval includes trusted backend code, declared capabilities, and native UI. No dependency fetching. Backend activation requires Gateway restart. Native UI separately requires enabling Settings > Labs > Custom plugin UI, then Gateway restart and browser reload; artifact approval does not enable Labs.",
++      "plugin_activate_artifact: for a task-authored plugin built with openclaw plugins pack, pass its absolute archive path and sha256. Copies and reviews exact bytes before proposing; approval includes trusted backend code, declared capabilities, and native UI. No dependency fetching. Backend activation requires Gateway restart. Native UI separately requires enabling Settings > Plugins > Advanced > Custom plugin UI, then Gateway restart and browser reload; artifact approval does not enable custom plugin UI.",
+       "Unknown config: config_schema first. Config writes are proposed, approved, then checked by the canonical config validator and writer. Validation or write errors return to you; propose one correction for fresh approval. Config writes do not test whether a model route or API key works. For secrets, follow the user's storage preference; use config_set_ref for env storage. Never echo secret values. set_default_model is the shortcut for switching the primary model.",
+       "No doctor repair. Writes validated, audited. Invalid config: fix now.",
+     ].join(" "),
+diff --git a/src/cli/plugins-feature-scaffold.ts b/src/cli/plugins-feature-scaffold.ts
+index c1deaebce4e6c02b4b1919dfd98e552af8acff53..b0ee444ea4172c6d9d19ebf1c005838ca35e2e50 100644
+--- a/src/cli/plugins-feature-scaffold.ts
++++ b/src/cli/plugins-feature-scaffold.ts
+@@ -189,7 +189,7 @@ openclaw plugins install .
+ 
+ Installation applies the plugin in the running local Gateway. If the Gateway is stopped, start it to load the saved installation.
+ 
+-For native UI, enable **Settings > Labs > Custom plugin UI** (\`gateway.controlUi.experimental.customPlugins: true\`), then restart the Gateway and reload the browser tab. This setting is off by default; backend installation does not require it.
++For native UI, enable **Settings > Plugins > Advanced > Custom plugin UI** (\`gateway.controlUi.experimental.customPlugins: true\`), then restart the Gateway and reload the browser tab. This setting is off by default; backend installation does not require it.
+ 
+ Select ${params.name} in the Control UI sidebar. Open **Plugins > Customize UI** and choose Draft composer to try the replacement; choose Built-in to restore it.
+ 
+diff --git a/src/gateway/control-ui-plugin-assets.test.ts b/src/gateway/control-ui-plugin-assets.test.ts
+index c23e325e76a1f89972adeef37011fadad9cb9acb..9b26e9749528bb86060740657cde452142680d5f 100644
+--- a/src/gateway/control-ui-plugin-assets.test.ts
++++ b/src/gateway/control-ui-plugin-assets.test.ts
+@@ -119,7 +119,7 @@ describe("native Control UI browser assets", () => {
+             {
+               pluginId: fixture.record.id,
+               code: "custom-plugin-ui-disabled",
+-              message: expect.stringContaining("Settings > Labs"),
++              message: expect.stringContaining("Settings > Plugins > Advanced"),
+             },
+           ]);
+           expect(listControlUiPluginTabAuthGrants(["operator.read"])).toEqual([]);
+diff --git a/src/gateway/control-ui-plugin-policy.ts b/src/gateway/control-ui-plugin-policy.ts
+index 6b859874e83b2cbbe42d393678cf7bb21c1beefe..9ccd1593babfc6e81e1f8ea3500f2c249bdd97f6 100644
+--- a/src/gateway/control-ui-plugin-policy.ts
++++ b/src/gateway/control-ui-plugin-policy.ts
+@@ -2,7 +2,7 @@ import { getRuntimeConfigSnapshot } from "../config/runtime-snapshot.js";
+ import type { PluginRecord } from "../plugins/registry.js";
+ 
+ export const CUSTOM_PLUGIN_UI_DISABLED_MESSAGE =
+-  "Custom plugin UI is disabled. Enable Custom plugin UI in Settings > Labs, restart the Gateway, and reload this page.";
++  "Custom plugin UI is disabled. Enable Custom plugin UI in Settings > Plugins > Advanced, restart the Gateway, and reload this page.";
+ 
+ export function isControlUiPluginAllowed(plugin: Pick<PluginRecord, "origin">): boolean {
+   // Bundled provenance comes from the loader, never the plugin manifest. Read
+diff --git a/src/gateway/server-methods/environments.desktop.test.ts b/src/gateway/server-methods/environments.desktop.test.ts
+index ea2c5d4008f0ef2d8c18d73a0c50bb93f89e2fb5..e5e11e59f6dbb80908807ede85cf40f3345b93fa 100644
+--- a/src/gateway/server-methods/environments.desktop.test.ts
++++ b/src/gateway/server-methods/environments.desktop.test.ts
+@@ -143,7 +143,7 @@ describe("desktop gateway methods", () => {
+     expect(requester?.isCurrent()).toBe(false);
+   });
+ 
+-  it("names the Labs config and restart when host desktop is disabled", async () => {
++  it("names the desktop config and restart when host desktop is disabled", async () => {
+     const [ok, , error] = await invoke(
+       "desktop.observe",
+       { source: { kind: "host" } },
+@@ -153,7 +153,7 @@ describe("desktop gateway methods", () => {
+     expect(error).toEqual({
+       code: ErrorCodes.INVALID_REQUEST,
+       message:
+-        "gateway host desktop is disabled; enable the Desktop lab (config: desktop.host.enabled=true), then restart the gateway",
++        "gateway host desktop is disabled; set desktop.host.enabled to true and restart the Gateway",
+     });
+   });
+ 
+diff --git a/src/gateway/server-methods/environments.desktop.ts b/src/gateway/server-methods/environments.desktop.ts
+index 23a407cdf7bed24d85d1326bd9bd3523ee376435..54fe4b0573cc1bcb1da81c84abc4b7133ccf3bb5 100644
+--- a/src/gateway/server-methods/environments.desktop.ts
++++ b/src/gateway/server-methods/environments.desktop.ts
+@@ -21,7 +21,7 @@ export async function respondDesktopObserve(params: {
+         undefined,
+         errorShape(
+           ErrorCodes.INVALID_REQUEST,
+-          "gateway host desktop is disabled; enable the Desktop lab (config: desktop.host.enabled=true), then restart the gateway",
++          "gateway host desktop is disabled; set desktop.host.enabled to true and restart the Gateway",
+         ),
+       );
+       return;
+diff --git a/src/gateway/worker-environments/environment-access.test.ts b/src/gateway/worker-environments/environment-access.test.ts
+index c92a57986ae65fd0bbf4e928fd63888a736db714..4558321b72ed25ad84a5c4e6d0306ac15f06fb62 100644
+--- a/src/gateway/worker-environments/environment-access.test.ts
++++ b/src/gateway/worker-environments/environment-access.test.ts
+@@ -734,7 +734,7 @@ describe("worker environment service", () => {
+     ).rejects.toMatchObject({
+       code: "invalid_state",
+       message:
+-        "worker desktop observe is disabled; enable the Desktop lab in Control UI Settings -> Labs (config: cloudWorkers.desktop)",
++        "worker desktop observe is disabled; set cloudWorkers.desktop to true and restart the Gateway",
+     });
+     support.testState.config.cloudWorkers!.desktop = true;
+ 
+diff --git a/src/gateway/worker-environments/environment-access.ts b/src/gateway/worker-environments/environment-access.ts
+index b6cb914871c7e7f51789ecaf65bb5663831225c0..bebba9f82cec9e5eceab95960cc99146db67a21a 100644
+--- a/src/gateway/worker-environments/environment-access.ts
++++ b/src/gateway/worker-environments/environment-access.ts
+@@ -311,7 +311,7 @@ export function createWorkerEnvironmentAccess(options: WorkerEnvironmentAccessOp
+     if (options.getConfig().cloudWorkers?.desktop !== true) {
+       throw serviceError(
+         "invalid_state",
+-        "worker desktop observe is disabled; enable the Desktop lab in Control UI Settings -> Labs (config: cloudWorkers.desktop)",
++        "worker desktop observe is disabled; set cloudWorkers.desktop to true and restart the Gateway",
+       );
+     }
+     if (stopping) {
+@@ -388,7 +388,7 @@ export function createWorkerEnvironmentAccess(options: WorkerEnvironmentAccessOp
+     if (options.getConfig().cloudWorkers?.desktop !== true) {
+       throw serviceError(
+         "invalid_state",
+-        "worker desktop launch is disabled; enable the Desktop lab in Control UI Settings -> Labs (config: cloudWorkers.desktop)",
++        "worker desktop launch is disabled; set cloudWorkers.desktop to true and restart the Gateway",
+       );
+     }
+     if (stopping) {
+diff --git a/src/system-agent/assistant-prompts.ts b/src/system-agent/assistant-prompts.ts
+index a17b80572e94f4a295bf6743ad2880856d5c9bd3..85bf0c77d8ccb4df944948ce166ea3c84c36526a 100644
+--- a/src/system-agent/assistant-prompts.ts
++++ b/src/system-agent/assistant-prompts.ts
+@@ -150,7 +150,7 @@ const SYSTEM_AGENT_SYSTEM_PROMPT = [
+   SYSTEM_AGENT_SETUP_GOALS,
+   "You act ONLY through the `openclaw` tool. Read actions run freely: status, models, agents, channels, config_get, config_schema, gateway_status, plugin_list, plugin_search, validate_config, doctor, audit.",
+   "Mutating actions (setup, set_default_model, config_set, config_set_ref, create_agent, create_team, gateway_start/stop/restart, plugin_install, plugin_activate_artifact, plugin_uninstall) change the user's machine. Protocol: when you decide a mutation is needed, call the tool with the exact action right away (without approved) — it prepares a reviewable proposal without activating it — then describe the change and follow the instructions in the tool result. For delegated requests, the host applies the requesting session's permission policy and returns the final outcome; never ask for a chat yes or direct the user to an approval UI before the host requires it. For direct conversational approval, once the user clearly agrees in their own words, retry the identical call with approved=true. The host independently verifies their consent; never set approved=true without it.",
+-  "For task-authored plugins, plugin_activate_artifact accepts the absolute archive path and SHA256 receipt from openclaw plugins pack. It retains and inspects the exact artifact before proposing. Approval authorizes its trusted backend code, declared capabilities, and native Control UI. Dependencies must already be bundled; activation does not fetch packages. Native UI separately requires enabling Settings > Labs > Custom plugin UI, then Gateway restart and browser reload; artifact approval does not enable Labs. Report backend installation and runtime application separately from observed browser activation. plugin_install remains limited to curated sources.",
++  "For task-authored plugins, plugin_activate_artifact accepts the absolute archive path and SHA256 receipt from openclaw plugins pack. It retains and inspects the exact artifact before proposing. Approval authorizes its trusted backend code, declared capabilities, and native Control UI. Dependencies must already be bundled; activation does not fetch packages. Native UI separately requires enabling Settings > Plugins > Advanced > Custom plugin UI, then Gateway restart and browser reload; artifact approval does not enable custom plugin UI. Report backend installation and runtime application separately from observed browser activation. plugin_install remains limited to curated sources.",
+   "Use agents and models to inspect model assignments. A setup/utility model does not mean a regular agent model is configured; never hand off to ordinary agent chat until a primary model exists. Config paths are dotted keys, for example gateway.port, never file paths. Use config_schema with path . for the root keys. Before writing an uncertain config path, call config_schema. Config writes are proposed, approved, then checked by the canonical config validator and writer. Validation or write errors return to you; propose one correction for fresh approval. Config writes do not test whether a model route or API key works. For secrets, follow the user's storage preference; use config_set_ref for env storage. Never echo secret values. set_default_model remains the shortcut for switching the primary model. plugin_uninstall refuses plugins backing the active inference route; exit and run `openclaw plugins uninstall <id>` for those plugins.",
+   "If a tool result reports CONFIG INVALID, fix it immediately before anything else.",
+   "For model providers, call configure_model_provider and follow the host's protected Models sign-in guidance. Connecting a provider and selecting the active model are separate actions. Replacing credentials already in use can affect current work. Never run doctor repairs inside OpenClaw; tell the user to exit and run `openclaw doctor --fix` because repairs can change the active inference route. To connect a chat channel, call connect_channel with the channel id (for example telegram). To inspect and install trusted bundled-skill dependencies, call configure_skills. To configure web search, call configure_search and let the hosted flow own provider and credential input. To configure the local Gateway's port, bind, auth, or Tailscale exposure, call configure_gateway. To import memory files detected in local agent homes into the default agent's existing workspace, call import_memory; it is copy-only and does not import config, credentials, or skills. Never ask for or repeat reusable secrets yourself. These guided setups run here in chat. To hand the user off to their normal agent, call open_agent.",
+diff --git a/ui/src/app-navigation.test.ts b/ui/src/app-navigation.test.ts
+index 9eb35621448cec9ce81be28be5d62b84ec1416f5..e83b564c571f6525cb89b25270fd222ca091858b 100644
+--- a/ui/src/app-navigation.test.ts
++++ b/ui/src/app-navigation.test.ts
+@@ -126,7 +126,6 @@ describe("navigationIconForRoute", () => {
+       memory: "book",
+       talk: "mic",
+       infrastructure: "globe",
+-      labs: "flaskConical",
+       updates: "download",
+       about: "fileText",
+       "ai-agents": "brain",
+@@ -232,7 +231,6 @@ describe("titleForRoute", () => {
+       memory: "Memory",
+       talk: "Talk",
+       infrastructure: "Infrastructure",
+-      labs: "Labs",
+       updates: "Updates",
+       about: "About",
+       "ai-agents": "Agent Defaults",
+@@ -289,7 +287,6 @@ describe("subtitleForRoute", () => {
+       memory: "Memory engine, search, and dreaming.",
+       talk: "Realtime voice: provider, model, and speaker voice.",
+       infrastructure: "Gateway, browser, node host, discovery, and ACP settings.",
+-      labs: "Experimental agent and tool capabilities.",
+       updates: "Release channel, automatic updates, and current update status.",
+       about: "Control UI and connected Gateway build identity.",
+       "ai-agents": "Global agent defaults: skills, tools, and session.",
+@@ -322,7 +319,6 @@ describe("pathForRoute", () => {
+     expect(pathForRoute("plugin-settings")).toBe("/settings/plugins");
+     expect(pathForRoute("skill-settings")).toBe("/settings/skills");
+     expect(pathForRoute("approvals")).toBe("/settings/approvals");
+-    expect(pathForRoute("labs")).toBe("/settings/labs");
+     expect(pathForRoute("cloud-workers")).toBe("/settings/cloud-workers");
+   });
+ 
+@@ -368,8 +364,6 @@ describe("routeIdFromPath", () => {
+     expect(routeIdFromPath("/plugins")).toBe("plugins");
+     expect(routeIdFromPath("/plugins/ch_bWF0cml4")).toBe("plugins");
+     expect(routeIdFromPath("/settings/about")).toBe("about");
+-    expect(routeIdFromPath("/settings/labs")).toBe("labs");
+-    expect(routeIdFromPath("/labs")).toBeNull();
+     expect(routeIdFromPath("/about")).toBeNull();
+   });
+ 
+@@ -655,7 +649,6 @@ describe("SIDEBAR_NAV_ROUTES", () => {
+       "secrets",
+       "approvals",
+       "infrastructure",
+-      "labs",
+       "advanced",
+       "debug",
+       "logs",
+diff --git a/ui/src/app-navigation.ts b/ui/src/app-navigation.ts
+index 7745818b4a2a9546ceec106dc12a4c2794cabe88..accd3c9f285fb22f2316b6bfed68dfeb02a6e2cb 100644
+--- a/ui/src/app-navigation.ts
++++ b/ui/src/app-navigation.ts
+@@ -223,7 +223,7 @@ const SETTINGS_NAVIGATION_GROUPS = [
+   },
+   {
+     labelKey: "nav.settingsGroupSystem",
+-    routes: ["infrastructure", "labs", "advanced", "debug", "logs", "updates", "about"],
++    routes: ["infrastructure", "advanced", "debug", "logs", "updates", "about"],
+   },
+ ] as const satisfies readonly SettingsNavigationGroup[];
+ 
+@@ -360,7 +360,6 @@ const NAVIGATION_PRESENTATION: Record<NavigationRouteId, NavigationPresentation>
+   memory: navigationPresentation("book", "memory"),
+   talk: navigationPresentation("mic", "talk"),
+   infrastructure: navigationPresentation("globe", "infrastructure"),
+-  labs: navigationPresentation("flaskConical", "labs"),
+   updates: navigationPresentation("download", "updates"),
+   about: navigationPresentation("fileText", "about"),
+   "ai-agents": navigationPresentation("brain", "aiAgents"),
+diff --git a/ui/src/app-route-paths.ts b/ui/src/app-route-paths.ts
+index 390fb0f846388b2a2f16490521cdc71434bb7689..e4f5fd025ab6aa3a37107d1847084e88b6cdbd66 100644
+--- a/ui/src/app-route-paths.ts
++++ b/ui/src/app-route-paths.ts
+@@ -69,7 +69,6 @@ const APP_ROUTE_DEFINITIONS = {
+   memory: { path: "/settings/memory" },
+   talk: { path: "/settings/talk" },
+   infrastructure: { path: "/settings/infrastructure", aliases: ["/infrastructure"] },
+-  labs: { path: "/settings/labs" },
+   updates: { path: "/settings/updates" },
+   about: { path: "/settings/about" },
+   "ai-agents": { path: "/settings/ai-agents", aliases: ["/ai-agents"] },
+diff --git a/ui/src/app-routes.ts b/ui/src/app-routes.ts
+index 9d85a62d01668069c18443059325213e7a8568a9..2cb0e92ff8c15e7086dc966b251d92a8c1aca7d9 100644
+--- a/ui/src/app-routes.ts
++++ b/ui/src/app-routes.ts
+@@ -44,7 +44,6 @@ import {
+   permissionsPage as devicePermissionsPage,
+ } from "./pages/device/route.ts";
+ import { page as devicesPage } from "./pages/devices/route.ts";
+-import { page as labsPage } from "./pages/labs/route.ts";
+ import { page as lobsterdexPage } from "./pages/lobsterdex/route.ts";
+ import { page as logsPage } from "./pages/logs/route.ts";
+ import { page as meetingsPage } from "./pages/meetings/route.ts";
+@@ -100,7 +99,6 @@ const APP_ROUTE_TREE = [
+   channelsPage,
+   cloudWorkersPage,
+   connectionPage,
+-  labsPage,
+   aboutPage,
+   lobsterdexPage,
+   ...configPages,
+diff --git a/ui/src/components/board/board-widget-cell-plugin.test.ts b/ui/src/components/board/board-widget-cell-plugin.test.ts
+index 9fca086d04fca48ba24bca82e44e1704237e3b2e..cf6c5c42bc14299f29c574c9c231ab00d5885cc4 100644
+--- a/ui/src/components/board/board-widget-cell-plugin.test.ts
++++ b/ui/src/components/board/board-widget-cell-plugin.test.ts
+@@ -40,8 +40,8 @@ const CHUNK_LOAD_WAIT = { timeout: 10_000 };
+ 
+ describe("plugin board widget cells", () => {
+   it.each([false, true])(
+-    "preserves a removable unavailable widget (Labs disabled: %s)",
+-    async (labsDisabled) => {
++    "preserves a removable unavailable widget (Custom plugin UI disabled: %s)",
++    async (customUiDisabled) => {
+       const widget: BoardWidget = {
+         name: "work-item",
+         tabId: "main",
+@@ -62,7 +62,7 @@ describe("plugin board widget cells", () => {
+         navigate,
+         gateway: { snapshot: { phase: "connected" } },
+         plugins: {
+-          errors: labsDisabled
++          errors: customUiDisabled
+             ? [
+                 {
+                   pluginId: "custom-review",
+@@ -87,20 +87,22 @@ describe("plugin board widget cells", () => {
+ 
+       const placeholder = cell.querySelector('[data-test-id="board-disabled-plugin"]');
+       expect(placeholder?.textContent).toContain(
+-        labsDisabled ? "Custom plugin UI is off" : "Widget from disabled plugin custom-review",
++        customUiDisabled ? "Custom plugin UI is off" : "Widget from disabled plugin custom-review",
+       );
+       expect(cell.widget).toBe(widget);
+       expect(cellCallbacks.remove).not.toHaveBeenCalled();
+-      const labsLink = placeholder?.querySelector<HTMLAnchorElement>(
+-        'a[href="/console/settings/labs"]',
++      const pluginsLink = placeholder?.querySelector<HTMLAnchorElement>(
++        'a[href="/console/settings/plugins?tab=advanced"]',
+       );
+-      if (labsDisabled) {
+-        expect(labsLink?.textContent?.trim()).toBe("Open Labs");
+-        labsLink?.click();
+-        expect(navigate).toHaveBeenCalledExactlyOnceWith("labs");
++      if (customUiDisabled) {
++        expect(pluginsLink?.textContent?.trim()).toBe("Open Plugins");
++        pluginsLink?.click();
++        expect(navigate).toHaveBeenCalledExactlyOnceWith("plugin-settings", {
++          search: "?tab=advanced",
++        });
+         expect(cellCallbacks.remove).not.toHaveBeenCalled();
+       } else {
+-        expect(labsLink).toBeNull();
++        expect(pluginsLink).toBeNull();
+       }
+       const removeButton = placeholder?.querySelector("button");
+       expect(removeButton).not.toBeNull();
+diff --git a/ui/src/e2e/config-safe-write.e2e.test.ts b/ui/src/e2e/config-safe-write.e2e.test.ts
+index e363d75f1cc246add9b96723af46a2cef004b08c..da7e6228950aa39452de066195ace7e1c33dea4b 100644
+--- a/ui/src/e2e/config-safe-write.e2e.test.ts
++++ b/ui/src/e2e/config-safe-write.e2e.test.ts
+@@ -107,12 +107,6 @@ function mutationParams(request: MockGatewayRequest): {
+   };
+ }
+ 
+-function settingsRow(page: Page, title: string): Locator {
+-  return page.locator(".settings-row").filter({
+-    has: page.locator(".settings-row__title").getByText(title, { exact: true }),
+-  });
+-}
+-
+ function overlapArea(
+   first: { x: number; y: number; width: number; height: number },
+   second: { x: number; y: number; width: number; height: number },
+@@ -343,7 +337,7 @@ suite.define(() => {
+     );
+   });
+ 
+-  it("edits schema and raw config with guarded set, patch, reload, and apply requests", async () => {
++  it("edits schema and raw config with guarded set, reload, and apply requests", async () => {
+     await suite.withPage(
+       {
+         colorScheme: "dark",
+@@ -359,10 +353,6 @@ suite.define(() => {
+           laboratory: { endpoint: "local-api", retryBudget: 2 },
+           tools: { codeMode: { timeoutMs: 5000 } },
+         };
+-        const patchedConfig = {
+-          laboratory: initialConfig.laboratory,
+-          tools: { codeMode: { enabled: "auto", timeoutMs: 5000 } },
+-        };
+         const gateway = await installMockGateway(page, {
+           methodResponses: {
+             "config.get": configResponse(initialConfig, "snapshot-1"),
+@@ -370,38 +360,6 @@ suite.define(() => {
+           },
+         });
+ 
+-        expect((await page.goto(`${suite.server.baseUrl}settings/labs`))?.status()).toBe(200);
+-        const labsLink = page.locator('.settings-sidebar__item[href="/settings/labs"]');
+-        await expect.poll(() => labsLink.getAttribute("aria-current")).toBe("page");
+-        const codeModeRow = settingsRow(page, "Code Mode");
+-        const codeModeSwitch = codeModeRow.getByRole("switch", { name: "Code Mode", exact: true });
+-        await codeModeSwitch.waitFor();
+-        await expect.poll(() => codeModeRow.textContent()).toContain("Using default: Disabled");
+-
+-        const configGetsBeforePatch = (await gateway.getRequests("config.get")).length;
+-        await gateway.deferNext("config.patch");
+-        await codeModeRow.locator("wa-switch").click();
+-        const patchParams = mutationParams(await gateway.waitForRequest("config.patch"));
+-        expect(patchParams.baseHash).toBe("snapshot-1");
+-        expect(patchParams.sessionKey).toBe("agent:main:main");
+-        expect(JSON.parse(String(patchParams.raw))).toEqual({
+-          tools: { codeMode: { enabled: "auto" } },
+-        });
+-
+-        const patchedResponse = configResponse(patchedConfig, "snapshot-2", "snapshot-1");
+-        await gateway.setMethodResponse("config.get", patchedResponse);
+-        await gateway.resolveDeferred("config.patch", {
+-          config: patchedConfig,
+-          hash: "snapshot-2",
+-          ok: true,
+-        });
+-        await expect
+-          .poll(async () => (await gateway.getRequests("config.get")).length)
+-          .toBe(configGetsBeforePatch);
+-        await expect.poll(() => codeModeRow.textContent()).toContain("Default: Disabled");
+-        await expect.poll(() => labsLink.getAttribute("aria-current")).toBe("page");
+-        await capture(page, "00-labs-canonical-refresh.png", codeModeSwitch);
+-
+         expect(
+           (
+             await page.goto(`${suite.server.baseUrl}settings/advanced?section=laboratory`)
+@@ -415,7 +373,7 @@ suite.define(() => {
+         await gateway.deferNext("config.set");
+         await endpoint.fill("form-api");
+         const staleSetParams = mutationParams(await gateway.waitForRequest("config.set"));
+-        expect(staleSetParams.baseHash).toBe("snapshot-2");
++        expect(staleSetParams.baseHash).toBe("snapshot-1");
+         expect(JSON.parse(String(staleSetParams.raw))).toMatchObject({
+           laboratory: { endpoint: "form-api", retryBudget: 2 },
+         });
+diff --git a/ui/src/e2e/curated-settings-defaults.e2e.test.ts b/ui/src/e2e/curated-settings-defaults.e2e.test.ts
+index 53bb6024a1a1a5437ed0120f7f7814a4daace203..45630e845786ce6e8226166bbb4c6e135b164886 100644
+--- a/ui/src/e2e/curated-settings-defaults.e2e.test.ts
++++ b/ui/src/e2e/curated-settings-defaults.e2e.test.ts
+@@ -87,7 +87,7 @@ async function selectDefault(row: Locator) {
+ }
+ 
+ suite.define(() => {
+-  it("persists Full tools and restores inherited Labs, browser, and Models defaults across reloads", async () => {
++  it("persists Full tools and restores inherited browser and Models defaults across reloads", async () => {
+     await suite.withPage(
+       {
+         colorScheme: "dark",
+@@ -106,15 +106,9 @@ suite.define(() => {
+           },
+           browser: { enabled: false },
+           tools: {
+-            codeMode: { enabled: "auto" },
+             profile: "minimal",
+           },
+         };
+-        const afterLabsReset = {
+-          agents: initialConfig.agents,
+-          browser: initialConfig.browser,
+-          tools: { profile: "minimal" },
+-        };
+         const afterThinkingReset = {
+           agents: {
+             defaults: {
+@@ -132,42 +126,6 @@ suite.define(() => {
+           },
+         });
+ 
+-        expect((await page.goto(`${suite.server.baseUrl}settings/labs`))?.status()).toBe(200);
+-        const codeModeRow = settingsRow(page, "Code Mode");
+-        const codeModeSwitch = codeModeRow.getByRole("switch", { name: "Code Mode", exact: true });
+-        await codeModeSwitch.waitFor();
+-        expect(await codeModeSwitch.getAttribute("aria-checked")).toBe("true");
+-        await expect.poll(() => codeModeRow.textContent()).toContain("Default: Disabled");
+-
+-        if (captureUiProofEnabled) {
+-          await codeModeRow.screenshot({
+-            animations: "disabled",
+-            path: path.join(uiProofArtifactDir, "01-labs-explicit-override.png"),
+-          });
+-        }
+-
+-        const configGetsBeforeLabsReset = (await gateway.getRequests("config.get")).length;
+-        await gateway.deferNext("config.patch");
+-        await codeModeRow.locator("wa-switch").click();
+-        const labsPatch = requestRaw(await gateway.waitForRequest("config.patch"));
+-        expect(labsPatch).toEqual({ tools: { codeMode: { enabled: null } } });
+-
+-        const afterLabsResponse = configResponse(afterLabsReset, "curated-defaults-2");
+-        await gateway.setMethodResponse("config.get", afterLabsResponse);
+-        await gateway.resolveDeferred("config.patch", afterLabsResponse);
+-        await expect
+-          .poll(async () => (await gateway.getRequests("config.get")).length)
+-          .toBe(configGetsBeforeLabsReset + 1);
+-        await expectInherited(codeModeRow, "Disabled");
+-        expect(await codeModeSwitch.getAttribute("aria-checked")).toBe("false");
+-
+-        if (captureUiProofEnabled) {
+-          await codeModeRow.screenshot({
+-            animations: "disabled",
+-            path: path.join(uiProofArtifactDir, "02-labs-inherited-default.png"),
+-          });
+-        }
+-
+         expect((await page.goto(`${suite.server.baseUrl}settings/security`))?.status()).toBe(200);
+         const browserRow = settingsRow(page, "Browser enabled");
+         const profileRow = settingsRow(page, "Available tools");
+@@ -349,15 +307,6 @@ suite.define(() => {
+             .getAttribute("aria-checked"),
+         ).toBe("true");
+ 
+-        expect((await page.goto(`${suite.server.baseUrl}settings/labs`))?.status()).toBe(200);
+-        const reloadedCodeModeRow = settingsRow(page, "Code Mode");
+-        await expectInherited(reloadedCodeModeRow, "Disabled");
+-        expect(
+-          await reloadedCodeModeRow
+-            .getByRole("switch", { name: "Code Mode", exact: true })
+-            .getAttribute("aria-checked"),
+-        ).toBe("false");
+-
+         if (captureUiProofEnabled) {
+           await page.screenshot({
+             animations: "disabled",
+diff --git a/ui/src/e2e/native-embed-settings.e2e.test.ts b/ui/src/e2e/native-embed-settings.e2e.test.ts
+index 210937bf1db55f3df5af46cd3c9321e08cdc25cd..7cb9fcc0d470d643c59d0d883c619a8c2dd48027 100644
+--- a/ui/src/e2e/native-embed-settings.e2e.test.ts
++++ b/ui/src/e2e/native-embed-settings.e2e.test.ts
+@@ -39,7 +39,6 @@ const routes = [
+   "secrets",
+   "approvals",
+   "infrastructure",
+-  "labs",
+   "advanced",
+   "debug",
+   "logs",
+diff --git a/ui/src/e2e/new-session-page.catalog-reconnect.e2e.test.ts b/ui/src/e2e/new-session-page.catalog-reconnect.e2e.test.ts
+index fb82ade37863ae3576c330d04878eb5bc29d5c44..814c5813dc7982eb04ccb5d81bf21b879c83c01a 100644
+--- a/ui/src/e2e/new-session-page.catalog-reconnect.e2e.test.ts
++++ b/ui/src/e2e/new-session-page.catalog-reconnect.e2e.test.ts
+@@ -114,7 +114,7 @@ suite.define(() => {
+     }
+   });
+ 
+-  it("routes a Labs-enabled CLI agent picker row through catalog-target mode", async () => {
++  it("routes an enabled CLI agent picker row through catalog-target mode", async () => {
+     if (captureCliAgentsProof) {
+       await mkdir(path.join(suite.artifactDir, "cli-agents-picker"), { recursive: true });
+     }
+diff --git a/ui/src/e2e/settings-layout.e2e.test.ts b/ui/src/e2e/settings-layout.e2e.test.ts
+index 9fdf7c66a1df23677239096a9b019ab4f59415b3..4bd673d5a1708fc64b6d8ea6e070b21bff1aa49d 100644
+--- a/ui/src/e2e/settings-layout.e2e.test.ts
++++ b/ui/src/e2e/settings-layout.e2e.test.ts
+@@ -25,7 +25,6 @@ const introRoutes = [
+   "appearance",
+   "approvals",
+   "cloud-workers",
+-  "labs",
+   "mcp",
+   "secrets",
+   "security",
+@@ -36,7 +35,6 @@ const introRoutes = [
+ const learnMoreRoutes = [
+   "appearance",
+   "approvals",
+-  "labs",
+   "mcp",
+   "model-providers",
+   "security",
+@@ -55,7 +53,6 @@ const settingsGuidanceLinks: ReadonlyArray<{
+ const sectionAlignmentRoutes = [
+   "appearance",
+   "cloud-workers",
+-  "labs",
+   "mcp",
+   "secrets",
+   "security",
+@@ -78,7 +75,6 @@ const settingsRowRoutes = [
+   "cloud-workers",
+   "agents",
+   "ai-agents",
+-  "labs",
+   "model-setup",
+   "model-providers",
+   "mcp",
+diff --git a/ui/src/e2e/sidebar-customization.e2e.test.ts b/ui/src/e2e/sidebar-customization.e2e.test.ts
+index f56967a6e8f7e845969bde3a2c516213c947d706..8cf14a379d68038f9f9ad9c539d0e3e5ba4f5219 100644
+--- a/ui/src/e2e/sidebar-customization.e2e.test.ts
++++ b/ui/src/e2e/sidebar-customization.e2e.test.ts
+@@ -341,7 +341,6 @@ suite.define(() => {
+           "Ask OpenClaw",
+           "Approvals",
+           "Infrastructure",
+-          "Labs",
+           "Advanced",
+           "Debug",
+           "Logs",
+diff --git a/ui/src/i18n/locales/en-plugin-management.ts b/ui/src/i18n/locales/en-plugin-management.ts
+index 4c927352a1dbaea70bbac416fd3e32e084dfafa1..0f2f00c1436181931f26efdd25d374e52e26b6fc 100644
+--- a/ui/src/i18n/locales/en-plugin-management.ts
++++ b/ui/src/i18n/locales/en-plugin-management.ts
+@@ -69,6 +69,9 @@ const enPluginManagement = {
+     settingsTabs: "Plugin settings sections",
+     settingsInstalled: "Installed",
+     settingsInstalledDescription: "Search and configure plugins available to this gateway.",
++    customPluginUi: "Custom plugin UI",
++    customPluginUiDescription:
++      "Let installed plugins add pages, widgets, and custom views. Their JavaScript runs with your signed-in permissions, so enable only plugins you trust. Restart the Gateway and reload this tab after changing this setting.",
+     advanced: "Advanced",
+     advancedDescription:
+       "Global plugin loading, allow and deny lists, and capability slot ownership.",
+diff --git a/ui/src/i18n/locales/en.ts b/ui/src/i18n/locales/en.ts
+index 2fe1bedc037e4ac40df8ff22a04c6595b47b17fa..a49876f218076b189b10fd606faa22bd60de34b4 100644
+--- a/ui/src/i18n/locales/en.ts
++++ b/ui/src/i18n/locales/en.ts
+@@ -69,8 +69,8 @@ export const en: TranslationMap & {
+     dashboardEmpty: "This session has no dashboard widgets yet.",
+     customPluginsDisabled: "Custom plugin UI is off",
+     customPluginsEnableHint:
+-      "Enable Custom plugin UI in Labs, then restart the Gateway and reload this browser tab.",
+-    openLabs: "Open Labs",
++      "Enable Custom plugin UI in Plugins → Advanced, then restart the Gateway and reload this browser tab.",
++    openPlugins: "Open Plugins",
+     surface: {
+       "session-list": "Session list",
+       composer: "Composer",
+@@ -2312,7 +2312,6 @@ export const en: TranslationMap & {
+     memory: "Memory",
+     talk: "Talk",
+     infrastructure: "Infrastructure",
+-    labs: "Labs",
+     updates: "Updates",
+     about: "About",
+     aiAgents: "Agent Defaults",
+@@ -2361,7 +2360,6 @@ export const en: TranslationMap & {
+     memory: "Memory engine, search, and dreaming.",
+     talk: "Realtime voice: provider, model, and speaker voice.",
+     infrastructure: "Gateway, browser, node host, discovery, and ACP settings.",
+-    labs: "Experimental agent and tool capabilities.",
+     updates: "Release channel, automatic updates, and current update status.",
+     about: "Control UI and connected Gateway build identity.",
+     aiAgents: "Global agent defaults: skills, tools, and session.",
+@@ -2719,20 +2717,7 @@ export const en: TranslationMap & {
+   },
+   pluginsPage: {},
+   labsPage: {
+-    intro:
+-      "Labs contains experimental capabilities that may change, break, or disappear between releases.",
+-    sectionTitle: "Experimental features",
+-    sectionDescription: "Changes save immediately. Some features require a restart to take effect.",
+-    documentation: "Documentation",
+     restartRequired: "Gateway restart required.",
+-    saveErrorTitle: "Could not update feature",
+-    saveFailed: "The feature setting could not be saved.",
+-    codeMode: {
+-      title: "Code Mode",
+-      description:
+-        "Set the global default for compact, sandboxed JavaScript tool workflows. On selects Auto for evaluated models; Off disables the default. Per-model Code Mode overrides are in Agent Defaults → Models (Advanced).",
+-    },
+-
+     swarm: {
+       title: "Swarm",
+       groupTitle: "Parallel tasks",
+@@ -2747,30 +2732,6 @@ export const en: TranslationMap & {
+       detailsUnavailable: "Child details are unavailable. Counts include all accepted workers.",
+       otherGroups: "{count} more active groups",
+     },
+-    toolSearch: {
+-      title: "Tool Search for all models",
+-      description:
+-        "Local models use Tool Search automatically. Enable this override to defer tool schemas for all models; turning it off restores each model's default.",
+-    },
+-
+-    customPluginUi: {
+-      title: "Custom plugin UI",
+-      description:
+-        "Let installed plugins add pages, widgets, and custom views. Their JavaScript runs with your signed-in permissions, so enable only plugins you trust. Bundled plugin views remain available.",
+-      restartRequired:
+-        "Restart the Gateway and reload this browser tab after changing this setting.",
+-    },
+-
+-    hostDesktop: {
+-      title: "Host Desktop",
+-      description:
+-        "Watch and control this Gateway machine from the Desktop panel through its existing VNC or Screen Sharing server.",
+-    },
+-    workerDesktop: {
+-      title: "Cloud Worker Desktop",
+-      description:
+-        "Watch and control node-carried desktops from capable Crabbox AWS, Azure, or Hetzner profiles with desktop: true.",
+-    },
+   },
+   aboutPage: {
+     productName: "OpenClaw",
+diff --git a/ui/src/pages/labs/labs-page.test.ts b/ui/src/pages/labs/labs-page.test.ts
+deleted file mode 100644
+index 4f8d868fcb4b420162cacf5d6748075cd8331595..0000000000000000000000000000000000000000
+--- a/ui/src/pages/labs/labs-page.test.ts
++++ /dev/null
+@@ -1,417 +0,0 @@
+-/* @vitest-environment jsdom */
+-
+-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+-import { createDeferred as deferred } from "../../../../test/helpers/promise.js";
+-import type { GatewayBrowserClient } from "../../api/gateway.ts";
+-import type { ApplicationContext, ApplicationGatewaySnapshot } from "../../app/context.ts";
+-import { i18n } from "../../i18n/index.ts";
+-import {
+-  createApplicationContextProvider,
+-  type ApplicationContextProvider,
+-} from "../../test-helpers/application-context.ts";
+-import { LAB_FEATURES } from "./labs-registry.ts";
+-import "./labs-page.ts";
+-
+-type LabsPageElement = HTMLElement & { updateComplete: Promise<boolean> };
+-
+-type RuntimeConfigState = {
+-  connected: boolean;
+-  configLoading: boolean;
+-  configSnapshot: {
+-    hash: string;
+-    sourceConfig: Record<string, unknown>;
+-  } | null;
+-  lastError: string | null;
+-};
+-
+-function createGateway() {
+-  const client = {} as GatewayBrowserClient;
+-  let snapshot = { client, phase: "connected" } as ApplicationGatewaySnapshot;
+-  const listeners = new Set<(snapshot: ApplicationGatewaySnapshot) => void>();
+-  return {
+-    gateway: {
+-      get snapshot() {
+-        return snapshot;
+-      },
+-      subscribe(listener: (snapshot: ApplicationGatewaySnapshot) => void) {
+-        listeners.add(listener);
+-        return () => {
+-          listeners.delete(listener);
+-        };
+-      },
+-    } as unknown as ApplicationContext["gateway"],
+-    setPhase(phase: ApplicationGatewaySnapshot["phase"]) {
+-      snapshot = { ...snapshot, phase };
+-      listeners.forEach((listener) => listener(snapshot));
+-    },
+-  };
+-}
+-
+-function createRuntimeConfig(sourceConfig: Record<string, unknown>) {
+-  const state: RuntimeConfigState = {
+-    connected: true,
+-    configLoading: false,
+-    configSnapshot: { hash: "config-hash", sourceConfig },
+-    lastError: null,
+-  };
+-  const listeners = new Set<(state: RuntimeConfigState) => void>();
+-  return {
+-    state,
+-    ensureLoaded: vi.fn(async () => undefined),
+-    refresh: vi.fn(async () => undefined),
+-    patch: vi.fn(async () => true),
+-    subscribe(listener: (state: RuntimeConfigState) => void) {
+-      listeners.add(listener);
+-      return () => listeners.delete(listener);
+-    },
+-  };
+-}
+-
+-async function mountPage(sourceConfig: Record<string, unknown>): Promise<{
+-  page: LabsPageElement;
+-  provider: ApplicationContextProvider;
+-  runtimeConfig: ReturnType<typeof createRuntimeConfig>;
+-  gateway: ReturnType<typeof createGateway>;
+-}> {
+-  const runtimeConfig = createRuntimeConfig(sourceConfig);
+-  const gateway = createGateway();
+-  const context = {
+-    basePath: "",
+-    gateway: gateway.gateway,
+-    runtimeConfig,
+-  } as unknown as ApplicationContext;
+-  const provider = createApplicationContextProvider(context);
+-  const page = document.createElement("openclaw-labs-page") as LabsPageElement;
+-  provider.append(page);
+-  document.body.append(provider);
+-  await page.updateComplete;
+-  return { page, provider, runtimeConfig, gateway };
+-}
+-
+-function labRow(page: LabsPageElement, title: string) {
+-  const row = [...page.querySelectorAll<HTMLElement>(".settings-row")].find(
+-    (candidate) => candidate.querySelector(".settings-row__title")?.textContent?.trim() === title,
+-  );
+-  if (!row) {
+-    throw new Error(`${title} row not rendered`);
+-  }
+-  return row;
+-}
+-
+-function labToggle(page: LabsPageElement, title: string) {
+-  const toggle = labRow(page, title).querySelector<HTMLElement & { checked: boolean }>("wa-switch");
+-  if (!toggle) {
+-    throw new Error(`${title} toggle not rendered`);
+-  }
+-  return toggle;
+-}
+-
+-function labDocsLink(page: LabsPageElement, title: string) {
+-  const link = labRow(page, title).querySelector<HTMLAnchorElement>(".settings-row__desc a");
+-  if (!link) {
+-    throw new Error(`${title} documentation link not rendered`);
+-  }
+-  return link;
+-}
+-
+-function codeModeToggle(page: LabsPageElement) {
+-  return labToggle(page, "Code Mode");
+-}
+-
+-describe("LabsPage", () => {
+-  beforeEach(async () => {
+-    await i18n.setLocale("en");
+-  });
+-
+-  afterEach(() => {
+-    document.body.replaceChildren();
+-    vi.restoreAllMocks();
+-  });
+-
+-  it("renders every registered experimental entry with its documentation link", async () => {
+-    const { page, runtimeConfig } = await mountPage({
+-      tools: { codeMode: { enabled: true }, swarm: { enabled: true } },
+-    });
+-
+-    expect(page.querySelector(".page-subtitle")?.textContent).toContain("experimental");
+-    expect(page.querySelector(".settings-page__intro")).toBeNull();
+-    const introLink = page.querySelector<HTMLAnchorElement>(".page-subtitle a");
+-    expect(introLink?.textContent?.trim()).toBe("Learn more");
+-    expect(introLink?.href).toBe("https://docs.openclaw.ai/concepts/experimental-features");
+-    expect(page.querySelectorAll(".settings-row")).toHaveLength(LAB_FEATURES.length);
+-    expect(page.textContent).toContain("Code Mode");
+-    for (const title of [
+-      "Swarm",
+-      "CLI agents",
+-      "Tool-loop detection",
+-      "Message audit metadata",
+-      "Lean tools for local models",
+-    ]) {
+-      expect(page.textContent).not.toContain(title);
+-    }
+-    expect(runtimeConfig.patch).not.toHaveBeenCalled();
+-    expect(page.textContent).toContain("Host Desktop");
+-    expect(page.textContent).toContain("Cloud Worker Desktop");
+-    expect(codeModeToggle(page).checked).toBe(true);
+-
+-    const docs = LAB_FEATURES.map((feature) => labDocsLink(page, feature.title()));
+-    expect(docs.map((link) => link.href)).toEqual(LAB_FEATURES.map((feature) => feature.docsUrl));
+-    expect(docs.every((link) => link.target === "_blank")).toBe(true);
+-    expect(docs.every((link) => link.rel.includes("noopener"))).toBe(true);
+-  });
+-
+-  it("reflects the supported boolean Code Mode shorthand", async () => {
+-    const { page } = await mountPage({ tools: { codeMode: true } });
+-
+-    expect(codeModeToggle(page).checked).toBe(true);
+-  });
+-
+-  it("reads the per-model auto tier as enabled", async () => {
+-    const { page } = await mountPage({ tools: { codeMode: { enabled: "auto" } } });
+-
+-    expect(codeModeToggle(page).checked).toBe(true);
+-  });
+-
+-  it.each([
+-    {
+-      label: "Code Mode",
+-      sourceConfig: { tools: { codeMode: { enabled: true } } },
+-      expectedPatch: { tools: { codeMode: { enabled: null } } },
+-      note: "labs: update codeMode",
+-    },
+-    {
+-      label: "Custom plugin UI",
+-      sourceConfig: { gateway: { controlUi: { experimental: { customPlugins: true } } } },
+-      expectedPatch: { gateway: { controlUi: { experimental: { customPlugins: null } } } },
+-      note: "labs: update customPluginUi",
+-    },
+-  ])(
+-    "restores the default through the canonical patch flow when disabling $label",
+-    async (testCase) => {
+-      const { page, runtimeConfig } = await mountPage(testCase.sourceConfig);
+-      const toggle = labToggle(page, testCase.label);
+-      expect(toggle.checked).toBe(true);
+-
+-      toggle.checked = false;
+-      toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-      await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-      expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-        raw: testCase.expectedPatch,
+-        note: testCase.note,
+-      });
+-      expect(runtimeConfig.refresh).not.toHaveBeenCalled();
+-    },
+-  );
+-
+-  it("does not publish a retired save failure after a same-client reconnect", async () => {
+-    const pendingPatch = deferred<boolean>();
+-    const { gateway, page, runtimeConfig } = await mountPage({
+-      tools: { codeMode: { enabled: false } },
+-    });
+-    runtimeConfig.patch.mockImplementationOnce(() => pendingPatch.promise);
+-    const toggle = codeModeToggle(page);
+-
+-    toggle.checked = true;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-
+-    gateway.setPhase("reconnecting");
+-    gateway.setPhase("connected");
+-    pendingPatch.resolve(false);
+-    await pendingPatch.promise;
+-    await page.updateComplete;
+-
+-    expect(page.querySelector('[role="alert"]')).toBeNull();
+-    expect(toggle.checked).toBe(false);
+-  });
+-
+-  it.each([
+-    {
+-      // The on position selects the "auto" tier, never `true`: Labs offers
+-      // Auto/Off, and force-on stays a config-only power-user state.
+-      label: "Code Mode",
+-      sourceConfig: { tools: { codeMode: { enabled: false } } },
+-      expectedPatch: { tools: { codeMode: { enabled: "auto" } } },
+-      note: "labs: update codeMode",
+-    },
+-    {
+-      // Enabling must pin the mode: resolveToolSearchConfig defaults an unset
+-      // mode to "code", so a bare `enabled: true` would select the surface with
+-      // the weakest recall rather than the one this row advertises.
+-      label: "Tool Search for all models",
+-      sourceConfig: { tools: { toolSearch: { enabled: false } } },
+-      expectedPatch: { tools: { toolSearch: { enabled: true, mode: "directory" } } },
+-      note: "labs: update toolSearch",
+-    },
+-    {
+-      label: "Custom plugin UI",
+-      sourceConfig: {},
+-      expectedPatch: { gateway: { controlUi: { experimental: { customPlugins: true } } } },
+-      note: "labs: update customPluginUi",
+-    },
+-    {
+-      label: "Host Desktop",
+-      sourceConfig: { desktop: { host: { enabled: false } } },
+-      expectedPatch: { desktop: { host: { enabled: true } } },
+-      note: "labs: update hostDesktop",
+-    },
+-    {
+-      label: "Cloud Worker Desktop",
+-      sourceConfig: { cloudWorkers: { desktop: false } },
+-      expectedPatch: { cloudWorkers: { desktop: true } },
+-      note: "labs: update workerDesktop",
+-    },
+-  ])("writes the on value at the registered config path when enabling $label", async (testCase) => {
+-    const { page, runtimeConfig } = await mountPage(testCase.sourceConfig);
+-    const toggle = labToggle(page, testCase.label);
+-    expect(toggle.checked).toBe(false);
+-
+-    toggle.checked = true;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-    expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-      raw: testCase.expectedPatch,
+-      note: testCase.note,
+-    });
+-  });
+-
+-  it("marks startup-scoped entries as needing a restart", async () => {
+-    const { page } = await mountPage({});
+-    const rows = [...page.querySelectorAll(".settings-row")];
+-
+-    const restartRows = rows.filter((row) => row.textContent?.toLowerCase().includes("restart"));
+-    expect(restartRows).toHaveLength(3);
+-    expect(restartRows.map((row) => row.textContent)).toEqual(
+-      expect.arrayContaining([
+-        expect.stringContaining("Custom plugin UI"),
+-        expect.stringContaining("Host Desktop"),
+-        expect.stringContaining("Cloud Worker Desktop"),
+-      ]),
+-    );
+-    expect(labRow(page, "Custom plugin UI").textContent).toContain(
+-      "Restart the Gateway and reload this browser tab",
+-    );
+-  });
+-
+-  it("shows default provenance", async () => {
+-    const inherited = await mountPage({});
+-    expect(labRow(inherited.page, "Code Mode").textContent).toContain("Using default: Disabled");
+-    inherited.provider.remove();
+-
+-    const overridden = await mountPage({
+-      tools: {
+-        codeMode: { enabled: "auto" },
+-        swarm: { enabled: false },
+-      },
+-    });
+-    expect(labRow(overridden.page, "Code Mode").textContent).toContain("Default: Disabled");
+-  });
+-});
+-
+-describe("LabsPage code mode enablement", () => {
+-  // Mirrors resolveCodeModeConfig: omitted `enabled` is off for every object
+-  // shape, while explicit `true` and `"auto"` remain opt-ins.
+-  it.each([
+-    ["unset", false, {}],
+-    ["empty object", false, { tools: { codeMode: {} } }],
+-    ["object with options", false, { tools: { codeMode: { timeoutMs: 5000 } } }],
+-    ["explicit true", true, { tools: { codeMode: { enabled: true } } }],
+-    ["explicit disabled", false, { tools: { codeMode: { enabled: false } } }],
+-    ["boolean shorthand false", false, { tools: { codeMode: false } }],
+-    ["auto shorthand", true, { tools: { codeMode: "auto" } }],
+-  ])("reads %s as %s", async (_label, expected, config) => {
+-    const { page, provider } = await mountPage(config);
+-
+-    expect(codeModeToggle(page).checked).toBe(expected);
+-    provider.remove();
+-  });
+-
+-  it("writes the auto tier when enabling the shipped default", async () => {
+-    const { page, runtimeConfig } = await mountPage({});
+-    const toggle = codeModeToggle(page);
+-
+-    toggle.checked = true;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-    expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-      raw: { tools: { codeMode: { enabled: "auto" } } },
+-      note: "labs: update codeMode",
+-    });
+-  });
+-
+-  it("writes the auto tier when re-enabling an option-bearing object", async () => {
+-    const { page, runtimeConfig } = await mountPage({
+-      tools: { codeMode: { enabled: false, timeoutMs: 5000 } },
+-    });
+-    const toggle = codeModeToggle(page);
+-
+-    toggle.checked = true;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-    expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-      raw: { tools: { codeMode: { enabled: "auto" } } },
+-      note: "labs: update codeMode",
+-    });
+-  });
+-});
+-
+-describe("LabsPage tool search enablement", () => {
+-  // readToolSearchConfig + readBoolean(raw.enabled, configured): an object that
+-  // configures anything besides `enabled` is already on at runtime.
+-  it.each([
+-    ["boolean shorthand", true, { tools: { toolSearch: true } }],
+-    ["explicit enabled", true, { tools: { toolSearch: { enabled: true } } }],
+-    ["mode without enabled", true, { tools: { toolSearch: { mode: "tools" } } }],
+-    ["explicit disabled", false, { tools: { toolSearch: { enabled: false } } }],
+-    ["boolean false", false, { tools: { toolSearch: false } }],
+-    ["unset", false, {}],
+-    [
+-      "local model without a global override",
+-      false,
+-      { agents: { defaults: { model: "ollama/qwen3.5:4b" } } },
+-    ],
+-  ])("reads %s as %s", async (_label, expected, config) => {
+-    const { page, provider } = await mountPage(config);
+-
+-    expect(labToggle(page, "Tool Search for all models").checked).toBe(expected);
+-    provider.remove();
+-  });
+-
+-  it("restores a mode-only override at the Tool Search owner boundary", async () => {
+-    const { page, runtimeConfig } = await mountPage({
+-      tools: { toolSearch: { mode: "tools" } },
+-    });
+-    const toggle = labToggle(page, "Tool Search for all models");
+-
+-    expect(toggle.checked).toBe(true);
+-    expect(labRow(page, "Tool Search for all models").textContent).toContain("Default: Disabled");
+-    toggle.checked = false;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-    expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-      raw: { tools: { toolSearch: null } },
+-      note: "labs: update toolSearch",
+-    });
+-  });
+-
+-  it("enables an explicit-disabled override with the recommended mode", async () => {
+-    const { page, runtimeConfig } = await mountPage({
+-      tools: { toolSearch: { enabled: false, mode: "tools" } },
+-    });
+-    const toggle = labToggle(page, "Tool Search for all models");
+-
+-    toggle.checked = true;
+-    toggle.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+-
+-    await vi.waitFor(() => expect(runtimeConfig.patch).toHaveBeenCalledOnce());
+-    expect(runtimeConfig.patch).toHaveBeenCalledWith({
+-      raw: { tools: { toolSearch: { enabled: true, mode: "directory" } } },
+-      note: "labs: update toolSearch",
+-    });
+-  });
+-});
+diff --git a/ui/src/pages/labs/labs-page.ts b/ui/src/pages/labs/labs-page.ts
+deleted file mode 100644
+index f5d4250cb00916cf7d98d69c1cf9151bbaff64f8..0000000000000000000000000000000000000000
+--- a/ui/src/pages/labs/labs-page.ts
++++ /dev/null
+@@ -1,185 +0,0 @@
+-import { consume } from "@lit/context";
+-import { html, nothing } from "lit";
+-import { state } from "lit/decorators.js";
+-import { titleForRoute } from "../../app-navigation.ts";
+-import { applicationContext, type ApplicationContext } from "../../app/context.ts";
+-import {
+-  renderLearnMoreLink,
+-  renderSettingsPage,
+-  renderSettingsPageHeader,
+-  renderSettingsRow,
+-  renderSettingsSection,
+-  renderSettingsToggleRow,
+-} from "../../components/settings-ui.ts";
+-import { renderSettingsWorkspace } from "../../components/settings-workspace.ts";
+-import { t } from "../../i18n/index.ts";
+-import { resolveEditableSnapshotConfig } from "../../lib/config/config-state-model.ts";
+-import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../../lib/external-link.ts";
+-import { formatUiError } from "../../lib/format-error.ts";
+-import { GatewayPageController } from "../../lit/gateway-page-controller.ts";
+-import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+-import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
+-import {
+-  labFeatureMergePatch,
+-  labFeatureResetPatch,
+-  LAB_FEATURES,
+-  resolveLabFeatureState,
+-  type LabFeature,
+-} from "./labs-registry.ts";
+-
+-class LabsPage extends OpenClawLightDomElement {
+-  @consume({ context: applicationContext, subscribe: true })
+-  private context!: ApplicationContext;
+-
+-  @state() private busyFeatureId: string | null = null;
+-  @state() private pendingValues: Readonly<Record<string, boolean>> = {};
+-  @state() private saveError: string | null = null;
+-
+-  private readonly gateway = new GatewayPageController(this, {
+-    getGateway: () => this.context?.gateway,
+-    invalidateRequests: () => {
+-      this.busyFeatureId = null;
+-      this.pendingValues = {};
+-      this.saveError = null;
+-    },
+-  });
+-  private readonly subscriptions = new SubscriptionsController(this).effect(
+-    () => this.context?.runtimeConfig,
+-    (runtimeConfig) => {
+-      void runtimeConfig.ensureLoaded();
+-      return runtimeConfig.subscribe(() => this.requestUpdate());
+-    },
+-  );
+-
+-  override disconnectedCallback() {
+-    this.subscriptions.clear();
+-    super.disconnectedCallback();
+-  }
+-
+-  private editableConfig(): Record<string, unknown> | null {
+-    const snapshot = this.context?.runtimeConfig.state.configSnapshot;
+-    return resolveEditableSnapshotConfig(snapshot);
+-  }
+-
+-  private featureEnabled(feature: LabFeature): boolean {
+-    const pending = this.pendingValues[feature.id];
+-    if (pending !== undefined) {
+-      return pending;
+-    }
+-    return resolveLabFeatureState(this.editableConfig(), feature).enabled;
+-  }
+-
+-  private canToggle(): boolean {
+-    const configState = this.context?.runtimeConfig.state;
+-    return Boolean(
+-      configState?.connected &&
+-      configState.configSnapshot?.hash &&
+-      !configState.configLoading &&
+-      this.busyFeatureId === null,
+-    );
+-  }
+-
+-  private clearPendingValue(featureId: string) {
+-    const next = { ...this.pendingValues };
+-    delete next[featureId];
+-    this.pendingValues = next;
+-  }
+-
+-  private async updateFeature(feature: LabFeature, enabled: boolean, raw: Record<string, unknown>) {
+-    const scope = this.gateway.capture();
+-    const runtimeConfig = this.context.runtimeConfig;
+-    if (!scope || !this.canToggle()) {
+-      return;
+-    }
+-    const isCurrent = () =>
+-      this.gateway.isCurrent(scope) && this.context.runtimeConfig === runtimeConfig;
+-    this.busyFeatureId = feature.id;
+-    this.pendingValues = { ...this.pendingValues, [feature.id]: enabled };
+-    this.saveError = null;
+-    try {
+-      const patched = await runtimeConfig.patch({
+-        raw,
+-        note: `labs: update ${feature.id}`,
+-      });
+-      if (isCurrent() && !patched) {
+-        this.saveError = runtimeConfig.state.lastError ?? t("labsPage.saveFailed");
+-      }
+-    } catch (error) {
+-      if (isCurrent()) {
+-        this.saveError = formatUiError(error);
+-      }
+-    } finally {
+-      if (isCurrent()) {
+-        this.clearPendingValue(feature.id);
+-        if (this.busyFeatureId === feature.id) {
+-          this.busyFeatureId = null;
+-        }
+-      }
+-    }
+-  }
+-
+-  private setFeatureEnabled(feature: LabFeature, enabled: boolean) {
+-    const config = this.editableConfig();
+-    const featureState = resolveLabFeatureState(config, feature);
+-    const resetPatch =
+-      enabled === featureState.defaultEnabled ? labFeatureResetPatch(config, feature) : null;
+-    void this.updateFeature(feature, enabled, resetPatch ?? labFeatureMergePatch(feature, enabled));
+-  }
+-
+-  private renderFeature(feature: LabFeature) {
+-    const title = feature.title();
+-    const featureState = resolveLabFeatureState(this.editableConfig(), feature);
+-    const canToggle = this.canToggle();
+-    const defaultDescription = t(
+-      featureState.overridden ? "configForm.defaultValue" : "configForm.usingDefault",
+-      { value: featureState.defaultEnabled ? t("common.enabled") : t("common.disabled") },
+-    );
+-    const description = html`
+-      ${feature.description()}
+-      <a href=${feature.docsUrl} target=${EXTERNAL_LINK_TARGET} rel=${buildExternalLinkRel()}
+-        >${t("labsPage.documentation")}</a
+-      >${feature.restartHint ? html` <span>${feature.restartHint()}</span>` : nothing}
+-      <span>${defaultDescription}</span>
+-    `;
+-    return renderSettingsToggleRow({
+-      title,
+-      description,
+-      checked: this.featureEnabled(feature),
+-      disabled: !canToggle,
+-      onChange: (enabled) => this.setFeatureEnabled(feature, enabled),
+-    });
+-  }
+-
+-  override render() {
+-    const rows = [
+-      ...LAB_FEATURES.map((feature) => this.renderFeature(feature)),
+-      this.saveError
+-        ? renderSettingsRow({
+-            title: t("labsPage.saveErrorTitle"),
+-            description: html`<span role="alert">${this.saveError}</span>`,
+-          })
+-        : nothing,
+-    ];
+-    const body = renderSettingsPage(
+-      renderSettingsSection(
+-        {
+-          title: t("labsPage.sectionTitle"),
+-          description: t("labsPage.sectionDescription"),
+-        },
+-        rows,
+-      ),
+-    );
+-    return html`
+-      ${renderSettingsPageHeader({
+-        title: titleForRoute("labs"),
+-        subtitle: html`${t("labsPage.intro")}
+-        ${renderLearnMoreLink("https://docs.openclaw.ai/concepts/experimental-features")}`,
+-      })}
+-      ${renderSettingsWorkspace(body)}
+-    `;
+-  }
+-}
+-
+-if (!customElements.get("openclaw-labs-page")) {
+-  customElements.define("openclaw-labs-page", LabsPage);
+-}
+diff --git a/ui/src/pages/labs/labs-registry.ts b/ui/src/pages/labs/labs-registry.ts
+deleted file mode 100644
+index dcb76e28dc2ea03a124f4c281c23fb387fa6fe0e..0000000000000000000000000000000000000000
+--- a/ui/src/pages/labs/labs-registry.ts
++++ /dev/null
+@@ -1,265 +0,0 @@
+-import { isRecord } from "@openclaw/normalization-core/record-coerce";
+-import { t } from "../../i18n/index.ts";
+-
+-/** What a lab row writes at its gate. Most gates are booleans; some are modes. */
+-type LabFeatureValue = boolean | string;
+-type LabFeatureResetScope = "gate" | "parent";
+-
+-export type LabFeature = {
+-  id: string;
+-  title: () => string;
+-  description: () => string;
+-  docsUrl: string;
+-  /** Leaf whose value decides whether the row reads as on. */
+-  configPath: readonly [string, ...string[]];
+-  /**
+-   * Values written at `configPath`. Required rather than defaulted to `true` and
+-   * `false` so a setting that spells its on/off state as a mode has to say so
+-   * here instead of silently writing a boolean the runtime would ignore.
+-   */
+-  onValue: LabFeatureValue;
+-  offValue: LabFeatureValue;
+-  /**
+-   * Every value that reads as on, which is not always just `onValue`. A mode can
+-   * have settings broader than the one Labs offers, and those must render as
+-   * enabled — otherwise the row shows off, and clicking it narrows a choice the
+-   * operator made deliberately somewhere else.
+-   */
+-  activeValues: readonly LabFeatureValue[];
+-  /**
+-   * Replaces the leaf read when the runtime decides enablement from more than
+-   * one key. Receives the value at the gate's parent, which may be the boolean
+-   * shorthand. Must mirror the runtime resolver it cites, or the row will
+-   * misreport a config the runtime considers on.
+-   */
+-  readEnabled: ((raw: unknown) => boolean) | null;
+-  /**
+-   * Extra keys written beside the gate when enabling, relative to the gate's
+-   * parent. Labs pins the variant we actually recommend rather than inheriting
+-   * whatever a bare enable defaults to.
+-   */
+-  enableAlso: Readonly<Record<string, LabFeatureValue>> | null;
+-  /**
+-   * Ownership boundary for default provenance and reset. Most rows own only
+-   * their gate; features whose runtime default depends on any parent config
+-   * own and reset that parent as a unit.
+-   */
+-  resetScope: LabFeatureResetScope;
+-  restartHint: (() => string) | null;
+-};
+-
+-type LabFeatureState = {
+-  enabled: boolean;
+-  defaultEnabled: boolean;
+-  overridden: boolean;
+-};
+-
+-function readConfiguredFeatureEnabled(
+-  raw: unknown,
+-  activeValues: readonly LabFeatureValue[],
+-): boolean {
+-  if (typeof raw === "boolean" || typeof raw === "string") {
+-    return activeValues.includes(raw);
+-  }
+-  if (!isRecord(raw)) {
+-    return false;
+-  }
+-  const enabled = raw.enabled;
+-  return typeof enabled === "boolean" || typeof enabled === "string"
+-    ? activeValues.includes(enabled)
+-    : Object.keys(raw).some((key) => key !== "enabled");
+-}
+-
+-export const LAB_FEATURES = [
+-  {
+-    id: "codeMode",
+-    title: () => t("labsPage.codeMode.title"),
+-    description: () => t("labsPage.codeMode.description"),
+-    docsUrl: "https://docs.openclaw.ai/tools/code-mode",
+-    configPath: ["tools", "codeMode", "enabled"],
+-    // The on position writes the "auto" tier, never `true`: Labs offers
+-    // Auto/Off, and force-on for unevaluated models stays a config-only choice.
+-    onValue: "auto",
+-    offValue: false,
+-    activeValues: [true, "auto"],
+-    readEnabled: null,
+-    enableAlso: null,
+-    resetScope: "gate",
+-    restartHint: null,
+-  },
+-  {
+-    id: "toolSearch",
+-    title: () => t("labsPage.toolSearch.title"),
+-    description: () => t("labsPage.toolSearch.description"),
+-    docsUrl: "https://docs.openclaw.ai/tools/tool-search",
+-    configPath: ["tools", "toolSearch", "enabled"],
+-    onValue: true,
+-    offValue: false,
+-    activeValues: [true],
+-    // Mirrors resolveToolSearchConfig: the boolean shorthand decides directly,
+-    // and an object configuring anything besides `enabled` is already on.
+-    // Reading only the `enabled` leaf would show `{ mode: "tools" }` as off and
+-    // let a click replace that operator's mode with ours.
+-    readEnabled: (raw) => readConfiguredFeatureEnabled(raw, [true]),
+-    // resolveToolSearchConfig defaults an unset mode to "code" even in object
+-    // form, which is the surface with the weakest recall. Pin the bounded
+-    // directory instead, so enabling from Labs is the variant we recommend.
+-    enableAlso: { mode: "directory" },
+-    resetScope: "parent",
+-    restartHint: null,
+-  },
+-  {
+-    id: "customPluginUi",
+-    title: () => t("labsPage.customPluginUi.title"),
+-    description: () => t("labsPage.customPluginUi.description"),
+-    docsUrl: "https://docs.openclaw.ai/plugins/feature-plugins",
+-    configPath: ["gateway", "controlUi", "experimental", "customPlugins"],
+-    onValue: true,
+-    offValue: false,
+-    activeValues: [true],
+-    readEnabled: null,
+-    enableAlso: null,
+-    resetScope: "gate",
+-    restartHint: () => t("labsPage.customPluginUi.restartRequired"),
+-  },
+-  {
+-    id: "hostDesktop",
+-    title: () => t("labsPage.hostDesktop.title"),
+-    description: () => t("labsPage.hostDesktop.description"),
+-    docsUrl: "https://docs.openclaw.ai/gateway/configuration-reference#desktop",
+-    configPath: ["desktop", "host", "enabled"],
+-    onValue: true,
+-    offValue: false,
+-    activeValues: [true],
+-    readEnabled: null,
+-    enableAlso: null,
+-    resetScope: "gate",
+-    // Method advertisement is resolved at Gateway startup, so the panel appears after restart.
+-    restartHint: () => t("labsPage.restartRequired"),
+-  },
+-  {
+-    id: "workerDesktop",
+-    title: () => t("labsPage.workerDesktop.title"),
+-    description: () => t("labsPage.workerDesktop.description"),
+-    docsUrl: "https://docs.openclaw.ai/gateway/cloud-workers#desktop-interactive",
+-    configPath: ["cloudWorkers", "desktop"],
+-    onValue: true,
+-    offValue: false,
+-    activeValues: [true],
+-    readEnabled: null,
+-    enableAlso: null,
+-    resetScope: "gate",
+-    // Method advertisement is resolved at Gateway startup, so the panel appears after restart.
+-    restartHint: () => t("labsPage.restartRequired"),
+-  },
+-] as const satisfies readonly LabFeature[];
+-
+-function recordAtPath(config: Record<string, unknown>, path: readonly string[]): unknown {
+-  let current: unknown = config;
+-  for (const segment of path) {
+-    if (!isRecord(current)) {
+-      return undefined;
+-    }
+-    current = current[segment];
+-  }
+-  return current;
+-}
+-
+-function readEnabledFromParent(feature: LabFeature, parent: unknown): boolean {
+-  const key = feature.configPath.at(-1);
+-  if (feature.readEnabled) {
+-    return feature.readEnabled(parent);
+-  }
+-  // Feature gates can accept a boolean or mode shorthand as well as the object
+-  // form. A registry path ending in `enabled` must reflect every active shape.
+-  if (key === "enabled" && (typeof parent === "boolean" || typeof parent === "string")) {
+-    return feature.activeValues.includes(parent);
+-  }
+-  if (!isRecord(parent) || !key) {
+-    return false;
+-  }
+-  return feature.activeValues.includes(parent[key] as LabFeatureValue);
+-}
+-
+-function labFeatureOverridePath(
+-  config: Record<string, unknown>,
+-  feature: LabFeature,
+-): readonly string[] | null {
+-  const parentPath = feature.configPath.slice(0, -1);
+-  const key = feature.configPath.at(-1);
+-  const parent = recordAtPath(config, parentPath);
+-  if (!key) {
+-    return null;
+-  }
+-  if (feature.resetScope === "parent") {
+-    return parent === undefined ? null : parentPath;
+-  }
+-  // Boolean/string shorthands own the parent node rather than an `enabled`
+-  // child. Resetting the child would replace the shorthand with an empty object.
+-  if (
+-    key === "enabled" &&
+-    parent !== undefined &&
+-    (typeof parent !== "object" || parent === null)
+-  ) {
+-    return parentPath;
+-  }
+-  if (isRecord(parent) && Object.hasOwn(parent, key)) {
+-    return feature.configPath;
+-  }
+-  return null;
+-}
+-
+-export function resolveLabFeatureState(
+-  config: Record<string, unknown> | null,
+-  feature: LabFeature,
+-): LabFeatureState {
+-  const source = config ?? {};
+-  const parentPath = feature.configPath.slice(0, -1);
+-  const key = feature.configPath.at(-1);
+-  const parent = recordAtPath(source, parentPath);
+-  const overridePath = labFeatureOverridePath(source, feature);
+-  let defaultParent = parent;
+-  if (overridePath?.length === parentPath.length) {
+-    defaultParent = undefined;
+-  } else if (overridePath && key && isRecord(parent)) {
+-    defaultParent = { ...(parent as Record<string, unknown>) };
+-    delete (defaultParent as Record<string, unknown>)[key];
+-  }
+-  return {
+-    enabled: readEnabledFromParent(feature, parent),
+-    defaultEnabled: readEnabledFromParent(feature, defaultParent),
+-    overridden: overridePath !== null,
+-  };
+-}
+-
+-export function labFeatureMergePatch(
+-  feature: LabFeature,
+-  enabled: boolean,
+-): Record<string, unknown> {
+-  const key = feature.configPath.at(-1) as string;
+-  // Companion keys ride in the same patch as the gate so one save cannot leave
+-  // the feature on in a variant Labs never offered.
+-  let patch: unknown = {
+-    [key]: enabled ? feature.onValue : feature.offValue,
+-    ...(enabled ? feature.enableAlso : null),
+-  };
+-  for (const segment of feature.configPath.slice(0, -1).toReversed()) {
+-    patch = { [segment]: patch };
+-  }
+-  return patch as Record<string, unknown>;
+-}
+-
+-export function labFeatureResetPatch(
+-  config: Record<string, unknown> | null,
+-  feature: LabFeature,
+-): Record<string, unknown> | null {
+-  const path = labFeatureOverridePath(config ?? {}, feature);
+-  if (!path?.length) {
+-    return null;
+-  }
+-  let patch: unknown = null;
+-  for (const segment of path.toReversed()) {
+-    patch = { [segment]: patch };
+-  }
+-  return patch as Record<string, unknown>;
+-}
+diff --git a/ui/src/pages/labs/route.ts b/ui/src/pages/labs/route.ts
+deleted file mode 100644
+index 29afc8bb464330d108b0cff9569a2abdaa5eb217..0000000000000000000000000000000000000000
+--- a/ui/src/pages/labs/route.ts
++++ /dev/null
+@@ -1,14 +0,0 @@
+-import { definePage } from "@openclaw/uirouter";
+-import { html } from "lit";
+-import { routePageSpec } from "../../app-route-paths.ts";
+-import type { ApplicationContext } from "../../app/context.ts";
+-
+-export const page = definePage({
+-  ...routePageSpec("labs"),
+-  loader: (context: ApplicationContext) => context.runtimeConfig.ensureLoaded(),
+-  component: () =>
+-    import("./labs-page.ts").then(() => ({
+-      header: true,
+-      render: () => html`<openclaw-labs-page></openclaw-labs-page>`,
+-    })),
+-});
+diff --git a/ui/src/pages/new-session/model-control.test.ts b/ui/src/pages/new-session/model-control.test.ts
+index 7bcd9225b8710677f3453429957c8330395a0ed3..48deed348cb2d85e5b72f8cf92517ef8c733f924 100644
+--- a/ui/src/pages/new-session/model-control.test.ts
++++ b/ui/src/pages/new-session/model-control.test.ts
+@@ -70,7 +70,7 @@ describe("new-session model runtime", () => {
+     expect(request.mock.calls.some(([method]) => method === "sessions.patch")).toBe(false);
+   });
+ 
+-  it("keeps CLI agents hidden and undiscovered while the Labs gate is off", async () => {
++  it("keeps CLI agents hidden and undiscovered while CLI agents are disabled", async () => {
+     const { context, request } = contextWith([
+       { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
+     ]);
+diff --git a/ui/src/pages/plugin/plugin-page.test.ts b/ui/src/pages/plugin/plugin-page.test.ts
+index 53e28b90ee2f7d161940f0b85fe7200812960ee1..b267e2b0f00c197ee035de4c3ec916f494f2cf42 100644
+--- a/ui/src/pages/plugin/plugin-page.test.ts
++++ b/ui/src/pages/plugin/plugin-page.test.ts
+@@ -157,7 +157,7 @@ describe("PluginPage", () => {
+     vi.unstubAllGlobals();
+   });
+ 
+-  it("offers Labs after a custom plugin is blocked, without mistaking a failure for disablement", async () => {
++  it("offers Plugins after a custom plugin is blocked, without mistaking a failure for disablement", async () => {
+     const pluginId = "custom-review";
+     let loading = true;
+     const listeners = new Set<() => void>();
+@@ -190,7 +190,7 @@ describe("PluginPage", () => {
+     try {
+       await page.updateComplete;
+       expect(page.querySelector('[aria-label="Loading…"]')).not.toBeNull();
+-      expect(page.textContent).not.toContain("Open Labs");
++      expect(page.textContent).not.toContain("Open Plugins");
+ 
+       loading = false;
+       listeners.forEach((listener) => listener());
+@@ -198,17 +198,21 @@ describe("PluginPage", () => {
+       expect(page.textContent).toContain("Custom plugin UI is off");
+       expect(page.textContent).toContain("restart the Gateway and reload this browser tab");
+       expect(page.params).toEqual({ document: "saved-draft" });
+-      const link = page.querySelector<HTMLAnchorElement>('a[href="/console/settings/labs"]');
+-      expect(link?.textContent?.trim()).toBe("Open Labs");
++      const link = page.querySelector<HTMLAnchorElement>(
++        'a[href="/console/settings/plugins?tab=advanced"]',
++      );
++      expect(link?.textContent?.trim()).toBe("Open Plugins");
+       link?.click();
+-      expect(navigate).toHaveBeenCalledExactlyOnceWith("labs");
++      expect(navigate).toHaveBeenCalledExactlyOnceWith("plugin-settings", {
++        search: "?tab=advanced",
++      });
+ 
+       plugins.errors = [{ pluginId, message: "Custom plugin UI is off" }];
+       listeners.forEach((listener) => listener());
+       await page.updateComplete;
+       expect(page.textContent).toContain("Plugin panel unavailable");
+       expect(page.textContent).toContain("Custom plugin UI is off");
+-      expect(page.textContent).not.toContain("Open Labs");
++      expect(page.textContent).not.toContain("Open Plugins");
+     } finally {
+       provider.remove();
+     }
+diff --git a/ui/src/pages/plugins/plugins-page.test-support.ts b/ui/src/pages/plugins/plugins-page.test-support.ts
+index db6c0bfb8b2af55518dec0e6c2ad3276b349f209..118b54025b219591ef783e751a21dc434a8d8698 100644
+--- a/ui/src/pages/plugins/plugins-page.test-support.ts
++++ b/ui/src/pages/plugins/plugins-page.test-support.ts
+@@ -1,6 +1,7 @@
+ import type { RouteLocation } from "@openclaw/uirouter";
+ import { vi } from "vitest";
+ import type { GatewayBrowserClient } from "../../api/gateway.ts";
++import { createApplicationConfigCapability } from "../../app/config.ts";
+ import type {
+   ApplicationContext,
+   ApplicationGateway,
+@@ -374,8 +375,10 @@ export function createContext(
+     () => gateway.snapshot.client,
+   ),
+ ): ApplicationContext {
++  const config = createApplicationConfigCapability({ resourceBasePath: "" });
+   return {
+     gateway,
++    config: { ...config, current: { ...config.current, marketplaceEnabled: true } },
+     basePath: "",
+     resourceBasePath: "",
+     runtimeConfig: harness.runtimeConfig,
+diff --git a/ui/src/pages/plugins/plugins-page.test.ts b/ui/src/pages/plugins/plugins-page.test.ts
+index e3106104e063d3628de84985162590cd998c8bdb..54258c94a4cafd9553ca6c93e64ba0480c08a1e4 100644
+--- a/ui/src/pages/plugins/plugins-page.test.ts
++++ b/ui/src/pages/plugins/plugins-page.test.ts
+@@ -68,7 +68,7 @@ describe("PluginsPage", () => {
+   );
+ 
+   it.each(["missing", "older generation"])(
+-    "waits for the initial installed inventory before browsing discovery (%s)",
++    "refreshes the installed inventory and catalog when route inventory is %s",
+     async (routeInventory) => {
+       const current = { ...createResult(), generation: 7 };
+       const inventory = deferred<typeof current>();
+@@ -102,19 +102,93 @@ describe("PluginsPage", () => {
+         ),
+       );
+       try {
+-        expect(request.mock.calls.map(([method]) => method)).toEqual(["plugins.list"]);
++        expect(request.mock.calls.map(([method]) => method)).toEqual([
++          "plugins.catalog.browse",
++          "plugins.list",
++        ]);
+       } finally {
+         inventory.resolve(current);
+       }
+       await waitForFast(() => expect(page.result).toBe(current));
+       await page.updateComplete;
+       expect(request.mock.calls.map(([method]) => method)).toEqual([
++        "plugins.catalog.browse",
+         "plugins.list",
+         "plugins.catalog.browse",
+       ]);
+     },
+   );
+ 
++  it("saves custom plugin UI from plugin settings without changing other configuration", async () => {
++    const config = {
++      gateway: { controlUi: { experimental: { customPlugins: false }, basePath: "/console" } },
++      plugins: { allow: ["workboard"] },
++    };
++    const { client, request } = createClient(async (method) => {
++      if (method === "config.get") {
++        return {
++          config,
++          sourceConfig: config,
++          raw: JSON.stringify(config),
++          hash: "hash-1",
++          valid: true,
++          issues: [],
++        };
++      }
++      if (method === "config.set") {
++        return { ok: true, hash: "hash-2" };
++      }
++      if (method === "plugins.list") {
++        return createResult();
++      }
++      throw new Error(`Unexpected method ${method}`);
++    });
++    const harness = createGateway(client);
++    const runtimeConfig = createRuntimeConfigCapability(harness.gateway);
++    await runtimeConfig.ensureLoaded();
++    runtimeConfig.state.configSchema = {
++      type: "object",
++      properties: { plugins: { type: "object", properties: {} } },
++    };
++    const { page } = await mountPage(
++      { ...createContext(harness.gateway), runtimeConfig },
++      createPluginsRouteData(
++        harness.gateway,
++        createResult(),
++        createPluginsRouteLocation("/settings/plugins?tab=advanced"),
++      ),
++      "settings",
++    );
++    try {
++      const row = [...page.querySelectorAll<HTMLElement>(".settings-row")].find(
++        (entry) => entry.querySelector(".settings-row__title")?.textContent === "Custom plugin UI",
++      );
++      expect(row).toBeDefined();
++      row?.click();
++      await runtimeConfig.flushFormChanges();
++      const write = request.mock.calls.find(([method]) => method === "config.set");
++      expect(write).toBeDefined();
++      expect(write?.[1]).toMatchObject({ baseHash: "hash-1" });
++      const params = write?.[1];
++      if (
++        typeof params !== "object" ||
++        params === null ||
++        !("raw" in params) ||
++        typeof params.raw !== "string"
++      ) {
++        throw new Error("Missing configuration write");
++      }
++      expect(JSON.parse(params.raw)).toEqual({
++        ...config,
++        gateway: {
++          controlUi: { ...config.gateway.controlUi, experimental: { customPlugins: true } },
++        },
++      });
++    } finally {
++      runtimeConfig.dispose();
++    }
++  });
++
+   it("surfaces a route catalog load failure without retrying it", async () => {
+     const { client, request } = createClient(async () => createResult());
+     const harness = createGateway(client);
+@@ -147,7 +221,7 @@ describe("PluginsPage", () => {
+       expect(page.querySelector('[role="alert"]')?.textContent).toContain("catalog unavailable"),
+     );
+     expect(page.textContent?.match(/catalog unavailable/gu)).toHaveLength(1);
+-    expect(request.mock.calls[0]?.slice(0, 2)).toEqual(["plugins.list", {}]);
++    expect(request).toHaveBeenCalledWith("plugins.list", {}, expect.anything());
+   });
+ 
+   it("refreshes the authoritative catalog after a same-client reconnect", async () => {
+diff --git a/ui/src/pages/plugins/settings-view.ts b/ui/src/pages/plugins/settings-view.ts
+index 2c59f1b3079eb2633985b81dfb459e1b7e50a88f..0a7d2e757c3929bc41d63b74205d4beca1c3abb3 100644
+--- a/ui/src/pages/plugins/settings-view.ts
++++ b/ui/src/pages/plugins/settings-view.ts
+@@ -1,3 +1,4 @@
++import { asNullableRecord } from "@openclaw/normalization-core/record-coerce";
+ import { html, nothing, type TemplateResult } from "lit";
+ import { repeat } from "lit/directives/repeat.js";
+ import { renderNode } from "../../components/config-form.ts";
+@@ -11,6 +12,7 @@ import {
+   renderSettingsRow,
+   renderSettingsSection,
+   renderSettingsStatus,
++  renderSettingsToggleRow,
+ } from "../../components/settings-ui.ts";
+ import { t } from "../../i18n/index.ts";
+ import type { JsonSchema } from "../../lib/config-form-utils.ts";
+@@ -217,7 +219,17 @@ function renderAdvanced(props: InventoryProps): TemplateResult {
+         ? renderSettingsLoadingSkeleton({ rows: 4, carapace: true })
+         : renderSettingsEmpty(t("pluginsPage.schemaUnavailable"), { carapace: true });
+   }
++  const controlUi = asNullableRecord(asNullableRecord(props.configValue.gateway)?.controlUi);
++  const customPluginUi = asNullableRecord(controlUi?.experimental)?.customPlugins === true;
+   return html`
++    ${renderSettingsToggleRow({
++      title: t("pluginsPage.customPluginUi"),
++      description: t("pluginsPage.customPluginUiDescription"),
++      checked: customPluginUi,
++      disabled: !props.canEditConfig || props.configBusy,
++      onChange: (enabled) =>
++        props.onConfigPatch(["gateway", "controlUi", "experimental", "customPlugins"], enabled),
++    })}
+     ${renderNode({
+       rawAvailable: false,
+       maskSensitive: true,
+diff --git a/ui/src/plugins/control-ui-contributions.test.ts b/ui/src/plugins/control-ui-contributions.test.ts
+index f2d804040f6676f33d13b272e3e63b3b33b51282..6069efe201f1d0966588cb037a8f15376bdf04ad 100644
+--- a/ui/src/plugins/control-ui-contributions.test.ts
++++ b/ui/src/plugins/control-ui-contributions.test.ts
+@@ -42,7 +42,7 @@ it("opens customization once and retains reload state across close and reopen",
+   const diagnostics: PluginControlUiDiagnostic[] = [
+     {
+       pluginId: "custom-review",
+-      message: "Disabled by Labs",
++      message: "Custom plugin UI disabled",
+       code: "custom-plugin-ui-disabled",
+     },
+   ];
+@@ -95,10 +95,14 @@ it("opens customization once and retains reload state across close and reopen",
+     await vi.waitFor(() => expect(manager.querySelector("select")).not.toBeNull());
+     expect(mostDialogs).toBe(1);
+     expect(manager.querySelector('[role="alert"]')).toBeNull();
+-    const labs = manager.querySelector<HTMLAnchorElement>('a[href="/console/settings/labs"]');
+-    expect(labs?.textContent?.trim()).toBe("Open Labs");
+-    labs?.click();
+-    expect(navigate).toHaveBeenCalledExactlyOnceWith("labs");
++    const pluginsLink = manager.querySelector<HTMLAnchorElement>(
++      'a[href="/console/settings/plugins?tab=advanced"]',
++    );
++    expect(pluginsLink?.textContent?.trim()).toBe("Open Plugins");
++    pluginsLink?.click();
++    expect(navigate).toHaveBeenCalledExactlyOnceWith("plugin-settings", {
++      search: "?tab=advanced",
++    });
+     await vi.waitFor(() => expect(manager.querySelector("openclaw-modal-dialog")).toBeNull());
+     button(t("pluginUi.customize")).click();
+     await vi.waitFor(() => expect(manager.querySelector("select")).not.toBeNull());
+diff --git a/ui/src/plugins/control-ui-disabled.ts b/ui/src/plugins/control-ui-disabled.ts
+index d2185dbfa45986939afc01b61833d81b49119db0..73bc57b9350999bce1ce074083ed1c2162233296 100644
+--- a/ui/src/plugins/control-ui-disabled.ts
++++ b/ui/src/plugins/control-ui-disabled.ts
+@@ -4,7 +4,10 @@ import type { ApplicationContext } from "../app/context.ts";
+ import { t } from "../i18n/index.ts";
+ import { shouldHandleNavigationClick } from "../lib/navigation-click.ts";
+ 
+-type CustomPluginUiDisabledContext = Pick<ApplicationContext<"labs">, "basePath" | "navigate"> & {
++type CustomPluginUiDisabledContext = Pick<
++  ApplicationContext<"plugin-settings">,
++  "basePath" | "navigate"
++> & {
+   readonly plugins: Pick<ApplicationContext["plugins"], "errors">;
+ };
+ 
+@@ -25,14 +28,14 @@ export function renderCustomPluginUiDisabled(
+     <p class="card-sub">${t("pluginUi.customPluginsEnableHint")}</p>
+     <a
+       class="btn btn--sm"
+-      href=${pathForRoute("labs", context.basePath)}
++      href=${`${pathForRoute("plugin-settings", context.basePath)}?tab=advanced`}
+       @click=${(event: MouseEvent) => {
+         if (shouldHandleNavigationClick(event)) {
+           event.preventDefault();
+           onNavigate?.();
+-          context.navigate("labs");
++          context.navigate("plugin-settings", { search: "?tab=advanced" });
+         }
+       }}
+-      >${t("pluginUi.openLabs")}</a
++      >${t("pluginUi.openPlugins")}</a
+     >`;
+ }

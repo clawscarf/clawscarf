@@ -3,6 +3,7 @@ set -eu
 export HOME="/home/node"
 export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/home/node/.openclaw}"
 export SQLITE_TMPDIR="/tmp"
+export OPENCLAW_NO_SELF_UPDATE=1
 # OpenShell owns target resolution and destination enforcement. Native web tools
 # must use its proxy rather than attempting local DNS inside the sandbox.
 if [ -n "${HTTPS_PROXY:-}" ]; then

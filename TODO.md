@@ -21,13 +21,9 @@ administrator-added plugins, skills and MCP.
 - [ ] Remove native GitHub account linking, account/session/tool APIs, authenticated
       previews, credential injection and profile/OAuth background work. Keep ordinary
       links and deliberate Git CLI use.
-- [ ] Remove Labs; retain Account, People, Connections and administrator-added plugin
-      UI, with any required UI enablement control in Plugins.
 - [ ] Rename `ClawScarf People` to `People` in the manifest and registration.
 - [ ] Remove personal-device setup, Talk and direct-provider account setup/settings.
       Keep managed models, selected channel setup and browser-node pairing.
-- [ ] Remove server Updates and upstream server self-update operations; keep updates
-      for administrator-installed extensions.
 - [ ] Remove remaining marketplace paths, including Codex's `codex_plugins` and
       ClawHub promotion/setup/publishing instructions. Keep explicit-source installs
       and required attribution.

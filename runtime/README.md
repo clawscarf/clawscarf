@@ -39,6 +39,14 @@ its plugin. Native administrators can deliberately change application settings.
 The preset sets `gateway.cliAgents.enabled: false` to disable catalog-backed CLI
 agents while retaining the native Codex agent plugin.
 
+The preset disables background checks with `update.checkOnStart: false` and
+automatic updates with `update.auto.enabled: false`. The runtime launcher sets
+`OPENCLAW_NO_SELF_UPDATE=1`; ClawScarf releases supply the bundled OpenClaw.
+The [update patch](openclaw/patches/disable-server-updates.prompt.md) owns the
+manual-update restriction and UI removal; administrator-installed extension updates
+remain available. The [Labs patch](openclaw/patches/remove-labs.prompt.md) removes
+the experiments page while preserving custom plugin UI.
+
 Members use `gateway.roles.definitions.member.sessions.others: "view"`: they can
 read other people's ordinary sessions, while explicit native session membership
 permits participation. Their own sessions remain writable; native draft and

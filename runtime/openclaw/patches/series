@@ -4,3 +4,5 @@ membership-hot-reload.patch
 remove-systems-page.patch
 curated-image-inventory.patch
 plugin-navigation-selection.patch
+remove-labs.patch
+disable-server-updates.patch

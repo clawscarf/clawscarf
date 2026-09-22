@@ -56,6 +56,7 @@ export function initialConfiguration(
   const identity = settings.administratorIdentity;
   return {
     marketplace: { enabled: false },
+    update: { checkOnStart: false, auto: { enabled: false } },
     gateway: {
       publicOrigin: settings.publicOrigin,
       mode: "local",

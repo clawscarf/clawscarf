@@ -41,7 +41,8 @@ has plugin, core RPC and HTTP entry points; it is distinct from teammate enrollm
 bootstrap-token and pairing operations. Messaging channels are alternative inbound
 conversation paths with their own identity/admission rules, not merely Connections.
 
-Feature patches keep one native availability decision shared with the UI. Cover
+Optional feature controls keep one native availability decision shared with the UI;
+distribution removal patches delete the selected surface. Cover
 direct routes, search/palette/contextual links, prompts, RPC/HTTP, CLI/tools,
 background work and outbound calls. Disabled operations reject before effects;
 document restart requirements. Preserve shared administration APIs, native
@@ -122,7 +123,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 
