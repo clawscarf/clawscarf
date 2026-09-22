@@ -13,6 +13,12 @@ or host port publication. Two maintained proxies provide separate paths:
   loopback, link-local, metadata, multicast and reserved ranges. TLS is end-to-end;
   Squid does not decrypt it. Access logging and cache storage are disabled.
 
+[public-addresses.json](public-addresses.json) is the shared address definition.
+The image builds Squid's family and exclusion ACLs from it; the
+[runtime policy](../../../scripts/deployment/public-addresses.ts) subtracts the
+same exclusions to produce OpenShell's allowed ranges. Squid keeps both ACLs so
+a hostname resolving to a mixture of public and private addresses is denied.
+
 This is public-web containment, not a domain allowlist or a content filter.
 Public sites can receive uploaded team data. Administrators who control Docker
 or these root-owned network settings can change the boundary. Native plugins

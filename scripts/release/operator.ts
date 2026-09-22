@@ -35,6 +35,7 @@ const assets = [
   "deploy/openshell/policy.yaml",
   "deploy/execution/browser/seccomp.json",
   "deploy/execution/network/node-ingress.cfg",
+  "deploy/execution/network/public-addresses.json",
   "deploy/execution/browser/LICENSE.playwright",
 ];
 

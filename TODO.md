@@ -10,8 +10,6 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
       public-web toggle directions without inferring ownership from address-list equality.
 - [ ] Validate public-web compatibility with configured private HTTPS model/Connections
       endpoints before reporting readiness; make the supported combinations explicit.
-- [ ] Derive runtime and browser public-address restrictions from one maintained
-      definition and check their equivalence.
 - [ ] Check release freshness and npm channel progression before publication; retain
       the final runtime-pin guard and cover out-of-order candidates.
 - [ ] Qualify clean-machine installation on supported hosts, hosted login and real
