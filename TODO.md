@@ -5,9 +5,6 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Installer and releases
 
-- [ ] Consolidate initial and retained network-policy composition; preserve unselected
-      rules and operator address restrictions. Cover native endpoint shapes and both
-      public-web toggle directions without inferring ownership from address-list equality.
 - [ ] Validate public-web compatibility with configured private HTTPS model/Connections
       endpoints before reporting readiness; make the supported combinations explicit.
 - [ ] Qualify clean-machine installation on supported hosts, hosted login and real

@@ -145,6 +145,7 @@ export async function prepareLocal(
   const models = await prepareInitialModels(directory, input.models);
   await prepareRuntimePolicy(
     directory,
+    state.ownerId,
     models,
     connectionsEndpoint,
     state.input.publicWeb,

@@ -6,12 +6,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initialRuntimePolicy } from "../../scripts/deployment/policy.js";
 import {
-  composePublicWebRules,
+  composeNetworkRules,
   publicWebAddresses,
   publicWebPolicy,
 } from "../../scripts/deployment/public-web.js";
 import {
   stageNetworkPolicyChange,
+  planNetworkPolicyChange,
   applyNetworkPolicy,
 } from "../../scripts/deployment/network-policy.js";
 import {
@@ -87,80 +88,126 @@ await test("public-web selection only adds its own runtime policy", () => {
   assert.deepEqual(enabled.network_policies.public_web, publicWebPolicy(true));
 });
 
-await test("public web composes with HTTPS services and restores strict service rules", () => {
-  const connections = {
-    brokerUrl: "https://cloud.clawscarf.com",
-    network: {
-      host: "cloud.clawscarf.com",
-      port: 443,
-      protocol: "tcp" as const,
-      binary: "/usr/local/bin/node",
-    },
-  };
-  const strict = initialRuntimePolicy(
-    "network_policies: {}",
-    undefined,
-    connections,
-  ).network_policies;
-  const combined = initialRuntimePolicy(
-    "network_policies: {}",
-    undefined,
-    connections,
-    true,
-  ).network_policies;
-  assert.deepEqual(
-    combined.connections_broker?.endpoints[0]?.allowed_ips,
-    publicWebAddresses,
-  );
-  assert.deepEqual(
-    composePublicWebRules({ ...strict, public_web: publicWebPolicy(true) }),
-    combined,
-  );
-  const { public_web: publicRule, ...services } = combined;
-  assert.deepEqual(publicRule, publicWebPolicy(true));
-  assert.deepEqual(composePublicWebRules(services), strict);
+await test("web toggles restore only recorded changes and preserve operator IP restrictions", () => {
   const model = {
-    name: "Model gateway",
-    endpoints: [{ host: "models.example", port: 443, tls: "skip" }],
+    name: "Models",
+    endpoints: [{ host: "models.example", ports: [443, 4000], tls: "skip" }],
     binaries: [{ path: "/usr/local/bin/node" }],
   };
-  const privateModel = {
-    ...model,
-    endpoints: [{ host: "models.internal", port: 4000, tls: "skip" }],
-  };
-  const operator = {
-    name: "Operator policy",
-    endpoints: [{ host: "private.internal", port: 8443 }],
-  };
-  const rules = composePublicWebRules({
-    ...combined,
-    model_gateway: model,
-    operator,
-  });
-  assert.deepEqual(rules.model_gateway, {
-    ...model,
-    endpoints: [{ ...model.endpoints[0], allowed_ips: publicWebAddresses }],
-  });
-  assert.deepEqual(rules.operator, operator);
+  const strict = { model_gateway: model };
+  const enabled = composeNetworkRules(
+    strict,
+    { public_web: publicWebPolicy(true) },
+    {},
+  );
   assert.deepEqual(
-    composePublicWebRules({ ...combined, model_gateway: privateModel })
-      .model_gateway,
-    privateModel,
+    composeNetworkRules(
+      enabled.rules,
+      { public_web: null },
+      enabled.adjustments,
+    ),
+    { rules: strict, adjustments: {} },
+  );
+  assert.deepEqual(enabled.rules.model_gateway, {
+    ...model,
+    endpoints: [
+      { host: "models.example", ports: [4000], tls: "skip" },
+      {
+        host: "models.example",
+        ports: [443],
+        tls: "skip",
+        allowed_ips: publicWebAddresses,
+      },
+    ],
+  });
+  // Matching our public ranges is still an operator restriction if we never installed it.
+  const restricted = {
+    ...model,
+    endpoints: [
+      {
+        host: "models.example",
+        port: 443,
+        tls: "skip",
+        allowed_ips: publicWebAddresses,
+      },
+    ],
+  };
+  assert.deepEqual(
+    composeNetworkRules({ model_gateway: restricted }, { public_web: null }, {})
+      .rules.model_gateway,
+    restricted,
+  );
+  const edited = {
+    ...restricted,
+    endpoints: [{ ...restricted.endpoints[0], allowed_ips: ["1.1.1.1/32"] }],
+  };
+  assert.deepEqual(
+    composeNetworkRules(
+      { ...enabled.rules, model_gateway: edited },
+      { public_web: null },
+      enabled.adjustments,
+    ).rules.model_gateway,
+    edited,
   );
   assert.throws(
     () =>
-      composePublicWebRules({
-        ...combined,
-        model_gateway: {
-          ...model,
-          endpoints: [{ ...model.endpoints[0], allowed_ips: ["1.1.1.1/32"] }],
-        },
-      }),
-    /custom IP restrictions/u,
+      composeNetworkRules(
+        { model_gateway: edited },
+        { public_web: publicWebPolicy(true) },
+        {},
+      ),
+    /conflicts/,
   );
 });
 
-await test("pending network edits retain independently selected changes and bind ownership", async () => {
+await test("Connections changes leave unrelated native endpoint shapes and model restrictions untouched", () => {
+  const model = {
+    endpoints: [
+      {
+        host: "models.example",
+        ports: [4000],
+        allowed_ips: publicWebAddresses,
+      },
+    ],
+  };
+  const connection = {
+    endpoints: [
+      {
+        host: "broker.example",
+        port: 443,
+        tls: "skip",
+        allowed_ips: ["10.0.0.1/32"],
+      },
+    ],
+  };
+  const replacement = {
+    endpoints: [{ host: "broker.example", port: 443, tls: "skip" }],
+  };
+  assert.deepEqual(
+    composeNetworkRules(
+      { model_gateway: model, connections_broker: connection },
+      { connections_broker: replacement },
+      {},
+    ).rules,
+    { model_gateway: model, connections_broker: connection },
+  );
+  const enabled = composeNetworkRules(
+    { model_gateway: model, public_web: publicWebPolicy(true) },
+    { connections_broker: replacement },
+    {},
+  );
+  assert.deepEqual(enabled.rules.model_gateway, model);
+  assert.deepEqual(
+    composeNetworkRules(
+      enabled.rules,
+      { connections_broker: null },
+      enabled.adjustments,
+    ).rules,
+    { model_gateway: model, public_web: publicWebPolicy(true) },
+  );
+});
+
+await test("pending policy edits preserve unrelated rules, reconcile lost responses and verify effective activation", async () => {
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-network-"));
   const input = parseLocalInput({
     name: "network-test",
@@ -196,23 +243,10 @@ await test("pending network edits retain independently selected changes and bind
   };
   try {
     await mkdir(join(directory, "private"));
-    await stageNetworkPolicyChange(directory, state, {
-      connections_broker: null,
-    });
-    await stageNetworkPolicyChange(directory, state, {
-      public_web: publicWebPolicy(true),
-    });
-    await stageNetworkPolicyChange(directory, state, { public_web: null });
-    const pending: unknown = JSON.parse(
-      await readFile(
-        join(directory, "private/network-policy-change.json"),
-        "utf8",
-      ),
+    await writeFile(
+      join(directory, "private/network-policy-adjustments.json"),
+      JSON.stringify({ ownerId: state.ownerId, rules: {} }),
     );
-    assert.deepEqual(pending, {
-      ownerId: state.ownerId,
-      rules: { connections_broker: null, public_web: null },
-    });
     const name = resourceNames(state).sandbox;
     const intent = { ownerId: state.ownerId, name, image: input.runtimeImage };
     await writeFile(
@@ -225,6 +259,7 @@ await test("pending network edits retain independently selected changes and bind
     );
     let activeVersion = 1;
     let hasPublicWeb = true;
+    let edited = false;
     let writes = 0;
     const command = async (_executable: string, args: readonly string[]) => {
       if (args[1] === "set") {
@@ -241,7 +276,7 @@ await test("pending network edits retain independently selected changes and bind
           },
         });
         hasPublicWeb = false;
-        return "";
+        throw Error("lost response");
       }
       assert.equal(args[1], "get");
       return JSON.stringify({
@@ -253,11 +288,47 @@ await test("pending network edits retain independently selected changes and bind
         policy: {
           network_policies: {
             operator_rule: { name: "Keep me" },
-            ...(hasPublicWeb ? { public_web: publicWebPolicy(true) } : {}),
+            ...(hasPublicWeb
+              ? {
+                  public_web: {
+                    ...publicWebPolicy(true),
+                    ...(edited ? { name: "Operator edit" } : {}),
+                  },
+                }
+              : {}),
           },
         },
       });
     };
+    await stageNetworkPolicyChange(
+      directory,
+      await planNetworkPolicyChange(
+        directory,
+        state,
+        { public_web: null },
+        command,
+      ),
+    );
+    await assert.rejects(
+      planNetworkPolicyChange(
+        directory,
+        state,
+        { public_web: publicWebPolicy(true) },
+        command,
+      ),
+      /pending network change/,
+    );
+    edited = true;
+    await assert.rejects(
+      applyNetworkPolicy(directory, state, {}, false, command),
+      /changed after review/,
+    );
+    assert.equal(writes, 0);
+    edited = false;
+    await assert.rejects(
+      applyNetworkPolicy(directory, state, {}, false, command),
+      /lost response/,
+    );
     await applyNetworkPolicy(directory, state, {}, false, command);
     assert.equal(writes, 1);
     await assert.rejects(
@@ -271,9 +342,17 @@ await test("pending network edits retain independently selected changes and bind
       readFile(join(directory, "private/network-policy-change.json")),
       { code: "ENOENT" },
     );
-    await stageNetworkPolicyChange(directory, state, { public_web: null });
+    await stageNetworkPolicyChange(
+      directory,
+      await planNetworkPolicyChange(
+        directory,
+        state,
+        { public_web: null },
+        command,
+      ),
+    );
     await assert.rejects(
-      stageNetworkPolicyChange(
+      planNetworkPolicyChange(
         directory,
         { ...state, ownerId: "wrong-owner" },
         { public_web: null },

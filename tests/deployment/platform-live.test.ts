@@ -5,7 +5,10 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { z } from "zod";
 import pins from "../../release/components.json" with { type: "json" };
-import { stageNetworkPolicyChange } from "../../scripts/deployment/network-policy.js";
+import {
+  stageNetworkPolicyChange,
+  planNetworkPolicyChange,
+} from "../../scripts/deployment/network-policy.js";
 import { prepareLocal } from "../../scripts/deployment/prepare.js";
 import { launchLocal, stopLocal } from "../../scripts/deployment/launch.js";
 import { resourceNames, readState } from "../../scripts/deployment/state.js";
@@ -247,10 +250,13 @@ await test(
           timeout: 180_000,
         },
       );
+      await stageNetworkPolicyChange(
+        stateDirectory,
+        await planNetworkPolicyChange(stateDirectory, state, {
+          public_web: null,
+        }),
+      );
       await stopLocal(stateDirectory);
-      await stageNetworkPolicyChange(stateDirectory, state, {
-        public_web: null,
-      });
       await launchLocal(stateDirectory, console.log);
       assert.match(
         await inside(

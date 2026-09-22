@@ -48,6 +48,16 @@ function changed(): never {
     "The runtime identity or ownership differs from this installation. No further runtime command was sent.",
   );
 }
+export function runtimeEnvironment(directory: string) {
+  const controller = join(directory, "controller");
+  return {
+    ...process.env,
+    XDG_CONFIG_HOME: join(controller, "config"),
+    XDG_STATE_HOME: join(controller, "state"),
+    XDG_DATA_HOME: join(controller, "data"),
+  };
+}
+
 export function runtimeManager(
   directory: string,
   state: LocalState,

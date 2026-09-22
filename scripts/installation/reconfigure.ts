@@ -1,5 +1,12 @@
-import { publicWebPolicy } from "../deployment/public-web.js";
-import { stageNetworkPolicyChange } from "../deployment/network-policy.js";
+import { serviceNetworkRule } from "../deployment/policy.js";
+import {
+  publicWebPolicy,
+  type NetworkChanges,
+} from "../deployment/public-web.js";
+import {
+  stageNetworkPolicyChange,
+  planNetworkPolicyChange,
+} from "../deployment/network-policy.js";
 import { applyConnectionSettings } from "../deployment/connection-settings.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -279,6 +286,21 @@ export async function reconfigureInstallation(
         credential: models.credential,
         apply: false,
       });
+    // Reconcile native policy before any native/service settings are written.
+    const network: NetworkChanges = {};
+    if (scopes.connections)
+      network.connections_broker = serviceNetworkRule(
+        "Connections broker",
+        (await loadInitialConnections(desired.input.connections))?.endpoint
+          .network,
+      );
+    if (scopes.publicWeb)
+      network.public_web = publicWebPolicy(desired.input.publicWeb);
+    let networkChange;
+    if (Object.keys(network).length) {
+      await compose(directory, ["up", "-d", "--wait", "controller"]);
+      networkChange = await planNetworkPolicyChange(directory, state, network);
+    }
     // Startup already requires this exact prepared record. An interrupted mutation must not announce readiness.
     await writePrivate(
       prepared,
@@ -289,8 +311,11 @@ export async function reconfigureInstallation(
         ...(checked.reapply ? { settingsReapply: checked.reapply } : {}),
       }),
     );
-    let stage = "model gateway configuration";
+    let stage = "network policy staging";
     try {
+      if (networkChange)
+        await stageNetworkPolicyChange(directory, networkChange);
+      stage = "model gateway configuration";
       if (scopes.models) {
         await prepareModelGateway(
           directory,
@@ -340,11 +365,6 @@ export async function reconfigureInstallation(
           checked.previousEndpoint,
           desired.connectorCredentialFile,
         );
-      stage = "public web policy";
-      if (scopes.publicWeb)
-        await stageNetworkPolicyChange(directory, state, {
-          public_web: publicWebPolicy(desired.input.publicWeb),
-        });
       stage = "accepted settings";
       if (scopes.models)
         await writePrivate(

@@ -57,13 +57,16 @@ raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
 
 Enabling public web lets team code send data to public services. It does not isolate
 team members or prevent data export. Turning it off removes ClawScarf’s
-`public_web` rule and its IP constraints from managed service rules, restoring
-strict endpoint-based access. Other operator policies are preserved; custom IP
-restrictions on overlapping managed services cause an explicit configuration error
-rather than being overwritten. Retained changes use the
-[network policy updater](../../scripts/deployment/network-policy.ts), which waits
-for the selected policy version to become effective before reopening installation
-access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
+`public_web` rule and undoes only its recorded, unchanged endpoint adjustments.
+The private `network-policy-adjustments.json` record stores those before/after values;
+equality with our address list alone never establishes ownership. Operator edits
+are preserved. Connections-only changes leave model rules untouched. Overlapping
+custom restrictions cause an explicit error before service settings are written.
+Retained changes use the [same composition](../../scripts/deployment/public-web.ts)
+as initial setup. The [updater](../../scripts/deployment/network-policy.ts) records
+the reviewed values of changed rules, preserves unrelated rules, and refuses to
+overwrite a selected rule changed since review. It reconciles a lost update response
+by observing OpenShell and waits for effective activation before reopening access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
 user’s browser; inline previews do not inherit a saved dashboard’s network grants.
 
 The opt-in [public-web regression](../../tests/runtime/public-web.test.ts) creates

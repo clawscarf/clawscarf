@@ -175,6 +175,7 @@ await test("repeated preparation keeps private initial material and rejects chan
   const { directory, input } = await fixture(t);
   await prepareRuntimePolicy(
     directory,
+    "c350086f-1e9e-4d47-aad8-474ef1d138aa",
     await prepareInitialModels(directory, input),
     undefined,
   );
@@ -187,6 +188,7 @@ await test("repeated preparation keeps private initial material and rejects chan
   assert.equal(initialPolicy.includes("test-scoped-runtime-key"), false);
   await prepareRuntimePolicy(
     directory,
+    "c350086f-1e9e-4d47-aad8-474ef1d138aa",
     await prepareInitialModels(directory, input),
     undefined,
   );
