@@ -109,6 +109,9 @@ OpenShell applies filesystem and network policy to the whole OpenClaw runtime,
 including plugins, shell commands and local tools. Recipes bring login, models and
 optional Connections together in one setup; you keep OpenClaw’s native agents,
 conversations, skills and settings.
+ClawScarf disables OpenClaw's built-in GitHub account linking and PR publication;
+ordinary links and deliberate Git/`gh` commands remain available. See the
+[runtime capability guide](runtime/README.md) for the distribution controls.
 
 ## Everyday commands
 

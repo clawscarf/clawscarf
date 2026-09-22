@@ -15,9 +15,6 @@ administrator-added plugins, skills and MCP.
 - [ ] Fix `skill-creator` to invoke installed `python3` and run its packaged validator.
 - [ ] Fix `taskflow` examples to find packaged pipelines from the runtime workspace;
       exercise approval and resume.
-- [ ] Remove native GitHub account linking, account/session/tool APIs, authenticated
-      previews, credential injection and profile/OAuth background work. Keep ordinary
-      links and deliberate Git CLI use.
 - [ ] Rename `ClawScarf People` to `People` in the manifest and registration.
 - [ ] Remove personal-device setup and Talk pages, routes and native setup actions.
       Keep browser-node pairing.

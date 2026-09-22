@@ -61,6 +61,9 @@ The [channel setup patch](patches/curated-channel-setup.prompt.md) keeps native
 setup and the Channels page aligned with locally available channel plugins.
 The [worker removal patch](patches/remove-cloud-workers.prompt.md) removes native
 remote session hosting while preserving browser-node management.
+The later [GitHub patch](patches/disable-native-github.prompt.md) disables native
+account linking, publication, previews and credential/background services through
+the runtime launcher. Ordinary links and deliberate Git/`gh` commands remain available.
 
 [Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
 [packs](../../packs/README.md) supply native files. Several recipes can share an
@@ -127,7 +130,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit browser-shared-artifacts remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit disable-native-github browser-shared-artifacts remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 
