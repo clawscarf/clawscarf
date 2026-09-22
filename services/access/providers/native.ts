@@ -208,43 +208,36 @@ export class OpenClawAuthority implements NativeAuthority {
         },
       );
     }
-    await mutationThenObserve(
-      () =>
-        this.acting(actor, credential, async (gateway) => {
-          const current = await readState(gateway);
-          if (current.revision !== before.revision)
-            throw new NativeFailure("revision_conflict");
-          const grants: Record<string, string[]> = {};
-          for (const profile of current.profiles) {
-            if (
-              !roles.definitions[profile.role ?? ""]?.scopes.includes(
-                "operator.admin",
-              )
-            )
-              continue;
-            for (const identity of profile.emails) {
-              const existing =
-                current.config.gateway.auth.identityScopes[identity];
-              if (existing?.includes("operator.admin"))
-                grants[identity] = [
-                  ...new Set([...existing, ...identityScopes]),
-                ];
-            }
-          }
-          await patch(gateway, current.revision, {
-            gateway: {
-              roles: {
-                default: pendingRole,
-                definitions: { [pendingRole]: pendingPolicy },
-              },
-              auth: { identityScopes: grants },
-            },
-          });
-        }),
-      async () => {
-        requireTeam(await observe());
-      },
-    );
+    // Reading persisted config cannot confirm that its required restart completed.
+    await this.acting(actor, credential, async (gateway) => {
+      const current = await readState(gateway);
+      if (current.revision !== before.revision)
+        throw new NativeFailure("revision_conflict");
+      const grants: Record<string, string[]> = {};
+      for (const profile of current.profiles) {
+        if (
+          !roles.definitions[profile.role ?? ""]?.scopes.includes(
+            "operator.admin",
+          )
+        )
+          continue;
+        for (const identity of profile.emails) {
+          const existing = current.config.gateway.auth.identityScopes[identity];
+          if (existing?.includes("operator.admin"))
+            grants[identity] = [...new Set([...existing, ...identityScopes])];
+        }
+      }
+      await patch(gateway, current.revision, {
+        gateway: {
+          roles: {
+            default: pendingRole,
+            definitions: { [pendingRole]: pendingPolicy },
+          },
+          auth: { identityScopes: grants },
+        },
+      });
+    });
+    requireTeam(await observe());
   }
 
   private async enrichName(

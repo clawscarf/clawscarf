@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
+import { getCACertificates, setDefaultCACertificates } from "node:tls";
+import { GatewayClient } from "@openclaw/gateway-client";
 import { z } from "zod";
 import pins from "../../release/components.json" with { type: "json" };
 import {
@@ -19,6 +22,7 @@ import {
 } from "../../scripts/deployment/images.js";
 import { deleteInstallation } from "../../scripts/installation/delete.js";
 import { checkHost } from "../../scripts/installation/prerequisites.js";
+import { administratorSetup } from "../../scripts/installation/administrator.js";
 import { readConfiguration } from "../../services/access/runtime/config.js";
 import { openAccessStorage } from "../../services/access/runtime/storage.js";
 import { hash, token } from "../../services/access/service/session.js";
@@ -216,13 +220,90 @@ await test(
         databaseUrl: database.href,
         encryptionKeyFile: join(stateDirectory, "private/encryption.key"),
       });
+      const certificates = getCACertificates("default");
+      setDefaultCACertificates([
+        ...certificates,
+        await readFile(
+          join(stateDirectory, "private/management-ca.pem"),
+          "utf8",
+        ),
+      ]);
+      const credential = token();
+      let browser: GatewayClient | undefined;
+      let closing = false;
       try {
-        const credential = token();
         await storage.repository.createSession(
           storage.identity.administrator.id,
           hash(credential),
           token(),
           null,
+        );
+        assert.equal(
+          (await administratorSetup(stateDirectory, false, true)).complete,
+          true,
+        );
+        const connected = Promise.withResolvers<void>();
+        const disconnects: number[] = [];
+        browser = new GatewayClient({
+          url: `wss://localhost:${state.input.ports.management}`,
+          origin: access.origin,
+          edgeAuthHeaders: {
+            Host: new URL(access.origin).host,
+            Cookie: `clawscarf_session=${credential}`,
+          },
+          clientName: "gateway-client",
+          mode: "backend",
+          scopes: ["operator.admin"],
+          deviceIdentity: null,
+          hostDeps: { logDebug() {}, logError() {} },
+          onHelloOk: () => connected.resolve(),
+          onConnectError: connected.reject,
+          onClose: (code) => {
+            if (!closing) disconnects.push(code);
+          },
+        });
+        const deadline = setTimeout(
+          () => connected.reject(Error("First browser connection timed out.")),
+          10_000,
+        );
+        try {
+          browser.start();
+          await connected.promise;
+        } finally {
+          clearTimeout(deadline);
+        }
+        const headers = { Cookie: `clawscarf_session=${credential}` };
+        const index = await fetch(access.origin, {
+          headers,
+          redirect: "error",
+          signal: AbortSignal.timeout(10_000),
+        });
+        assert.equal(index.status, 200);
+        const assets = Array.from(
+          (await index.text()).matchAll(
+            /(?:src|href)="([^"?#]+\.(?:js|css))"/gu,
+          ),
+          (match) => new URL(match[1]!, access.origin),
+        );
+        assert.ok(assets.length > 0);
+        await Promise.all(
+          assets.map(async (url) => {
+            const response = await fetch(url, {
+              headers,
+              redirect: "error",
+              signal: AbortSignal.timeout(10_000),
+            });
+            assert.equal(response.status, 200);
+            assert.ok((await response.text()).length > 0);
+          }),
+        );
+        // Cross the delayed setup restart that used to occur after "ready".
+        await delay(5000);
+        await browser.request("exec.approvals.get", {});
+        assert.deepEqual(
+          disconnects,
+          [],
+          "Setup must finish before the browser connects",
         );
         const people = await fetch("http://127.0.0.1:18405/_clawscarf/people", {
           headers: { Cookie: `clawscarf_session=${credential}` },
@@ -235,7 +316,11 @@ await test(
           .parse(await people.json());
         assert.ok(observed.people.some((person) => person.role === "admin"));
       } finally {
+        closing = true;
+        await browser?.stopAndWait({ timeoutMs: 2000 });
+        await storage.repository.revokeSession(hash(credential));
         await storage.close();
+        setDefaultCACertificates(certificates);
       }
       await run(
         process.execPath,

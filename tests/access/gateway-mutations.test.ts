@@ -8,6 +8,7 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { once } from "node:events";
+import { setImmediate } from "node:timers/promises";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
 import application from "../../package.json" with { type: "json" };
@@ -55,7 +56,7 @@ await describe("Gateway mutation outcomes", async () => {
     method: z.string(),
     params: z.unknown().optional(),
   });
-  type Reply = { code: string } | "disconnect" | "success";
+  type Reply = { code: string } | "disconnect" | "success" | "restart" | "hot";
   async function gatewayFixture(replies: Reply[]) {
     const listener = createServer({ cert: certificate, key: privateKey });
     const server = new WebSocketServer({ server: listener });
@@ -64,6 +65,9 @@ await describe("Gateway mutation outcomes", async () => {
     const address = listener.address();
     assert.ok(address && typeof address !== "string");
     const methods: string[] = [];
+    const acknowledged = Promise.withResolvers<void>();
+    const reconnected = Promise.withResolvers<void>();
+    let connections = 0;
     let administratorProbes = 0;
     server.on("connection", (socket) => {
       socket.send(
@@ -81,6 +85,7 @@ await describe("Gateway mutation outcomes", async () => {
             : Buffer.from(raw);
         const request = frame.parse(JSON.parse(bytes.toString("utf8")));
         if (request.method === "connect") {
+          if (++connections === 2) reconnected.resolve();
           const handshake = z
             .object({
               client: z.object({
@@ -131,9 +136,21 @@ await describe("Gateway mutation outcomes", async () => {
             JSON.stringify({
               type: "res",
               id: request.id,
-              ok: reply === "success",
-              ...(reply === "success"
-                ? { payload: {} }
+              ok: typeof reply === "string",
+              ...(typeof reply === "string"
+                ? {
+                    payload:
+                      reply === "success"
+                        ? { ok: true, noop: true }
+                        : {
+                            ok: true,
+                            sentinel: {
+                              payload: {
+                                stats: { requiresRestart: reply === "restart" },
+                              },
+                            },
+                          },
+                  }
                 : {
                     error: {
                       code: reply.code,
@@ -142,6 +159,7 @@ await describe("Gateway mutation outcomes", async () => {
                   }),
             }),
           );
+        acknowledged.resolve();
       });
     });
     return {
@@ -150,6 +168,12 @@ await describe("Gateway mutation outcomes", async () => {
         credential: "fixture-session",
       },
       methods,
+      acknowledged: acknowledged.promise,
+      reconnected: reconnected.promise,
+      disconnect: (code: number) => {
+        for (const client of server.clients)
+          client.close(code, "fixture close");
+      },
       administratorProbes: () => administratorProbes,
       close: () =>
         new Promise<void>((resolve, reject) => {
@@ -160,6 +184,46 @@ await describe("Gateway mutation outcomes", async () => {
         }),
     };
   }
+
+  await test("config acknowledgement cannot finish setup before its scheduled restart and authenticated reconnection", async () => {
+    const fixture = await gatewayFixture(["restart", "success"]);
+    let completed = false;
+    try {
+      const operation = withGateway(fixture.options, async (gateway) => {
+        await gateway.mutate("config.patch", {});
+        await gateway.read("config.get", {});
+        completed = true;
+      });
+      await fixture.acknowledged;
+      await setImmediate();
+      assert.equal(completed, false);
+      assert.deepEqual(fixture.methods, ["config.patch"]);
+      fixture.disconnect(1001);
+      await fixture.reconnected;
+      await setImmediate();
+      assert.equal(completed, false, "An unrelated reconnect is not a restart");
+      fixture.disconnect(1012);
+      await operation;
+      assert.equal(completed, true);
+      assert.equal(fixture.administratorProbes(), 2);
+      assert.deepEqual(fixture.methods, ["config.patch", "config.get"]);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  await test("membership hot application finishes without waiting for a restart", async () => {
+    const fixture = await gatewayFixture(["hot"]);
+    try {
+      await withGateway(fixture.options, (gateway) =>
+        gateway.mutate("config.patch", {}),
+      );
+      assert.equal(fixture.administratorProbes(), 1);
+      assert.deepEqual(fixture.methods, ["config.patch"]);
+    } finally {
+      await fixture.close();
+    }
+  });
 
   await test("real correlated native validation/authority rejections stay definitive; transport and activation failures remain uncertain", async () => {
     for (const scenario of [

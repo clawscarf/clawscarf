@@ -87,7 +87,10 @@ unchanged and ingress records the actual network peer.
 - Run `pnpm access:start` for the backend alone; the [native plugin](../../plugins/access/README.md)
   owns UI build instructions and the [companion](../../apps/companion/README.md) owns combined startup.
 - Native preparation assigns the initial administrator explicitly before changing the
-  default role to pending. Invitation acceptance assigns the existing member role.
+  default role to pending. That initial role change requires a Gateway restart;
+  setup waits for authenticated reconnection and an administrator authority check
+  before completing. A saved configuration alone is not proof of readiness.
+  Invitation acceptance assigns the existing member role without this restart.
 - Run `pnpm access:generate` after changing [the contract](openapi.json).
 
 [The companion application](../../apps/companion/README.md) is the process entry for
