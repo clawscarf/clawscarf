@@ -8,11 +8,19 @@ import { pathToFileURL } from "node:url";
 import { test, type TestContext } from "node:test";
 import { Command } from "commander";
 import { z } from "zod";
+import { prepareProductTelemetry } from "./product-telemetry.js";
 import { CliTelemetry } from "./telemetry.js";
 
 const eventSchema = z.object({
-  event: z.enum(["cli_command_started", "cli_command_finished"]),
-  distinct_id: z.uuid(),
+  event: z.enum([
+    "cli_command_started",
+    "cli_command_finished",
+    "installation_setup_completed",
+  ]),
+  distinct_id: z.union([
+    z.uuid(),
+    z.string().regex(/^installation:[0-9a-f-]{36}$/),
+  ]),
   timestamp: z.iso.datetime(),
   properties: z.record(z.string(), z.unknown()),
 });
@@ -336,3 +344,50 @@ for (const response of ["error", "hang"] as const) {
     assert.ok(performance.now() - started < 2000);
   });
 }
+
+await test("ready setup emits one installation milestone independently of repeated CLI commands", async (t) => {
+  const f = await fixture(t);
+  const identity = await prepareProductTelemetry(
+    f.root,
+    f.environment,
+    f.destination,
+  );
+  assert.ok(identity);
+  await writeFile(
+    join(f.root, "installation.json"),
+    JSON.stringify({ stateDirectory: "." }),
+  );
+  for (const [name, ready, code] of [
+    ["configure", false, 0],
+    ["configure", true, 1],
+    ["configure", true, 0],
+    ["status", true, 0],
+  ] as const) {
+    const telemetry = new CliTelemetry(f.environment, f.destination);
+    const cmd = command(telemetry, name).action(() => {
+      telemetry.configurationMode("new");
+      telemetry.result({ ready });
+    });
+    await cmd.parent?.parseAsync([name, "--directory", f.root], {
+      from: "user",
+    });
+    await telemetry.finish(code);
+  }
+  const milestones = f.events.filter(
+    (event) => event.event === "installation_setup_completed",
+  );
+  assert.equal(milestones.length, 1);
+  assert.ok(milestones[0]);
+  assert.equal(
+    milestones[0].distinct_id,
+    `installation:${identity.installationId}`,
+  );
+  assert.equal(
+    milestones[0].properties.installation_id,
+    identity.installationId,
+  );
+  assert.equal(milestones[0].properties.source, "product");
+  assert.equal(milestones[0].properties.$process_person_profile, false);
+  assert.equal(milestones[0].properties.invocation_id, undefined);
+  assert.doesNotMatch(JSON.stringify(milestones), new RegExp(f.root));
+});

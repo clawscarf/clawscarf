@@ -1,3 +1,7 @@
+import {
+  prepareProductTelemetry,
+  withProductTelemetry,
+} from "../product-telemetry.js";
 import { validatePublicWebServices } from "./service-network.js";
 import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
@@ -93,6 +97,7 @@ export async function prepareLocal(
     await run("docker", ["image", "inspect", image]);
   await verifyRuntimeImage(input.runtimeImage);
   const state = await initializeState(directory, input);
+  const telemetry = await prepareProductTelemetry(directory);
   try {
     await requirePrepared(directory);
   } catch (error) {
@@ -158,6 +163,7 @@ export async function prepareLocal(
     models,
     connectionsEndpoint,
     state.input.publicWeb,
+    telemetry?.host,
   );
   await withPreparedDatabase(directory, state, async (pool, runtimeUrl) => {
     const store = new PostgresAccessStore(
@@ -202,7 +208,10 @@ export async function prepareLocal(
       join(privateDirectory, "companion.json"),
       JSON.stringify(generated.companion, null, 2),
     );
-    const configured = withInitialModels(generated.native, models);
+    const configured = withInitialModels(
+      withProductTelemetry(generated.native, telemetry),
+      models,
+    );
     const native = JSON.stringify(
       withInitialServices(configured, {
         ...(connectionCredential
