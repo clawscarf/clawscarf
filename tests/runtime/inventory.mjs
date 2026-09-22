@@ -31,6 +31,8 @@ const skills = [];
 async function skillNames(root) {
   for (const entry of await readdir(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
+    // Plugin collections also contain attribution directories, such as Slack's _vendor.
+    if (!(await readdir(join(root, entry.name))).includes("SKILL.md")) continue;
     await access(join(root, entry.name, "SKILL.md"));
     skills.push(entry.name);
   }

@@ -57,6 +57,8 @@ before final layers are copied, and checks actual files and native discovery.
 Additional plugins are ClawScarf's own packages and the separately pinned Lobster.
 A catalog listing does not prove a plugin is installed or active. Built-in selection
 does not restrict administrator additions or delete user-installed packages.
+The [channel setup patch](patches/curated-channel-setup.prompt.md) keeps native
+setup and the Channels page aligned with locally available channel plugins.
 
 [Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
 [packs](../../packs/README.md) supply native files. Several recipes can share an
@@ -123,7 +125,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 

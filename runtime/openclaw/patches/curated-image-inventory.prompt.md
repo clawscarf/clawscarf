@@ -7,6 +7,8 @@ selection. ClawScarf's [inventory](../inventory.json) owns the selection, consum
 by its image builder and acceptance test. Keep this policy out of runtime loading:
 administrators can still add plugins, MCP servers and workspace/local skills.
 No source or semantic dependency on earlier patches; apply in series order.
+The later [channel setup patch](curated-channel-setup.prompt.md) aligns native
+setup/UI with the selected channel packages and records the channel choices.
 
 ## Required behavior
 
