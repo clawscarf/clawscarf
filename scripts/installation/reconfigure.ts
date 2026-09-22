@@ -203,10 +203,14 @@ export async function reconfigureInstallation(
   expectedFingerprint: string,
   reapply?: "models" | "connections",
 ) {
-  const planned = await planSettingsChange(configFile, reapply);
-  return withInstallationLock(planned.directory, async () => {
+  const config = installationSchema.parse(await readJson(configFile));
+  const location = resolve(dirname(resolve(configFile)), config.stateDirectory);
+  return withInstallationLock(location, async () => {
     const checked = await planSettingsChange(configFile, reapply);
-    if (checked.fingerprint !== expectedFingerprint)
+    if (
+      checked.directory !== location ||
+      checked.fingerprint !== expectedFingerprint
+    )
       throw new InstallationError(
         "stale_plan",
         "Settings changed after preview. Review them again.",

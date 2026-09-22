@@ -118,7 +118,6 @@ await test(
       { mode: 0o600 },
     );
     const plan = await planInstallation(path);
-    assert.equal(plan.action, "prepare");
     assert.equal(plan.stateDirectory, join(directory, "state"));
     assert.equal(new Set(plan.internalPorts).size, 7);
     await writeFile(
@@ -154,18 +153,14 @@ await test(
       }),
     );
     const enabled = await planInstallation(path);
-    assert.equal(enabled.capabilities.models, "litellm");
-    assert.equal(enabled.capabilities.connections, "hosted");
     assert.ok(!JSON.stringify(enabled).includes("private-test-key"));
-    const enabledPreview = join(directory, "enabled.json");
-    await writeFile(enabledPreview, JSON.stringify(enabled));
     await withInstallationLock(enabled.stateDirectory, () =>
-      assert.rejects(applyInstallation(path, enabledPreview), {
+      assert.rejects(applyInstallation(path, enabled), {
         code: "operation_busy",
       }),
     );
     await writeFile(join(directory, "keys.env"), "PROVIDER_KEY=changed\n");
-    await assert.rejects(applyInstallation(path, enabledPreview), {
+    await assert.rejects(applyInstallation(path, enabled), {
       code: "stale_plan",
     });
     await writeFile(path, JSON.stringify(configuration));
@@ -173,13 +168,11 @@ await test(
     assert.ok(resolved.input.models);
     assert.equal(resolved.input.connections, undefined);
     assert.ok(resolved.input.modelGateway);
-    const preview = join(directory, "preview.json");
-    await writeFile(preview, JSON.stringify(plan));
     await writeFile(
       join(directory, "release.json"),
       JSON.stringify({ ...release, version: "0.2.0" }),
     );
-    await assert.rejects(applyInstallation(path, preview), {
+    await assert.rejects(applyInstallation(path, plan), {
       code: "stale_plan",
     });
     await writeFile(join(directory, "release.json"), JSON.stringify(release));

@@ -210,7 +210,7 @@ async function fixture(t: TestContext) {
     providerEnvFile: env,
   };
 }
-async function savePreview(
+async function saveAnswers(
   options: Parameters<typeof collectInstallation>[1],
   ui: InstallerPrompts,
 ) {
@@ -220,25 +220,19 @@ async function savePreview(
     draft.config,
     draft.inputs,
   );
-  const planFile = join(draft.directory, "preview.json");
-  await writeFile(
-    planFile,
-    JSON.stringify(await planInstallation(configFile)),
-    { mode: 0o600 },
-  );
-  return { state: "saved", configFile, planFile };
+  return { state: "saved", configFile };
 }
 const local = {
   skip: process.platform !== "darwin" || process.arch !== "arm64",
 };
 
 await test(
-  "collected settings use the real planner and save private files without applying",
+  "collected settings save private files without applying",
   local,
   async (t) => {
     const f = await fixture(t);
     const ui = new Answers(f.answers);
-    const result = await savePreview(f, ui);
+    const result = await saveAnswers(f, ui);
     assert.equal(result.state, "saved");
     const config = installationSchema.parse(
       await readJson(join(f.directory, "installation.json")),
@@ -247,20 +241,15 @@ await test(
     assert.equal(config.connections.mode, "disabled");
     assert.ok(config.resources.runtime);
     assert.deepEqual(config.packs, []);
-    assert.equal(
-      (await planInstallation(join(f.directory, "installation.json"))).action,
-      "prepare",
-    );
     for (const [path, mode] of [
       [f.directory, 0o700],
       [join(f.directory, "installation.json"), 0o600],
-      [join(f.directory, "preview.json"), 0o600],
     ] as const)
       assert.equal((await lstat(path)).mode & 0o777, mode);
     await assert.rejects(lstat(join(f.directory, "state")), { code: "ENOENT" });
     assert.ok(!ui.questions.some((question) => question.includes("key file")));
     const before = await readFile(join(f.directory, "installation.json"));
-    await assert.rejects(savePreview(f, new Answers(f.answers)), {
+    await assert.rejects(saveAnswers(f, new Answers(f.answers)), {
       code: "change_unsupported",
     });
     assert.deepEqual(
@@ -393,23 +382,16 @@ await test(
       },
       ["advanced-models", "packs"],
     );
-    const result = await savePreview(f, ui);
+    const result = await saveAnswers(f, ui);
     assert.equal(result.state, "saved");
-    const configFile = join(f.directory, "installation.json"),
-      planFile = join(f.directory, "preview.json");
+    const configFile = join(f.directory, "installation.json");
     const plan = await planInstallation(configFile);
-    assert.equal(plan.capabilities.models, "litellm");
-    assert.equal(plan.capabilities.connections, "disabled");
-    assert.deepEqual(plan.capabilities.packs[0]?.members, [
-      "researcher",
-      "reviewer",
-    ]);
     assert.ok(!JSON.stringify(plan).includes("private-test-secret"));
     await writeFile(
       join(f.directory, "secrets/models.env"),
       "PROVIDER_KEY=changed\n",
     );
-    await assert.rejects(applyInstallation(configFile, planFile), {
+    await assert.rejects(applyInstallation(configFile, plan), {
       code: "stale_plan",
     });
   },
@@ -489,8 +471,7 @@ await test(
             apply: async (config, plan) => {
               calls.push("apply");
               assert.equal(config, join(f.directory, "installation.json"));
-              assert.equal(plan, join(f.directory, "preview.json"));
-              await readJson(plan);
+              assert.equal(plan.stateDirectory, join(f.directory, "state"));
               if (fail === "cancel") throw new InstallerCancelled();
               if (fail === true) throw Error("Fixture failure");
               return {
@@ -1020,10 +1001,6 @@ await test(
     );
     assert.equal(catalog.mode, "external");
     assert.equal(catalog.baseUrl, "https://models.example.test/v1");
-    assert.equal(
-      (await planInstallation(file)).capabilities.models,
-      "external",
-    );
   },
 );
 

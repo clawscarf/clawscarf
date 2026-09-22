@@ -1,7 +1,6 @@
 import { dirname, join, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
-import { z } from "zod";
 import { prepareLocal } from "../deployment/prepare.js";
 import {
   readState,
@@ -14,23 +13,6 @@ import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { resolveConfigurationInputs } from "./configure.js";
 import { installationSchema } from "./configuration.js";
 
-export const planSchema = z.strictObject({
-  schemaVersion: z.literal(1),
-  stateDirectory: z.string(),
-  fingerprint: z.string(),
-  observedState: z.string().nullable(),
-  internalPorts: z.array(z.number().int().min(1024).max(65535)).length(7),
-  action: z.enum(["prepare", "resume"]),
-  release: z.string(),
-  browser: z.boolean(),
-  capabilities: z.strictObject({
-    models: z.enum(["external", "litellm"]),
-    connections: z.enum(["disabled", "hosted"]),
-    packs: z.array(
-      z.strictObject({ directory: z.string(), members: z.array(z.string()) }),
-    ),
-  }),
-});
 async function observation(directory: string) {
   try {
     await readState(directory);
@@ -65,30 +47,20 @@ export async function planInstallation(configFile: string) {
   if (state && !isDeepStrictEqual(state.input, resolved.input))
     throw new InstallationError(
       "change_unsupported",
-      "This change requires an explicit configuration or upgrade operation. Prepare never replaces retained settings.",
+      "Preparation cannot replace retained settings. Run configure to review supported changes.",
     );
   await verifyRetainedInputs(directory, resolved.fingerprint);
-  return planSchema.parse({
-    schemaVersion: 1,
+  return {
     stateDirectory: directory,
     fingerprint: resolved.fingerprint,
     observedState: observed,
     internalPorts,
-    action: state ? "resume" : "prepare",
-    release: resolved.release.version,
-    browser: config.browser.enabled,
-    capabilities: {
-      models: config.models.mode,
-      connections: config.connections.mode,
-      packs: resolved.packSelection.packs.map(({ directory, members }) => ({
-        directory,
-        members,
-      })),
-    },
-  });
+  };
 }
-export async function applyInstallation(configFile: string, planFile: string) {
-  const plan = planSchema.parse(await readJson(planFile));
+export async function applyInstallation(
+  configFile: string,
+  plan: Awaited<ReturnType<typeof planInstallation>>,
+) {
   const resolved = await resolveInstallation(configFile, plan.internalPorts);
   if (
     resolved.fingerprint !== plan.fingerprint ||
