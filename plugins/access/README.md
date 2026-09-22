@@ -7,6 +7,8 @@ Account shows the signed-in identity and sign-out. People is visible to native
 administrators: it lists members and their observed native roles, assigns existing
 roles, creates copyable invitations, revokes invitations and removes access.
 Role definitions remain OpenClaw configuration; there is no second role database.
+The page explains and disables last-administrator removal and demotion using the
+observed native roles; the backend independently enforces the same protection.
 
 The browser calls the Access companion's generated REST client on the same origin.
 Every management request verifies the current browser session and native administrator

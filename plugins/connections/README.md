@@ -7,7 +7,9 @@ installation's Access session through a small management adapter; provider keys,
 account records and quota enforcement stay in the cloud broker. Members have no
 management navigation, and the backend independently checks native authority.
 
-The page supports catalog search, linking/reconnecting, cancellation, editing names
+The service picker groups the catalog by its supplied categories, with search and a
+category filter. An empty installation shows an Add connection prompt.
+The page supports linking/reconnecting, cancellation, editing names
 and agent grants, disconnecting/removing inactive entries, and usage. It retains
 visible data during refresh and shows loading and errors in the affected content.
 Catalog icons are packaged as data images to respect OpenClaw's content security

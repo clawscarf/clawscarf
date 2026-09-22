@@ -1,21 +1,30 @@
 import type { ControlUiView } from "openclaw/plugin-sdk/control-ui";
 import * as api from "../../../services/access/generated/sdk.gen.js";
 import type { Person } from "../../../services/access/generated/types.gen.js";
-import { page, element, button, confirm } from "./page.js";
+import { page, element, button, confirm, dialog, failure } from "./page.js";
 
 export const people: ControlUiView = (container, context) => {
   const view = page(container, context, "People");
-  let canInvite = false;
   let currentId = "";
   let link: string | undefined;
   const refresh = () => view.run(load, "Refreshing people…");
+  const inviteButton = button("Invite person", invite, "primary");
+  inviteButton.hidden = true;
   view.header.append(
-    button("Refresh", () => {
-      void refresh();
-    }),
+    button(
+      "Refresh",
+      () => {
+        void refresh();
+      },
+      "btn--ghost",
+    ),
+    inviteButton,
   );
+  const roleLabel = (id: string) =>
+    id === "admin" ? "Administrator" : id === "member" ? "Member" : id;
   async function load() {
     if (!context.host.connection.canAdmin) {
+      inviteButton.hidden = true;
       view.content.replaceChildren();
       throw new Error("Administrator access is required.");
     }
@@ -26,7 +35,9 @@ export const people: ControlUiView = (container, context) => {
       ? (await api.listInvitations(view.request)).data.invitations
       : [];
     if (context.signal.aborted || !context.host.connection.canAdmin) return;
-    canInvite = current.enrollmentEnabled && data.enrollment === "ready";
+    inviteButton.hidden = !(
+      current.enrollmentEnabled && data.enrollment === "ready"
+    );
     view.content.replaceChildren();
     if (current.links.length) {
       const navigation = element("nav");
@@ -64,13 +75,42 @@ export const people: ControlUiView = (container, context) => {
         name = element("td"),
         role = element("td"),
         actions = element("td");
-      name.append(
-        element(
-          "span",
-          person.name + (person.id === currentId ? " (you)" : ""),
-        ),
-        element("small", person.email),
+      const identity = element("div");
+      identity.className = "clawscarf-identity";
+      const avatar = element(
+        "span",
+        person.name
+          .trim()
+          .split(/\s+/u)
+          .slice(0, 2)
+          .map((part) => part[0])
+          .join("")
+          .toUpperCase(),
       );
+      avatar.className = "clawscarf-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      const text = element("div");
+      text.className = "clawscarf-identity-copy";
+      const title = element("span", person.name);
+      if (person.id === currentId) {
+        const you = element("span", "You");
+        you.className = "clawscarf-badge clawscarf-you";
+        title.append(you);
+      }
+      text.append(title, element("small", person.email));
+      identity.append(avatar, text);
+      name.append(identity);
+      const lastAdministrator =
+        data.roles.some(
+          (item) => item.id === person.role && item.administrator,
+        ) &&
+        !data.people.some(
+          (other) =>
+            other.id !== person.id &&
+            data.roles.some(
+              (item) => item.id === other.role && item.administrator,
+            ),
+        );
       const select = element("select");
       select.setAttribute("aria-label", `Role for ${person.name}`);
       if (!person.role || !data.roles.some((item) => item.id === person.role)) {
@@ -79,8 +119,9 @@ export const people: ControlUiView = (container, context) => {
         select.append(unknown);
       }
       for (const item of data.roles) {
-        const option = element("option", item.id);
+        const option = element("option", roleLabel(item.id));
         option.value = item.id;
+        option.disabled = lastAdministrator && !item.administrator;
         select.append(option);
       }
       select.value = person.role ?? "";
@@ -90,7 +131,7 @@ export const people: ControlUiView = (container, context) => {
         confirm(
           view,
           "Change role",
-          `Change ${person.name}'s role to ${chosen}?`,
+          `Change ${person.name}'s role to ${roleLabel(chosen)}?`,
           async () => {
             await api.setPersonRole({
               ...view.write(),
@@ -102,23 +143,32 @@ export const people: ControlUiView = (container, context) => {
         );
       };
       role.append(select);
-      actions.append(button("Remove", () => remove(person)));
+      if (lastAdministrator)
+        role.append(element("small", "One administrator must remain."));
+      const removeButton = button("Remove", () => remove(person), "btn--ghost");
+      removeButton.disabled = lastAdministrator;
+      if (lastAdministrator)
+        removeButton.title =
+          "Add another administrator before removing this person.";
+      actions.append(removeButton);
       tr.append(name, role, actions);
       body.append(tr);
     }
     view.content.append(table);
     if (current.enrollmentEnabled) {
       const section = element("section");
+      section.className = "clawscarf-invitations";
       const heading = element("header");
       heading.append(element("h3", "Invitations"));
-      if (canInvite) heading.append(button("Invite person", invite));
       section.append(heading);
       if (link) {
         const input = element("input");
         input.readOnly = true;
         input.value = link;
         input.setAttribute("aria-label", "Invitation link");
-        section.append(
+        const share = element("div");
+        share.className = "clawscarf-actions";
+        share.append(
           input,
           button("Copy link", () => {
             void view.run(async () => {
@@ -126,37 +176,54 @@ export const people: ControlUiView = (container, context) => {
             }, "Copying link…");
           }),
         );
+        section.append(share);
       }
-      if (!invitations.length) section.append(element("p", "No invitations."));
+      if (!invitations.length) {
+        const empty = element("p", "No pending invitations.");
+        empty.className = "clawscarf-muted";
+        section.append(empty);
+      }
+      const list = element("ul");
       for (const item of invitations) {
-        const line = element("p");
-        line.append(
+        const line = element("li");
+        const details = element("div");
+        details.append(
           element("span", item.email),
           element(
             "small",
-            `${item.status} · ${new Date(item.expiresAt).toLocaleString()}`,
+            `Expires ${new Date(item.expiresAt).toLocaleString()}`,
           ),
         );
+        const status = element(
+          "span",
+          item.status.charAt(0).toUpperCase() + item.status.slice(1),
+        );
+        status.className = "clawscarf-badge";
+        line.append(details, status);
         if (item.status === "pending")
           line.append(
-            button("Revoke", () =>
-              confirm(
-                view,
-                "Revoke invitation",
-                `Revoke the invitation for ${item.email}?`,
-                async () => {
-                  await api.revokeInvitation({
-                    ...view.write(),
-                    path: { invitationId: item.id },
-                  });
-                  link = undefined;
-                  await load();
-                },
-              ),
+            button(
+              "Revoke",
+              () =>
+                confirm(
+                  view,
+                  "Revoke invitation",
+                  `Revoke the invitation for ${item.email}?`,
+                  async () => {
+                    await api.revokeInvitation({
+                      ...view.write(),
+                      path: { invitationId: item.id },
+                    });
+                    link = undefined;
+                    await load();
+                  },
+                ),
+              "btn--ghost",
             ),
           );
-        section.append(line);
+        list.append(line);
       }
+      section.append(list);
       view.content.append(section);
     }
   }
@@ -181,37 +248,41 @@ export const people: ControlUiView = (container, context) => {
       label = element("label", "Email"),
       email = element("input");
     email.type = "email";
+    email.autofocus = true;
     email.required = true;
     email.maxLength = 320;
     label.append(email);
     const submit = element("button", "Create invitation");
     submit.type = "submit";
-    submit.className = "btn";
-    form.append(label, element("p", "Invited people join as members."), submit);
-    const mount = element("div");
-    view.root.append(mount);
-    const close = () => {
-      dialog.dispose();
-      mount.remove();
-    };
-    form.append(button("Cancel", close));
-    const dialog = context.host.components.mountDialog(mount, {
-      label: "Invite person",
-      content: form,
-      onCancel: () => {
-        close();
-      },
-    });
+    submit.className = "btn primary";
+    const modal = dialog(view, "Invite person", form);
+    const error = element("p");
+    error.setAttribute("role", "alert");
+    modal.body.append(
+      label,
+      element("p", "Invited people join as members."),
+      error,
+    );
+    modal.footer.append(button("Cancel", modal.close), submit);
     form.onsubmit = (event) => {
       event.preventDefault();
       const address = email.value;
-      close();
       void view.run(async () => {
-        const result = await api.createInvitation({
-          ...view.write(),
-          body: { email: address },
-        });
-        link = result.data.url;
+        error.textContent = "";
+        submit.textContent = "Creating…";
+        try {
+          const result = await api.createInvitation({
+            ...view.write(),
+            body: { email: address },
+          });
+          link = result.data.url;
+        } catch (cause) {
+          error.textContent = failure(cause);
+          return;
+        } finally {
+          submit.textContent = "Create invitation";
+        }
+        modal.close();
         await load();
       }, "Creating invitation…");
     };
@@ -219,6 +290,7 @@ export const people: ControlUiView = (container, context) => {
   }
   const unsubscribe = context.host.subscribe(() => {
     if (!context.host.connection.canAdmin) {
+      inviteButton.hidden = true;
       view.content.replaceChildren();
       view.error.textContent = "Administrator access is required.";
     }
