@@ -26,7 +26,7 @@ export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
 
-**Choose Team server. Pick a model. Sign in. Start your server.**
+**Choose Personal assistant or Team server. Pick a model. Sign in. Start your server.**
 
 The terminal setup walks you through it, downloads the runtime, and opens OpenClaw
 in your browser. Your sign-in becomes the first administrator account. No checkout,

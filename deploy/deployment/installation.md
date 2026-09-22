@@ -108,9 +108,9 @@ The Names section and `--agent-name` set the initial default agent name. Rename
 agents in OpenClaw after installation.
 The runtime selection, OpenShell protection and authenticated entry are fixed.
 
-`--recipe <name-or-file>` skips the picker: use `team-server` for the bundled
-recipe or a path to a custom recipe JSON. Without it the menu lists all bundled
-recipes. Sources live in [recipes](../../recipes/README.md); the CLI package includes
+`--recipe <name-or-file>` skips the picker: use `personal-assistant`, `team-server`
+or a path to a custom recipe JSON. Without it the menu lists all bundled
+recipes with their descriptions. Sources live in [recipes](../../recipes/README.md); the CLI package includes
 them, the model catalog and pack files. Each recipe points to its fixed runtime
 in [runtime/current.json](../../runtime/current.json). There is no public
 `--release` override. Runtime images/tools are separate [release artifacts](../../release/README.md).

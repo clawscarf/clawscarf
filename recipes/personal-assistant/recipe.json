@@ -1,7 +1,7 @@
 {
-  "id": "team-server",
-  "name": "Team server",
-  "description": "A shared OpenClaw workspace for your team. Invite teammates, assign roles and connect the services you work with.",
+  "id": "personal-assistant",
+  "name": "Personal assistant",
+  "description": "An OpenClaw assistant for your own research, writing and everyday work. Connect your accounts and invite others whenever you need.",
   "maturity": "supported",
   "defaults": {
     "agentName": "ClawScarf",
@@ -25,5 +25,5 @@
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",
-  "version": "0.1.4"
+  "version": "0.1.0"
 }

@@ -5,6 +5,7 @@ Recipes are bundled with the CLI. Each folder contains a [recipe.json](team-serv
 
 ```text
 recipes/team-server/recipe.json
+recipes/personal-assistant/recipe.json
 runtime/current.json
 packs/research-team/pack.json
 ```
@@ -28,14 +29,19 @@ no executable hooks, secrets or user identities.
 - `packs: [{ id, members }]` selects agents from the bundled [packs](../packs/README.md).
   The installer checks members and collects required credentials after settings review.
 
-`clawscarf configure` lists the bundled recipes. `--recipe team-server` skips that
-menu; `--recipe /path/to/recipe.json` uses a custom definition. Both use the same
+`clawscarf configure` lists the bundled recipes with their descriptions, then repeats
+the selected description above its settings. `--recipe personal-assistant` or
+`--recipe team-server` skips that menu; `--recipe /path/to/recipe.json` uses a custom definition. All use the same
 validation and editable settings. `clawscarf recipes` lists available choices.
 Recipe changes never reconfigure an existing server automatically.
 
-**Team server** supplies a basic team server. Its exact model, reasoning, resource,
-capability and pack defaults are defined in [recipe.json](team-server/recipe.json);
-`clawscarf recipes` displays the bundled selection. Document workflows are separate
+Choose **[Personal assistant](personal-assistant/recipe.json)** to start on your own,
+or **[Team server](team-server/recipe.json)** to start a shared workspace.
+Both currently use the same runtime, model, resource and capability defaults, with
+the same default agent and no recipe-specific prompts or packs. People and invitations
+remain available in both; Personal assistant can welcome teammates later.
+The recipe files own the exact defaults; `clawscarf recipes` displays the bundled selection.
+Document workflows are separate
 [open work](../TODO.md#openclaw-curation).
 
 See [runtime and package distribution](../release/README.md).
