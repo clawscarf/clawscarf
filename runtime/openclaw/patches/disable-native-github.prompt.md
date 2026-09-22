@@ -52,7 +52,8 @@ Git execution and verify deliberate shell credentials survive while managed prof
 injection and preview-secret export do not occur.
 
 Review desktop/mobile chat, profile and agent settings with disabled method
-advertisements, including clickable links and no hidden GitHub RPCs. Keep enabled
+advertisements, including retained GitHub identities, clickable links and no hidden
+GitHub RPCs or co-author preference reads. Keep enabled
 upstream sibling tests and exact patch replay passing. Run native type checks/build
 and ClawScarf checks/build. Distinguish source verification from image publication
 and deployment; do not change a running installation as a test fixture.

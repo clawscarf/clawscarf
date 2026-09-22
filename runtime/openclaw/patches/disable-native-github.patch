@@ -23,7 +23,7 @@ ClawScarf-Patch: disable-native-github
  src/agents/tools/github-publish-tool.test.ts  |  16 +-
  src/agents/tools/github-publish-tool.ts       |   2 +
  .../config-schema-presentation.test.ts        |  41 ++++
- src/gateway/config-schema-presentation.ts     |  33 ++++
+ src/gateway/config-schema-presentation.ts     |  33 +++
  src/gateway/control-ui-github-preview.ts      |   2 +
  .../control-ui-session-pr-check-details.ts    |   2 +
  src/gateway/control-ui-session-prs.ts         |   2 +
@@ -43,7 +43,7 @@ ClawScarf-Patch: disable-native-github
  ui/src/app/app-root.ts                        |   7 +-
  ui/src/app/app-shell-view.ts                  |   1 +
  .../github-link-hovercard.runtime.ts          |   2 +-
- ui/src/e2e/native-github-disabled.e2e.test.ts | 179 ++++++++++++++++++
+ ui/src/e2e/native-github-disabled.e2e.test.ts | 188 ++++++++++++++++++
  .../github-connections.test.ts                |   2 +-
  .../github-connections/github-connections.ts  |  13 +-
  .../github-identity-view.ts                   |   3 +
@@ -54,12 +54,12 @@ ClawScarf-Patch: disable-native-github
  ui/src/pages/config/settings-search.ts        |   3 +
  ui/src/pages/config/settings-targets.ts       |   2 +
  ui/src/pages/profile/identity-section.ts      |  91 +++++----
- .../profile/profile-page.preferences.test.ts  |  55 ++++--
+ .../profile/profile-page.preferences.test.ts  |  95 +++++++--
  .../profile/profile-page.test-support.ts      |   4 +-
  ui/src/pages/profile/profile-page.test.ts     |  20 +-
- ui/src/pages/profile/profile-page.ts          |   3 +
+ ui/src/pages/profile/profile-page.ts          |   8 +-
  ui/src/test-helpers/control-ui-e2e.ts         |   1 +
- 52 files changed, 886 insertions(+), 114 deletions(-)
+ 52 files changed, 939 insertions(+), 115 deletions(-)
  create mode 100644 src/gateway/config-schema-presentation.test.ts
  create mode 100644 src/gateway/config-schema-presentation.ts
  create mode 100644 src/gateway/github-integration-disabled.test.ts
@@ -1278,12 +1278,13 @@ index b7cbcf470a27967443d9f67580d089191caf53c9..e97498bf3a8ceec51431354e6cf260b9
      this.activate(anchor, target, delay);
 diff --git a/ui/src/e2e/native-github-disabled.e2e.test.ts b/ui/src/e2e/native-github-disabled.e2e.test.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..3cbdc6bc44dfcd2ebb786104fd6d4e2bd6670c0f
+index 0000000000000000000000000000000000000000..47d299057e46017a66e1658568cf214d80ff2795
 --- /dev/null
 +++ b/ui/src/e2e/native-github-disabled.e2e.test.ts
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,188 @@
 +import path from "node:path";
 +import { expect, it } from "vitest";
++import { GIT_COAUTHOR_PREFERENCE_KEY } from "../../../packages/gateway-protocol/src/index.ts";
 +import {
 +  defaultControlUiFeatureMethods,
 +  installMockGateway,
@@ -1302,7 +1303,11 @@ index 0000000000000000000000000000000000000000..3cbdc6bc44dfcd2ebb786104fd6d4e2b
 +  createdAt: 1,
 +  updatedAt: 2,
 +  emails: ["test@example.com"],
-+  githubIdentity: null,
++  githubIdentity: {
++    login: "octocat",
++    profileUrl: "https://github.com/octocat",
++    avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
++  },
 +  hasAvatar: false,
 +};
 +const nativeGitHubMethod = (method: string) =>
@@ -1382,6 +1387,7 @@ index 0000000000000000000000000000000000000000..3cbdc6bc44dfcd2ebb786104fd6d4e2b
 +          expect(await page.locator(".github-link-hovercard").count()).toBe(0);
 +          await page.goto(`${suite.server.baseUrl}settings/profile`);
 +          await page.locator(".profile-hero__name").waitFor();
++          await page.locator(".identity-name-control input:enabled").waitFor();
 +          await page.screenshot({
 +            path: path.join(suite.artifactDir, `profile-${viewport.width}.png`),
 +            animations: "disabled",
@@ -1394,6 +1400,9 @@ index 0000000000000000000000000000000000000000..3cbdc6bc44dfcd2ebb786104fd6d4e2b
 +          expect(publicationPanels).toBe(0);
 +          expect(githubSettings).toBe(0);
 +          expect(identity).not.toContain("GitHub");
++          expect(
++            await gateway.getRequests("users.prefs.get", { keys: [GIT_COAUTHOR_PREFERENCE_KEY] }),
++          ).toEqual([]);
 +          expect([...chatRequests, ...requests].map(({ method }) => method)).toEqual([]);
 +          await page.goto(`${suite.server.baseUrl}settings/agents/main/tools`);
 +          await page.getByText("Available Tools", { exact: true }).waitFor();
@@ -1756,10 +1765,64 @@ index 4695cad876eb635308820d9eff06101a29ab3da3..34f61b9c7516739552be0d5cfd17cc1d
            props.error
              ? html`<div class="settings-row identity-error" role="alert">
 diff --git a/ui/src/pages/profile/profile-page.preferences.test.ts b/ui/src/pages/profile/profile-page.preferences.test.ts
-index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb2997c7fb56 100644
+index 423404d673c8f35d13ad10d03843771d2c9734f5..f51401c514372e3e87bb95ff611cc42237ddb048 100644
 --- a/ui/src/pages/profile/profile-page.preferences.test.ts
 +++ b/ui/src/pages/profile/profile-page.preferences.test.ts
-@@ -34,6 +34,9 @@ it("loads and updates co-author consent separately from verified GitHub identity
+@@ -5,6 +5,7 @@ import { GIT_COAUTHOR_PREFERENCE_KEY } from "../../../../packages/gateway-protoc
+ import type { UserProfile } from "../../../../packages/gateway-protocol/src/index.ts";
+ import type { GatewayBrowserClient } from "../../api/gateway.ts";
+ import { i18n } from "../../i18n/index.ts";
++import { createTestGatewayClient } from "../../test-helpers/gateway-client.ts";
+ import { waitForFast } from "../../test-helpers/wait-for.ts";
+ import {
+   createConnectedContext,
+@@ -23,6 +24,45 @@ afterEach(async () => {
+   await i18n.setLocale("en");
+ });
+ 
++it("keeps identity editing available without loading hidden GitHub preferences", async () => {
++  const profile: UserProfile = {
++    ...modelAccountProfile,
++    githubIdentity: {
++      login: "octocat",
++      profileUrl: "https://github.com/octocat",
++      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
++    },
++  };
++  const request = vi.fn(async (method: string) => {
++    if (method === "users.self") {
++      return { profile };
++    }
++    if (method === "users.listModelAccounts") {
++      return { profileId: profile.id, accounts: [], links: [] };
++    }
++    throw new Error(`unexpected method: ${method}`);
++  });
++  const client = createTestGatewayClient(request);
++  const harness = createConnectedContext(client.request.bind(client), {
++    id: profile.id,
++    name: profile.displayName ?? undefined,
++  });
++  const page = mountProfilePage(harness.context);
++
++  await waitForFast(() =>
++    expect(page.querySelector<HTMLInputElement>(".identity-name-control input")?.disabled).toBe(
++      false,
++    ),
++  );
++  expect(page.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(false);
++  expect(page.querySelector(".settings-account")).toBeNull();
++  expect(page.querySelector("wa-switch")).toBeNull();
++  expect(page.textContent).not.toContain("unexpected method");
++  expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
++    ["users.self", "users.listModelAccounts"].toSorted(),
++  );
++});
++
+ it("loads and updates co-author consent separately from verified GitHub identity", async () => {
+   const profile: UserProfile = {
+     ...modelAccountProfile,
+@@ -34,6 +74,9 @@ it("loads and updates co-author consent separately from verified GitHub identity
      },
    };
    const request = vi.fn(async (method: string, params?: unknown) => {
@@ -1769,7 +1832,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
      if (method === "users.self") {
        return { profile };
      }
-@@ -50,10 +53,14 @@ it("loads and updates co-author consent separately from verified GitHub identity
+@@ -50,10 +93,14 @@ it("loads and updates co-author consent separately from verified GitHub identity
      }
      throw new Error(`unexpected method: ${method}`);
    });
@@ -1788,7 +1851,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
    const page = mountProfilePage(harness.context);
  
    await waitForFast(() => expect(page.querySelector(".settings-account")).not.toBeNull());
-@@ -63,7 +70,7 @@ it("loads and updates co-author consent separately from verified GitHub identity
+@@ -63,7 +110,7 @@ it("loads and updates co-author consent separately from verified GitHub identity
      ),
    );
    expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
@@ -1797,7 +1860,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
    );
    expect(page.querySelector(".identity-github-form")).toBeNull();
    const toggle = page.querySelector<HTMLElement & { checked: boolean }>("wa-switch");
-@@ -77,7 +84,13 @@ it("loads and updates co-author consent separately from verified GitHub identity
+@@ -77,7 +124,13 @@ it("loads and updates co-author consent separately from verified GitHub identity
    );
    await waitForFast(() => expect(toggle?.checked).toBe(true));
    expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
@@ -1812,7 +1875,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
    );
  });
  
-@@ -92,6 +105,9 @@ it("treats a malformed co-author preference as opted out", async () => {
+@@ -92,6 +145,9 @@ it("treats a malformed co-author preference as opted out", async () => {
      },
    };
    const request = vi.fn(async (method: string) => {
@@ -1822,7 +1885,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
      if (method === "users.self") {
        return { profile };
      }
-@@ -101,10 +117,14 @@ it("treats a malformed co-author preference as opted out", async () => {
+@@ -101,10 +157,14 @@ it("treats a malformed co-author preference as opted out", async () => {
      }
      throw new Error(`unexpected method: ${method}`);
    });
@@ -1841,7 +1904,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
    const page = mountProfilePage(harness.context);
  
    await waitForFast(() => expect(page.querySelector(".settings-account")).not.toBeNull());
-@@ -123,6 +143,9 @@ it("keeps co-author credit on until the person opts out", async () => {
+@@ -123,6 +183,9 @@ it("keeps co-author credit on until the person opts out", async () => {
      },
    };
    const request = vi.fn(async (method: string, params?: unknown) => {
@@ -1851,7 +1914,7 @@ index 423404d673c8f35d13ad10d03843771d2c9734f5..f09d395e74515fe17744abd56734eb29
      if (method === "users.self") {
        return { profile };
      }
-@@ -136,10 +159,14 @@ it("keeps co-author credit on until the person opts out", async () => {
+@@ -136,10 +199,14 @@ it("keeps co-author credit on until the person opts out", async () => {
      }
      throw new Error(`unexpected method: ${method}`);
    });
@@ -1949,7 +2012,7 @@ index 2bdc3205f8b2150efe7d7a969dcb7b3d67aeb069..19e49cb43cefba1f52db6e293045a1c7
    const page = mountProfilePage(harness.context);
  
 diff --git a/ui/src/pages/profile/profile-page.ts b/ui/src/pages/profile/profile-page.ts
-index c6ec71d21e6d698571908c87f4a7be0649f05f6c..66a7ff905518c37fe859b23a39d00898a5b06e6a 100644
+index c6ec71d21e6d698571908c87f4a7be0649f05f6c..a92fe364c3fba061c645c6adb646b14035f0bc1a 100644
 --- a/ui/src/pages/profile/profile-page.ts
 +++ b/ui/src/pages/profile/profile-page.ts
 @@ -35,6 +35,7 @@ import { renderSettingsWorkspace } from "../../components/settings-workspace.ts"
@@ -1960,7 +2023,19 @@ index c6ec71d21e6d698571908c87f4a7be0649f05f6c..66a7ff905518c37fe859b23a39d00898
  import { IdentityAvatarController } from "../../lib/identity-avatar-loader.ts";
  import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
  import { PROFILE_SETTINGS_TARGET_IDS } from "../config/settings-targets.ts";
-@@ -341,6 +342,8 @@ export class ProfilePage extends OpenClawLightDomElement {
+@@ -165,7 +166,10 @@ export class ProfilePage extends OpenClawLightDomElement {
+       this.ownProfile = profile;
+       this.displayName = hasUnsavedDisplayName ? displayNameDraft : (profile.displayName ?? "");
+       this.gitCoauthorEnabled = true;
+-      if (profile.githubIdentity) {
++      if (
++        profile.githubIdentity &&
++        isGatewayMethodAdvertised(this.context.gateway.snapshot, "users.github.status") === true
++      ) {
+         const { loadUserPreferences } = await import("../../app/user-prefs-request.ts");
+         if (requestId !== this.identityRequestId) {
+           return;
+@@ -341,6 +345,8 @@ export class ProfilePage extends OpenClawLightDomElement {
        avatarUrl,
        displayName: this.displayName,
        gitCoauthorEnabled: this.gitCoauthorEnabled,
