@@ -61,12 +61,7 @@ Run `clawscarf configure` after linking the development command below.
 
 [CLI telemetry](telemetry.ts) owns the PostHog adapter, local random identity and
 command events. The CLI entrypoint owns its lifetime; configuration supplies only
-its mode and outcome. [Installation milestones](product-telemetry.ts) retain a
-separate random installation identity and claim ready observations once. The native
-plugin owns response observation; the
-[user contract](../deploy/deployment/installation.md#installation-milestones)
-describes its separate opt-out and release boundary.
-[Receiver regressions](telemetry.test.ts) check the actual
+its mode and outcome. [Receiver regressions](telemetry.test.ts) check the actual
 HTTP payload, opt-out, concurrent identity creation and failed/stalled delivery.
 The operator archive acceptance also checks the packaged command entrypoint against
 a local receiver. See the [user contract](../deploy/deployment/installation.md#telemetry)

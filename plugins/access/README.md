@@ -30,13 +30,3 @@ The plugin uses native page/navigation registrations and host dialogs. Its
 into both native UI artifacts; it has no React runtime or separate frontend build.
 See [Access](../../services/access/README.md) for backend behavior and
 [upstream's plugin UI contract](https://docs.openclaw.ai/plugins/feature-plugins).
-
-## Installation activation measurement
-
-Telemetry-enabled installation configuration enables observational `llm_output` and
-`agent_end` hooks for this plugin. They measure the first successful response to
-explicit human input without sending message content or conversation identity.
-The [installation telemetry contract](../../deploy/deployment/installation.md#installation-milestones)
-owns identity, opt-out, first-response semantics, best-effort delivery and release limits.
-Account and People do not depend on successful telemetry delivery. No observation hooks
-are registered without an installation telemetry ID, or when the runtime opt-out is set.

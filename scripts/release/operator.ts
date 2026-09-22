@@ -54,8 +54,6 @@ const payload = [
   "generated/http/core",
   "scripts/clawscarf.js",
   "scripts/telemetry.js",
-  "scripts/telemetry-destination.js",
-  "scripts/product-telemetry.js",
   "scripts/output.js",
   "scripts/errors.js",
   "scripts/session.js",

@@ -37,5 +37,3 @@ administrator-added plugins, skills and MCP.
 - [ ] Inventory transitive licenses and source obligations for the CLI and release
       images; include any missing notices or source archives.
 - [ ] Make pinned OS packages retrievable without relying on rolling Debian mirrors.
-
-- [ ] Qualify installation milestones in an instrumented CLI/runtime release: real ready setup and human response, restart deduplication, runtime opt-out, and PostHog receipt.

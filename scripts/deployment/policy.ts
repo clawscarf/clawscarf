@@ -27,7 +27,6 @@ export function initialRuntimePolicy(
   models: InitialModels | undefined,
   connections?: InitialConnectionsEndpoint,
   publicWeb = false,
-  telemetryHost?: string,
 ) {
   const document = parseDocument(source);
   if (document.errors.length || document.warnings.length)
@@ -44,17 +43,7 @@ export function initialRuntimePolicy(
       "invalid_runtime_policy",
       "Initial model setup requires the shipped deny-by-default runtime policy.",
     );
-  const analytics = telemetryHost ? new URL(telemetryHost) : undefined;
   const services = {
-    ...(analytics
-      ? {
-          product_analytics: serviceNetworkRule("Product analytics", {
-            host: analytics.hostname,
-            port: Number(analytics.port || 443),
-            binary: "/usr/local/bin/node",
-          }),
-        }
-      : {}),
     ...(models
       ? { model_gateway: serviceNetworkRule("Model gateway", models.network) }
       : {}),
@@ -83,7 +72,6 @@ export async function prepareRuntimePolicy(
   models: InitialModels | undefined,
   connections?: InitialConnectionsEndpoint,
   publicWeb = false,
-  telemetryHost?: string,
 ) {
   const policy = initialRuntimePolicy(
     await readFile(
@@ -93,7 +81,6 @@ export async function prepareRuntimePolicy(
     models,
     connections,
     false,
-    telemetryHost,
   );
   const composed = composeNetworkRules(
     policy.network_policies,

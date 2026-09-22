@@ -192,11 +192,8 @@ HTTP origin is accepted for local receiver tests only.
 
 The [CLI telemetry guide](../deploy/deployment/installation.md#telemetry) owns event
 fields, user opt-out, local identity and delivery limits. Destination changes need
-a new CLI build/package; fresh installation configuration retains the public destination
-for native activation reporting. They do not update existing team servers or cloud-service
-configuration. Installation milestone tracking requires an instrumented CLI and runtime;
-qualify a fresh setup, real successful response, restart deduplication and opt-out in the
-release image before claiming activation measurement is deployed. Automated tests use local receivers. The destination project's
+a new CLI build/package; they do not change running team servers or cloud-service
+configuration. Automated tests use local receivers. The destination project's
 **Settings → Privacy → Discard client IP data** must stay enabled: a null `$ip`
 property alone does not prevent PostHog from storing the connection IP. The CLI
 also disables GeoIP enrichment. When changing destinations, verify that privacy
