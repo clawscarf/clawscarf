@@ -33,10 +33,13 @@ async function readOptional(path: string): Promise<unknown> {
     throw error;
   }
 }
-function uncertain(): never {
+function uncertain(error?: unknown): never {
+  const failure = error instanceof LocalSetupError ? error : undefined;
   throw new LocalSetupError(
     "runtime_outcome_unknown",
-    "Runtime creation was attempted but its owned target is absent. Inspect this installation; setup will not create another runtime automatically.",
+    "Runtime creation was attempted but its owned target is absent. Inspect this installation; setup will not create another runtime automatically." +
+      (failure ? ` Creation failure: ${failure.message}` : ""),
+    failure?.commandFailure,
   );
 }
 function changed(): never {
@@ -223,9 +226,9 @@ export async function ensureRuntime(
     // A failed response may follow successful allocation: reconcile observed identity only.
     try {
       await command(state.input.openshellCli, args, { env, timeout: 180000 });
-    } catch {
+    } catch (error) {
       target = await control.observe();
-      if (!target) uncertain();
+      if (!target) uncertain(error);
     }
     target ??= await control.observe();
     if (!target) uncertain();

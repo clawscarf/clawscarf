@@ -30,7 +30,7 @@ import {
   withInstallationLock,
   writePrivate,
 } from "../deployment/state.js";
-import { run } from "../deployment/process.js";
+import { run, LocalSetupError } from "../deployment/process.js";
 import { selectionSchema } from "./packs.js";
 import { installationSchema } from "./configuration.js";
 import { resolveInstallation } from "./resolve.js";
@@ -377,6 +377,12 @@ export async function reconfigureInstallation(
       await writePrivate(prepared, JSON.stringify({ ownerId: state.ownerId }));
       return { state: "configured", restartRequired: true, directory };
     } catch (error) {
+      if (error instanceof LocalSetupError)
+        throw new LocalSetupError(
+          error.code,
+          `Settings were not confirmed during ${stage}; the installation remains stopped. ${error.message} Run clawscarf configure to review and resume the change.`,
+          error.commandFailure,
+        );
       throw new InstallationError(
         "unavailable",
         `Settings were not confirmed during ${stage}; the installation remains stopped. Run configure --directory again to review and explicitly resume the same change. The gateway key is observed first and matching native settings are not repeated.${error instanceof ModelConfigurationError ? ` Native result: ${error.code}.` : ""}`,

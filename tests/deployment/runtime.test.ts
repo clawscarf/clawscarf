@@ -314,3 +314,34 @@ await test("failed, malformed or repeated later pages never imply absence or dis
     }
   }
 });
+
+await test("allocation rejection retains safe subprocess diagnostics without repeating creation", async (t) => {
+  const f = await fixture();
+  t.after(f.cleanup);
+  const command: typeof run = async (executable, args, options) => {
+    if (args[1] !== "create") return f.command(executable, args, options);
+    return (await import("../../scripts/deployment/process.js")).run(
+      process.execPath,
+      [
+        "-e",
+        "process.stderr.write('private-provider-payload'); process.exit(7)",
+      ],
+    );
+  };
+  await assert.rejects(
+    ensureRuntime(f.directory, f.state, {}, command),
+    (error: unknown) => {
+      assert.ok(error instanceof LocalSetupError);
+      assert.equal(error.code, "runtime_outcome_unknown");
+      assert.deepEqual(error.commandFailure, { reason: "exit", exitCode: 7 });
+      assert.match(error.message, /Creation failure:.*exit 7/);
+      assert.doesNotMatch(error.message, /private-provider-payload/);
+      return true;
+    },
+  );
+  await assert.rejects(
+    ensureRuntime(f.directory, f.state, {}, f.command),
+    code("runtime_outcome_unknown"),
+  );
+  assert.equal(f.calls.filter((call) => call[1] === "create").length, 0);
+});
