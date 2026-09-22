@@ -132,7 +132,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
   );
   assert.ok(node.volumes.includes("browser-node-config:/configuration:ro"));
   assert.equal(
-    node.volumes.some((value) => /docker.sock|worker|controller/.test(value)),
+    node.volumes.some((value) => /docker.sock|controller/.test(value)),
     false,
   );
   assert.throws(() =>

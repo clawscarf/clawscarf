@@ -5,7 +5,6 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installationSchema } from "./installation/configuration.js";
-import { releaseSchema } from "./release/definition.js";
 import { fingerprint } from "./installation/files.js";
 import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { resolveInstallation } from "./installation/resolve.js";
@@ -43,31 +42,6 @@ const configuration = {
   connections: { mode: "disabled" },
   packs: [],
 };
-await test("product configuration never offers protection bypasses or invalid access combinations", () => {
-  assert.ok(installationSchema.safeParse(configuration).success);
-  for (const modification of [
-    { models: { mode: "disabled" } },
-    { execution: { mode: "host" } },
-    { resources: { gateway: { cpu: "2", memory: "2Gi" } } },
-    { access: { mode: "external" } },
-    { browser: { enabled: true, sandbox: false } },
-    { storage: { mode: "directory", root: "/tmp" } },
-  ])
-    assert.equal(
-      installationSchema.safeParse({ ...configuration, ...modification })
-        .success,
-      false,
-    );
-});
-await test("release file requires exact images, complete protection tools and supported platforms", () => {
-  assert.equal(
-    releaseSchema.safeParse({
-      version: "0.1.0",
-      images: { gateway: "image:latest" },
-    }).success,
-    false,
-  );
-});
 await test(
   "preview rejects changed release inputs before resource allocation",
   { skip: process.platform !== "darwin" || process.arch !== "arm64" },

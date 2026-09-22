@@ -79,7 +79,7 @@ await test("publication rejects stale inputs before registry access and safely r
   await writeFile(tarball, bytes);
   const input = { ...options, tarball };
   let channel = "1.0.0";
-  let integrity: string | undefined;
+  let integrity: string | undefined = undefined;
   let calls = 0;
   const registry: typeof fetch = () => {
     calls++;

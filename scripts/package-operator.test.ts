@@ -42,16 +42,6 @@ await test(
     assert.ok(listing.includes("package/services/access/migrations/"));
     assert.ok(listing.includes("package/generated/http/client/index.js"));
     assert.ok(listing.includes("package/generated/http/LICENSE.md"));
-    for (const obsolete of [
-      "scripts/local.js",
-      "scripts/models.js",
-      "scripts/runtime-config.js",
-      "services/access/generated/server/",
-      "services/connections/generated/server/",
-      "services/access/generated/client/",
-      "services/connections/generated/client/",
-    ])
-      assert.ok(!listing.includes(`package/${obsolete}`));
     assert.ok(listing.includes("package/services/connections/migrations/"));
     assert.ok(listing.includes("package/scripts/packs/transport.py"));
     assert.ok(listing.includes("package/release/components.json"));

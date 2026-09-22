@@ -474,17 +474,19 @@ await test(
                 images: 5,
               });
             },
-            apply: async (config, plan) => {
+            apply: (config, plan) => {
               calls.push("apply");
               assert.equal(config, join(f.directory, "installation.json"));
               assert.equal(plan.stateDirectory, join(f.directory, "state"));
-              if (fail === "cancel") throw new InstallerCancelled();
-              if (fail === true) throw Error("Fixture failure");
-              return {
+              if (fail === "cancel")
+                return Promise.reject(new InstallerCancelled());
+              if (fail === true)
+                return Promise.reject(Error("Fixture failure"));
+              return Promise.resolve({
                 state: "prepared",
                 directory: f.directory,
                 release: "0.1.0-dev",
-              };
+              });
             },
             start: (state) => {
               calls.push("start");
