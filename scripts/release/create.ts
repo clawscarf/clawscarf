@@ -12,10 +12,11 @@ import {
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { releaseSchema } from "./definition.js";
+import { releaseSchema, hostPlatformSchema } from "./definition.js";
 
 // Build inputs use the release contract, replacing tool digests with source paths.
 const inputSchema = releaseSchema.extend({
+  platforms: z.tuple([hostPlatformSchema]),
   tools: z.strictObject({
     openshell: releaseSchema.shape.tools.shape.openshell.extend({
       cli: z.string().min(1),
@@ -60,16 +61,20 @@ export async function createDevelopmentRelease(options: {
       tools: {
         openshell: {
           ...input.tools.openshell,
-          cli: await tool(
-            resolve(directory, input.tools.openshell.cli),
-            join(output, "tools/openshell"),
-            "tools/openshell",
-          ),
-          gateway: await tool(
-            resolve(directory, input.tools.openshell.gateway),
-            join(output, "tools/openshell-gateway"),
-            "tools/openshell-gateway",
-          ),
+          cli: {
+            [input.platforms[0]]: await tool(
+              resolve(directory, input.tools.openshell.cli),
+              join(output, "tools/openshell"),
+              "tools/openshell",
+            ),
+          },
+          gateway: {
+            [input.platforms[0]]: await tool(
+              resolve(directory, input.tools.openshell.gateway),
+              join(output, "tools/openshell-gateway"),
+              "tools/openshell-gateway",
+            ),
+          },
         },
       },
     });

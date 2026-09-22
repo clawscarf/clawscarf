@@ -159,7 +159,9 @@ clawscarf release-create --input /absolute/built-components.json \
 ```
 
 The input follows the [runtime schema](../scripts/release/definition.ts), except
-`tools.openshell.cli` and `gateway` are source executable paths. Relative inputs
+`platforms` contains exactly one host and `tools.openshell.cli` and `gateway` are
+source executable paths. The output indexes tool artifacts by platform, using the
+same format as published releases. Relative inputs
 resolve beside that input file. The result is:
 
 ```text

@@ -148,7 +148,13 @@ async function fixture(t: TestContext) {
         companion: image,
         openshellClient: image,
       },
-      tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
+      tools: {
+        openshell: {
+          version: "0.0.116",
+          cli: { "darwin-arm64": tool },
+          gateway: { "darwin-arm64": tool },
+        },
+      },
     }),
   );
   const recipe = join(parent, "recipe.json");

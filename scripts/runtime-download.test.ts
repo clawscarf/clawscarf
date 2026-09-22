@@ -15,14 +15,15 @@ await test("retained runtime survives removal of its package; downloads are veri
   const release = releaseSchema.parse(
     JSON.parse(await readFile(resolve("runtime/current.json"), "utf8")),
   );
-  release.platforms = [
-    hostPlatformSchema.parse(`${process.platform}-${process.arch}`),
-  ];
+  const host = hostPlatformSchema.parse(`${process.platform}-${process.arch}`);
+  release.platforms = [host];
   for (const name of ["cli", "gateway"] as const)
     release.tools.openshell[name] = {
-      file: `absent-${name}`,
-      sha256: fingerprint(executable),
-      url: `https://example.test/${name}`,
+      [host]: {
+        file: `absent-${name}`,
+        sha256: fingerprint(executable),
+        url: `https://example.test/${name}`,
+      },
     };
   await writeFile(source, JSON.stringify(release));
   const installation = join(root, "installation");
@@ -84,8 +85,10 @@ await test("retained runtime survives removal of its package; downloads are veri
         openshell: {
           ...release.tools.openshell,
           cli: {
-            ...release.tools.openshell.cli,
-            url: "http://example.test/tool",
+            [host]: {
+              ...release.tools.openshell.cli[host],
+              url: "http://example.test/tool",
+            },
           },
         },
       },

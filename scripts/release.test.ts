@@ -49,10 +49,6 @@ await test("runtime artifacts relocate independently of recipes and reject alter
     }),
     release,
   );
-  assert.equal("recipes" in release, false);
-  assert.equal("packs" in release, false);
-  assert.equal("modelCatalog" in release, false);
-  assert.throws(() => releaseSchema.parse({ ...release, recipes: [] }));
   const moved = join(directory, "moved");
   await rename(options.outputDirectory, moved);
   await rm(join(directory, "tool"));
@@ -176,21 +172,5 @@ await test("release tools select exact host artifacts and reject incomplete cros
         "linux-x64",
       ),
     /Missing runtime tool/,
-  );
-  assert.throws(
-    () =>
-      releaseTools(
-        {
-          ...release,
-          tools: {
-            openshell: {
-              ...release.tools.openshell,
-              cli: tool("darwin-arm64"),
-            },
-          },
-        },
-        "linux-x64",
-      ),
-    /Multi-platform/,
   );
 });

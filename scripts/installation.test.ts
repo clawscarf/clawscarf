@@ -90,7 +90,13 @@ await test(
         companion: image,
         openshellClient: image,
       },
-      tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
+      tools: {
+        openshell: {
+          version: "0.0.116",
+          cli: { "darwin-arm64": tool },
+          gateway: { "darwin-arm64": tool },
+        },
+      },
     };
     await writeFile(join(directory, "release.json"), JSON.stringify(release));
     const path = join(directory, "config.json");
