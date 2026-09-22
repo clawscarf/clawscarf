@@ -50,7 +50,7 @@ export CLAWSCARF_TELEMETRY_DISABLED=1
 
 The first reporting invocation prints a notice on stderr. JSON results stay on
 stdout. Reporting runs on the machine executing the CLI, independently of team
-login and Connections. The CLI events do not instrument conversations or teammates. New installations additionally enable the narrowly scoped product milestones described below unless opted out before setup.
+login and Connections. It does not instrument OpenClaw, conversations or teammates.
 
 Each dispatched command sends `cli_command_started` and, on normal completion or a
 handled failure/cancellation, `cli_command_finished`. Both include the registered
@@ -87,56 +87,6 @@ and abrupt process termination may produce no events or only a started event;
 a missing finished event is not proof of a failure. Reporting is not an audit log.
 The [release guide](../../release/README.md#cli-telemetry-destination) owns destination
 configuration and enablement status.
-
-### Installation milestones
-
-For a newly prepared installation, telemetry-enabled CLI builds create a separate random
-installation UUID in the private state directory's [product-telemetry.json](../../scripts/product-telemetry.ts) (mode 600).
-It is unrelated to the operator UUID, login, cloud registration, website visitor or
-team members. Restarts and resumed setup retain it. Copies of an installation's state
-retain the same identity; this is not an inventory of independently cloned servers.
-
-The CLI emits `installation_setup_completed` once when `configure`, `start`, or `status`
-actually observes `ready: true` and the command succeeds. This means services,
-administrator and required packs are ready according to the existing readiness checks.
-A successful status command without readiness is not completion. A local
-[product-setup-reported.json](../../scripts/product-telemetry.ts) marker prevents repeats across commands and processes.
-Existing `configure` events with new/ready/success still count setup attempts, not
-unique installations or proof that a response succeeded.
-
-The native Access plugin observes the public `llm_output` and `agent_end` hooks. It
-emits `first_agent_response` only after a successful run with nonempty response text
-and an explicit `external_user` input classification. Failed, empty, silent, background and
-unclassified runs do not count. It retains only bounded run identifiers in memory to
-pair the hooks; neither those identifiers nor text leaves the runtime. Its local
-`clawscarf-activation-<installation UUID>.json` marker in OpenClaw state survives restart.
-This observes a response generated successfully, not proof that a person read it.
-
-Both milestone events use `installation:<UUID>` as their distinct ID and carry only
-`source: product`, `installation_id`, a delivery-deduplication ID, timestamp and privacy
-flags. No operator ID, prompt, response, session, agent, account or team data is sent.
-The native request uses the same EU ingestion destination, a 500 ms timeout and no
-redirects/retries. Local markers are claimed before sending: a crash or delivery failure
-can permanently miss a milestone, but cannot relabel a later response as the first.
-Readiness observed after first use will not enter an ordered ready-to-response funnel.
-
-`CLAWSCARF_TELEMETRY_DISABLED=1` disables CLI reporting and prevents new installations
-from receiving a telemetry identity or native tracking configuration. Setting it in a
-later CLI shell does **not** reconfigure an already running server. For an existing
-server, also set `env.vars.CLAWSCARF_TELEMETRY_DISABLED` to `"1"` in its native OpenClaw
-configuration and restart the Gateway. The runtime checks this flag before retaining
-hook metadata or sending events. Disabling `plugins.entries.clawscarf-access.hooks.allowConversationAccess`
-also prevents the observation hooks, while keeping Account and People available.
-No event queue is replayed when reporting is enabled again.
-
-Fresh native configuration supplies only the public destination and random installation
-ID through `env.vars`; explicit observational hook permission is granted only for
-telemetry-enabled setup, with prompt injection disabled. OpenShell adds the specific
-PostHog ingestion host for the Node executable. Presets do not overwrite existing native
-settings. Existing runtime releases without the hook implementation cannot report
-activation: publish and qualify the instrumented CLI and runtime together. Local receiver
-and hook-contract tests cover payloads/opt-out/deduplication; they do not establish
-production receipt or qualify an OpenShell image.
 
 ## Terminal installer
 

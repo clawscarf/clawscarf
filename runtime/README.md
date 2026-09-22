@@ -168,11 +168,3 @@ fencing, acting-user management, credential-generation verification, source-boun
 inference authorization and revocation. Controller policy stays outside the runtime.
 Published releases include Linux artifacts. A hosting consumer still needs to test
 its own complete deployment against this contract before adoption.
-
-### Product telemetry preset
-
-Fresh telemetry-enabled installation configuration adds public ingestion settings and an
-anonymous installation UUID to native `env.vars`, and permits observational hooks on the
-Access plugin. The runtime's own telemetry opt-out remains independent of later CLI-shell
-settings. See the [milestone contract](../deploy/deployment/installation.md#installation-milestones)
-for exact fields, network access, opt-out and release-verification limits.
