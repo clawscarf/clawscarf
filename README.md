@@ -4,11 +4,19 @@
 
 ### OpenClaw, ready for your team.
 
-Give your team a shared OpenClaw server—with individual logins, your choice of AI
-models, connected accounts, and execution protected by NVIDIA OpenShell.
+Give your team a shared OpenClaw server—with company SSO, individual roles,
+enterprise connectors, your choice of AI models, and execution protected by
+NVIDIA OpenShell.
 **Self-hosted. Open source. OpenClaw’s own interface.**
 
-[Get started](#get-started) · [Installation guide](deploy/deployment/installation.md) · [Releases](https://github.com/clawscarf/clawscarf/releases) · [Contribute](CONTRIBUTING.md)
+[Get started](#get-started) · [See the product](#see-the-product) · [Installation guide](deploy/deployment/installation.md) · [Releases](https://github.com/clawscarf/clawscarf/releases) · [Contribute](CONTRIBUTING.md)
+
+- **Bring your team:** use hosted login or your company's SSO through OIDC, then
+  manage invitations, native roles and access in **People**.
+- **Connect your work:** enable **Connections** for services such as Microsoft Teams,
+  Outlook, SharePoint, Salesforce and Slack. Link accounts and choose which agents
+  can use them. Connections is optional and independent of login.
+- **Keep OpenClaw:** work with its native agents, conversations, tools and settings.
 
 ## Get started
 
@@ -37,6 +45,46 @@ clawscarf configure
 
 This alternative uses your own Node installation; see the
 [requirements](deploy/deployment/installation.md).
+
+</details>
+
+## See the product
+
+Real screenshots from a running local installation with Connections enabled.
+
+### People: team access and native roles
+
+Invite teammates, assign OpenClaw roles and remove access from one page.
+People works with [hosted login or company SSO through OIDC](deploy/deployment/installation.md#login-and-administrator).
+Here, the sole administrator is protected from removal or demotion.
+
+![People in OpenClaw, showing the administrator role, invitation controls and last-administrator protection](docs/images/people.jpg)
+
+### Connections: enterprise services for your agents
+
+Search the service catalog, link an account, and grant selected agents access.
+The picker below shows Microsoft services; this installation has no linked accounts yet.
+Enable this capability during setup, then manage accounts in the native
+[Connections page](plugins/connections/README.md).
+
+![Connections service picker filtered to Microsoft, showing Teams, Outlook and Dynamics 365](docs/images/connections.jpg)
+
+<details>
+<summary>See native agents, tool controls and logs</summary>
+
+**Agents.** Configure identity, workspace, models and skills in OpenClaw's own settings.
+
+![Native OpenClaw agent settings with identity, workspace and model information](docs/images/agents.jpg)
+
+**Tool controls.** Choose the tools available to each agent. Tool selection and execution
+permissions are separate; the [team trust boundary](#your-server-your-team) still applies.
+
+![Native agent tool settings with enabled tool counts and Minimal, Coding, Messaging and Full presets](docs/images/agent-tools.jpg)
+
+**Logs.** Inspect Gateway logs, filter by text or severity, and export the visible entries.
+This view is filtered to service startup events.
+
+![Native Gateway logs filtered to startup events, with severity filters and export controls](docs/images/logs.jpg)
 
 </details>
 
