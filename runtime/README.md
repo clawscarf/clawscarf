@@ -47,6 +47,13 @@ manual-update restriction and UI removal; administrator-installed extension upda
 remain available. The [Labs patch](openclaw/patches/remove-labs.prompt.md) removes
 the experiments page while preserving custom plugin UI.
 
+The launcher also sets `OPENCLAW_NO_GITHUB=1` for new and retained installations.
+The [GitHub patch](openclaw/patches/disable-native-github.prompt.md) disables native
+account linking, publication, authenticated previews, managed credential injection
+and OAuth/profile background work. Ordinary links and deliberate Git/`gh` commands
+with separately supplied credentials remain available; this does not impose a
+GitHub network prohibition. Existing account records are preserved.
+
 Members use `gateway.roles.definitions.member.sessions.others: "view"`: they can
 read other people's ordinary sessions, while explicit native session membership
 permits participation. Their own sessions remain writable; native draft and

@@ -12,8 +12,9 @@ boot metadata reflect the preceding stack, including channel and update curation
 The [inventory](../inventory.json) excludes worker provider plugins. Installing a
 plugin must not recreate the removed native service. Preserve ordinary local
 sessions, worktrees, native permissions and browser-node pairing/management.
-Generic node commands, terminal routing and independent GitHub integration belong
-to separate owners; this patch removes remote workspace publication recovery only.
+Generic node commands and terminal routing belong to separate owners. This patch
+removes the publication lifecycle with worker hosting; the later
+[GitHub patch](disable-native-github.prompt.md) disables its retained consumers.
 
 ## Required behavior
 

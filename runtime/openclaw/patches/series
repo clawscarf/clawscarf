@@ -9,3 +9,4 @@ disable-server-updates.patch
 curated-channel-setup.patch
 remove-cloud-workers.patch
 browser-shared-artifacts.patch
+disable-native-github.patch

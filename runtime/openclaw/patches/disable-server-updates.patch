@@ -44,13 +44,16 @@ ClawScarf-Patch: disable-server-updates
  src/infra/update-startup.test.ts              |   15 +
  src/infra/update-startup.ts                   |    7 +-
  ui/config/control-ui-boot-modules.json        |   29 +-
+ ui/src/app-navigation-groups.test.ts          |   21 +-
  ui/src/app-navigation.test.ts                 |    4 -
  ui/src/app-navigation.ts                      |    6 +-
  ui/src/app-route-paths.test.ts                |    5 +-
  ui/src/app-route-paths.ts                     |    1 -
+ ui/src/app/app-host-native-shell.test.ts      |   36 +-
  .../app/app-host-refresh-control-ui.test.ts   |    6 +-
  ui/src/app/app-shell-view.ts                  |   41 +-
  ui/src/app/bootstrap.ts                       |   19 -
+ ui/src/app/navigation-surface.browser.test.ts |    3 -
  ui/src/app/navigation-surface.ts              |   34 -
  ui/src/app/overlays-types.ts                  |   39 +-
  ui/src/app/overlays-update-campaign.test.ts   |  848 --------------
@@ -86,11 +89,14 @@ ClawScarf-Patch: disable-server-updates
  ui/src/components/app-sidebar-agent-menu.ts   |    2 -
  ui/src/components/app-sidebar-base.ts         |    4 -
  ui/src/components/app-sidebar-render.ts       |    1 -
+ ui/src/components/assistant-panel.test.ts     |    4 +-
  ui/src/components/custodian-alert-contract.ts |    4 +-
  ui/src/components/settings-sidebar.test.ts    |   50 +-
  ui/src/components/settings-sidebar.ts         |   17 +-
  .../sidebar-attention-dismissals.ts           |   26 -
  .../components/sidebar-attention-entries.ts   |   28 +-
+ .../sidebar-attention-items.test.ts           |   27 +-
+ .../sidebar-attention-layout.browser.test.ts  |    2 -
  .../sidebar-attention-panel.runtime.ts        |   11 -
  ui/src/components/sidebar-attention-store.ts  |   22 -
  .../sidebar-attention-update.test.ts          |   85 --
@@ -106,6 +112,8 @@ ClawScarf-Patch: disable-server-updates
  ui/src/components/update-run-view.test.ts     |  219 ----
  ui/src/components/update-run-view.ts          |  112 --
  ui/src/e2e/cron-trigger-authoring.e2e.test.ts |    8 +-
+ ui/src/e2e/native-embed-settings.e2e.test.ts  |    3 +-
+ ui/src/e2e/settings-layout.e2e.test.ts        |    3 -
  ui/src/e2e/update-coalesced.e2e.test.ts       |  455 --------
  ui/src/e2e/update-confirmation.e2e.test.ts    |  397 -------
  ui/src/e2e/update-lifecycle.e2e.test.ts       |  254 -----
@@ -132,6 +140,8 @@ ClawScarf-Patch: disable-server-updates
  .../lib/config/runtime-config-capability.ts   |    2 -
  .../pages/agents/memory/memory-panel.test.ts  |    1 -
  .../config/config-page-update-report.test.ts  |  126 --
+ .../config/config-page.selection.test.ts      |    1 -
+ ui/src/pages/config/config-page.test.ts       |  213 +---
  ui/src/pages/config/config-page.ts            |  128 +--
  ui/src/pages/config/config-sections.ts        |    4 +-
  .../pages/config/memory-page.test-support.ts  |    3 +-
@@ -139,6 +149,7 @@ ClawScarf-Patch: disable-server-updates
  ui/src/pages/config/route.ts                  |    5 +-
  ui/src/pages/config/settings-search.test.ts   |   55 -
  ui/src/pages/config/settings-search.ts        |    4 +-
+ ui/src/pages/config/settings-targets.test.ts  |    8 +-
  ui/src/pages/config/settings-targets.ts       |    6 -
  ui/src/pages/config/updates.test.ts           | 1010 -----------------
  ui/src/pages/config/updates.ts                |  599 ----------
@@ -150,7 +161,7 @@ ClawScarf-Patch: disable-server-updates
  ui/src/styles/update-run-view.css             |  166 ---
  .../app-sidebar-cases/identity-menu.ts        |   73 --
  ui/src/test-helpers/update-run.ts             |   27 -
- 144 files changed, 485 insertions(+), 13630 deletions(-)
+ 155 files changed, 513 insertions(+), 13923 deletions(-)
  create mode 100644 src/cli/update-cli/self-update-policy.test.ts
  create mode 100644 src/infra/self-update-policy.ts
  delete mode 100644 ui/src/app/overlays-update-campaign.test.ts
@@ -1532,6 +1543,47 @@ index 57ee7dc064062b34249cf39944e5f69380171f1e..f8e0ae5f4cd2a68b2855fcd9fbefbd4c
   ],
   "new": [
    "src/cli/quote-cli-arg.ts",
+diff --git a/ui/src/app-navigation-groups.test.ts b/ui/src/app-navigation-groups.test.ts
+index 978f0d47034fb5777d22532f6f7ae8e1543c757c..dc1cf2ecc2c43f254787df569a3acf1575a9a75c 100644
+--- a/ui/src/app-navigation-groups.test.ts
++++ b/ui/src/app-navigation-groups.test.ts
+@@ -62,18 +62,12 @@ describe("sidebar entries", () => {
+     );
+     const browserGroups = visibleSettingsNavigationGroups(canAdmin);
+     const nativeGroups = visibleSettingsNavigationGroups(canAdmin, capability);
+-    expect(browserGroups.flatMap((group) => group.routes).includes("updates")).toBe(canAdmin);
+-    expect(nativeGroups.flatMap((group) => group.routes)).toContain("updates");
+-    expect(isSettingsNavigationRouteVisible("updates", canAdmin)).toBe(canAdmin);
+-    expect(isSettingsNavigationRouteVisible("updates", canAdmin, capability)).toBe(true);
+-    expect(search("Check for updates", capability)).toContainEqual(
+-      expect.objectContaining({ routeId: "updates" }),
+-    );
++    expect(browserGroups.flatMap((group) => group.routes)).not.toContain("updates");
++    expect(nativeGroups.flatMap((group) => group.routes)).not.toContain("updates");
++    expect(search("Check for updates", capability)).toEqual([]);
+     expect(
+-      getStaticCommandPaletteCatalogItems(canAdmin, capability).some(
+-        (item) => item.routeId === "updates",
+-      ),
+-    ).toBe(true);
++      getStaticCommandPaletteCatalogItems(canAdmin, capability).map((item) => item.routeId),
++    ).not.toContain("updates");
+     expect(browserGroups.some((group) => group.labelKey === "nav.settingsGroupDevice")).toBe(false);
+     expect(nativeGroups[1]).toEqual({
+       labelKey: "nav.settingsGroupDevice",
+@@ -186,9 +180,10 @@ describe("sidebar entries", () => {
+     expect(settingsRoutes.every((routeId) => isSettingsNavigationRoute(routeId))).toBe(true);
+   });
+ 
+-  it("places Updates in the System group immediately before About", () => {
++  it("ends the System group with About and omits Updates", () => {
+     const system = settingsGroups.find((group) => group.labelKey === "nav.settingsGroupSystem");
+-    expect(system?.routes.slice(-2)).toEqual(["updates", "about"]);
++    expect(system?.routes.at(-1)).toBe("about");
++    expect(system?.routes).not.toContain("updates");
+   });
+ 
+   it("places team secrets between Privacy & Security and Approvals", () => {
 diff --git a/ui/src/app-navigation.test.ts b/ui/src/app-navigation.test.ts
 index e83b564c571f6525cb89b25270fd222ca091858b..438cf719dad321e51e60286eda9ee6562f867219 100644
 --- a/ui/src/app-navigation.test.ts
@@ -1627,6 +1679,107 @@ index e4f5fd025ab6aa3a37107d1847084e88b6cdbd66..77ff0a39e8538793862893f7696b57e4
    about: { path: "/settings/about" },
    "ai-agents": { path: "/settings/ai-agents", aliases: ["/ai-agents"] },
    "model-setup": { path: "/settings/model-setup", aliases: ["/model-setup"] },
+diff --git a/ui/src/app/app-host-native-shell.test.ts b/ui/src/app/app-host-native-shell.test.ts
+index 0f5db8bc69fea5ee525f5bfd4b7237905dc0d15b..7b474e1bac04202b248bfe76c8af7bc08b00c03b 100644
+--- a/ui/src/app/app-host-native-shell.test.ts
++++ b/ui/src/app/app-host-native-shell.test.ts
+@@ -575,21 +575,13 @@ describe("OpenClaw native shell", () => {
+   });
+ });
+ 
+-describe("OpenClaw shell update affordance", () => {
+-  it("renders floating attention while keeping update actions in navigation", async () => {
++describe("OpenClaw shell stale-client refresh", () => {
++  it("renders floating attention and preserves stale-client refresh", async () => {
+     const container = document.createElement("div");
+     document.body.append(container);
+     const shared = {
+       mobileNavLayout: false,
+       onboarding: false,
+-      updateAvailable: {
+-        currentVersion: "2026.7.1",
+-        latestVersion: "2026.7.2",
+-        channel: "stable" as const,
+-      },
+-      updateBusy: false,
+-      canUpdate: true,
+-      onUpdate: vi.fn(),
+       refreshRequired: false,
+       onRefresh: vi.fn(),
+     };
+@@ -609,7 +601,6 @@ describe("OpenClaw shell update affordance", () => {
+       renderFloatingUpdateCard({
+         ...shared,
+         navigationSurfaceHidden: collapsed,
+-        updateAvailable: null,
+         refreshRequired: true,
+       }),
+       container,
+@@ -620,7 +611,6 @@ describe("OpenClaw shell update affordance", () => {
+     expect(refreshCard?.refreshRequired).toBe(true);
+     refreshCard?.onRefresh();
+     expect(shared.onRefresh).toHaveBeenCalledOnce();
+-    expect(shared.onUpdate).not.toHaveBeenCalled();
+ 
+     const visible = navigationSurfaceIsHidden({
+       onboarding: false,
+@@ -632,7 +622,6 @@ describe("OpenClaw shell update affordance", () => {
+       renderFloatingUpdateCard({
+         ...shared,
+         navigationSurfaceHidden: visible,
+-        updateAvailable: null,
+         refreshRequired: true,
+       }),
+       container,
+@@ -656,14 +645,6 @@ describe("OpenClaw shell update affordance", () => {
+         navigationSurfaceHidden,
+         mobileNavLayout: true,
+         onboarding: false,
+-        updateAvailable: {
+-          currentVersion: "2026.7.1",
+-          latestVersion: "2026.7.2",
+-          channel: "stable" as const,
+-        },
+-        updateBusy: false,
+-        canUpdate: true,
+-        onUpdate: vi.fn(),
+         refreshRequired: false,
+         onRefresh: vi.fn(),
+       };
+@@ -673,10 +654,7 @@ describe("OpenClaw shell update affordance", () => {
+         container.querySelector("openclaw-sidebar-attention.sidebar-attention--floating"),
+       ).toBeNull();
+ 
+-      render(
+-        renderFloatingUpdateCard({ ...shared, updateAvailable: null, refreshRequired: true }),
+-        container,
+-      );
++      render(renderFloatingUpdateCard({ ...shared, refreshRequired: true }), container);
+       const refreshCard = container.querySelector<
+         HTMLElement & { updateComplete: Promise<boolean> }
+       >("openclaw-sidebar-update-card");
+@@ -692,9 +670,6 @@ describe("OpenClaw shell update affordance", () => {
+     const shared = {
+       mobileNavLayout: false,
+       onboarding: true,
+-      updateAvailable: null,
+-      updateBusy: false,
+-      onUpdate: vi.fn(),
+       refreshRequired: true,
+       onRefresh: vi.fn(),
+     };
+@@ -723,11 +698,6 @@ describe("OpenClaw shell update affordance", () => {
+       renderFloatingUpdateCard({
+         ...shared,
+         navigationSurfaceHidden: true,
+-        updateAvailable: {
+-          currentVersion: "2026.7.1",
+-          latestVersion: "2026.7.2",
+-          channel: "stable",
+-        },
+         refreshRequired: false,
+       }),
+       container,
 diff --git a/ui/src/app/app-host-refresh-control-ui.test.ts b/ui/src/app/app-host-refresh-control-ui.test.ts
 index c392f47e6b440b5cce4f472caf96c102801ea899..23c2bb3c41d03fa6c593db57b5ffc55b191236bd 100644
 --- a/ui/src/app/app-host-refresh-control-ui.test.ts
@@ -1810,6 +1963,20 @@ index 57f80179aa0a4b27fb2d792355d866cb914ae46b..a6ca88a0acf29da56853cc874e9a3a1f
        runtimeConfig.dispose();
        overlays.dispose();
        theme.dispose();
+diff --git a/ui/src/app/navigation-surface.browser.test.ts b/ui/src/app/navigation-surface.browser.test.ts
+index e30cecc09563fc49f35c097780aec75859eb3299..42181fa935bd4011c87504b76f9941b29dd572b5 100644
+--- a/ui/src/app/navigation-surface.browser.test.ts
++++ b/ui/src/app/navigation-surface.browser.test.ts
+@@ -52,9 +52,6 @@ describe.skipIf(!hasBrowserLayout)("navigation surface browser layout", () => {
+               navigationSurfaceHidden: true,
+               mobileNavLayout: false,
+               onboarding: false,
+-              updateAvailable: null,
+-              updateBusy: false,
+-              onUpdate: () => undefined,
+               refreshRequired: true,
+               onRefresh: async () => false,
+             })}
 diff --git a/ui/src/app/navigation-surface.ts b/ui/src/app/navigation-surface.ts
 index eb2904bf66b832665e2303257da9ae4fc55667b1..dcd529572f75a6f33c86a7a4b1938a89788232e1 100644
 --- a/ui/src/app/navigation-surface.ts
@@ -8762,6 +8929,28 @@ index 78ed198fe41bda1023e2e2b9247dc9c77ea0f264..2f039f3b8fc6a39a80846cd0a09fd571
 -    .watchUpdateProgress=${host.watchUpdateProgress}
    ></openclaw-sidebar-attention>`;
  }
+diff --git a/ui/src/components/assistant-panel.test.ts b/ui/src/components/assistant-panel.test.ts
+index 7e5201164cb2a67c6c2d65c896340f7dbc10ce40..e2b84552e317e21452225b2f483b9dc8517e6180 100644
+--- a/ui/src/components/assistant-panel.test.ts
++++ b/ui/src/components/assistant-panel.test.ts
+@@ -560,7 +560,7 @@ describe("assistant panel", () => {
+     await panel.updateComplete;
+     expect(panel.assistantPanelOpen).toBe(true);
+ 
+-    panel.pageRouteId = "updates";
++    panel.pageRouteId = "advanced";
+     await panel.updateComplete;
+     expect(panel.assistantPanelOpen).toBe(false);
+     window.dispatchEvent(new CustomEvent(CUSTODIAN_PANEL_TOGGLE_EVENT));
+@@ -570,7 +570,7 @@ describe("assistant panel", () => {
+     panel.remove();
+     const { panel: restored } = await mountPanel();
+     restored.custodianSuppressed = false;
+-    restored.pageRouteId = "updates";
++    restored.pageRouteId = "advanced";
+     await restored.updateComplete;
+     expect(restored.assistantPanelOpen).toBe(false);
+     restored.pageRouteId = "agents-home";
 diff --git a/ui/src/components/custodian-alert-contract.ts b/ui/src/components/custodian-alert-contract.ts
 index 901b7c3965adfd752b1eb23423c8cb71ec117d20..3d11540be38fb0455ae453b38e55892d9ef692e8 100644
 --- a/ui/src/components/custodian-alert-contract.ts
@@ -9102,6 +9291,98 @@ index 77750361dec375982140df9ca5048366968d8cc3..d37fffe84c0b7c5f82305f47d8f4402f
      ...warnings,
      ...mentions,
    ];
+diff --git a/ui/src/components/sidebar-attention-items.test.ts b/ui/src/components/sidebar-attention-items.test.ts
+index 35b52c43a35fb38b69abedb33a5536f772cabab9..1ca2d751bf7095d7d674bdedf4a68594426f8ff3 100644
+--- a/ui/src/components/sidebar-attention-items.test.ts
++++ b/ui/src/components/sidebar-attention-items.test.ts
+@@ -4,7 +4,6 @@ import type { CronJob } from "../api/types.ts";
+ import {
+   buildScopeUpgradeInboxEntry,
+   buildSidebarInboxEntries,
+-  buildUpdateInboxEntry,
+   sidebarInboxTabCounts,
+ } from "./sidebar-attention-entries.ts";
+ import { buildSidebarAttentionEntries } from "./sidebar-attention-items.ts";
+@@ -145,14 +144,6 @@ describe("sidebar Inbox projection", () => {
+       scopes: ["operator.read"],
+       state: { phase: "available" },
+     });
+-    const update = buildUpdateInboxEntry({
+-      canDismiss: true,
+-      dismissal: { kind: "updateAvailable", signature: '["2026.8.3","boot-a"]' },
+-      forced: true,
+-      requiresAction: true,
+-      severity: "warning",
+-      visible: true,
+-    });
+     const entries = buildSidebarInboxEntries({
+       approvals: [
+         {
+@@ -166,15 +157,14 @@ describe("sidebar Inbox projection", () => {
+       attention,
+       mentions: [mentionItem("older", 1_000), mentionItem("newer", 2_000)],
+       scopeUpgrade,
+-      update,
+     });
+ 
+     expect(sidebarInboxTabCounts(entries)).toEqual({
+-      all: 6,
++      all: 5,
+       approvals: 1,
+       mentions: 2,
+       automations: 1,
+-      system: 2,
++      system: 1,
+     });
+     expect(entries.filter((entry) => entry.dismissal).map((entry) => entry.type)).toEqual([
+       "scopeUpgrade",
+@@ -186,24 +176,15 @@ describe("sidebar Inbox projection", () => {
+     ]);
+   });
+ 
+-  it("keeps informational updates visible without adding them to attention counts", () => {
+-    const update = buildUpdateInboxEntry({
+-      canDismiss: false,
+-      dismissal: { kind: "updateAvailable", signature: '["2026.8.3","boot-a"]' },
+-      forced: false,
+-      requiresAction: false,
+-      severity: "warning",
+-      visible: true,
+-    });
++  it("keeps an empty Inbox free of attention counts", () => {
+     const entries = buildSidebarInboxEntries({
+       approvals: [],
+       attention: [],
+       mentions: [],
+       scopeUpgrade: null,
+-      update,
+     });
+ 
+-    expect(entries).toHaveLength(1);
++    expect(entries).toHaveLength(0);
+     expect(sidebarInboxTabCounts(entries)).toEqual({
+       all: 0,
+       approvals: 0,
+diff --git a/ui/src/components/sidebar-attention-layout.browser.test.ts b/ui/src/components/sidebar-attention-layout.browser.test.ts
+index 61a5e5088ba8c3260570e57d9c875e6a3f467ad1..d8d16419f048d69e322d85b97dc74939a560de1d 100644
+--- a/ui/src/components/sidebar-attention-layout.browser.test.ts
++++ b/ui/src/components/sidebar-attention-layout.browser.test.ts
+@@ -144,7 +144,6 @@ describe.runIf("__vitest_browser__" in globalThis)("Inbox panel layout", () => {
+         attention: [authWarning],
+         mentions: [inboxMention("mention-a"), inboxMention("mention-b")],
+         scopeUpgrade: null,
+-        update: null,
+       });
+       const params = panelParams(entries);
+       params.mentions.snapshot.dismissing = ["mention-b"];
+@@ -177,7 +176,6 @@ describe.runIf("__vitest_browser__" in globalThis)("Inbox panel layout", () => {
+       attention: [],
+       mentions: [inboxMention("mention-a")],
+       scopeUpgrade: null,
+-      update: null,
+     });
+     const params = panelParams(entries);
+     params.mentions.snapshot.phase = "error";
 diff --git a/ui/src/components/sidebar-attention-panel.runtime.ts b/ui/src/components/sidebar-attention-panel.runtime.ts
 index 2865885f71120435ac1f1f21f230b6c2041891ca..438eb45d5f22a394fa230b3cf35c6cf59e061b96 100644
 --- a/ui/src/components/sidebar-attention-panel.runtime.ts
@@ -11233,6 +11514,55 @@ index 562695800fc25e9f49901bcff7ec986d76f86ead..7962fb6cd360d2cb9e4b4d90534d5fcc
          });
        },
      );
+diff --git a/ui/src/e2e/native-embed-settings.e2e.test.ts b/ui/src/e2e/native-embed-settings.e2e.test.ts
+index 7cb9fcc0d470d643c59d0d883c619a8c2dd48027..2189797a3af2eafd3f20f7c063e67853733ca8a5 100644
+--- a/ui/src/e2e/native-embed-settings.e2e.test.ts
++++ b/ui/src/e2e/native-embed-settings.e2e.test.ts
+@@ -42,7 +42,6 @@ const routes = [
+   "advanced",
+   "debug",
+   "logs",
+-  "updates",
+   "about",
+   "skills",
+   "cron",
+@@ -155,7 +154,7 @@ suite.define(() => {
+         const list = page.locator(".settings-embed-list");
+         await list.locator('a[href="/settings/device"]').waitFor();
+         expect(await list.locator('a[href="/settings/security"]').count()).toBe(0);
+-        for (const route of ["device", "device-permissions", "talk", "updates"] as const) {
++        for (const route of ["device", "device-permissions", "talk"] as const) {
+           await list.locator(`a[href="${pathForRoute(route)}"]`).click();
+           await waitForControlUiRoute(page, { routeId: route });
+           expect(
+diff --git a/ui/src/e2e/settings-layout.e2e.test.ts b/ui/src/e2e/settings-layout.e2e.test.ts
+index 4bd673d5a1708fc64b6d8ea6e070b21bff1aa49d..9e27eeeeccc9b29d653b436891394825d82c0158 100644
+--- a/ui/src/e2e/settings-layout.e2e.test.ts
++++ b/ui/src/e2e/settings-layout.e2e.test.ts
+@@ -29,7 +29,6 @@ const introRoutes = [
+   "secrets",
+   "security",
+   "talk",
+-  "updates",
+ ] as const;
+ 
+ const learnMoreRoutes = [
+@@ -57,7 +56,6 @@ const sectionAlignmentRoutes = [
+   "secrets",
+   "security",
+   "talk",
+-  "updates",
+ ] as const;
+ 
+ const actionSectionCases = [{ route: "mcp", heading: "Configured servers" }] as const;
+@@ -84,7 +82,6 @@ const settingsRowRoutes = [
+   "secrets",
+   "approvals",
+   "infrastructure",
+-  "updates",
+   "advanced",
+   "plugins",
+   "about",
 diff --git a/ui/src/e2e/update-coalesced.e2e.test.ts b/ui/src/e2e/update-coalesced.e2e.test.ts
 deleted file mode 100644
 index 3cf7b19b5de9d987d1d8ab095ecbb383fb805639..0000000000000000000000000000000000000000
@@ -14390,6 +14720,264 @@ index a62d927286b6c81f99b3a817287b80d88210b0b3..00000000000000000000000000000000
 -    },
 -  );
 -});
+diff --git a/ui/src/pages/config/config-page.selection.test.ts b/ui/src/pages/config/config-page.selection.test.ts
+index 30e95ad757ad51c017ae0739a80b6defafd30cb8..ee374d723c95ae0d3a13a17946aa72127f1957b9 100644
+--- a/ui/src/pages/config/config-page.selection.test.ts
++++ b/ui/src/pages/config/config-page.selection.test.ts
+@@ -105,7 +105,6 @@ describe("ConfigPage default selections", () => {
+     ["memory", "memory"],
+     ["talk", "talk"],
+     ["infrastructure", "gateway"],
+-    ["updates", "update"],
+     ["ai-agents", "agents"],
+     ["advanced", null],
+   ] as const)("opens %s at its default when no section is selected", (pageId, activeSection) => {
+diff --git a/ui/src/pages/config/config-page.test.ts b/ui/src/pages/config/config-page.test.ts
+index 034cf33f82dc1224f5172dee21c3c98d9800fd47..8055df0333143861b194840ddf04fd251cb1b92f 100644
+--- a/ui/src/pages/config/config-page.test.ts
++++ b/ui/src/pages/config/config-page.test.ts
+@@ -15,11 +15,6 @@ import {
+   resetServerUiPrefsSync,
+ } from "../../app/server-prefs.ts";
+ import { loadSettings, patchSettings } from "../../app/settings.ts";
+-import {
+-  installDialogPolyfill,
+-  nextFrame,
+-  waitForRenderedModalDialog,
+-} from "../../test-helpers/modal-dialog.ts";
+ import { createStorageMock } from "../../test-helpers/storage.ts";
+ import * as realtimeTalk from "../chat/talk/session.ts";
+ import { ConfigPage, extractQuickSettingsSecurity } from "./config-page.ts";
+@@ -583,13 +578,12 @@ describe("ConfigPage camera selection", () => {
+ 
+ describe("ConfigPage curated mutation eligibility", () => {
+   it.each([
+-    ["offline", { connected: false }, ["operator.admin"], false, true],
+-    ["read-only operator", { connected: true }, ["operator.read"], false, true],
+-    ["config.set absent", { connected: true }, ["operator.admin"], false, false],
+-    ["config save", { connected: true, configSaving: true }, ["operator.admin"], false, true],
+-    ["app update", { connected: true }, ["operator.admin"], true, true],
+-    ["idle administrator", { connected: true }, ["operator.admin"], false, true],
+-  ])("locks server-backed controls for %s", (_name, statePatch, scopes, updateRunning, canSet) => {
++    ["offline", { connected: false }, ["operator.admin"], true],
++    ["read-only operator", { connected: true }, ["operator.read"], true],
++    ["config.set absent", { connected: true }, ["operator.admin"], false],
++    ["config save", { connected: true, configSaving: true }, ["operator.admin"], true],
++    ["idle administrator", { connected: true }, ["operator.admin"], true],
++  ])("locks server-backed controls for %s", (_name, statePatch, scopes, canSet) => {
+     const page = new ConfigPage();
+     const state = page as unknown as {
+       context: ApplicationContext;
+@@ -608,9 +602,6 @@ describe("ConfigPage curated mutation eligibility", () => {
+       gateway: {
+         snapshot: { hello: { auth: { role: "operator", scopes } } },
+       },
+-      overlays: {
+-        snapshot: { updateRunning, updateReconciliationPending: false },
+-      },
+     } as unknown as ApplicationContext;
+ 
+     const expectedUnlocked = _name === "idle administrator";
+@@ -618,199 +609,7 @@ describe("ConfigPage curated mutation eligibility", () => {
+   });
+ });
+ 
+-describe("ConfigPage Updates integration", () => {
+-  it("refreshes update status once when the page becomes active", () => {
+-    const refreshUpdateStatus = vi.fn(async () => {});
+-    const page = new ConfigPage();
+-    const state = page as unknown as {
+-      context: ApplicationContext;
+-      syncUpdateStatusRefresh: () => void;
+-    };
+-    state.context = {
+-      gateway: {
+-        snapshot: {
+-          client: {},
+-          phase: "connected",
+-          hello: {
+-            auth: { role: "operator", scopes: ["operator.admin"] },
+-            features: { methods: ["update.status"] },
+-          },
+-        },
+-      },
+-      overlays: { refreshUpdateStatus },
+-    } as unknown as ApplicationContext;
+-
+-    page.pageId = "updates";
+-    state.syncUpdateStatusRefresh();
+-    state.syncUpdateStatusRefresh();
+-    expect(refreshUpdateStatus).toHaveBeenCalledOnce();
+-
+-    page.pageId = "advanced";
+-    state.syncUpdateStatusRefresh();
+-    page.pageId = "updates";
+-    state.syncUpdateStatusRefresh();
+-    expect(refreshUpdateStatus).toHaveBeenCalledTimes(2);
+-  });
+-
+-  it("stages policy changes through patchForm and confirms Update now before overlays", async () => {
+-    const patchForm = vi.fn();
+-    const runUpdate = vi.fn();
+-    const page = new ConfigPage();
+-    const state = page as unknown as { context: ApplicationContext };
+-    page.pageId = "updates";
+-    state.context = {
+-      config: {
+-        current: { assistantIdentity: { name: "OpenClaw" }, serverVersion: "2026.8.1" },
+-      },
+-      runtimeConfig: {
+-        canSet: true,
+-        state: {
+-          connected: true,
+-          configLoading: false,
+-          configSaving: false,
+-          configApplying: false,
+-          configForm: { update: { channel: "stable", auto: { enabled: false } } },
+-          configSnapshot: null,
+-        },
+-        patchForm,
+-      },
+-      gateway: {
+-        snapshot: {
+-          client: {},
+-          phase: "connected",
+-          hello: {
+-            auth: { role: "operator", scopes: ["operator.admin"] },
+-            features: { methods: ["update.run"] },
+-          },
+-        },
+-        // The update dialog watches both stores for the life of the install.
+-        subscribe: () => () => undefined,
+-      },
+-      overlays: {
+-        snapshot: {
+-          updateAvailable: null,
+-          updateSchedule: { channel: "stable", autoEnabled: false },
+-          updateRunning: false,
+-          updateReconciliationPending: false,
+-          updateStatusBanner: null,
+-        },
+-        subscribe: () => () => undefined,
+-        runUpdate,
+-      },
+-    } as unknown as ApplicationContext;
+-    const container = document.createElement("div");
+-    document.body.append(container);
+-    const restoreDialogPolyfill = installDialogPolyfill();
+-
+-    state.context.overlays.snapshot.updateStatusRefreshing = true;
+-    render(page.render(), container);
+-    const checkingButton = container.querySelector<HTMLButtonElement>(".btn.primary")!;
+-    expect(checkingButton.textContent?.trim()).toBe("Update now");
+-    expect(checkingButton.disabled).toBe(true);
+-    expect(checkingButton.title).toBe("Checking for updates…");
+-    expect(container.querySelector(".settings-status")?.textContent).toContain(
+-      "Checking for updates…",
+-    );
+-    expect(container.querySelector("wa-radio-group")?.hasAttribute("disabled")).toBe(true);
+-    state.context.overlays.snapshot.updateStatusRefreshing = false;
+-    state.context.overlays.snapshot.updateStatusCheckBanner = {
+-      tone: "warn",
+-      text: "Could not check for updates: timeout",
+-    };
+-    render(page.render(), container);
+-    const unknownUpdateButton = container.querySelector<HTMLButtonElement>(".btn.primary")!;
+-    expect(unknownUpdateButton.disabled).toBe(true);
+-    expect(unknownUpdateButton.title).toBe(
+-      "Check for updates successfully before starting an update.",
+-    );
+-
+-    state.context.overlays.snapshot.updateSchedule = {
+-      channel: "dev",
+-      autoEnabled: false,
+-      install: { kind: "git", git: { status: "diverged", commitsAhead: 1, commitsBehind: 3 } },
+-    };
+-    render(page.render(), container);
+-    const knownUpdateButton = container.querySelector<HTMLButtonElement>(".btn.primary")!;
+-    expect(knownUpdateButton.disabled).toBe(false);
+-    expect(knownUpdateButton.title).toBe("");
+-    expect(container.querySelector(".settings-status")?.textContent).toContain(
+-      "Could not check for updates: timeout",
+-    );
+-    expect(runUpdate).not.toHaveBeenCalled();
+-
+-    const channel = container.querySelector<HTMLElement & { value: string }>("wa-radio-group");
+-    if (!channel) {
+-      throw new Error("Missing update channel control");
+-    }
+-    channel.value = "beta";
+-    channel.dispatchEvent(new Event("change"));
+-    const policySwitches = [
+-      ...container.querySelectorAll<HTMLElement & { checked: boolean }>("wa-switch"),
+-    ];
+-    const checks = policySwitches.find(
+-      (control) => control.textContent?.trim() === "Check for updates",
+-    );
+-    if (!checks) {
+-      throw new Error("Missing update checks control");
+-    }
+-    checks.checked = false;
+-    checks.dispatchEvent(new Event("change"));
+-    const automatic = policySwitches.find(
+-      (control) => control.textContent?.trim() === "Automatic updates",
+-    );
+-    if (!automatic) {
+-      throw new Error("Missing automatic update control");
+-    }
+-    automatic.checked = true;
+-    automatic.dispatchEvent(new Event("change"));
+-    [...container.querySelectorAll<HTMLButtonElement>("button")]
+-      .find((button) => button.textContent?.includes("Update now"))
+-      ?.click();
+-    await nextFrame();
+-
+-    expect(patchForm).toHaveBeenCalledWith(["update", "channel"], "beta");
+-    expect(patchForm).toHaveBeenCalledWith(["update", "checkOnStart"], false);
+-    expect(patchForm).toHaveBeenCalledWith(["update", "auto", "enabled"], true);
+-    // Settings shares the sidebar card's confirmation gate: nothing runs on the click itself.
+-    expect(runUpdate).not.toHaveBeenCalled();
+-
+-    const { modal } = await waitForRenderedModalDialog(document.body);
+-    [...modal.querySelectorAll("button")]
+-      .find((button) => button.textContent?.trim() === "Update and restart")
+-      ?.click();
+-    await nextFrame();
+-
+-    expect(runUpdate).toHaveBeenCalledOnce();
+-    restoreDialogPolyfill();
+-    container.remove();
+-  });
+-});
+-
+ describe("ConfigPage runtime config lifecycle", () => {
+-  it("loads Updates without requesting the admin-only config schema", async () => {
+-    const page = new ConfigPage();
+-    page.pageId = "updates";
+-    const state = page as unknown as {
+-      synchronizeRuntimeConfig: (runtimeConfig: ApplicationContext["runtimeConfig"]) => void;
+-    };
+-    const runtimeConfig = {
+-      state: {
+-        configSnapshot: null,
+-        configLoading: false,
+-        configSchema: null,
+-        configSchemaLoading: false,
+-      },
+-      ensureLoaded: vi.fn(() => Promise.resolve()),
+-      ensureSchemaLoaded: vi.fn(() => Promise.resolve()),
+-    } as unknown as ApplicationContext["runtimeConfig"];
+-
+-    state.synchronizeRuntimeConfig(runtimeConfig);
+-    await Promise.resolve();
+-
+-    expect(runtimeConfig.ensureLoaded).toHaveBeenCalledOnce();
+-    expect(runtimeConfig.ensureSchemaLoaded).not.toHaveBeenCalled();
+-  });
+-
+   it("loads replacement sources and clears sensitive reveal state", async () => {
+     const page = new ConfigPage();
+     const state = page as unknown as {
 diff --git a/ui/src/pages/config/config-page.ts b/ui/src/pages/config/config-page.ts
 index 32e3370c2a319c77fbf1ed357e7309300d98132a..3e486abc55b6493a1a45931e7f33c3afbba432db 100644
 --- a/ui/src/pages/config/config-page.ts
@@ -14888,6 +15476,42 @@ index 355336582076850937a98727952a161372fccc1f..c16536a5c0248d294a4fdde44577f301
      const routeId = configPageForSection(key);
      if (
        !isSettingsNavigationRouteVisible(
+diff --git a/ui/src/pages/config/settings-targets.test.ts b/ui/src/pages/config/settings-targets.test.ts
+index 3934dcde71aaa2cec7eb4622d6dc7ad6db1e0229..ea1aecb2de0b1e951f603fcd623184b671d3f1ad 100644
+--- a/ui/src/pages/config/settings-targets.test.ts
++++ b/ui/src/pages/config/settings-targets.test.ts
+@@ -39,7 +39,6 @@ describe("settings search target manifest", () => {
+       ["device", "/settings/device", "", ""],
+       ["devicePermissions", "/settings/device/permissions", "", ""],
+       ["deviceTalk", "/settings/talk", "", ""],
+-      ["updates", "/settings/updates", "", "#config-section-update"],
+       ["channels", "/settings/channels", "", ""],
+       ["security", "/settings/security", "", ""],
+       ["secrets", "/settings/secrets", "", ""],
+@@ -156,7 +155,6 @@ describe("settings config section ownership", () => {
+     ["memory", ["memory"]],
+     ["talk", ["talk"]],
+     ["infrastructure", ["gateway", "browser", "nodeHost", "discovery", "acp"]],
+-    ["updates", ["update"]],
+     ["ai-agents", ["agents", "skills", "tools", "session"]],
+   ];
+ 
+@@ -168,11 +166,13 @@ describe("settings config section ownership", () => {
+     }
+   });
+ 
+-  it("assigns each curated section to exactly one page", () => {
++  it("keeps curated and retired sections out of Advanced", () => {
+     const sections = pages.flatMap(([, pageSections]) => pageSections);
+ 
+     expect(new Set(sections).size).toBe(sections.length);
+-    expect([...SCOPED_CONFIG_SECTION_KEYS].toSorted()).toEqual([...sections, "plugins"].toSorted());
++    expect([...SCOPED_CONFIG_SECTION_KEYS].toSorted()).toEqual(
++      [...sections, "plugins", "update"].toSorted(),
++    );
+   });
+ 
+   it("keeps uncurated sections on Advanced", () => {
 diff --git a/ui/src/pages/config/settings-targets.ts b/ui/src/pages/config/settings-targets.ts
 index 4b02c14f042d46f314462632ac7b8f2a4134ec55..bd8b449e3385a6d24ac998be51eeeec407c259bf 100644
 --- a/ui/src/pages/config/settings-targets.ts
