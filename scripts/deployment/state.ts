@@ -24,6 +24,31 @@ const stateSchema = identitySchema
   .extend({ input: z.unknown().transform(parseLocalInput) })
   .strict();
 export type LocalState = z.infer<typeof stateSchema>;
+const preparationSchema = z.strictObject({
+  ownerId: z.uuid(),
+  settingsCandidate: z.string().optional(),
+  settingsPending: z.string().optional(),
+  settingsReapply: z.enum(["models", "connections"]).optional(),
+});
+export async function readPreparation(directory: string) {
+  const record = preparationSchema.parse(
+    JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
+  );
+  if (record.ownerId !== (await readInstallationIdentity(directory)).ownerId)
+    throw new LocalSetupError(
+      "configuration_changed",
+      "Preparation belongs to another installation.",
+    );
+  return record;
+}
+export async function requirePrepared(directory: string) {
+  if ((await readPreparation(directory)).settingsPending)
+    throw new LocalSetupError(
+      "configuration_changed",
+      "A retained settings change is unconfirmed. Run configure to review and resume it before starting.",
+    );
+}
+
 export async function writePrivate(path: string, value: string | Buffer) {
   const temporary = path + "." + randomUUID();
   try {

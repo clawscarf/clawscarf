@@ -8,11 +8,9 @@ import {
   verifyBrowserConfiguration,
 } from "./browser.js";
 import { probeTeamAccess } from "./team.js";
-import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { z } from "zod";
-import { readState, resourceNames } from "./state.js";
+import { readState, resourceNames, requirePrepared } from "./state.js";
 import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
 import { ensureRuntime, stopRuntime } from "./runtime.js";
@@ -31,13 +29,7 @@ export async function launchLocal(
 ) {
   const directory = resolve(directoryInput);
   const state = await readState(directory);
-  z.strictObject({
-    ownerId: z.literal(state.ownerId),
-    settingsCandidate: z.string().optional(),
-    settingsReapply: z.enum(["models", "connections"]).optional(),
-  }).parse(
-    JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
-  );
+  await requirePrepared(directory);
   if (Object.keys(process.env).some((key) => key.startsWith("OPENSHELL_")))
     throw new LocalSetupError(
       "configuration_changed",

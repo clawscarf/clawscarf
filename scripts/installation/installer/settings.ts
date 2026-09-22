@@ -1,5 +1,4 @@
 import { checkHost, checkInstallationPrerequisites } from "../prerequisites.js";
-import { z } from "zod";
 import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { setupContext } from "../setup.js";
 import {
@@ -17,10 +16,15 @@ import { progress, type InstallerPrompts } from "./prompts.js";
 import { SetupInputs, saveConfiguration } from "../save.js";
 import { readJson } from "../files.js";
 import { installationSchema } from "../configuration.js";
-import { planSettingsChange, reconfigureInstallation } from "../reconfigure.js";
+import {
+  planSettingsChange,
+  reconfigureInstallation,
+  retainSettingsAuthorization,
+  discardSettingsCandidate,
+} from "../reconfigure.js";
 import { controlInstallation, startInstallation } from "../lifecycle.js";
 import { InstallationError } from "../errors.js";
-import { withInstallationLock, writePrivate } from "../../deployment/state.js";
+import { readPreparation } from "../../deployment/state.js";
 
 /** The menu only gathers answers; the same plan/apply operations serve unattended callers. */
 export async function editInstallationSettings(
@@ -45,12 +49,7 @@ export async function editInstallationSettings(
   const settingsFile = join(directory, "settings.json");
   const before = await readFile(settingsFile, "utf8");
   const config = installationSchema.parse(JSON.parse(before));
-  const record = z
-    .object({
-      settingsCandidate: z.string().optional(),
-      settingsReapply: z.enum(["models", "connections"]).optional(),
-    })
-    .parse(await readJson(join(directory, "prepared.json")));
+  const record = await readPreparation(directory);
   const pending = record.settingsCandidate;
   if (
     record.settingsReapply &&
@@ -121,28 +120,7 @@ export async function editInstallationSettings(
       !options.nonInteractive &&
       !(await ui.confirm("Resume this interrupted change?"))
     ) {
-      await withInstallationLock(directory, async () => {
-        const prepared = z
-          .object({
-            ownerId: z.string(),
-            settingsCandidate: z.string().optional(),
-            settingsReapply: z.enum(["models", "connections"]).optional(),
-            settingsPending: z.string().optional(),
-          })
-          .parse(await readJson(join(directory, "prepared.json")));
-        if (prepared.settingsCandidate !== pending)
-          throw new InstallationError(
-            "stale_plan",
-            "The pending change has changed. Reopen configure.",
-          );
-        if (!prepared.settingsPending) {
-          await writePrivate(
-            join(directory, "prepared.json"),
-            JSON.stringify({ ownerId: prepared.ownerId }),
-          );
-          retained = false;
-        }
-      });
+      retained = !(await discardSettingsCandidate(directory, pending));
       return { state: "cancelled" as const };
     }
     if (
@@ -254,36 +232,13 @@ export async function editInstallationSettings(
     return { state: "prepared" as const };
   } catch (error) {
     if (authorizing && !pending) {
-      const candidate = authorizing;
-      await withInstallationLock(directory, async () => {
-        if ((await readFile(settingsFile, "utf8")) !== before)
-          throw new InstallationError(
-            "stale_plan",
-            "Settings changed during authorization. Reopen configure before applying.",
-          );
-        const prepared = z
-          .object({
-            ownerId: z.string(),
-            settingsCandidate: z.string().optional(),
-            settingsReapply: z.enum(["models", "connections"]).optional(),
-            settingsPending: z.string().optional(),
-          })
-          .parse(await readJson(join(directory, "prepared.json")));
-        if (prepared.settingsCandidate || prepared.settingsPending)
-          throw new InstallationError(
-            "stale_plan",
-            "Another configuration is pending. Resume it before applying these settings.",
-          );
-        await writePrivate(
-          join(directory, "prepared.json"),
-          JSON.stringify({
-            ...prepared,
-            settingsCandidate: candidate,
-            ...(reapply ? { settingsReapply: reapply } : {}),
-          }),
-        );
-        retained = true;
-      });
+      await retainSettingsAuthorization(
+        directory,
+        authorizing,
+        before,
+        reapply,
+      );
+      retained = true;
     }
     if (attempted)
       ui.note(

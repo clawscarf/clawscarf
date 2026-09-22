@@ -25,6 +25,7 @@ import { configureStoppedRuntimeModels } from "../models/runtime.js";
 import { loadInitialModels } from "../deployment/models.js";
 import {
   readState,
+  readPreparation,
   resourceNames,
   withInstallationLock,
   writePrivate,
@@ -123,14 +124,7 @@ export async function planSettingsChange(
         )
       ).configuration
     : (await loadInitialModels(next.models))?.configuration;
-  const pending = z
-    .strictObject({
-      ownerId: z.literal(state.ownerId),
-      settingsPending: z.string().optional(),
-      settingsCandidate: z.string().optional(),
-      settingsReapply: z.enum(["models", "connections"]).optional(),
-    })
-    .parse(await readJson(join(directory, "prepared.json")));
+  const pending = await readPreparation(directory);
   if (
     pending.settingsPending &&
     pending.settingsPending !== desired.fingerprint
@@ -388,5 +382,59 @@ export async function reconfigureInstallation(
         `Settings were not confirmed during ${stage}; the installation remains stopped. Run configure --directory again to review and explicitly resume the same change. The gateway key is observed first and matching native settings are not repeated.${error instanceof ModelConfigurationError ? ` Native result: ${error.code}.` : ""}`,
       );
     }
+  });
+}
+
+/** Retain an authorization draft without blocking startup; no service mutation has begun. */
+export async function retainSettingsAuthorization(
+  directory: string,
+  candidate: string,
+  acceptedSettings: string,
+  reapply?: "models" | "connections",
+) {
+  await withInstallationLock(directory, async () => {
+    if (
+      (await readFile(join(directory, "settings.json"), "utf8")) !==
+      acceptedSettings
+    )
+      throw new InstallationError(
+        "stale_plan",
+        "Settings changed during authorization. Reopen configure before applying.",
+      );
+    const prepared = await readPreparation(directory);
+    if (prepared.settingsCandidate || prepared.settingsPending)
+      throw new InstallationError(
+        "stale_plan",
+        "Another configuration is pending. Resume it before applying these settings.",
+      );
+    await writePrivate(
+      join(directory, "prepared.json"),
+      JSON.stringify({
+        ...prepared,
+        settingsCandidate: candidate,
+        ...(reapply ? { settingsReapply: reapply } : {}),
+      }),
+    );
+  });
+}
+
+/** A draft can be discarded only before service mutation begins. */
+export async function discardSettingsCandidate(
+  directory: string,
+  candidate: string,
+) {
+  return withInstallationLock(directory, async () => {
+    const prepared = await readPreparation(directory);
+    if (prepared.settingsCandidate !== candidate)
+      throw new InstallationError(
+        "stale_plan",
+        "The pending change has changed. Reopen configure.",
+      );
+    if (prepared.settingsPending) return false;
+    await writePrivate(
+      join(directory, "prepared.json"),
+      JSON.stringify({ ownerId: prepared.ownerId }),
+    );
+    return true;
   });
 }

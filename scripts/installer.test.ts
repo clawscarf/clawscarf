@@ -1293,12 +1293,14 @@ await test(
     const first = await collectInstallation(new Answers(f.answers), f);
     const state = join(f.parent, "state");
     await mkdir(state, { mode: 0o700 });
+    const ownerId = randomUUID();
+    await writeFile(
+      join(state, "installation.json"),
+      JSON.stringify({ schemaVersion: 1, ownerId }),
+    );
     const accepted = JSON.stringify({ ...first.config, stateDirectory: state });
     await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
-    await writeFile(
-      join(state, "prepared.json"),
-      JSON.stringify({ ownerId: "test" }),
-    );
+    await writeFile(join(state, "prepared.json"), JSON.stringify({ ownerId }));
     class Exit extends Answers {
       override select(
         message: string,
@@ -1320,7 +1322,11 @@ await test(
       await readFile(join(state, "settings.json"), "utf8"),
       accepted,
     );
-    assert.deepEqual(await readdir(state), ["prepared.json", "settings.json"]);
+    assert.deepEqual(await readdir(state), [
+      "installation.json",
+      "prepared.json",
+      "settings.json",
+    ]);
   },
 );
 
@@ -1718,7 +1724,12 @@ await test(
       first.inputs,
     );
     const state = join(f.directory, "state");
-    await mkdir(state);
+    await mkdir(state, { mode: 0o700 });
+    const ownerId = randomUUID();
+    await writeFile(
+      join(state, "installation.json"),
+      JSON.stringify({ schemaVersion: 1, ownerId }),
+    );
     const accepted = {
       ...resolveConfigurationInputs(
         installationSchema.parse(await readJson(file)),
@@ -1727,10 +1738,7 @@ await test(
       stateDirectory: state,
     };
     await writeFile(join(state, "settings.json"), JSON.stringify(accepted));
-    await writeFile(
-      join(state, "prepared.json"),
-      JSON.stringify({ ownerId: randomUUID() }),
-    );
+    await writeFile(join(state, "prepared.json"), JSON.stringify({ ownerId }));
     assert.deepEqual(
       await editInstallationSettings(state, unattendedPrompts, {
         nonInteractive: true,

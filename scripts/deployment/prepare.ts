@@ -34,6 +34,7 @@ import {
 import { withPreparedDatabase } from "./database.js";
 import {
   initializeState,
+  requirePrepared,
   writePrivate,
   ensurePrivateFile,
   resourceNames,
@@ -84,13 +85,7 @@ export async function prepareLocal(
   await verifyRuntimeImage(input.runtimeImage);
   const state = await initializeState(directory, input);
   try {
-    z.strictObject({
-      ownerId: z.literal(state.ownerId),
-      settingsCandidate: z.string().optional(),
-      settingsReapply: z.enum(["models", "connections"]).optional(),
-    }).parse(
-      JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
-    );
+    await requirePrepared(directory);
   } catch (error) {
     if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
       throw new LocalSetupError(
