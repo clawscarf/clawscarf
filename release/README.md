@@ -109,10 +109,13 @@ its packaging checks alone do not establish that journey. Check the owning compo
 limitations before claiming support for optional capabilities.
 
 [Publish release candidate](../.github/workflows/publish-release.yml) accepts a successful
-build run from `main`. It checks the source commit and artifact checksums, creates the
-GitHub Release and publishes the already-built npm tarball. It never rebuilds images
+build run from `main`. Before publishing anything, it checks the source commit,
+artifact checksums, current runtime pin and npm channel progression. It then creates
+the GitHub Release and publishes the already-built npm tarball. It never rebuilds images
 or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Repeating
-a GitHub upload is allowed only when the existing checksums match exactly.
+a GitHub upload is allowed only when the existing checksums match exactly. An npm
+version already published with the same tarball integrity and channel is skipped
+on retry; different bytes or a newer selected version stop publication.
 A separate dependent job then advances the checkout's current runtime selection;
 a failure there leaves the published release available and can be retried without
 republishing npm or rebuilding artifacts.

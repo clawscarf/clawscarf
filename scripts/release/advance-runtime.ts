@@ -9,6 +9,7 @@ export async function advanceRuntime(options: {
   current: string;
   expected: string;
   candidate: string;
+  checkOnly?: boolean;
 }) {
   const read = async (file: string) =>
     releaseSchema.parse(JSON.parse(await readFile(file, "utf8")));
@@ -26,7 +27,8 @@ export async function advanceRuntime(options: {
     !gt(candidate.version, current.version)
   )
     throw Error("Runtime selection must advance to a newer release version.");
-  await writeFile(options.current, JSON.stringify(candidate, null, 2) + "\n");
+  if (!options.checkOnly)
+    await writeFile(options.current, JSON.stringify(candidate, null, 2) + "\n");
   return true;
 }
 
