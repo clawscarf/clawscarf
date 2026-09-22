@@ -1,0 +1,99 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Tue, 22 Sep 2026 14:22:12 +0200
+Subject: [PATCH] fix(ui): update plugin sidebar selection on navigation
+
+ClawScarf-Patch: plugin-navigation-selection
+---
+ ui/src/e2e/native-plugin-ui.e2e.test.ts   | 62 +++++++++++++++++++++++
+ ui/src/plugins/control-ui-view.runtime.ts |  4 ++
+ 2 files changed, 66 insertions(+)
+
+diff --git a/ui/src/e2e/native-plugin-ui.e2e.test.ts b/ui/src/e2e/native-plugin-ui.e2e.test.ts
+index 24b67932dea689378459cefd69186af127416946..1c0a1007547659afb501fb033d1a344248279f71 100644
+--- a/ui/src/e2e/native-plugin-ui.e2e.test.ts
++++ b/ui/src/e2e/native-plugin-ui.e2e.test.ts
+@@ -99,6 +99,68 @@ async function closeCustomizeUi(page: Page) {
+ }
+ 
+ suite.define(() => {
++  it("updates plugin sidebar selection across pages and browser history", async () => {
++    await suite.withPage(
++      { viewport: { width: 1280, height: 900 }, serviceWorkers: "block" },
++      async ({ page }) => {
++        await installMockGateway(page, {
++          featureMethods: [
++            ...defaultControlUiFeatureMethods,
++            "plugins.controlUi.list",
++            "plugins.controlUi.report",
++          ],
++          methodResponses: {
++            "plugins.controlUi.list": catalog("navigation"),
++            "plugins.controlUi.report": { ok: true },
++          },
++        });
++        await page.route("**/__openclaw__/plugins/control-ui/ui-fixture/*/index.js", (route) =>
++          route.fulfill({
++            status: 200,
++            contentType: "text/javascript",
++            body: `export default { id: "ui-fixture", activate(host) {
++              for (const label of ["Connections", "Account", "People"]) {
++                const id = label.toLowerCase();
++                host.ui.registerPage({ id, label, mount(container) {
++                  const heading = document.createElement("h1");
++                  heading.textContent = label;
++                  container.append(heading);
++                }});
++                host.ui.registerNavigation({ id, label, page: { id }, defaultVisible: true });
++              }
++            }};`,
++          }),
++        );
++        await page.goto(`${suite.server.baseUrl}plugin?plugin=ui-fixture&id=connections`);
++        const selected = page.locator("openclaw-plugin-contributions a[aria-current=page]");
++        await expect
++          .poll(() => selected.locator(".nav-item__text").allTextContents())
++          .toEqual(["Connections"]);
++        for (const label of ["Account", "People"]) {
++          await page.getByRole("link", { name: label, exact: true }).click();
++          await page.getByRole("heading", { name: label, exact: true }).waitFor();
++          await page.mouse.move(900, 600);
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `navigation-${label}.png`),
++            animations: "disabled",
++          });
++          await expect
++            .poll(() => selected.locator(".nav-item__text").allTextContents())
++            .toEqual([label]);
++        }
++        await page.getByRole("link", { name: "Home", exact: true }).click();
++        await expect.poll(() => selected.count()).toBe(0);
++        await page.goBack();
++        await page.getByRole("heading", { name: "People", exact: true }).waitFor();
++        await expect
++          .poll(() => selected.locator(".nav-item__text").allTextContents())
++          .toEqual(["People"]);
++        await page.goForward();
++        await expect.poll(() => selected.count()).toBe(0);
++      },
++    );
++  });
++
+   it.each([true, false])(
+     "keeps page-only reload on Plugins without an idle floating control (admin: %s)",
+     async (admin) => {
+diff --git a/ui/src/plugins/control-ui-view.runtime.ts b/ui/src/plugins/control-ui-view.runtime.ts
+index b0864ef43c6a7e89fa11e0c4e9bcb0be32345215..4ebd92efdc57a4e32edd4bd2b0017cd42f210018 100644
+--- a/ui/src/plugins/control-ui-view.runtime.ts
++++ b/ui/src/plugins/control-ui-view.runtime.ts
+@@ -310,6 +310,10 @@ class ControlUiPluginContributions extends OpenClawLightDomContentsElement {
+       (plugins, notify) => plugins.subscribe(notify),
+       () => this.retireHiddenActions(),
+     )
++    .watch(
++      () => (this.kind === "navigation" ? this.context?.router : undefined),
++      (router, notify) => router.subscribe(notify),
++    )
+     .watch(
+       () =>
+         this.kind === "header" || this.kind === "composer" ? this.context?.sessions : undefined,
