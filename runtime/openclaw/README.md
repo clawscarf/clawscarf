@@ -183,10 +183,9 @@ behavior before dropping a patch already implemented upstream.
 Export updates the expected tree after exact replay. Run relevant upstream tests,
 type checks, full build and ClawScarf acceptance against the reconstructed source.
 A clean application cannot detect a newly introduced marketplace path or unwanted
-built-in; requalify implemented feature contracts and review the
-[pending inventory requirements](../../TODO.md#openclaw-curation). Upgrade
-candidate automation and a real newer-upstream qualification are not implemented
-by this initial workflow; the tooling trial exercised conflicting synthetic bases.
+built-in. Check behavior against the patch intents and packaged files against the
+[inventory](inventory.json). Upstream updates are manual; the tooling has only been
+tested across synthetic conflicting bases, not a newer upstream release.
 
 ## Release and verification boundaries
 

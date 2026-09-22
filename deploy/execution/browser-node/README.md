@@ -158,10 +158,9 @@ with `marketplace.enabled: false` and real GPT-6 Astra inference verified:
 The [native tool regression](../../../tests/access/execution-live.test.ts) now requests
 ordinary browsing without routing hints and checks actual tool results for both roles.
 The Team server recipe keeps browser disabled until member permissions and download
-transfer are fixed and qualified. These results do not qualify Linux browser deployment.
-All disposable installation and network-test resources were removed.
+transfer work. Linux browser deployment remains unverified.
 
-[TODO.md](../../../TODO.md#browser-qualification) owns the remaining work.
+[TODO.md](../../../TODO.md#browser) tracks those two fixes.
 
 Pinned upstream sources:
 

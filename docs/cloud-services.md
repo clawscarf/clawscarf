@@ -45,7 +45,7 @@ idempotency and explicit uncertain outcomes under its own contract.
 Future hosting integrations must reuse those registration and broker services under
 an existing customer account, with scoped provisioning authority and an idempotent
 external installation reference. They must not require a second signup or a separate
-hosting-specific broker implementation. Open ClawScarf adoption work belongs in
-[TODO.md](../TODO.md#future-decisions); cloud implementation and deployment belong in
-that repository. Billing, private-broker packaging and VM hosting are not implemented
-by this installation-side contract.
+hosting-specific broker implementation. The [runtime hosting boundary](../runtime/README.md#external-hosting-boundary)
+defines installation-side requirements; cloud implementation and deployment belong
+in the cloud repository. This contract does not implement billing, private-broker
+packaging or VM hosting.

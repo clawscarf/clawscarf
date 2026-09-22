@@ -154,7 +154,7 @@ capacity risk for concurrent UI traffic; earlier SSH `forward start` experiments
 do not qualify this path.
 The [installation test](../../tests/deployment/platform-live.test.ts) covers native
 WebSocket forwarding and authenticated administrator access through the companion;
-[TODO](../../TODO.md#installer-and-releases) owns remaining concurrency qualification.
+[TODO](../../TODO.md#first-run-reliability) tracks the first-load and concurrency failures.
 
 [Deployment networking](../deployment/README.md#ownership-and-recovery) owns bridge
 allocation and fixed service addresses. Public application/widget entry always goes

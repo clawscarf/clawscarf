@@ -149,7 +149,6 @@ component READMEs. Current capability limits remain with their owners:
 [browser integration](../deploy/execution/browser-node/README.md#verified-release-limits),
 [runtime boundary](../deploy/openshell/README.md), [models](../deploy/models/README.md),
 [Access](../services/access/README.md) and [Connections](../plugins/connections/README.md).
-Open acceptance requirements live only in [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 

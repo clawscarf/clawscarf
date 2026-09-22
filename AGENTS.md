@@ -8,8 +8,9 @@
   contracts, tests and deployment evidence, not memory. Fix affected claims, links and
   commands in the same change. Separate implemented, tested, packaged and deployed status.
 - [README.md](README.md) owns product boundaries; component READMEs own usage and implementation.
-  [TODO.md](TODO.md) is the only checklist: short unchecked items, removed when verified.
-  No parallel plans, frozen reports or changelog prose. Preserve unique open requirements.
+  [TODO.md](TODO.md) holds concrete bugs and agreed changes, removed when done.
+  No speculative decisions, generic completion checklists, parallel plans or frozen reports.
+  Keep docs and comments concise; explain behavior and non-obvious constraints, not routine process.
   Use relative links and the [documentation ownership map](CONTRIBUTING.md#documentation-ownership);
   replace repeated explanations and status claims with links. Reports and logs belong in ignored
   .local/ or CI artifacts; retain required manifests, lockfiles and migration history.
