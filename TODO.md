@@ -17,13 +17,18 @@ administrator-added plugins, skills and MCP.
 - [ ] Fix `skill-creator` to invoke installed `python3` and run its packaged validator.
 - [ ] Fix `taskflow` examples to find packaged pipelines from the runtime workspace;
       exercise approval and resume.
-- [ ] Remove Cloud Workers UI, provisioning and background activity.
 - [ ] Remove native GitHub account linking, account/session/tool APIs, authenticated
       previews, credential injection and profile/OAuth background work. Keep ordinary
       links and deliberate Git CLI use.
 - [ ] Rename `ClawScarf People` to `People` in the manifest and registration.
-- [ ] Remove personal-device setup, Talk and direct-provider account setup/settings.
-      Keep managed models, selected channel setup and browser-node pairing.
+- [ ] Remove personal-device setup and Talk pages, routes and native setup actions.
+      Keep browser-node pairing.
+- [ ] Remove direct-provider account setup and Advanced provider settings; keep
+      managed models and selected channel setup.
+- [ ] Remove remote terminal-host/session execution choices; keep local terminals
+      and browser-node operations.
+- [ ] Remove remote Gateway, Tailscale and discovery setup from Infrastructure and
+      native configuration; keep installation-owned local Gateway settings.
 - [ ] Remove remaining marketplace paths, including Codex's `codex_plugins` and
       ClawHub promotion/setup/publishing instructions. Keep explicit-source installs
       and required attribution.

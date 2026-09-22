@@ -59,6 +59,8 @@ A catalog listing does not prove a plugin is installed or active. Built-in selec
 does not restrict administrator additions or delete user-installed packages.
 The [channel setup patch](patches/curated-channel-setup.prompt.md) keeps native
 setup and the Channels page aligned with locally available channel plugins.
+The [worker removal patch](patches/remove-cloud-workers.prompt.md) removes native
+remote session hosting while preserving browser-node management.
 
 [Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
 [packs](../../packs/README.md) supply native files. Several recipes can share an
@@ -125,7 +127,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 

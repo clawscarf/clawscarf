@@ -14,6 +14,8 @@ belongs to ClawScarf's configuration. No other patch in this series is required.
 
 ## Required behavior
 
+- Keep the setting in native schema, labels/help, Advanced tier metadata and
+  configuration documentation links.
 - Hide plugin/skill discovery routes and links, search and recommendation cards,
   ClawHub Apps promotion and catalog-driven setup recommendations. Unknown initial
   configuration must not trigger discovery requests or misroute an enabled UI.
