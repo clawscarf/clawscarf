@@ -42,7 +42,6 @@ import {
 import { composeConfiguration } from "./compose.js";
 import { run, LocalSetupError } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
-import { requireNoUpgrade } from "./upgrade-state.js";
 
 /** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function prepareLocal(
@@ -99,7 +98,6 @@ export async function prepareLocal(
         "A retained settings change is unconfirmed. Inspect it before preparing or starting this installation.",
       );
   }
-  await requireNoUpgrade(directory);
   if (capabilities)
     await ensurePrivateFile(
       join(directory, "inputs.sha256"),

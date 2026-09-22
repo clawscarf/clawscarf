@@ -20,7 +20,6 @@ const assets = [
   "LICENSE",
   "THIRD_PARTY_NOTICES.md",
   "generated/http/LICENSE.md",
-  "scripts/deployment/upgrade-rpc.py",
   "scripts/packs/transport.py",
   "scripts/packs/requirements.in",
   "scripts/packs/requirements.txt",

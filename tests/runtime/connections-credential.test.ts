@@ -171,7 +171,6 @@ await test("launcher privately loads the token before exec without evaluating it
   const env = {
     ...process.env,
     OPENCLAW_STATE_DIR: state,
-    CLAWSCARF_START_GATE: "",
     NODE_EXTRA_CA_CERTS: "",
     CLAWSCARF_CONNECTIONS_TOKEN: "stale-environment",
   };

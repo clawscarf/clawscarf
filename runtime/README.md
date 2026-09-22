@@ -113,14 +113,6 @@ sidecars or filesystem changes, source-file hashes, retained disablement and ref
 of invalid native core settings. Observation checks stored configuration, not loaded
 tools; see [local activation](../deploy/deployment/README.md#activate-connections).
 
-Replacement images support an operator-controlled startup gate. When
-`CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
-root-owned `/etc/clawscarf-start-ready` marker before starting OpenClaw. The operator
-restores controller settings and stops compute before publishing that marker. The next
-normal start boots the supervisor with restored settings before launching OpenClaw.
-It is absent from normal fresh startup; it does not change OpenClaw itself or store
-controller credentials in the guest. See the [upgrade procedure](../deploy/deployment/README.md#runtime-upgrade).
-
 ## Capability controls
 
 The pinned native configuration owns these controls; administrators may deliberately

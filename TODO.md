@@ -32,10 +32,8 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Upgrade decision
 
-- [ ] Decide how installed servers should move to a new ClawScarf release while keeping
-      their data and configuration. Review the existing [runtime replacement](deploy/deployment/README.md#runtime-upgrade)
-      before deciding what to reuse or remove; it replaces only the OpenClaw runtime,
-      not the other services. Ordinary stop/start must continue to preserve data.
+- [ ] Design whole-installation release upgrades that retain data and operator configuration.
+      Ordinary stop/start must continue to preserve data.
 
 ## Browser qualification
 

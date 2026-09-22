@@ -19,7 +19,6 @@ import { ensureRuntime, stopRuntime } from "./runtime.js";
 import { LocalSetupError, run } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import { verifyRuntimeBinding } from "./runtime-binding.js";
-import { requireNoUpgrade } from "./upgrade-state.js";
 
 /** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function launchLocal(
@@ -52,7 +51,6 @@ export async function launchLocal(
     XDG_DATA_HOME: join(controller, "data"),
   };
   const name = resourceNames(state).sandbox;
-  await requireNoUpgrade(directory);
   await verifyRuntimeImage(state.input.runtimeImage);
   await verifyLocalExecutables(state);
   await verifyLocalPorts(state);

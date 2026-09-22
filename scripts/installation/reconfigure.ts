@@ -29,7 +29,6 @@ import {
   withInstallationLock,
   writePrivate,
 } from "../deployment/state.js";
-import { requireNoUpgrade } from "../deployment/upgrade-state.js";
 import { run } from "../deployment/process.js";
 import { selectionSchema } from "./packs.js";
 import { installationSchema } from "./configuration.js";
@@ -215,7 +214,6 @@ export async function reconfigureInstallation(
     const { directory, state, desired, scopes } = checked;
     if (!checked.resuming && !Object.values(scopes).some(Boolean))
       return { state: "unchanged", restartRequired: false, directory };
-    await requireNoUpgrade(directory);
     const names = resourceNames(state);
     for (const filter of [
       `label=com.docker.compose.project=${names.project}`,

@@ -133,7 +133,7 @@ isolation. Python 3 is included in the runtime image for local code execution;
 additional document CLIs/libraries belong in this image or a recipe-selected runtime
 image, not a separate worker.
 The image declares `io.clawscarf.execution-model=team-runtime`; preparation,
-startup, doctor and replacement verify this packaging contract.
+startup and doctor verify this packaging contract.
 
 The selected [shared browser](../execution/browser/README.md) runs Chromium
 outside this Gateway image with its sandbox intact. [Local setup](../deployment/README.md#shared-browser)

@@ -10,9 +10,6 @@ if [ -n "${HTTPS_PROXY:-}" ]; then
   export OPENCLAW_PROXY_URL
   export NODE_USE_ENV_PROXY=1
 fi
-if [ -n "${CLAWSCARF_START_GATE:-}" ]; then
-  /usr/local/bin/node /app/clawscarf/start-gate-main.js
-fi
 if [ -z "${OPENCLAW_GATEWAY_PASSWORD:-}" ]; then
   OPENCLAW_GATEWAY_PASSWORD="$(/usr/local/bin/node /app/clawscarf/gateway-password-main.js "${1:-}" "${2:-}")"
   export OPENCLAW_GATEWAY_PASSWORD

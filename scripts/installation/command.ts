@@ -16,7 +16,6 @@ import {
 } from "./lifecycle.js";
 import { doctorInstallation } from "./doctor.js";
 import { localLogNames } from "../deployment/logs.js";
-import { upgradeLocal } from "../deployment/upgrade.js";
 import { installationCatalog } from "./recipes/catalog.js";
 import { defaultInstallationDirectory } from "./location.js";
 import { progress } from "./installer/prompts.js";
@@ -208,28 +207,6 @@ export function installationCommand(observation?: CommandObservation) {
       output(await doctorInstallation(config));
     },
   );
-  withLocation(program.command("upgrade"))
-    .requiredOption("--runtime-image <digest>")
-    .requiredOption("--python <executable>")
-    .requiredOption("--yes")
-    .action(
-      async (
-        options: LocationOptions & {
-          runtimeImage: string;
-          python: string;
-        },
-      ) => {
-        await upgradeLocal(
-          await resolveLocation(options),
-          options.runtimeImage,
-          options.python,
-          (message) => {
-            process.stderr.write(message + "\n");
-          },
-        );
-        output({ state: "upgraded" }, "Upgrade completed.");
-      },
-    );
   const connections = program
     .command("connections")
     .description("Manage connected accounts and their agent access");
