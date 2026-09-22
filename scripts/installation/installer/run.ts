@@ -261,11 +261,6 @@ export async function runConfiguration(
   }
   const ui = options.nonInteractive ? unattendedPrompts : terminalPrompts;
   try {
-    if (options.reapply)
-      throw new InstallationError(
-        "invalid_configuration",
-        "--reapply requires an existing installation.",
-      );
     const saved = await savedSetup(options);
     const state = saved
       ? resolve(dirname(saved.configFile), saved.config.stateDirectory)

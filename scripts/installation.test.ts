@@ -234,6 +234,21 @@ await test(
       join(stateDirectory, "settings.json"),
       JSON.stringify(accepted),
     );
+    await writeFile(
+      join(directory, "installation.json"),
+      JSON.stringify(configuration),
+    );
+    const { runConfiguration } =
+      await import("./installation/installer/run.js");
+    await assert.rejects(
+      runConfiguration({
+        directory,
+        reapply: "models",
+        nonInteractive: true,
+        json: true,
+      }),
+      /Changing an existing installation noninteractively requires --yes/,
+    );
     const changedSettings = await planSettingsChange(path);
     assert.deepEqual(changedSettings.scopes, {
       models: false,
