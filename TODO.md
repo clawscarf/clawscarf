@@ -5,8 +5,6 @@ This list covers the open-source ClawScarf distribution. Cloud-service work belo
 
 ## Installer and releases
 
-- [ ] Validate public-web compatibility with configured private HTTPS model/Connections
-      endpoints before reporting readiness; make the supported combinations explicit.
 - [ ] Qualify clean-machine installation on supported hosts, hosted login and real
       inference on Linux ARM64/x86-64, and the full Windows/WSL2 journey.
 - [ ] Qualify concurrent native UI requests and long-lived streams through the shipped

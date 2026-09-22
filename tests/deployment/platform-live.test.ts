@@ -266,18 +266,31 @@ await test(
       );
     } catch (error) {
       if (allocated) {
-        const state = await readState(stateDirectory);
-        const ids = (
-          await run("docker", [
-            "ps",
-            "-aq",
-            "--filter",
-            `label=com.docker.compose.project=${resourceNames(state).project}`,
-          ])
-        )
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean);
+        const state = await readState(stateDirectory).catch(
+          (failure: unknown) => {
+            if (
+              failure instanceof Error &&
+              "code" in failure &&
+              failure.code === "ENOENT"
+            )
+              return undefined;
+            throw failure;
+          },
+        );
+        if (!state) allocated = false;
+        const ids = state
+          ? (
+              await run("docker", [
+                "ps",
+                "-aq",
+                "--filter",
+                `label=com.docker.compose.project=${resourceNames(state).project}`,
+              ])
+            )
+              .trim()
+              .split(/\s+/)
+              .filter(Boolean)
+          : [];
         if (ids.length)
           console.error(
             await run("docker", [

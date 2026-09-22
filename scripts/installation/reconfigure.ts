@@ -1,3 +1,4 @@
+import { validatePublicWebServices } from "../deployment/service-network.js";
 import { serviceNetworkRule } from "../deployment/policy.js";
 import {
   publicWebPolicy,
@@ -149,6 +150,16 @@ export async function planSettingsChange(
     resolveConfigurationInputs(config, dirname(resolve(configFile))),
   );
   if (reapply) scopes[reapply] = true;
+  await validatePublicWebServices(next.publicWeb, {
+    models:
+      next.publicWeb && !nextGateway && (scopes.models || scopes.publicWeb)
+        ? (await loadInitialModels(next.models))?.network
+        : undefined,
+    connections:
+      scopes.connections || scopes.publicWeb
+        ? connections?.endpoint.network
+        : undefined,
+  });
   return {
     directory,
     state,

@@ -1,3 +1,4 @@
+import { validatePublicWebServices } from "./service-network.js";
 import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import {
@@ -19,6 +20,7 @@ import { readFile, lstat, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   prepareInitialModels,
+  loadInitialModels,
   withInitialModels,
   type InitialModels,
 } from "./models.js";
@@ -56,6 +58,13 @@ export async function prepareLocal(
   const directory = resolve(directoryInput);
   const input = parseLocalInput(inputValue);
   const connections = await loadInitialConnections(input.connections);
+  await validatePublicWebServices(input.publicWeb, {
+    models:
+      input.publicWeb && !input.modelGateway
+        ? (await loadInitialModels(input.models))?.network
+        : undefined,
+    connections: connections?.endpoint.network,
+  });
   const teamMaterials = await readTeamMaterials(input.team);
   if (
     !["darwin", "linux"].includes(process.platform) ||

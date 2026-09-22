@@ -235,3 +235,48 @@ await test("external CA validation rejects malformed, oversized and symlinked in
     false,
   );
 });
+
+await test("runtime route verification exercises CONNECT and refuses blocked or unavailable service routes", async (t) => {
+  const { createServer } = await import("node:http");
+  const { verifyServiceRoutes } =
+    await import("../../scripts/deployment/service-network.js");
+  const { run } = await import("../../scripts/deployment/process.js");
+  const f = await fixture(t, { brokerUrl: "https://broker.example" });
+  let status = 200;
+  const proxy = createServer();
+  proxy.on("connect", (request, socket) => {
+    assert.equal(request.url, "broker.example:443");
+    assert.equal(request.headers.authorization, undefined);
+    socket.end(`HTTP/1.1 ${String(status)} Result\r\n\r\n`);
+  });
+  await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+  t.after(
+    () =>
+      new Promise<void>((resolve, reject) =>
+        proxy.close((error) => (error ? reject(error) : resolve())),
+      ),
+  );
+  const address = proxy.address();
+  assert.ok(address && typeof address !== "string");
+  const command: typeof run = (_executable, args) => {
+    const separator = args.indexOf("--");
+    assert.equal(args[separator + 1], "node");
+    return run(process.execPath, args.slice(separator + 2), {
+      env: {
+        ...process.env,
+        HTTPS_PROXY: `http://127.0.0.1:${String(address.port)}`,
+      },
+    });
+  };
+  await verifyServiceRoutes(f.state, {}, command);
+  status = 403;
+  await assert.rejects(
+    verifyServiceRoutes(f.state, {}, command),
+    /policy blocks.*connections/,
+  );
+  status = 502;
+  await assert.rejects(
+    verifyServiceRoutes(f.state, {}, command),
+    /unreachable through the runtime proxy/,
+  );
+});

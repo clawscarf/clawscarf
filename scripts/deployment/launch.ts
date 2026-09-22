@@ -1,3 +1,4 @@
+import { verifyServiceRoutes } from "./service-network.js";
 import { applyNetworkPolicy } from "./network-policy.js";
 import { verifyRuntimeImage } from "./images.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
@@ -128,6 +129,8 @@ export async function launchLocal(
     });
     await verifyRuntimeBinding(state, runtime);
     await waitFor(() => applyNetworkPolicy(directory, state, env, true));
+    report("Checking runtime service routes…");
+    await verifyServiceRoutes(state, env);
     if (state.input.browser) {
       report("Starting native browser node…");
       await startBrowserNode(directory, state, cancellation.signal);

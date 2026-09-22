@@ -71,12 +71,12 @@ export function composeNetworkRules(
         isDeepStrictEqual(actual.data.endpoints, adjustment.after)
       )
         rules[key] = { ...actual.data, endpoints: adjustment.before };
-      delete adjustments[key];
+      Reflect.deleteProperty(adjustments, key);
     }
   }
   for (const [key, replacement] of Object.entries(changes)) {
     if (replacement === null) {
-      delete rules[key];
+      Reflect.deleteProperty(rules, key);
       continue;
     }
     if (key === "connections_broker" && rules[key]) {

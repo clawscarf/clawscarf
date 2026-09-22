@@ -262,6 +262,16 @@ await test("pending policy edits preserve unrelated rules, reconcile lost respon
     let edited = false;
     let writes = 0;
     const command = async (_executable: string, args: readonly string[]) => {
+      if (args[0] === "sandbox") {
+        const target = {
+          id: "c350086f-1e9e-4d47-aad8-474ef1d138ab",
+          name,
+          phase: "Ready",
+          workspace: "default",
+          labels: { "clawscarf.installation": state.ownerId },
+        };
+        return JSON.stringify(args[1] === "list" ? [target] : target);
+      }
       if (args[1] === "set") {
         writes++;
         const written: unknown = JSON.parse(
@@ -361,4 +371,37 @@ await test("pending policy edits preserve unrelated rules, reconcile lost respon
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+await test("public-web compatibility rejects private, mixed and unresolved HTTPS services before setup", async () => {
+  const { validatePublicWebServices } =
+    await import("../../scripts/deployment/service-network.js");
+  const services = { models: { host: "models.example", port: 443 } };
+  const publicOnly = () => Promise.resolve([{ address: "1.1.1.1", family: 4 }]);
+  const privateOnly = () =>
+    Promise.resolve([{ address: "10.0.0.1", family: 4 }]);
+  await validatePublicWebServices(true, services, publicOnly);
+  await assert.rejects(
+    validatePublicWebServices(true, services, privateOnly),
+    /Turn Public web off/,
+  );
+  await assert.rejects(
+    validatePublicWebServices(true, services, async () => [
+      ...(await publicOnly()),
+      ...(await privateOnly()),
+    ]),
+    /private or reserved/,
+  );
+  await assert.rejects(
+    validatePublicWebServices(true, services, () =>
+      Promise.reject(Error("private DNS diagnostics")),
+    ),
+    /could not be resolved/,
+  );
+  await validatePublicWebServices(false, services, privateOnly);
+  await validatePublicWebServices(
+    true,
+    { models: { ...services.models, port: 4000 } },
+    privateOnly,
+  );
 });

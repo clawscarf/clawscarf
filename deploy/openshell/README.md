@@ -49,7 +49,12 @@ same public-address constraints: the pinned OpenShell rejects overlapping rules
 with different `allowed_ips`, even when their binary selectors differ. Private
 services on those ports require public web to be off; services on other ports
 retain their explicit rules (including the bundled private model gateway on 4000).
-The controller resolves destination names and enforces `allowed_ips`.
+Setup and selected reconfiguration check DNS compatibility before writing service
+settings. Startup then tests each configured service's actual CONNECT route from
+inside OpenShell before opening Access. Host DNS alone is not treated as proof of
+runtime connectivity. These checks establish the proxy route, not service
+credentials, TLS trust or inference success. The controller resolves destination
+names and enforces `allowed_ips`.
 TLS passes through without interception; the rule allows TCP tunnels on those
 ports, not a payload-level guarantee that every byte is HTTP. It grants neither
 raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
@@ -58,7 +63,7 @@ raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
 Enabling public web lets team code send data to public services. It does not isolate
 team members or prevent data export. Turning it off removes ClawScarf’s
 `public_web` rule and undoes only its recorded, unchanged endpoint adjustments.
-The private `network-policy-adjustments.json` record stores those before/after values;
+The [private adjustment record](../../scripts/deployment/policy.ts) stores those before/after values;
 equality with our address list alone never establishes ownership. Operator edits
 are preserved. Connections-only changes leave model rules untouched. Overlapping
 custom restrictions cause an explicit error before service settings are written.

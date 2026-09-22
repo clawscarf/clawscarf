@@ -40,9 +40,9 @@ async function observe(
   command: typeof run,
 ) {
   const name = resourceNames(state).sandbox;
-  if (
-    !(await runtimeManager(directory, state, env, command).recorded()).receipt
-  )
+  const control = runtimeManager(directory, state, env, command);
+  const { receipt } = await control.recorded();
+  if (!receipt)
     return {
       policy: policySchema.parse(
         JSON.parse(
@@ -55,6 +55,7 @@ async function observe(
       effective: false,
       recorded: false,
     };
+  await control.confirm(receipt.id);
   const observed = z
     .object({
       sandbox: z.literal(name),
@@ -197,7 +198,7 @@ export async function applyNetworkPolicy(
         "A selected network rule changed after review. No policy was overwritten; inspect the pending change.",
       );
     changed = true;
-    if (after === null) delete rules[key];
+    if (after === null) Reflect.deleteProperty(rules, key);
     else rules[key] = after;
   }
   if (verify) {
