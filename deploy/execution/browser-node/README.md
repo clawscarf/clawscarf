@@ -4,7 +4,7 @@ The [local operator](../../deployment/README.md#shared-browser) prepares, enroll
 starts and stops this optional controller. This guide owns native enrollment,
 controller policy and [current integration limits](#verified-release-limits).
 
-This optional image runs vanilla OpenClaw's headless node as a trusted browser
+This optional image runs OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
 This component does not run team shell commands or hold administrator credentials.
 It is not a replacement Gateway, browser server or per-person sandbox.
@@ -12,13 +12,18 @@ It is not a replacement Gateway, browser server or per-person sandbox.
 ## Image and immutable configuration
 
 ```sh
-docker build -f deploy/execution/browser-node/Dockerfile -t clawscarf-browser-node:local .
+# Reuse $base from the patched source build in deploy/images/README.md.
+docker build --build-arg OPENCLAW_IMAGE="$base" \
+  -f deploy/execution/browser-node/Dockerfile -t clawscarf-browser-node:local .
 CLAWSCARF_TEST_BROWSER_NODE_IMAGE=clawscarf-browser-node:local \
   node --import tsx --test tests/runtime/browser-node*.test.ts
 ```
 
-The [Dockerfile](Dockerfile) retains its own digest-pinned upstream OpenClaw image. It adds only configuration validation and a small native CLI launcher;
-it installs no plugins, browser binary or package dependencies.
+The [Dockerfile](Dockerfile) consumes the same [patched OpenClaw source image](../../images/README.md)
+as the Gateway, including [shared artifact support](../../../runtime/openclaw/patches/browser-shared-artifacts.prompt.md).
+It adds configuration validation and a native CLI launcher; it installs no additional
+plugins, browser binary or package dependencies. Preparation and startup reject
+controller images without the shared-artifact packaging contract.
 
 The composition uses [browserNodeConfiguration](configuration.ts) to generate
 `/configuration/openclaw.json`, mounted **read-only**, mode `0600`, readable by
@@ -29,7 +34,8 @@ Reads are bounded to 64 KiB for configuration and 16 KiB for pairing codes; star
 errors omit private input and parser causes. The fixed native settings include:
 
 - `tools.exec.mode: deny`, regardless of mutable native execution approvals.
-- Disabled worker hosting, Claude agent runs, skill hosting and desktop hosting.
+- Worker hosting is removed by the native patch series. Claude agent runs, skill
+  hosting and desktop hosting are disabled.
 - Only the bundled browser plugin; no configured MCP servers or agent overrides.
 - Only the `team` remote CDP profile, with `attachOnly: true` and an exact control
   hostname exception. Native page-navigation SSRF checks remain enabled.
@@ -47,6 +53,28 @@ identity, device token and browser-control state. Mount no team runtime files,
 controller sockets, host directories or shared provider credentials. Configuration
 and application files must never be writable by the node. A hostile container
 operator can replace those mounts or this image and is outside this boundary.
+
+## File transfers
+
+Uploads use OpenClaw's existing staging workflow. Copy the selected workspace file
+into the Gateway's native inbound media directory, then pass that staged path to
+the browser upload action. Arbitrary workspace paths are deliberately rejected.
+The native proxy sends file bytes to a private staging directory on the controller;
+remote Chromium receives the contents without a workspace mount.
+
+For downloads, only Chromium and the controller share `/browser-artifacts`, a
+64 MiB tmpfs volume. The controller sets `OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR`
+to that path. Each Playwright connection gets its own directory; native output
+handling reads completed artifacts with bounded, link-rejecting filesystem access
+and sends the bytes through the existing node proxy. The Gateway saves them in
+its native browser media directory and returns that local path. Copy the result
+into the desired workspace location when needed.
+
+Native proxy limits remain 10 MiB per file and 16 MiB total per operation. Consumed
+artifacts are removed; connection failure and disconnect remove their directories.
+An unclean controller exit can leave artifacts until both containers stop and the
+tmpfs unmounts. Storage exhaustion fails visibly. Profiles, credentials, configuration,
+the team workspace and each container's `/tmp` remain separate.
 
 ## Pairing and connection
 
@@ -137,30 +165,37 @@ candidate includes it. A guidance change does not change permissions or file tra
 
 ## Verified release limits
 
-A disposable macOS ARM64/Docker Desktop installation using the exact alpha.4 images,
-with `marketplace.enabled: false` and real GPT-6 Astra inference verified:
+Browser use is administrator-only: OpenClaw requires `operator.admin` for
+`browser.request` and node browser proxy commands. This is the supported native
+permission boundary. The [native tool regression](../../../tests/access/execution-live.test.ts)
+expects member denial and administrator browsing without routing hints.
 
-- An administrator opened a public page, read its heading and closed its own tab.
-  The prompt supplied no profile, target or node; the model used default routing.
-- A member's first browser status call failed with `missing scope: operator.admin`.
-  The pinned native policy explicitly requires administrator scope for `browser.request`
-  and `node.invoke` browser proxy commands.
-- Uploading a workspace file succeeded after staging a copy in the native inbound
-  media directory. The page read and displayed its exact bytes.
-- Downloading failed with `download.saveAs: ENOENT`: the downloaded bytes existed in
-  Chromium's temporary artifact directory, but that path was absent in the separate
-  browser controller. No downloaded file reached the team workspace.
-- Native requests rejected loopback, private and metadata destinations. Explicit host
-  selection remained separate from the connected node; stopping the configured node
-  caused requests to fail without host fallback. The released Chromium network
-  regression also passed public HTTPS, destination denial and retained profile checks.
+The [file-transfer regression](../../../tests/runtime/browser-transfer.test.ts) runs
+real Chromium with its sandbox and a packaged controller in separate containers.
+It exercises the native Gateway/controller file handlers with a fixture replacing
+only node RPC transport: exact staged upload bytes, browser downloads persisted
+back to the Gateway and copied into its workspace, restart cleanup and missing-mount
+failure. It uses synthetic data and no model or existing installation. The release
+builder runs it on both Linux image architectures; that is separate from qualifying
+a standalone Linux installation.
+The regression passed locally on macOS ARM64/Docker Desktop with newly built images.
 
-The [native tool regression](../../../tests/access/execution-live.test.ts) now requests
-ordinary browsing without routing hints and checks actual tool results for both roles.
-The Team server recipe keeps browser disabled until member permissions and download
-transfer work. Linux browser deployment remains unverified.
+The shared-artifact fix requires newly built controller images and updated operator
+wiring. Source and local image checks do not update published runtime definitions.
+Previously verified alpha.4 administrator browsing worked, but its downloads failed
+with `download.saveAs: ENOENT`; those released images do not include this fix.
+The Team server recipe remains disabled by default. [TODO.md](../../../TODO.md#browser)
+tracks remaining released-installation qualification. [Release evidence](../../../release/README.md#release-evidence)
+owns publication status, and the [network regression](../network/README.md#build-and-test)
+owns destination restrictions.
 
-[TODO.md](../../../TODO.md#browser) tracks those two fixes.
+Run the file-transfer regression against newly built images:
+
+```sh
+CLAWSCARF_TEST_BROWSER_IMAGE=clawscarf-browser:local \
+  CLAWSCARF_TEST_BROWSER_NODE_IMAGE=clawscarf-browser-node:local \
+  node --import tsx --test tests/runtime/browser-transfer.test.ts
+```
 
 Pinned upstream sources:
 
@@ -178,4 +213,5 @@ Pinned upstream sources:
 
 ClawScarf's added files use this repository's MIT license. The upstream image
 retains OpenClaw and dependency notices; release-wide transitive license review
-remains owned by the release process. No native source is copied or patched here.
+remains owned by the release process. Native changes are maintained through the
+[ordered patch series](../../../runtime/openclaw/README.md).

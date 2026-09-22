@@ -2,11 +2,9 @@
 
 ## Browser
 
-- [ ] Allow members to browse without granting administrator access to node/profile
-      management; exercise the native browser tool as both roles.
-- [ ] Fix downloads stranded in Chromium's container; verify workspace upload/download
-      round trips on macOS and Linux before enabling browser by default.
-      [Current failures](deploy/execution/browser-node/README.md#verified-release-limits).
+- [ ] Qualify administrator browser file transfers in released macOS ARM64 and
+      Linux ARM64/x86-64 installations before enabling browser by default.
+      [Current support](deploy/execution/browser-node/README.md#verified-release-limits).
 
 ## OpenClaw curation
 

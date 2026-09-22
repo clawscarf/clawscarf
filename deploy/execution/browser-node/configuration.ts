@@ -18,7 +18,6 @@ export function browserNodeConfiguration(cdpUrl: string) {
     tools: { exec: { mode: "deny" } },
     plugins: { allow: ["browser"], entries: { browser: { enabled: true } } },
     nodeHost: {
-      workerRuns: { enabled: false },
       agentRuns: { claude: { enabled: false } },
       skills: { enabled: false },
       browserProxy: { enabled: true, allowProfiles: ["team"] },

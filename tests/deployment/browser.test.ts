@@ -175,7 +175,17 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
       "seccomp:/private/browser-test/private/browser-seccomp.json",
     ),
   );
-  assert.deepEqual(service.volumes, ["browser:/state"]);
+  assert.deepEqual(service.volumes, [
+    "browser:/state",
+    "browser-artifacts:/browser-artifacts",
+  ]);
+  assert.ok(node.volumes.includes("browser-artifacts:/browser-artifacts"));
+  assert.equal(
+    node.environment.OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR,
+    "/browser-artifacts",
+  );
+  assert.ok(compose.volumes["browser-artifacts"]);
+  assert.equal(compose.volumes["browser-artifacts"].external, true);
   assert.equal(
     service.environment.CLAWSCARF_BROWSER_PROXY_SERVER,
     "http://browser-egress:3128",

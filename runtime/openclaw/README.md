@@ -127,7 +127,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit browser-shared-artifacts remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 
@@ -199,8 +199,8 @@ source before the existing Docker build. Both architectures must agree on the
 reconstructed revision, tree and patch-set digest. Candidate assets include
 source provenance and the exact patches/intents; these are validated against
 the candidate checkout before packaging. [Release documentation](../../release/README.md)
-owns publication. The browser-node controller still uses its separately pinned,
-published upstream image; these patches are built into the Gateway source image.
+owns publication. The Gateway and browser-node controller consume the same patched
+source image; the controller's immutable configuration enables only browser hosting.
 
 The [provenance generator](../../scripts/openclaw-patches.ts) records upstream and
 reconstructed commits, the source tree, ordered patch/intent hashes and the complete

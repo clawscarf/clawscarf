@@ -6,6 +6,10 @@ there is no OpenClaw installation, controller credential or container socket.
 The profile belongs to the team: authorized browser users share its cookies,
 logins and files. This is not per-person browser isolation.
 
+Deployment mounts a dedicated download artifact volume shared with the browser
+controller. The [file-transfer contract](../browser-node/README.md#file-transfers)
+owns its bounds, staging and cleanup; the team workspace is not mounted here.
+
 ## Build and configuration
 
 ```sh

@@ -28,13 +28,27 @@ async function docker(args: string[], input = ""): Promise<string> {
 // The packaged native invocation owner is exercised unchanged. Only its RPC
 // transport is captured; configuration and command authorization are real.
 const nativeProbe = String.raw`import assert from 'node:assert/strict';
-import {readFile,access,writeFile} from 'node:fs/promises';
-import {f as prepareNodeHostRuntime} from '/app/dist/daemon-DW2kkFGl.mjs';
+import {readFile,readdir,access,writeFile} from 'node:fs/promises';
+// Resolve the test-only internal entry by its exported function, not a build hash.
+let prepareNodeHostRuntime;
+for(const name of await readdir('/app/dist')){
+ if(!/\.(?:mjs|js)$/.test(name))continue;
+ const source=await readFile('/app/dist/'+name,'utf8');
+ if(!source.includes('async function prepareNodeHostRuntime('))continue;
+ const loaded=await import('/app/dist/'+name);
+ prepareNodeHostRuntime=Object.values(loaded).find(value=>typeof value==='function'&&value.name==='prepareNodeHostRuntime');
+ if(prepareNodeHostRuntime)break;
+}
+assert.equal(typeof prepareNodeHostRuntime,'function');
 const configPath=process.env.OPENCLAW_CONFIG_PATH;
 const original=await readFile(configPath,'utf8');
 const config=JSON.parse(original);
+const {readConfigFileSnapshotForWrite}=await import('/app/dist/plugin-sdk/config-mutation.js');
+const nativeConfig=await readConfigFileSnapshotForWrite({observe:false});
+assert.equal(nativeConfig.snapshot.valid,true,JSON.stringify(nativeConfig.snapshot.issues));
 const results=new Map();
-const prepared=await prepareNodeHostRuntime({config,enableAgentRuns:true,enableWorkerRuns:true});
+const prepared=await prepareNodeHostRuntime({config,enableAgentRuns:true});
+assert.equal(prepared.workerHostingEnabled,false);
 const runtime=prepared.start({client:{async request(method,params){if(method==='node.invoke.result')results.set(params.id,params);return method==='skills.bins'?{bins:[]}:{ok:true};}}});
 async function invoke(command,params){const id=crypto.randomUUID();await runtime.invoke({id,nodeId:'owned-unit-fixture',command,paramsJSON:JSON.stringify(params),timeoutMs:15000,idempotencyKey:null});const result=results.get(id);assert.ok(result,'missing native result');return result;}
 try {

@@ -34,10 +34,12 @@ export function browserNodeServices(
         CLAWSCARF_BROWSER_NODE_GATEWAY_URL: `wss://${addresses.ingress}:18803`,
         CLAWSCARF_BROWSER_NODE_TLS_FINGERPRINT: fingerprint,
         CLAWSCARF_BROWSER_NODE_NAME: browserNodeName(state),
+        OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR: "/browser-artifacts",
       },
       volumes: [
         "browser-node:/state",
         "browser-node-config:/configuration:ro",
+        "browser-artifacts:/browser-artifacts",
         `${file("browser-node-resolv.conf")}:/etc/resolv.conf:ro`,
       ],
       tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=128m"],
@@ -84,6 +86,10 @@ export function browserNodeVolumes(state: LocalState) {
     "browser-node-config": {
       external: true,
       name: names.browserNodeConfigVolume,
+    },
+    "browser-artifacts": {
+      external: true,
+      name: names.browserArtifactsVolume,
     },
   };
 }

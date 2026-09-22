@@ -14,6 +14,7 @@ await test("browser node accepts only the fixed non-executing configuration", ()
     { mcp: { servers: { arbitrary: { url: "https://example.com/mcp" } } } },
     { plugins: { allow: ["browser", "terminal"] } },
     { nodeHost: { workerRuns: { enabled: true } } },
+    { nodeHost: { ...config.nodeHost, workerRuns: { enabled: false } } },
     {
       agents: { list: [{ id: "override", tools: { exec: { mode: "full" } } }] },
     },

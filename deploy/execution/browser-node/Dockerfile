@@ -1,4 +1,6 @@
-FROM ghcr.io/openclaw/openclaw:2026.9.4@sha256:cc596b846506a5f4cfcee111394a2725f375f01cca2ebb492a161fd1b747f101
+ARG OPENCLAW_IMAGE
+FROM ${OPENCLAW_IMAGE}
+LABEL io.clawscarf.browser-file-transfer="shared-artifacts-v1"
 USER root
 RUN install -d -o node -g node -m 0700 /state
 COPY deploy/execution/browser-node/configuration.ts deploy/execution/browser-node/start.ts /opt/clawscarf/deploy/execution/browser-node/

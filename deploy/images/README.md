@@ -4,8 +4,9 @@
 [components.json](../../release/components.json) and the ordered
 [patch series](../../runtime/openclaw/README.md), with immutable runtime dependencies.
 Customer configuration, identities, model keys, connection credentials and writable
-state are initialized separately. SDK package locks and the browser-node Dockerfile
-own their separate pins; source/package versions are not interchangeable.
+state are initialized separately. The browser-node controller consumes the same
+patched source image. SDK package locks own separate package pins;
+source/package versions are not interchangeable.
 OpenShell owns the runtime container. Its outer Docker health check is disabled;
 use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.

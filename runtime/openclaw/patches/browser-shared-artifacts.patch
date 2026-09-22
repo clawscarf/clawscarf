@@ -1,0 +1,290 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Tue, 22 Sep 2026 20:27:22 +0200
+Subject: [PATCH] fix(browser): transfer downloads through a confined shared
+ artifact mount
+
+ClawScarf-Patch: browser-shared-artifacts
+---
+ docs/tools/browser/remote.md                  | 20 +++++
+ .../src/browser/pw-download-capture.ts        | 18 ++++-
+ .../src/browser/pw-session-cdp-transport.ts   | 25 ++++++-
+ .../src/browser/pw-shared-artifacts.test.ts   | 74 +++++++++++++++++++
+ .../src/browser/pw-shared-artifacts.ts        | 45 +++++++++++
+ 5 files changed, 180 insertions(+), 2 deletions(-)
+ create mode 100644 extensions/browser/src/browser/pw-shared-artifacts.test.ts
+ create mode 100644 extensions/browser/src/browser/pw-shared-artifacts.ts
+
+diff --git a/docs/tools/browser/remote.md b/docs/tools/browser/remote.md
+index 81ef20b4b46dd46e39c3f8d3d0c7b66c312c01c4..486e622aef5920842fd3702bddc40eb41ae0ba43 100644
+--- a/docs/tools/browser/remote.md
++++ b/docs/tools/browser/remote.md
+@@ -80,6 +80,26 @@ Notes:
+   - On the node: `nodeHost.browserProxy.enabled=false`
+   - On the gateway: `gateway.nodes.browser.mode="off"` (also accepts `"auto"` to prefer the host and fall back to a single connected browser node, or `"manual"` to require an explicit node selection or configured pin)
+ 
++## Shared download artifacts
++
++When Chromium and its OpenClaw controller run in separate containers on the same
++host, operators can mount a dedicated artifact directory at the same absolute
++path in both containers and set `OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR` on the
++controller. This directory must already exist and must not be a symlink. Keep
++profiles, credentials, configuration, and the Gateway workspace outside it.
++
++Playwright uses a separate directory for each connection. Downloads are read with
++the native 10 MiB file limit and reject symlinks, hardlinks, and paths outside the
++shared root before entering ordinary browser output and node-proxy handling.
++Consumed artifacts are removed; disconnect and connection failure remove their
++connection directory. Operators must bound the shared storage and discard it
++after an unclean controller exit. This transport requires a shared filesystem;
++it does not transfer artifacts from arbitrary hosted CDP providers.
++
++Upload transport is unchanged: stage selected files in the managed upload or
++inbound media directory. The node proxy transfers their bytes without mounting
++the Gateway workspace into the browser.
++
+ ## Browserless (hosted remote CDP)
+ 
+ [Browserless](https://browserless.io) is a hosted Chromium service that exposes
+diff --git a/extensions/browser/src/browser/pw-download-capture.ts b/extensions/browser/src/browser/pw-download-capture.ts
+index 2f9e6f694ed82675795ec8d5148ba937b275d44e..2f692a25cc07b9263952ac56b88c225159d65f82 100644
+--- a/extensions/browser/src/browser/pw-download-capture.ts
++++ b/extensions/browser/src/browser/pw-download-capture.ts
+@@ -1,9 +1,11 @@
+ /** Shared Playwright download capture and output handling. */
+ import crypto from "node:crypto";
++import fs from "node:fs/promises";
+ import path from "node:path";
+ import type { BrowserDownloadCandidate, BrowserDownloadResult } from "./download-types.js";
+ import { writeExternalFileWithinOutputRoot } from "./output-files.js";
+ import { DEFAULT_DOWNLOAD_DIR } from "./paths.js";
++import { readSharedBrowserDownload, sharedBrowserArtifactsRoot } from "./pw-shared-artifacts.js";
+ import { sanitizeUntrustedFileName } from "./safe-filename.js";
+ 
+ type BrowserDownloadCaptureState = {
+@@ -26,6 +28,7 @@ export type BrowserDownloadCaptureOptions = {
+ };
+ 
+ export type PlaywrightDownload = {
++  path?: () => Promise<string | null>;
+   cancel?: () => Promise<void>;
+   url?: () => string;
+   suggestedFilename?: () => string;
+@@ -44,6 +47,9 @@ export async function saveBrowserDownload(
+   opts: BrowserDownloadCaptureOptions = {},
+   onReadyToPublish?: () => void,
+ ): Promise<BrowserDownloadResult> {
++  // Passive capture replaces download.path with the managed result after this call.
++  // Keep the original accessor before yielding, or the save waits on itself.
++  const artifactPath = download.path?.bind(download);
+   const suggestedFilename = download.suggestedFilename?.() || "download.bin";
+   const candidate: BrowserDownloadCandidate = {
+     url: download.url?.() || "",
+@@ -69,7 +75,17 @@ export async function saveBrowserDownload(
+     rootDir: requestedPath ? opts.outputRoot : implicitRoot,
+     path: managedPath,
+     write: async (tempPath) => {
+-      await saveAs(tempPath);
++      if (sharedBrowserArtifactsRoot()) {
++        const sourcePath = await artifactPath?.();
++        if (!sourcePath) {
++          throw new Error("Download artifact is unavailable");
++        }
++        const bytes = await readSharedBrowserDownload(sourcePath);
++        opts.signal?.throwIfAborted();
++        await fs.writeFile(tempPath, bytes, { flag: "wx", mode: 0o600 });
++      } else {
++        await saveAs(tempPath);
++      }
+       opts.signal?.throwIfAborted();
+       onReadyToPublish?.();
+     },
+diff --git a/extensions/browser/src/browser/pw-session-cdp-transport.ts b/extensions/browser/src/browser/pw-session-cdp-transport.ts
+index 47667c4a36c5fd7663d45140d8ea6c74cbe7d49a..ebb6ee197803e5650f28ae7a7f71af795b5baecb 100644
+--- a/extensions/browser/src/browser/pw-session-cdp-transport.ts
++++ b/extensions/browser/src/browser/pw-session-cdp-transport.ts
+@@ -1,4 +1,6 @@
+ import type { lookup as dnsLookupCb } from "node:dns";
++import fs from "node:fs/promises";
++import { createSubsystemLogger } from "openclaw/plugin-sdk/runtime-env";
+ import { asOptionalRecord, readStringField } from "openclaw/plugin-sdk/string-coerce-runtime";
+ import { rawDataToString } from "openclaw/plugin-sdk/webhook-ingress";
+ import { WebSocket } from "openclaw/plugin-sdk/websocket-runtime";
+@@ -6,6 +8,8 @@ import type { Browser, ConnectOverCDPTransport } from "playwright-core";
+ import { formatErrorMessage } from "../infra/errors.js";
+ import { isWebSocketUrl, openCdpWebSocket } from "./cdp.helpers.js";
+ import { getPlaywrightCore } from "./playwright-core.runtime.js";
++import { createSharedBrowserArtifacts } from "./pw-shared-artifacts.js";
++const artifactsLogger = createSubsystemLogger("browser");
+ type CdpSocketLookup = typeof dnsLookupCb;
+ // Playwright allocates positive command IDs and reserves -9999 for Browser.close.
+ // Keep transport-owned replies below that range so Playwright never consumes them.
+@@ -99,7 +103,14 @@ export async function connectOverCdpTransport(
+   opts: CdpTransportOptions,
+ ): Promise<Browser> {
+   const wire = opts.preparedTransport ?? (await openCdpTransportSocket(connectionUrl, opts));
++  let artifactsDir: string | undefined;
++  const cleanupArtifacts = async () => {
++    if (artifactsDir) {
++      await fs.rm(artifactsDir, { recursive: true, force: true });
++    }
++  };
+   try {
++    artifactsDir = await createSharedBrowserArtifacts();
+     let onMessage: ((message: object) => void) | undefined;
+     let onClose: ((reason?: string) => void) | undefined;
+     const pendingMessages: object[] = [];
+@@ -242,9 +253,21 @@ export async function connectOverCdpTransport(
+       onclose: (reason?: string) =>
+         scheduleTransportClosed(closingReason ?? reason ?? "CDP socket closed"),
+     });
+-    return await getPlaywrightCore().chromium.connectOverCDP(transport, { timeout: opts.timeout });
++    const browser = await getPlaywrightCore().chromium.connectOverCDP(transport, {
++      timeout: opts.timeout,
++      ...(artifactsDir ? { artifactsDir } : {}),
++    });
++    if (artifactsDir) {
++      browser.on("disconnected", () => {
++        void cleanupArtifacts().catch(() =>
++          artifactsLogger.warn("Browser artifact cleanup failed"),
++        );
++      });
++    }
++    return browser;
+   } catch (error) {
+     wire.close();
++    await cleanupArtifacts();
+     throw error;
+   }
+ }
+diff --git a/extensions/browser/src/browser/pw-shared-artifacts.test.ts b/extensions/browser/src/browser/pw-shared-artifacts.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..dafebb813ea4912d7687d4140852821f7bc706c7
+--- /dev/null
++++ b/extensions/browser/src/browser/pw-shared-artifacts.test.ts
+@@ -0,0 +1,74 @@
++import fs from "node:fs/promises";
++import path from "node:path";
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { useAutoCleanupTempDirTracker } from "../../../../test/helpers/temp-dir.js";
++import { saveBrowserDownload } from "./pw-download-capture.js";
++import { createSharedBrowserArtifacts, readSharedBrowserDownload } from "./pw-shared-artifacts.js";
++
++const directories = useAutoCleanupTempDirTracker(afterEach);
++afterEach(() => vi.unstubAllEnvs());
++
++describe("shared Chromium download artifacts", () => {
++  it("saves exact bytes through native output handling and removes the consumed artifact", async () => {
++    const directory = directories.make("browser-artifacts-");
++    vi.stubEnv("OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR", directory);
++    const connection = await createSharedBrowserArtifacts();
++    expect(connection).toBeDefined();
++    const artifact = path.join(connection!, "download-id");
++    const bytes = Buffer.from([0, 255, 1, 2, 0, 128]);
++    await fs.writeFile(artifact, bytes);
++    const saveAs = vi.fn(async () => {
++      throw new Error("must not copy untrusted paths");
++    });
++    const outputRoot = directories.make("browser-output-");
++    const download = {
++      path: async () => artifact,
++      suggestedFilename: () => "../report.bin",
++      saveAs,
++    };
++    const saving = saveBrowserDownload(download, { outputRoot });
++    download.path = async () => (await saving).path;
++    const result = await saving;
++    expect(await fs.readFile(result.path)).toEqual(bytes);
++    expect(path.dirname(result.path)).toBe(outputRoot);
++    expect(saveAs).not.toHaveBeenCalled();
++    await expect(fs.stat(artifact)).rejects.toMatchObject({ code: "ENOENT" });
++  });
++
++  it("rejects traversal, symlinks, hardlinks and oversized browser artifacts", async () => {
++    const directory = directories.make("browser-artifacts-");
++    const privateDirectory = directories.make("browser-private-");
++    vi.stubEnv("OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR", directory);
++    const secret = path.join(privateDirectory, "secret");
++    await fs.writeFile(secret, "controller-private");
++    await fs.symlink(secret, path.join(directory, "symlink"));
++    await fs.link(secret, path.join(directory, "hardlink"));
++    await fs.symlink(privateDirectory, path.join(directory, "parent"));
++    const oversized = path.join(directory, "large");
++    await fs.writeFile(oversized, Buffer.alloc(10 * 1024 * 1024 + 1));
++    for (const file of [
++      secret,
++      path.join(directory, "symlink"),
++      path.join(directory, "hardlink"),
++      path.join(directory, "parent/secret"),
++      oversized,
++    ]) {
++      await expect(readSharedBrowserDownload(file)).rejects.toThrow();
++    }
++    expect(await fs.readFile(secret, "utf8")).toBe("controller-private");
++  });
++
++  it("fails visibly on invalid or unavailable shared mounts and leaves ordinary browsing unchanged", async () => {
++    vi.stubEnv("OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR", undefined);
++    expect(await createSharedBrowserArtifacts()).toBeUndefined();
++    for (const value of ["", ".", "/", "/missing/browser-artifacts"]) {
++      vi.stubEnv("OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR", value);
++      await expect(createSharedBrowserArtifacts()).rejects.toThrow();
++    }
++    const directory = directories.make("browser-artifacts-");
++    const alias = path.join(directory, "alias");
++    await fs.symlink(directory, alias);
++    vi.stubEnv("OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR", alias);
++    await expect(createSharedBrowserArtifacts()).rejects.toThrow();
++  });
++});
+diff --git a/extensions/browser/src/browser/pw-shared-artifacts.ts b/extensions/browser/src/browser/pw-shared-artifacts.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..eabb15550909aaa414bd34bfd092827af9433649
+--- /dev/null
++++ b/extensions/browser/src/browser/pw-shared-artifacts.ts
+@@ -0,0 +1,45 @@
++import fs from "node:fs/promises";
++import path from "node:path";
++import { root } from "openclaw/plugin-sdk/file-access-runtime";
++import { BROWSER_PROXY_MAX_FILE_BYTES } from "../browser-proxy-envelope.js";
++
++/** Operator-owned mount shared with a remote Chromium, never its profile or workspace. */
++export function sharedBrowserArtifactsRoot(): string | undefined {
++  const value = process.env.OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR;
++  if (value === undefined) {
++    return undefined;
++  }
++  if (!value || !path.isAbsolute(value) || path.resolve(value) === path.parse(value).root) {
++    throw new Error("Browser shared artifacts directory must be an absolute non-root path");
++  }
++  return path.resolve(value);
++}
++
++export async function createSharedBrowserArtifacts(): Promise<string | undefined> {
++  const directory = sharedBrowserArtifactsRoot();
++  if (!directory) {
++    return undefined;
++  }
++  const stat = await fs.lstat(directory);
++  if (!stat.isDirectory() || stat.isSymbolicLink()) {
++    throw new Error("Browser shared artifacts directory must be a real directory");
++  }
++  return await fs.mkdtemp(path.join(directory, "connection-"));
++}
++
++/** Read browser-written bytes without following links into the controller's filesystem. */
++export async function readSharedBrowserDownload(artifactPath: string): Promise<Buffer> {
++  const directory = sharedBrowserArtifactsRoot();
++  if (!directory) {
++    throw new Error("Browser shared artifacts directory is not configured");
++  }
++  const artifacts = await root(directory);
++  const result = await artifacts.read(path.relative(directory, artifactPath), {
++    symlinks: "reject",
++    hardlinks: "reject",
++    nonBlockingRead: true,
++    maxBytes: BROWSER_PROXY_MAX_FILE_BYTES,
++  });
++  await artifacts.remove(path.relative(directory, artifactPath));
++  return result.buffer;
++}

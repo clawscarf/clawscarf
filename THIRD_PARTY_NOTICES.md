@@ -35,7 +35,7 @@ Standalone CLI archives include the unmodified Node.js 24.19.0 executable from
 SHA-256 pins in [release/components.json](release/components.json). Each archive
 retains Node's complete upstream LICENSE, including its bundled third-party notices,
 at `node/LICENSE`. JavaScript dependencies retain their licenses in `node_modules`.
-Gateway source builds apply the maintained patch series to upstream commit
+Gateway and browser-controller source builds apply the maintained patch series to upstream commit
 `7bc487d39dc9e059bb9b19ea08152883022f83fe`. Release provenance records the
 resulting tree and patch-set digest alongside the exact patches and their intent documents.
 The [image build instructions](deploy/images/README.md) own source packaging.
