@@ -52,6 +52,7 @@ async function fixture(t: TestContext): Promise<LocalState> {
     input: {
       team: oidcTeam(ports.application, ports.widgets),
       name: "preflight",
+      agentName: "ClawScarf",
       administratorName: "Ada",
       publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,

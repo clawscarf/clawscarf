@@ -377,6 +377,7 @@ async function verifyPackagedTelemetry(
         JSON.stringify({
           schemaVersion: 1,
           name: "private-team",
+          agentName: "ClawScarf",
           releaseFile: "release.json",
           stateDirectory: "state",
           exposure: {

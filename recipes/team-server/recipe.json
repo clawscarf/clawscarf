@@ -4,6 +4,7 @@
   "description": "A protected OpenClaw server for your team, with hosted login, managed models and optional Connections.",
   "maturity": "supported",
   "defaults": {
+    "agentName": "ClawScarf",
     "resources": {
       "runtime": {
         "cpu": "4",
@@ -24,5 +25,5 @@
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }

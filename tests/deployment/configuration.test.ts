@@ -9,6 +9,7 @@ import {
 
 const base = {
   name: "my-team",
+  agentName: "ClawScarf",
   administratorName: "Ada Lovelace",
   runtimeImage: `sha256:${"a".repeat(64)}`,
   companionImage: `ghcr.io/example/companion@sha256:${"b".repeat(64)}`,

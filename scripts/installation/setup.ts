@@ -91,6 +91,7 @@ export function recipeConfiguration(
   return {
     schemaVersion: 1,
     name: "team",
+    agentName: recipe.defaults.agentName,
     releaseFile: context.releaseFile,
     stateDirectory: "./state",
     exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },

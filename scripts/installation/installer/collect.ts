@@ -181,9 +181,16 @@ export async function collectInstallation(
               localInput.shape.administratorName,
               config.access.administratorName,
             );
+            const agentName = await field(
+              ui,
+              "Default agent name",
+              installationSchema.shape.agentName,
+              config.agentName,
+            );
             config = {
               ...config,
               name,
+              agentName,
               access: { ...config.access, administratorName },
             };
             break;

@@ -47,6 +47,7 @@ await test("local gateway validates routes and accepts only their upstream crede
 await test("disabled models add no service; enabled gateway has TLS and no published database port", () => {
   const input = parseLocalInput({
     name: "test",
+    agentName: "ClawScarf",
     administratorName: "Test",
     runtimeImage: "sha256:" + "1".repeat(64),
     companionImage: "sha256:" + "2".repeat(64),

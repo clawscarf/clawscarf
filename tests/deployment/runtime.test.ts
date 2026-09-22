@@ -22,6 +22,7 @@ async function fixture() {
     ownerId: randomUUID(),
     input: {
       name: "team",
+      agentName: "ClawScarf",
       administratorName: "Admin",
       publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,

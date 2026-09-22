@@ -197,7 +197,7 @@ async function fixture(t: TestContext) {
     Provider: "openai/test",
     "Model catalog": "file",
     "Model catalog file": models,
-    "secret:OpenAI LLM API key": "test-key",
+    "secret:OpenAI API key": "test-key",
     Connections: "off",
     "Start now?": false,
     [`Install in ${directory}?`]: true,
@@ -351,8 +351,7 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const modelFile = join(f.parent, "models.json"),
-      key = join(f.parent, "key");
+    const modelFile = join(f.parent, "models.json");
     await writeFile(
       modelFile,
       JSON.stringify({
@@ -372,15 +371,13 @@ await test(
         ],
       }),
     );
-    await writeFile(key, "PROVIDER_KEY=private-test-secret\n", { mode: 0o600 });
     const ui = new Answers(
       {
         ...f.answers,
         "Default model": "team",
         Provider: "openai/test",
         "Model catalog file": modelFile,
-        "LLM API keys": "file",
-        "Provider credentials file (.env)": key,
+        "secret:OpenAI API key": "private-test-secret",
         "Install a pack? (experimental native Claws)": true,
         Pack: resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
@@ -592,6 +589,7 @@ await test(
       {
         ...f.answers,
         "Installation name": "my-team",
+        "Default agent name": "Atlas",
         "Administrator display name": "Owner",
         "gateway CPUs": "4",
       },
@@ -599,6 +597,7 @@ await test(
     );
     const { config } = await collectInstallation(ui, f);
     assert.equal(config.name, "my-team");
+    assert.equal(config.agentName, "Atlas");
     assert.equal(config.access.administratorName, "Owner");
     assert.equal(config.resources.runtime.cpu, "4");
     assert.equal(config.connections.mode, "disabled");
@@ -826,8 +825,7 @@ await test(
         "Default model": "team",
         Provider: "openai/test",
         "Model catalog file": models,
-        "LLM API keys": "paste",
-        "secret:OpenAI LLM API key": "private-$key#value",
+        "secret:OpenAI API key": "private-$key#value",
       },
       ["advanced-models"],
     );
@@ -867,12 +865,13 @@ await test(
       recipe: f.recipe,
       directory: f.directory,
     });
-    assert.ok(ui.questions.includes("secret:OpenAI LLM API key"));
+    assert.equal(draft.config.agentName, preset.defaults.agentName);
+    assert.ok(ui.questions.includes("secret:OpenAI API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
     assert.ok(
       ui.questions.findIndex((question) =>
         question.endsWith("— configure installation"),
-      ) < ui.questions.indexOf("secret:OpenAI LLM API key"),
+      ) < ui.questions.indexOf("secret:OpenAI API key"),
     );
     assert.ok(!ui.questions.includes("Connections"));
     const file = await saveConfiguration(
@@ -912,11 +911,13 @@ await test(
     );
     assert.ok(!ui.questions.includes("Use your own OIDC provider?"));
     const supplied = new Answers(f.answers);
-    await collectInstallation(supplied, {
+    const customized = await collectInstallation(supplied, {
       ...f,
       directory: join(f.parent, "supplied"),
       recipe: f.recipe,
+      agentName: "Atlas",
     });
+    assert.equal(customized.config.agentName, "Atlas");
     assert.ok(
       !supplied.questions.some((question) => question.startsWith("secret:")),
     );
@@ -1060,7 +1061,7 @@ await test(
         ...f.answers,
         "Default model": "claude-sonnet-5",
         Provider: "anthropic/claude-sonnet-5",
-        "secret:Anthropic LLM API key": "selected-secret",
+        "secret:Anthropic API key": "selected-secret",
         Reasoning: "high",
       },
       ["models"],
@@ -1079,8 +1080,8 @@ await test(
       ["claude-sonnet-5"],
     );
     assert.equal(routes.thinkingDefault, "high");
-    assert.ok(ui.questions.includes("secret:Anthropic LLM API key"));
-    assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
+    assert.ok(ui.questions.includes("secret:Anthropic API key"));
+    assert.ok(!ui.questions.includes("secret:OpenAI API key"));
   },
 );
 
@@ -1242,10 +1243,9 @@ await test(
       }
     }
     const result = await collectInstallation(
-      new DiscardKey(
-        { ...f.answers, "secret:OpenAI LLM API key": "discard-me" },
-        ["model-credentials"],
-      ),
+      new DiscardKey({ ...f.answers, "secret:OpenAI API key": "discard-me" }, [
+        "model-credentials",
+      ]),
       { recipe: f.recipe, existing: true },
       first,
     );

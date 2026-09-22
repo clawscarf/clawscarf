@@ -106,6 +106,7 @@ export async function resolveInstallation(
   const cloudConnections = await hostedConnections(config, configFile);
   const input: LocalInput = parseLocalInput({
     name: config.name,
+    agentName: config.agentName,
     administratorName: access.administratorName,
     runtimeImage: release.images.gateway,
     publicWeb: config.publicWeb,

@@ -40,6 +40,7 @@ async function fixture(
     directory,
     parseLocalInput({
       name: "connections-test",
+      agentName: "ClawScarf",
       administratorName: "Ada",
       connections: {
         mode: "external",

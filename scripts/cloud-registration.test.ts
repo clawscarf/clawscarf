@@ -17,6 +17,7 @@ import { installationSchema } from "./installation/configuration.js";
 function configuration(cloudUrl: string) {
   return installationSchema.parse({
     schemaVersion: 1,
+    agentName: "ClawScarf",
     name: "test-team",
     releaseFile: "release.json",
     stateDirectory: "state",

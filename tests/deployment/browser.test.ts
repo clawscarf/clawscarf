@@ -30,6 +30,7 @@ import {
 
 const input = {
   name: "browser-test",
+  agentName: "ClawScarf",
   administratorName: "Ada",
   runtimeImage: `sha256:${"a".repeat(64)}`,
   companionImage: `sha256:${"b".repeat(64)}`,

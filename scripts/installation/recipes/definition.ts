@@ -10,6 +10,7 @@ export const recipeSchema = z.strictObject({
   description: z.string().min(1).max(500),
   maturity: z.enum(["example", "supported"]),
   defaults: z.strictObject({
+    agentName: installationSchema.shape.agentName,
     resources: installationSchema.shape.resources,
     browser: installationSchema.shape.browser,
     publicWeb: z.boolean().default(false),

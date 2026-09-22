@@ -48,6 +48,7 @@ export async function installationSummary(
       : config.exposure.applicationOrigin;
   return [
     `${config.name} — ${origin}`,
+    `Agent: ${config.agentName}`,
     `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
     `Models: ${model}`,
     `Connections: ${config.connections.mode === "disabled" ? "Off" : "On"}`,

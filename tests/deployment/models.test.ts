@@ -70,6 +70,7 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
   const native = initialConfiguration({
     publicOrigin: "http://127.0.0.1:18800",
     widgetOrigin: "http://127.0.0.1:18802",
+    agentName: "ClawScarf",
     administratorIdentity: "test-admin",
   });
   const configured = withInitialModels(native, models);

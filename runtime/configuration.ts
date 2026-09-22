@@ -17,6 +17,19 @@ export const configurationInput = z
     publicOrigin: origin,
     widgetOrigin: origin,
     standaloneNavigation: z.boolean().default(true),
+    agentName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(50)
+      .refine(
+        (value) =>
+          [...value].every(
+            (character) =>
+              character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+          ),
+        "Use an agent name without control characters.",
+      ),
     administratorIdentity: z
       .string()
       .min(1)
@@ -85,6 +98,12 @@ export function initialConfiguration(
       },
     },
     agents: {
+      entries: {
+        main: {
+          name: settings.agentName,
+          identity: { name: settings.agentName },
+        },
+      },
       defaults: {
         workspace: "/home/node/.openclaw/workspace",
         sandbox: { mode: "off" },

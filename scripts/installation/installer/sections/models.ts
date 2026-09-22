@@ -7,7 +7,6 @@ import {
   configurationSchema,
 } from "../../../models/configuration.js";
 import { secretInput } from "../secrets.js";
-import { inputFile } from "../inputs.js";
 import { InstallationError } from "../../errors.js";
 import type { SetupInputs } from "../../save.js";
 
@@ -171,23 +170,6 @@ export async function collectModelCredentials(
     `${selected?.name ?? routes.defaultModel}${routes.thinkingDefault ? " · " + routes.thinkingDefault : ""}\nProvider: ${selected?.route ? providerLabel(selected.route) : "Custom"}`,
     "LLM credentials",
   );
-  const mode = await ui.select(
-    "LLM API keys",
-    [
-      { value: "paste", label: "Enter keys (hidden)" },
-      { value: "file", label: "Import private credentials file" },
-    ],
-    "paste",
-  );
-  if (mode === "file")
-    return {
-      ...current,
-      upstreamEnvironmentFile: await inputFile(
-        ui,
-        "Provider credentials file (.env)",
-        true,
-      ),
-    };
   const values = new Map<string, string>();
   for (const model of routes.models.filter((item) => item.enabled)) {
     const route = model.route;
@@ -197,11 +179,11 @@ export async function collectModelCredentials(
         "An enabled model has no provider route.",
       );
     if (values.has(route.apiKeyEnv)) continue;
-    const key = await ui.password(`${providerLabel(route)} LLM API key`);
+    const key = await ui.password(`${providerLabel(route)} API key`);
     if (!key.trim() || /[\r\n'"`]/.test(key))
       throw new InstallationError(
         "invalid_configuration",
-        "Use a single-line provider key without quote characters, or import its credentials file.",
+        "Use a single-line provider key without quote characters.",
       );
     values.set(route.apiKeyEnv, key);
   }

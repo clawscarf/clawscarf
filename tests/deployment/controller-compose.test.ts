@@ -12,6 +12,7 @@ await test("controller authority stays outside the application and forwarding pu
       cpu: "1",
       memory: "1Gi",
       name: "test",
+      agentName: "ClawScarf",
       administratorName: "Owner",
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,

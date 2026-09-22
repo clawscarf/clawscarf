@@ -1,7 +1,10 @@
 import { OperatorError } from "../errors.js";
 import { isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
-import { initialConfiguration } from "../../runtime/configuration.js";
+import {
+  initialConfiguration,
+  configurationInput,
+} from "../../runtime/configuration.js";
 import type { AccessConfiguration } from "../../services/access/runtime/config.js";
 import { networkRequirementSchema } from "../packs/policy.js";
 
@@ -136,6 +139,7 @@ const teamInput = z
 export const localInput = z
   .strictObject({
     team: teamInput,
+    agentName: configurationInput.shape.agentName,
     name: z
       .string()
       .max(30)
@@ -328,6 +332,7 @@ export function generateLocalConfiguration(options: {
     },
   };
   const native = initialConfiguration({
+    agentName: input.agentName,
     publicOrigin,
     widgetOrigin,
     administratorIdentity: identity,

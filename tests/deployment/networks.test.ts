@@ -29,6 +29,7 @@ const state: LocalState = {
   ownerId: "00000000-0000-4000-8000-000000000001",
   input: {
     name: "network-test",
+    agentName: "ClawScarf",
     administratorName: "Ada",
     publicWeb: false,
     runtimeImage: `sha256:${"a".repeat(64)}`,

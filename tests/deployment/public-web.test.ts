@@ -211,6 +211,7 @@ await test("pending policy edits preserve unrelated rules, reconcile lost respon
   const directory = await mkdtemp(join(tmpdir(), "clawscarf-network-"));
   const input = parseLocalInput({
     name: "network-test",
+    agentName: "ClawScarf",
     administratorName: "Admin",
     runtimeImage: `sha256:${"a".repeat(64)}`,
     companionImage: `sha256:${"b".repeat(64)}`,

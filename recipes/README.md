@@ -23,7 +23,8 @@ no executable hooks, secrets or user identities.
 
 - `models` selects model ID, provider and reasoning from the bundled
   [model catalog](../deploy/models/catalog.json).
-- `defaults` selects resources, public web access, browser and Connections enablement.
+- `defaults` selects the initial `agentName`, resources, public web access, browser and Connections enablement.
+  The name configures OpenClaw's default agent once; later renaming belongs in OpenClaw.
 - `packs: [{ id, members }]` selects agents from the bundled [packs](../packs/README.md).
   The installer checks members and collects required credentials after settings review.
 

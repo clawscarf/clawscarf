@@ -7,12 +7,13 @@ This guide owns the native preset and runtime helpers. The
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset used internally by installation.
-The input contains `publicOrigin`, `widgetOrigin` and the
+The input contains `agentName`, `publicOrigin`, `widgetOrigin` and the
 exact `administratorIdentity` produced by the [access service](../services/access/README.md)
 or a hosting platform's trusted ingress. The preset does not assign an identity
 namespace or depend on either platform's database. The public origin configures both
 browser admission and native OAuth callback/session/viewer link generation; widgets
 retain their separate origin.
+`agentName` initializes `agents.entries.main.name` and `identity.name` through native configuration.
 `standaloneNavigation` defaults to true and enables the bundled native account/People
 pages. A hosting platform supplying its own entry UI sets it to false.
 Initialization refuses to overwrite existing configuration and validates with the pinned OpenClaw CLI

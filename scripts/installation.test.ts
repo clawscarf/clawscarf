@@ -19,6 +19,7 @@ import { readState } from "./deployment/state.js";
 
 const configuration = {
   schemaVersion: 1,
+  agentName: "ClawScarf",
   name: "team",
   releaseFile: "release.json",
   stateDirectory: "state",

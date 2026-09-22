@@ -26,6 +26,7 @@ import { composeConfiguration } from "../../scripts/deployment/compose.js";
 
 const base = {
   name: "team",
+  agentName: "ClawScarf",
   administratorName: "Ada",
   runtimeImage: `sha256:${"a".repeat(64)}`,
   companionImage: `sha256:${"b".repeat(64)}`,

@@ -56,6 +56,7 @@ await test("CLI status use readable output or explicit JSON without issuing cred
   assert.ok(address && typeof address !== "string");
   await initializeState(directory, {
     name: "team",
+    agentName: "ClawScarf",
     administratorName: "Administrator",
     publicWeb: false,
     runtimeImage: `sha256:${"a".repeat(64)}`,

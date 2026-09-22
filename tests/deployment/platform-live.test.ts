@@ -103,6 +103,7 @@ await test(
       allocated = true;
       const state = await prepareLocal(stateDirectory, {
         name: "platform-test",
+        agentName: "ClawScarf",
         administratorName: "Test administrator",
         publicWeb: true,
         connections: { mode: "external", brokerUrl: "https://example.org" },

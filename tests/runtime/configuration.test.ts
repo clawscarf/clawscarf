@@ -5,6 +5,7 @@ import { initialConfiguration } from "../../runtime/configuration.js";
 const input = {
   publicOrigin: "http://127.0.0.1:18800",
   widgetOrigin: "http://127.0.0.1:18802",
+  agentName: "ClawScarf",
   administratorIdentity: "clawscarf:c9cd693a-5af1-42d3-8673-3a45e9ff4e21",
 };
 await test("fresh configuration rejects remote cleartext and shared widget origin", () => {

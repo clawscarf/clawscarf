@@ -98,10 +98,14 @@ clawscarf configure \
 Choose a recipe, then review its editable settings. **Accept settings and continue**
 is the first action. The menu shows the selected model, provider and reasoning before
 asking for missing credentials. Explicit command options preselect those same choices.
+Provider API keys are entered in hidden prompts. Unattended setup can supply private
+files with `--llm-key-file` or `--provider-env-file`.
 **Esc** discards unaccepted section changes and goes back; at the root it exits.
 **Ctrl+C** exits. No services change until the final confirmation.
 
 The [recipe definition](../../recipes/README.md) supplies editable defaults.
+The Names section and `--agent-name` set the initial default agent name. Rename
+agents in OpenClaw after installation.
 The runtime selection, OpenShell protection and authenticated entry are fixed.
 
 `--recipe <name-or-file>` skips the picker: use `team-server` for the bundled
@@ -213,7 +217,7 @@ Run `clawscarf configure --help` for descriptions. The relevant groups are:
 
 | Choices                | Options                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Initial setup          | `--directory`, `--recipe`, `--name`, `--administrator-name`                                                                            |
+| Initial setup          | `--directory`, `--recipe`, `--name`, `--agent-name`, `--administrator-name`                                                            |
 | Models                 | `--model`, `--provider`, `--reasoning`, `--llm-key-file`, `--provider-env-file`                                                        |
 | Login                  | `--access hosted\|oidc`, `--oidc-issuer`, `--oidc-client-id`, `--oidc-secret-file`, `--administrator-subject`, `--administrator-email` |
 | Local networking       | `--port`, `--widget-port`                                                                                                              |

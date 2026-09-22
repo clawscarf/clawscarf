@@ -102,6 +102,7 @@ await test(
       const preset = initialConfiguration({
         publicOrigin: "http://127.0.0.1:18789",
         widgetOrigin: "http://127.0.0.1:18790",
+        agentName: "ClawScarf",
         administratorIdentity: "clawscarf:proof-admin",
         standaloneNavigation: false,
       });

@@ -54,6 +54,7 @@ for (const uncertain of [false, true])
       parseLocalInput({
         team: oidcTeam(18800, 18802),
         name: "test",
+        agentName: "ClawScarf",
         administratorName: "Owner",
         runtimeImage: `sha256:${"a".repeat(64)}`,
         companionImage: `sha256:${"a".repeat(64)}`,
