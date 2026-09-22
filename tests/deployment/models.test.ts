@@ -93,6 +93,12 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
     "clawscarf/team-model",
   );
   assert.equal(configured.agents.defaults.thinkingDefault, "medium");
+  assert.deepEqual(configured.agents.entries, native.agents.entries);
+  assert.equal(
+    configured.agents.defaults.workspace,
+    "/home/node/.openclaw/workspace",
+  );
+  assert.deepEqual(configured.agents.defaults.sandbox, { mode: "off" });
   for (const assignment of nativeAssignments(models.configuration)) {
     if (assignment.path === "agents.defaults.model.primary")
       assert.equal(assignment.value, configured.agents.defaults.model?.primary);
