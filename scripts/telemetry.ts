@@ -1,28 +1,14 @@
+import { claimSetupCompletion } from "./product-telemetry.js";
+import { destinationSchema } from "./telemetry-destination.js";
 import type { Command } from "commander";
 import packageInfo from "../package.json" with { type: "json" };
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { PostHog } from "posthog-node";
 import { Agent, fetch } from "undici";
 import { z } from "zod";
-
-const destinationSchema = z.strictObject({
-  host: z.url().refine((value) => {
-    const url = new URL(value);
-    return (
-      !url.username &&
-      !url.password &&
-      !url.search &&
-      !url.hash &&
-      url.pathname === "/" &&
-      (url.protocol === "https:" ||
-        (url.protocol === "http:" && url.hostname === "127.0.0.1"))
-    );
-  }),
-  projectToken: z.string().regex(/^phc_[A-Za-z0-9_-]+$/),
-});
 
 // Deliberately finite: remote errors and OperatorError.code can contain arbitrary text.
 const errorCodeSchema = z.enum([
@@ -107,6 +93,8 @@ export class CliTelemetry implements CommandObservation {
   private action: "stop" | "delete" | undefined;
   private interactive = false;
   private version = "";
+  private directory: string | undefined;
+  private ready = false;
   private readonly invocationId = randomUUID();
   private outcome: Outcome = "success";
   private mode: "new" | "edit" | undefined;
@@ -147,7 +135,7 @@ export class CliTelemetry implements CommandObservation {
           await handle.close();
         }
         process.stderr.write(
-          "ClawScarf reports CLI usage and failure codes to PostHog. Disable with CLAWSCARF_TELEMETRY_DISABLED=1. Details: https://github.com/clawscarf/clawscarf/blob/main/deploy/deployment/installation.md#telemetry\n",
+          "ClawScarf reports CLI usage, failure codes and anonymous installation milestones to PostHog. Set CLAWSCARF_TELEMETRY_DISABLED=1 before setup to disable both CLI and new-instance reporting. Details: https://github.com/clawscarf/clawscarf/blob/main/deploy/deployment/installation.md#telemetry\n",
         );
       } catch (error) {
         if (!(
@@ -168,9 +156,11 @@ export class CliTelemetry implements CommandObservation {
         names.unshift(current.name());
       this.command = names.join(" ");
       const options = command.optsWithGlobals<{
+        directory?: string;
         nonInteractive?: boolean;
         delete?: boolean;
       }>();
+      this.directory = options.directory;
       this.interactive =
         [process.stdin.isTTY, process.stdout.isTTY].every((isTTY) => isTTY) &&
         !options.nonInteractive;
@@ -233,6 +223,11 @@ export class CliTelemetry implements CommandObservation {
       if ("ready" in value && value.ready === false)
         this.outcome = "action_required";
     }
+    if (
+      ["configure", "start", "status"].includes(this.command) &&
+      "ready" in value
+    )
+      this.ready = value.ready === true;
     if (this.command !== "configure") return;
     if ("ready" in value && value.ready === true) this.configuration = "ready";
     else if ("state" in value && value.state === "unchanged")
@@ -272,6 +267,38 @@ export class CliTelemetry implements CommandObservation {
             : {}),
         }),
       ]);
+      if (outcome === "success" && this.ready && this.directory) {
+        try {
+          const location = z
+            .object({ stateDirectory: z.string().min(1) })
+            .parse(
+              JSON.parse(
+                await readFile(
+                  join(this.directory, "installation.json"),
+                  "utf8",
+                ),
+              ),
+            );
+          const milestone = await claimSetupCompletion(
+            resolve(this.directory, location.stateDirectory),
+          );
+          if (milestone)
+            await this.client.captureImmediate({
+              distinctId: `installation:${milestone.installationId}`,
+              event: "installation_setup_completed",
+              timestamp: new Date(milestone.timestamp),
+              properties: {
+                source: "product",
+                installation_id: milestone.installationId,
+                $insert_id: milestone.insertId,
+                $process_person_profile: false,
+                $ip: null,
+              },
+            });
+        } catch {
+          /* Optional milestone observation never changes command outcomes. */
+        }
+      }
       await this.client.shutdown(1000);
     } catch {
       // Best effort only: no retries, offline queue, output, or changed exit status.
