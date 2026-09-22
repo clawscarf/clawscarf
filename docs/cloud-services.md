@@ -23,9 +23,16 @@ own identity and a compatible broker without an alternative runtime architecture
 Privately operated broker execution must not require our cloud account or identity
 provider; packaging that service belongs to the cloud repository.
 
-Cloud account ownership grants neither installation admission, native administrator
-authority nor access to connector contents. The installation proves current human
-authority; the broker enforces credential-derived installation scope and agent grants.
+Cloud account ownership grants neither installation admission nor native administrator
+authority. The cloud owner and its account provisioner can replace installation management
+and runtime credentials, giving them control of Connections and access to connected
+services without local admission. Installations using cloud Connections trust these
+principals with that authority. Team invitations grant admission only to the inviting
+installation; they grant no cloud-account ownership.
+
+The installation's Access service checks current human authority for its UI and CLI.
+The broker trusts assertions supplied with the installation management credential and
+enforces credential-derived installation scope and agent grants.
 Connector allowances or future payment state must never gate team login.
 
 Registration, management and execution credentials have separate authority. Management

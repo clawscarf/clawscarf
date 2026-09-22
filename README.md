@@ -98,6 +98,8 @@ Public web access permits sending team data to public services. See the
 Default login and optional Connections use **ClawScarf Cloud**. You can use your own
 OIDC provider and disable Connections to run without those hosted services. Original
 model-provider keys and Connections management credentials stay outside OpenClaw.
+See the [hosted-service contract](docs/cloud-services.md#independent-ownership) for
+cloud credential authority and team admission.
 
 See [published releases](https://github.com/clawscarf/clawscarf/releases),
 [security implementation](deploy/openshell/README.md),
