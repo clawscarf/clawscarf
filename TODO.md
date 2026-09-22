@@ -2,8 +2,8 @@
 
 ## Browser
 
-- [ ] Qualify administrator browser file transfers in released macOS ARM64 and
-      Linux ARM64/x86-64 installations before enabling browser by default.
+- [ ] Qualify administrator browser file transfers in released Linux ARM64/x86-64
+      installations before enabling browser by default.
       [Current support](deploy/execution/browser-node/README.md#verified-release-limits).
 
 ## OpenClaw curation

@@ -178,14 +178,15 @@ back to the Gateway and copied into its workspace, restart cleanup and missing-m
 failure. It uses synthetic data and no model or existing installation. The release
 builder runs it on both Linux image architectures; that is separate from qualifying
 a standalone Linux installation.
-The regression passed locally on macOS ARM64/Docker Desktop with newly built images.
+Packaged macOS ARM64/Docker Desktop acceptance also verifies the real authenticated
+Gateway/node transport, staged uploads, explicit downloads into the workspace,
+file retention and browser reconnection after stop/start.
 
-The shared-artifact fix requires newly built controller images and updated operator
-wiring. Source and local image checks do not update published runtime definitions.
-Previously verified alpha.4 administrator browsing worked, but its downloads failed
-with `download.saveAs: ENOENT`; those released images do not include this fix.
+Shared downloads require controller images and operator wiring with file-transfer
+support. Existing installations retain their selected runtime; updating the CLI
+does not upgrade them. See [changing an installation](../../deployment/installation.md#change-an-existing-installation).
 The Team server recipe remains disabled by default. [TODO.md](../../../TODO.md#browser)
-tracks remaining released-installation qualification. [Release evidence](../../../release/README.md#release-evidence)
+tracks remaining Linux installation qualification. [Release evidence](../../../release/README.md#release-evidence)
 owns publication status, and the [network regression](../network/README.md#build-and-test)
 owns destination restrictions.
 
