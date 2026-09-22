@@ -150,11 +150,13 @@ controller signing key. Replacing compute requires restarting its forwards.
 The pinned controller's [connection admission](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/crates/openshell-server/src/grpc/sandbox.rs#L1313)
 limits forwarded connections to 20 per sandbox. The service forward consumes a slot
 for each application TCP connection, including long-lived streams. This is a
-capacity risk for concurrent UI traffic; earlier SSH `forward start` experiments
-do not qualify this path.
+capacity limit for concurrent streams. [Access](../../services/access/README.md#security-and-state)
+bounds ordinary HTTP concurrency and prevents stale connection reuse; WebSockets
+still share the controller's connection limit.
 The [installation test](../../tests/deployment/platform-live.test.ts) covers native
-WebSocket forwarding and authenticated administrator access through the companion;
-[TODO](../../TODO.md#first-run-reliability) tracks the first-load and concurrency failures.
+WebSocket forwarding and authenticated administrator access through the companion.
+[Access verification](../../services/access/README.md#reuse-and-verification) covers
+authenticated UI asset bursts, idle connections and membership changes.
 
 [Deployment networking](../deployment/README.md#ownership-and-recovery) owns bridge
 allocation and fixed service addresses. Public application/widget entry always goes

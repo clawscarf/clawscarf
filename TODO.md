@@ -1,15 +1,5 @@
 # TODO
 
-## First-run reliability
-
-- [ ] Reproduce and fix blank pages, failed navigation and JavaScript download errors
-      through the shipped Access/OpenShell path. Check a fresh browser cache, idle
-      connections and multiple tabs against the [connection limit](deploy/openshell/README.md#application-transport).
-- [ ] Verify a saved Dashboard opens and its granted network controls work through
-      authenticated entry, without depending on a chat preview.
-- [ ] Recheck invitation signup and callback failures with two separate browser
-      sessions; confirm a new member can join without disrupting the administrator.
-
 ## Browser
 
 - [ ] Allow members to browse without granting administrator access to node/profile

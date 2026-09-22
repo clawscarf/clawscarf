@@ -276,6 +276,8 @@ disposable, already-prepared native server and a private current administrator
 session file. Run it with `pnpm exec tsx --test tests/access/native-live.test.ts`,
 with the management CA trusted through `NODE_EXTRA_CA_CERTS`. It creates and
 removes only fixture users through native APIs, retaining the original administrator.
+It requests UI documents and JavaScript/CSS concurrently after idle, and keeps an
+administrator socket connected across enrollment and invitation acceptance.
 A signed local IdP and the registered HTTP handlers exercise two fixture identities
 against the real Gateway: member denial, native administrator promotion and handover,
 rejoin resetting prior administrator authority, and logout closing only the affected
