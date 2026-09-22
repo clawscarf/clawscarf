@@ -396,3 +396,20 @@ never retried automatically.
 People and Connections commands share session validation, CSRF acquisition and a
 90-second operation deadline. Session files must be private. Management requests
 require HTTPS (or loopback HTTP), reject redirects and never retry mutations.
+
+### Cloud balances and purchases
+
+With Cloud AI or Connections selected, native installation administrators can open
+[Account](../../plugins/access/README.md) to see balances and available packs.
+Purchasing requires an explicit sign-in as that Cloud account's owner. Checkout
+and payment details open on Stripe; selecting a paid service in the installer does
+not purchase a pack or enable automatic recharge. Prices and any free allocation
+come from Cloud and may change for new accounts.
+
+When AI credit runs out, requests fail and the native plugin directs administrators
+to Account. Other team members should ask their installation administrator. When
+Connections actions run out, Account shows the daily reset and prepaid packs.
+A pending payment or credit activation should be checked before paying again.
+Neither case blocks team login. These features require the CLI, companion and
+native plugin built from this source; they have not been published by this change.
+Existing installations retain their configured services and credentials.

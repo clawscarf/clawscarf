@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import lockfile from "proper-lockfile";
@@ -77,8 +78,16 @@ async function configure(
     registrationFile + ".login",
     false,
   );
-  const request = { client, auth, signal: AbortSignal.timeout(60_000) };
+  const request = {
+    client,
+    headers: { authorization: `Bearer ${auth}` },
+    get signal() {
+      return AbortSignal.timeout(60_000);
+    },
+  };
   const account = await api.getAccount(request);
+  if (account.response?.status === 401)
+    await rm(registrationFile + ".login", { force: true });
   if (!account.data || account.data.accountId !== registration.accountId)
     throw new InstallationError(
       "invalid_configuration",
@@ -99,10 +108,7 @@ async function configure(
       "invalid_configuration",
       "A selected model is no longer available from ClawScarf Cloud. Choose another model.",
     );
-  const file = resolve(
-    dirname(configFile),
-    models.upstreamEnvironmentFile + ".json",
-  );
+  const file = registrationFile + ".ai.json";
   let intent: z.infer<typeof intentSchema> = {
     installationId: id,
     url: models.cloud.url,
@@ -232,9 +238,9 @@ async function configure(
 }
 
 export async function configureCloudAi(...args: Parameters<typeof configure>) {
-  const [configFile, models] = args;
+  const [, models, , registrationFile] = args;
   if (models.mode !== "litellm" || !models.cloud) return;
-  const file = resolve(dirname(configFile), models.upstreamEnvironmentFile);
+  const file = registrationFile + ".ai.json";
   const unlock = await lockfile.lock(dirname(file), {
     lockfilePath: file + ".lock",
     retries: 0,

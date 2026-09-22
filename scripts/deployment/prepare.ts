@@ -1,3 +1,4 @@
+import { prepareCloudManagement } from "./cloud-management.js";
 import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import {
@@ -181,6 +182,7 @@ export async function prepareLocal(
     const insideDatabase = new URL(runtimeUrl);
     insideDatabase.hostname = "postgres";
     insideDatabase.port = "5432";
+    await prepareCloudManagement(directory, input);
     const generated = generateLocalConfiguration({
       input,
       directory: privateDirectory,

@@ -156,6 +156,15 @@ export function assertReleaseCapabilities(
       "invalid_configuration",
       "This release does not include browser images.",
     );
+  if (
+    config.models.mode === "litellm" &&
+    config.models.cloud &&
+    !context.release.cloudBilling
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "This runtime predates Cloud AI and Account billing. Select a runtime with Cloud billing support, or use your own provider key.",
+    );
   if (config.models.mode === "litellm" && !context.release.images.models)
     throw new InstallationError(
       "invalid_configuration",

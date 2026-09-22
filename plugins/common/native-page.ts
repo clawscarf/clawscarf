@@ -65,6 +65,10 @@ export function page<T extends { csrfToken: string }>(
     .clawscarf-catalog .btn{display:block;text-align:left;white-space:normal;padding:12px}
     .clawscarf-catalog img{vertical-align:middle;margin-right:8px}
     .clawscarf-page td .btn{margin:2px}
+    .clawscarf-cloud{display:grid;gap:16px}.clawscarf-cloud-service{border-top:1px solid var(--border);padding-top:12px}
+    .clawscarf-cloud-balances{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:16px}
+    .clawscarf-cloud-service .btn{margin:4px 8px 4px 0;white-space:normal;text-align:left}
+    .clawscarf-cloud [role=status]:not(:empty)::before{content:none}
     @media(max-width:600px){
       .clawscarf-connections-table thead{display:none}
       .clawscarf-connections-table tbody{display:grid;gap:12px;margin-top:16px}
@@ -95,6 +99,10 @@ export function page<T extends { csrfToken: string }>(
   } as const;
   let csrf = "";
   let busy = false;
+  const disabledBefore = new Map<
+    HTMLButtonElement | HTMLSelectElement,
+    boolean
+  >();
   function pending(value: boolean, text = "") {
     busy = value;
     status.textContent = text;
@@ -102,7 +110,13 @@ export function page<T extends { csrfToken: string }>(
     for (const control of root.querySelectorAll<
       HTMLButtonElement | HTMLSelectElement
     >("button,select"))
-      control.disabled = value;
+      if (value) {
+        disabledBefore.set(control, control.disabled);
+        control.disabled = true;
+      } else if (disabledBefore.has(control)) {
+        control.disabled = disabledBefore.get(control) ?? false;
+      }
+    if (!value) disabledBefore.clear();
   }
   async function session() {
     const value = await loadSession(request);
@@ -110,7 +124,7 @@ export function page<T extends { csrfToken: string }>(
     return value;
   }
   async function run(work: () => Promise<void>, label: string) {
-    if (busy || context.signal.aborted) return;
+    if (busy || context.signal.aborted) return false;
     pending(true, label);
     error.textContent = "";
     try {
@@ -120,6 +134,7 @@ export function page<T extends { csrfToken: string }>(
     } finally {
       if (!context.signal.aborted) pending(false);
     }
+    return true;
   }
   return {
     root,

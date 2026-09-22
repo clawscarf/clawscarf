@@ -62,6 +62,7 @@ const payload = [
   "scripts/connections.js",
   "scripts/cloud",
   "services/cloud/generated",
+  "services/cloud/management/config.js",
   "services/connections/cloud/generated",
   "scripts/installation",
   "scripts/release/create.js",

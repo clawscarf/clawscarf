@@ -74,3 +74,9 @@ listener failures and cleanup. [Access](../../services/access/README.md#reuse-an
 and [Connections](../../services/connections/README.md) own service-level tests;
 broker/provider tests belong to the cloud service.
 Installation acceptance uses the [release evidence contract](../../release/README.md#release-evidence).
+
+Optional `cloudServices` configuration supplies the scoped management credentials
+for native [Account billing](../../services/cloud/README.md). Only the companion
+mounts those credentials. When no billed Cloud service is configured, Account
+keeps its identity/sign-out presentation and makes no upstream billing calls.
+The installer derives this configuration from retained Cloud registrations.

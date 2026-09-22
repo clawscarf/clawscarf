@@ -101,6 +101,7 @@ await new Command("build-release-candidate")
         schemaVersion: 1,
         version,
         sourceRevision: revision,
+        cloudBilling: true,
         platforms,
         images: {
           postgres: postgresImage,

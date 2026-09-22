@@ -7,7 +7,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(access/(runtime/(composition|config)|types/native)|connections/cloud/http)\\.ts$",
+          "^services/(access/(runtime/(composition|config)|types/native)|connections/cloud/http|cloud/management/(http|config))\\.ts$",
       },
     },
     {
@@ -57,7 +57,7 @@ module.exports = {
       to: {
         path: "^services/",
         pathNot:
-          "^services/(cloud/generated/|access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/cloud/generated/)",
+          "^services/(cloud/(generated/|management/config\\.ts$)|access/(runtime/config\\.ts|repo/postgres\\.ts|generated/)|connections/cloud/generated/)",
       },
     },
 
@@ -106,12 +106,13 @@ module.exports = {
       },
     },
     {
-      name: "connections-use-access-public-boundary",
+      name: "cloud-adapters-use-access-public-boundary",
       severity: "error",
-      from: { path: "^services/connections/" },
+      from: { path: "^services/(connections|cloud)/" },
       to: {
         path: "^services/access/",
-        pathNot: "^services/access/(types/(native|errors)\\.ts$|generated/)",
+        pathNot:
+          "^services/access/(types/(native|errors)\\.ts$|runtime/administrator\\.ts$|generated/)",
       },
     },
     {
@@ -145,7 +146,7 @@ module.exports = {
       to: {
         path: "^(services|scripts)/",
         pathNot:
-          "^services/(access/generated/|cloud/generated/|connections/cloud/generated/)",
+          "^services/(access/generated/|cloud/(generated/|management/generated/)|connections/cloud/generated/)",
       },
     },
     {

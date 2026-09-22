@@ -59,8 +59,11 @@ implements hosted AI selection, owner enablement and scoped credential retention
 Existing installations retain their accepted service; recipe updates never switch it.
 
 Cloud owns payment settlement and usage enforcement. Local integration consumes
-generated APIs. Native purchase UI remains pending in this slice; it will open hosted
-payment pages, with Stripe credentials and SDKs confined to Cloud. Native administrator assertions authorize installation management, not
+generated APIs. The native [Account plugin](../plugins/access/README.md) displays balances and
+opens hosted payment pages through the [companion adapter](../services/cloud/README.md).
+Stripe credentials and SDKs remain confined to Cloud. Purchases require an explicit
+Cloud owner sign-in, checked against the installation's registered account and
+bound to the admitted local browser session. Native administrator assertions authorize installation management, not
 account-wide financial access. Team login remains independent of payment and quota state.
 
 Hosted AI credit always routes through ClawScarf Cloud's authenticated inference

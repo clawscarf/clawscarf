@@ -43,6 +43,11 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
   let url = "";
   const server = Fastify();
   t.after(() => server.close());
+  server.addHook("onRequest", (request, _reply, done) => {
+    assert.equal(request.headers.authorization, "Bearer owner");
+    assert.equal(request.headers.cookie, undefined);
+    done();
+  });
   server.get("/api/account", () => ({
     accountId: other ? randomUUID() : accountId,
   }));
@@ -113,6 +118,29 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
   assert.equal(
     await readFile(join(dir, "secrets/cloud-ai.env"), "utf8"),
     secret,
+  );
+  // Changing the local settings/secret destination must reuse this registration's AI credential.
+  await mkdir(join(dir, "alternate"));
+  await writeFile(join(dir, "alternate/models.json"), JSON.stringify(routes));
+  await configureCloudAi(
+    join(dir, "alternate/installation.json"),
+    {
+      ...models,
+      configurationFile: "models.json",
+      upstreamEnvironmentFile: "cloud-ai.env",
+    },
+    { accountId, installationId: id, cloudUrl: url },
+    join(dir, "secrets/registration.json"),
+    () => Promise.resolve("owner"),
+  );
+  assert.equal(
+    await readFile(join(dir, "alternate/cloud-ai.env"), "utf8"),
+    secret,
+  );
+  assert.equal(issues, 2);
+  assert.equal(
+    (await stat(join(dir, "secrets/registration.json.ai.json"))).mode & 0o777,
+    0o600,
   );
   other = true;
   await assert.rejects(run(), /account that owns/);

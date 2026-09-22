@@ -62,13 +62,6 @@ export function aiRegistration(config: InstallationConfiguration) {
   if (config.models.mode !== "litellm" || !config.models.cloud)
     return undefined;
   const cloud = config.models.cloud;
-  if (config.access.mode === "hosted" && config.access.cloudUrl === cloud.url)
-    return config.access;
-  if (
-    config.connections.mode === "hosted" &&
-    config.connections.cloudUrl === cloud.url
-  )
-    return config.connections;
   return { cloudUrl: cloud.url, registrationFile: cloud.registrationFile };
 }
 
@@ -103,14 +96,22 @@ export async function registerCloudServices(
       ? [{ ...ai, login: false }]
       : []),
   ];
+  const registered = new Set<string>();
   for (const selection of selections) {
+    const registrationPath = resolve(
+      dirname(configFile),
+      selection.registrationFile,
+    );
+    const identity = selection.cloudUrl + "\n" + registrationPath;
+    if (registered.has(identity)) continue;
+    registered.add(identity);
     const origin = selection.login
       ? config.exposure.mode === "https"
         ? config.exposure.applicationOrigin
         : `http://127.0.0.1:${String(config.exposure.applicationPort)}`
       : null;
     await registerService(
-      resolve(dirname(configFile), selection.registrationFile),
+      registrationPath,
       selection.cloudUrl,
       config.name,
       origin,
@@ -198,7 +199,7 @@ async function registerService(
       );
       const account = await getAccount({
         client,
-        auth,
+        headers: { authorization: `Bearer ${auth}` },
         signal: AbortSignal.timeout(10_000),
       });
       if (!account.data) {
@@ -230,7 +231,7 @@ async function registerService(
       await writePrivate(path, JSON.stringify(registration));
       const result = await registerInstallation({
         client,
-        auth,
+        headers: { authorization: `Bearer ${auth}` },
         body: registration.request,
         signal: AbortSignal.timeout(60_000),
       });
@@ -270,7 +271,9 @@ async function registerService(
     if (!origin) return;
     const result = await getInstallationIdentity({
       client,
-      auth: registration.request.managementSecret,
+      headers: {
+        authorization: `Bearer ${registration.request.managementSecret}`,
+      },
       path: { id: registration.installationId },
       signal: AbortSignal.timeout(15_000),
     });
@@ -371,4 +374,68 @@ export async function hostedConnections(
     managementKeyFile,
     credentialFile,
   };
+}
+
+/** Installation-safe billing views use the same registration as each enabled service. */
+export async function hostedBilling(
+  config: InstallationConfiguration,
+  configFile: string,
+) {
+  const selected = [
+    ...(connectionsRegistration(config)
+      ? [
+          {
+            registration: connectionsRegistration(config),
+            service: "connections" as const,
+          },
+        ]
+      : []),
+    ...(aiRegistration(config)
+      ? [{ registration: aiRegistration(config), service: "ai" as const }]
+      : []),
+  ];
+  const targets = new Map<
+    string,
+    {
+      id: string;
+      accountId: string;
+      url: string;
+      managementKeyFile: string;
+      ai: boolean;
+      connections: boolean;
+    }
+  >();
+  for (const item of selected) {
+    if (!item.registration) continue;
+    const path = resolve(
+      dirname(configFile),
+      item.registration.registrationFile,
+    );
+    const registration = await readHostedRegistration(path);
+    if (
+      !registration.installationId ||
+      !registration.accountId ||
+      registration.cloudUrl !== item.registration.cloudUrl
+    )
+      throw new InstallationError(
+        "invalid_configuration",
+        "Cloud billing registration is incomplete or belongs to another service.",
+      );
+    const key = registration.installationId;
+    const target = targets.get(key) ?? {
+      id: key,
+      accountId: registration.accountId,
+      url: registration.cloudUrl,
+      managementKeyFile: path + ".management-key",
+      ai: false,
+      connections: false,
+    };
+    target[item.service] = true;
+    await ensurePrivateFile(
+      target.managementKeyFile,
+      registration.request.managementSecret,
+    );
+    targets.set(key, target);
+  }
+  return [...targets.values()];
 }

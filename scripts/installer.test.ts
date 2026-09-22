@@ -1,3 +1,4 @@
+import { releaseSchema } from "./release/definition.js";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -872,6 +873,13 @@ await test(
     await writeFile(
       f.recipe,
       JSON.stringify({ ...preset, runtime: f.release }),
+    );
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...releaseSchema.parse(await readJson(f.release)),
+        cloudBilling: true,
+      }),
     );
     const ui = new Answers(f.answers);
     const draft = await collectInstallation(ui, {
@@ -2040,7 +2048,7 @@ await test("image download reports layer progress, hides registry errors and sup
 });
 
 await test(
-  "no recipe flag lists bundled recipes and uses their runtime with staging defaults",
+  "no recipe flag uses the published runtime with provider-key AI and staging login",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -2051,6 +2059,7 @@ await test(
     const result = await collectInstallation(ui, {
       directory: f.directory,
       cloudUrl: "https://cloud-staging.clawscarf.com",
+      aiService: "provider",
     });
     assert.ok(ui.questions.includes("Starting point"));
     assert.equal(result.config.releaseFile, resolve("runtime/current.json"));
@@ -2065,5 +2074,75 @@ await test(
       result.config.connections.cloudUrl,
     );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "Cloud AI refuses an older runtime before reading registration secrets",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const draft = await collectInstallation(new Answers(f.answers), f);
+    assert.equal(draft.config.models.mode, "litellm");
+    draft.config.models.cloud = {
+      url: "https://cloud.example",
+      registrationFile: "secrets/not-registered.json",
+    };
+    const file = await saveConfiguration(
+      f.directory,
+      draft.config,
+      draft.inputs,
+    );
+    const { resolveInstallation } = await import("./installation/resolve.js");
+    await assert.rejects(
+      resolveInstallation(file, []),
+      /runtime predates Cloud AI/,
+    );
+  },
+);
+
+await test(
+  "Cloud AI keeps its chosen registration when optional Connections is disabled",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const draft = await collectInstallation(new Answers(f.answers), f);
+    assert.equal(draft.config.models.mode, "litellm");
+    const cloudUrl = "https://cloud.example";
+    draft.config.models.cloud = {
+      url: cloudUrl,
+      registrationFile: "./secrets/ai-registration.json",
+    };
+    draft.config.connections = {
+      ...draft.config.connections,
+      mode: "hosted",
+      cloudUrl,
+    };
+    const file = await saveConfiguration(
+      f.directory,
+      draft.config,
+      draft.inputs,
+    );
+    const original = installationSchema.parse(await readJson(file));
+    const { aiRegistration } = await import("./cloud/registration.js");
+    assert.equal(
+      aiRegistration(original)?.registrationFile,
+      original.connections.registrationFile,
+    );
+    const { resolveConfigurationInputs } =
+      await import("./installation/configure.js");
+    const accepted = resolveConfigurationInputs(original, f.directory);
+    accepted.connections = { ...accepted.connections, mode: "disabled" };
+    const retained = await saveConfiguration(
+      join(f.parent, "retained-ai"),
+      accepted,
+      undefined,
+      true,
+    );
+    const next = installationSchema.parse(await readJson(retained));
+    assert.deepEqual(
+      aiRegistration(next),
+      aiRegistration(resolveConfigurationInputs(original, f.directory)),
+    );
   },
 );

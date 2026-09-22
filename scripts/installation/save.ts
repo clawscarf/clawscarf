@@ -61,23 +61,19 @@ export async function saveConfiguration(
       "model-key",
     );
   if (config.models.mode === "litellm" && config.models.cloud) {
-    if (retained && isAbsolute(config.models.upstreamEnvironmentFile)) {
-      try {
-        files.set(
-          "secrets/cloud-ai.env.json",
-          await readInputFile(
-            config.models.upstreamEnvironmentFile + ".json",
-            true,
-          ),
-        );
-      } catch (error) {
-        if (!(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "ENOENT"
-        ))
-          throw error;
-      }
+    // Bind once to the selected registration; later Connections toggles cannot replace AI identity.
+    if (!retained || !isAbsolute(config.models.cloud.registrationFile)) {
+      const cloud = config.models.cloud;
+      if (
+        config.access.mode === "hosted" &&
+        config.access.cloudUrl === cloud.url
+      )
+        cloud.registrationFile = config.access.registrationFile;
+      else if (
+        config.connections.mode === "hosted" &&
+        config.connections.cloudUrl === cloud.url
+      )
+        cloud.registrationFile = config.connections.registrationFile;
     }
     config.models.upstreamEnvironmentFile = "./secrets/cloud-ai.env";
   } else if (config.models.mode === "litellm")

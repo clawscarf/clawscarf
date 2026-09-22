@@ -1,0 +1,1156 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ClawScarf Cloud management adapter",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/_clawscarf/cloud": {
+      "get": {
+        "operationId": "listCloudServices",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "services": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CloudService"
+                      }
+                    }
+                  },
+                  "required": ["services"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/allowances": {
+      "get": {
+        "operationId": "getCloudAllowances",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingAllowances"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/offers": {
+      "get": {
+        "operationId": "getCloudOffers",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "purchasingAvailable": {
+                      "type": "boolean"
+                    },
+                    "offers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BillingOffer"
+                      }
+                    }
+                  },
+                  "required": ["purchasingAvailable", "offers"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/models": {
+      "get": {
+        "operationId": "getCloudModels",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "defaultModel": {
+                      "type": "null"
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AiModel"
+                      }
+                    }
+                  },
+                  "required": ["defaultModel", "models"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/authorization": {
+      "get": {
+        "operationId": "getCloudAuthorization",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudAuthorization"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "startCloudAuthorization",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudAuthorization"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "forgetCloudAuthorization",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/authorization/poll": {
+      "post": {
+        "operationId": "pollCloudAuthorization",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudAuthorization"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/checkouts": {
+      "post": {
+        "operationId": "createCloudCheckout",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "orderId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "creating",
+                        "checkout_ready",
+                        "payment_pending",
+                        "paid",
+                        "fulfilled",
+                        "expired",
+                        "failed",
+                        "uncertain"
+                      ]
+                    },
+                    "checkoutUrl": {
+                      "type": ["string", "null"]
+                    },
+                    "expiresAt": {
+                      "type": ["string", "null"],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": ["orderId", "status", "checkoutUrl", "expiresAt"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "returnPath": {
+                    "type": "string",
+                    "pattern": "^/(?!/)",
+                    "maxLength": 2048
+                  }
+                },
+                "required": ["requestId", "offerId", "quantity", "returnPath"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/orders": {
+      "get": {
+        "operationId": "listCloudOrders",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BillingOrder"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": ["string", "null"],
+                      "format": "uuid"
+                    }
+                  },
+                  "required": ["orders", "nextCursor"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/orders/{orderId}": {
+      "get": {
+        "operationId": "getCloudOrder",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingOrder"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/{id}/portal": {
+      "post": {
+        "operationId": "createCloudPortal",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "returnPath": {
+                    "type": "string",
+                    "pattern": "^/(?!/)",
+                    "maxLength": 2048
+                  }
+                },
+                "required": ["requestId", "returnPath"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_clawscarf/cloud/capabilities": {
+      "get": {
+        "operationId": "getCloudCapabilities",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ai": {
+                      "type": "boolean"
+                    },
+                    "connections": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ai", "connections"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": ["type", "title", "status", "code", "requestId"]
+      },
+      "BillingAllowances": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "connections": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": ["executions"]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "disabled",
+                  "pending",
+                  "available",
+                  "exhausted",
+                  "suspended",
+                  "unavailable"
+                ]
+              },
+              "freeRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "paidRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "resetsAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "unit",
+              "state",
+              "freeRemaining",
+              "paidRemaining",
+              "available",
+              "resetsAt"
+            ]
+          },
+          "ai": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": ["usd_micros"]
+              },
+              "currency": {
+                "type": "string",
+                "enum": ["usd"]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "disabled",
+                  "pending",
+                  "available",
+                  "exhausted",
+                  "suspended",
+                  "unavailable"
+                ]
+              },
+              "freeRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "paidRemaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "usageAsOf": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "unit",
+              "currency",
+              "state",
+              "freeRemaining",
+              "paidRemaining",
+              "available",
+              "usageAsOf"
+            ]
+          },
+          "purchasingAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": ["connections", "ai", "purchasingAvailable"]
+      },
+      "BillingOffer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string",
+            "enum": ["connections", "ai"]
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["usd"]
+          },
+          "priceMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxQuantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["usd_micros", "executions"]
+          },
+          "expires": {
+            "type": "boolean",
+            "const": false
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["account"]
+          },
+          "purchaseType": {
+            "type": "string",
+            "enum": ["one_time"]
+          },
+          "taxBehavior": {
+            "type": "string",
+            "enum": ["exclusive"]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "service",
+          "currency",
+          "priceMinor",
+          "amount",
+          "maxQuantity",
+          "unit",
+          "expires",
+          "scope",
+          "purchaseType",
+          "taxBehavior"
+        ]
+      },
+      "BillingOrder": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "service": {
+            "type": "string",
+            "enum": ["connections", "ai"]
+          },
+          "offerId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["usd"]
+          },
+          "amountMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "grantAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "creating",
+              "checkout_ready",
+              "payment_pending",
+              "paid",
+              "fulfilled",
+              "expired",
+              "failed",
+              "uncertain"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "disputedMinor": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "installationId",
+          "service",
+          "offerId",
+          "quantity",
+          "currency",
+          "amountMinor",
+          "grantAmount",
+          "status",
+          "createdAt",
+          "refundedMinor",
+          "disputedMinor"
+        ]
+      },
+      "AiModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "protocols": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["responses", "chat/completions"]
+            }
+          },
+          "contextTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "inputMicrosPerMillion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outputMicrosPerMillion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rateVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocols",
+          "contextTokens",
+          "maxOutputTokens",
+          "inputMicrosPerMillion",
+          "outputMicrosPerMillion",
+          "rateVersion"
+        ]
+      },
+      "CloudService": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "ai": {
+            "type": "boolean"
+          },
+          "connections": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "url", "ai", "connections"]
+      },
+      "CloudAuthorization": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["disconnected", "pending", "authorized"]
+          },
+          "url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "code": {
+            "type": ["string", "null"]
+          },
+          "expiresAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "pollAfterSeconds": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": ["state", "url", "code", "expiresAt", "pollAfterSeconds"]
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "clawscarf_session"
+      }
+    }
+  }
+}

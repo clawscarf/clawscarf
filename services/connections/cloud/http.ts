@@ -1,4 +1,4 @@
-import { AccessError } from "../../access/types/errors.js";
+import { administratorProof } from "../../access/runtime/administrator.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import openapiGlue from "fastify-openapi-glue";
 import { readFile } from "node:fs/promises";
@@ -26,39 +26,7 @@ export async function registerCloudConnections(
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(credential))
     throw Error("Invalid Connections management credential.");
   const client = createClient({ baseUrl: input.url, redirect: "error" });
-  async function proof(request: FastifyRequest) {
-    const session = await input.access.authenticate(
-      request.cookies.clawscarf_session ?? "",
-    );
-    if (request.method !== "GET")
-      input.access.csrf(
-        session,
-        request.headers.origin,
-        typeof request.headers["x-csrf-token"] === "string"
-          ? request.headers["x-csrf-token"]
-          : undefined,
-      );
-    const native = await input.access.withActingSession(session.hash, (token) =>
-      input.native.verifyAdministrator(
-        {
-          identity: session.user.identity,
-          name: session.user.name,
-          sessionHash: session.hash,
-        },
-        token,
-      ),
-    );
-    // A revocation that completed during the native read must deny dispatch too.
-    if (!(await input.access.resolveSessionHash(session.hash)))
-      throw new AccessError("unauthenticated", "Sign in to continue.");
-    return {
-      userId: session.user.id,
-      origin: input.origin,
-      sessionHash: session.hash,
-      verifiedAt: new Date().toISOString(),
-      agentIds: native.agentIds,
-    };
-  }
+  const proof = administratorProof(input);
   async function requestOptions(request: FastifyRequest) {
     const assertion = await proof(request);
     return {

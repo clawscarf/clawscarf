@@ -314,3 +314,29 @@ await test("OIDC on loopback needs no TLS files and never publishes public liste
       parseLocalInput({ ...base, team: { ...team, ...change } }),
     );
 });
+
+await test("Cloud billing management credentials belong only to the companion", () => {
+  const id = "bce248fc-a3bf-4853-b6e7-ddfc30e186eb";
+  const result = generate({
+    input: parseLocalInput({
+      ...base,
+      cloudServices: [
+        {
+          id,
+          accountId: "62e4730c-d63b-412d-8b94-780078456f1e",
+          url: "https://cloud.example",
+          managementKeyFile: "/operator/management.key",
+          ai: true,
+          connections: true,
+        },
+      ],
+    }),
+  });
+  assert.equal(
+    result.companion.cloudServices?.[0]?.managementKeyFile,
+    `/run/clawscarf/cloud-services/${id}.key`,
+  );
+  assert.deepEqual(result.native, generate().native);
+  assert.deepEqual(result.access, generate().access);
+  assert.equal(JSON.stringify(result).includes("/operator/"), false);
+});

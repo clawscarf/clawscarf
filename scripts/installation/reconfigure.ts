@@ -1,3 +1,4 @@
+import { applyCloudManagement } from "../deployment/cloud-management.js";
 import { publicWebPolicy } from "../deployment/public-web.js";
 import { stageNetworkPolicyChange } from "../deployment/network-policy.js";
 import { applyConnectionSettings } from "../deployment/connection-settings.js";
@@ -73,6 +74,7 @@ export async function planSettingsChange(
     modelGateway: oldGateway,
     connections: oldConnections,
     publicWeb: oldPublicWeb,
+    cloudServices: _oldCloudServices,
     ...oldFixed
   } = old;
   const {
@@ -80,6 +82,7 @@ export async function planSettingsChange(
     modelGateway: nextGateway,
     connections: nextConnections,
     publicWeb: nextPublicWeb,
+    cloudServices: _nextCloudServices,
     ...nextFixed
   } = next;
   if (
@@ -344,6 +347,9 @@ export async function reconfigureInstallation(
           checked.previousEndpoint,
           desired.connectorCredentialFile,
         );
+      stage = "Cloud management configuration";
+      if (scopes.models || scopes.connections)
+        await applyCloudManagement(directory, desired.input);
       stage = "public web policy";
       if (scopes.publicWeb)
         await stageNetworkPolicyChange(directory, state, {

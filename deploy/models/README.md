@@ -74,6 +74,17 @@ CLAWSCARF_TEST_LITELLM=1 CLAWSCARF_TEST_LITELLM_MASTER_KEY_FILE=/private/test-ma
 
 Never run that fixture against a production gateway or database.
 
+The [Cloud gateway regression](../../tests/models/cloud-gateway.test.ts) separately
+checks Cloud model IDs through the pinned LiteLLM image for both Chat Completions
+and Responses, JSON and streaming, successful requests and HTTP 402 failures with
+no replay. It uses a controlled upstream on port 14501, no paid provider account.
+Set `CLAWSCARF_TEST_CLOUD_GATEWAY=1`, `CLAWSCARF_TEST_MODEL_CONFIGURATION` to the
+isolated rendered model input, and `CLAWSCARF_TEST_LITELLM_MASTER_KEY_FILE` to that
+gateway's private test key. Its route must use `openai/openai/cloud-fixture`, public
+model ID `openai/cloud-fixture`, and upstream key `scoped-test-cloud-secret`.
+LiteLLM preserves the HTTP status and readable message but rewrites the public
+error code to `402`; native Account reads the authoritative Cloud allowance state.
+
 ### Private TLS and OpenShell proof
 
 [compose.tls.yaml](compose.tls.yaml) adds LiteLLM's own TLS listener. Supply

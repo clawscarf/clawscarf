@@ -74,7 +74,7 @@
     "onStartup": true
   },
   "controlUi": {
-    "entry": "dist/control-ui/72ba0f7568d168286566ba3da85a0169e8f6bae3108bb0582961684b1d3ee020/index.js"
+    "entry": "dist/control-ui/cb4fc896f0111f28176929e8f289fb5c91fdb4ca3cdf0b0d8b054effdb7439b3/index.js"
   },
   "contracts": {
     "tools": ["connections_search", "connections_describe", "connections_call"]

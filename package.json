@@ -38,7 +38,8 @@
     "clawscarf": "node scripts/clawscarf.mjs",
     "http:generate": "node --import tsx scripts/generate-http.ts",
     "cloud:generate": "openapi-ts -f scripts/cloud-api.config.ts",
-    "connections:management:generate": "openapi-ts -f scripts/connection-management-api.config.ts"
+    "connections:management:generate": "openapi-ts -f scripts/connection-management-api.config.ts",
+    "cloud:management:generate": "openapi-ts -f scripts/cloud-management-api.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

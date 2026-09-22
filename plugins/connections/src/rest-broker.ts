@@ -57,7 +57,7 @@ function responseFailure(
     if (problem.code === "quota_exhausted")
       return new ConnectorFailure(
         "quota_exhausted",
-        "Connection allowance exhausted. An administrator can check Usage on the Connections page.",
+        "Connections allowance exhausted. Ask an administrator to check Usage on the Connections page. In ClawScarf, Account shows the reset time and lets the Cloud owner buy more actions.",
       );
     if (problem.code === "service_disabled")
       return new ConnectorFailure(

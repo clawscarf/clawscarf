@@ -28,6 +28,7 @@ COPY --from=build /app/dist/apps ./apps
 COPY services/access/openapi.json ./services/access/openapi.json
 COPY services/access/migrations ./services/access/migrations
 COPY services/connections/cloud/openapi.json ./services/connections/cloud/openapi.json
+COPY services/cloud/management/openapi.json ./services/cloud/management/openapi.json
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf/
 USER node
 ENV NODE_ENV=production
