@@ -10,9 +10,14 @@ hosted Checkout/Portal. Native administrator rights alone cannot purchase; the
 companion holds the temporary owner token, never browser JavaScript. Prices and
 balances come from Cloud; no fixed introductory allocation is promised.
 Saved checkout requests resume with the same idempotency key. A payment awaiting
-credit activation remains pending, with a warning against paying again. A return
+credit activation remains pending, with new purchases disabled for the affected
+service and a warning against paying again. Expired or declined billing sign-in
+offers a fresh sign-in; pending approval can be cancelled. An unreadable saved
+checkout can be cleared after viewing recent purchases and confirming that this
+does not cancel or refund a payment. A return
 from Stripe is not proof that credit was granted. Recent purchases and refunds
-remain visible through purchase history and Stripe payment details.
+remain visible through purchase history and Stripe payment details. Refreshes
+retain expanded prices and purchase history and preserve keyboard focus.
 A native session-header accessory supplies Account recovery guidance after failed
 Cloud AI chats; OpenClaw keeps its own error presentation. Members are directed to
 an installation administrator. It neither buys credits nor redirects automatically.

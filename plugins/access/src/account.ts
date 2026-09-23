@@ -8,11 +8,15 @@ export const account: ControlUiView = (container, context) => {
   let disposeBilling: (() => void) | undefined;
   void view.run(async () => {
     const current = await view.session();
-    view.content.append(
+    const identity = element("div");
+    identity.className = "clawscarf-account-identity";
+    const details = element("div");
+    details.append(
       element("h3", current.user.name),
       element("p", current.user.email),
     );
-    view.content.append(
+    identity.append(
+      details,
       button("Sign out", () => {
         void view.run(async () => {
           const result = await api.logout(view.write());
@@ -20,6 +24,7 @@ export const account: ControlUiView = (container, context) => {
         }, "Signing out…");
       }),
     );
+    view.content.append(identity);
     disposeBilling = await mountBilling(view, context, current.user.id);
     if (disposed) disposeBilling();
   }, "Loading account…");

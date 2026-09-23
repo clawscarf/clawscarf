@@ -7,7 +7,7 @@ import type {
   CloudAuthorization,
 } from "../../../services/cloud/management/generated/types.gen.js";
 import type { Page } from "../../common/native-page.js";
-import { element, button, confirm } from "./page.js";
+import { element, button, confirm, failure } from "./page.js";
 
 const usd = (micros: number) =>
   new Intl.NumberFormat(undefined, {
@@ -108,16 +108,23 @@ export async function mountBilling(
 ) {
   if (!context.host.connection.canAdmin) return () => {};
   const services = (await api.listCloudServices(view.request)).data.services;
-  if (!services.length || context.signal.aborted) return () => {};
+  if (
+    !services.length ||
+    context.signal.aborted ||
+    !context.host.connection.canAdmin
+  )
+    return () => {};
   const root = element("section");
   root.className = "clawscarf-cloud";
-  root.append(
+  const introduction = element("div");
+  introduction.append(
     element("h3", "Cloud services"),
     element(
       "p",
       "Balances are shared across your Cloud account’s installations. Team login remains free and works when credits run out.",
     ),
   );
+  root.append(introduction);
   view.content.append(root);
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let disposed = false;
@@ -137,7 +144,7 @@ export async function mountBilling(
       setTimeout(() => {
         timers.delete(id);
         if (usable())
-          void view.run(run, "Checking Cloud status…").then((ran) => {
+          void view.run(run, "").then((ran) => {
             if (!ran && usable()) later(id, run, 2);
           });
       }, seconds * 1000),
@@ -156,6 +163,9 @@ export async function mountBilling(
     let error = "";
     let checkedAt = "";
     let pollCount = 0;
+    const history = element("div");
+    const modelPrices = element("div");
+    let historyReviewed = false;
     const path = { id: service.id };
     const read = () => ({ ...view.request, path });
     const write = () => ({ ...view.write(), path });
@@ -182,6 +192,10 @@ export async function mountBilling(
         offers = pricing.data.offers;
         purchasing = pricing.data.purchasingAvailable;
         authorization = auth.data;
+        if (authorization.state !== "authorized") {
+          history.replaceChildren();
+          historyReviewed = false;
+        }
         checkedAt = new Date().toLocaleTimeString();
         error = "";
         const intent = readIntent(key);
@@ -208,33 +222,44 @@ export async function mountBilling(
           later(service.id, poll, Math.max(authorization.pollAfterSeconds, 3));
       } catch (cause) {
         if (!usable()) return;
-        error =
-          cause instanceof Error
-            ? cause.message
-            : typeof cause === "object" &&
-                cause &&
-                "detail" in cause &&
-                typeof cause.detail === "string"
-              ? cause.detail
-              : "Cloud status is unavailable. Refresh to try again.";
+        error = failure(cause);
+        await recoverAuthorization();
         render();
       }
     }
-    async function poll() {
-      authorization = (
-        await api.pollCloudAuthorization({ ...write(), body: {} })
-      ).data;
-      await load();
+    async function recoverAuthorization() {
+      if (!usable()) return;
+      try {
+        authorization = (await api.getCloudAuthorization(read())).data;
+      } catch {
+        authorization = undefined;
+      }
+      if (authorization?.state !== "authorized") {
+        history.replaceChildren();
+        historyReviewed = false;
+      }
     }
-    async function checkout(offer: BillingOffer) {
+    async function poll() {
+      try {
+        authorization = (
+          await api.pollCloudAuthorization({ ...write(), body: {} })
+        ).data;
+        await load();
+      } catch (cause) {
+        await recoverAuthorization();
+        render();
+        throw cause;
+      }
+    }
+    async function checkout(offerId: string) {
       let intent = readIntent(key);
-      if (intent && intent.offerId !== offer.id)
+      if (intent && intent.offerId !== offerId)
         throw Error(
           "A checkout is already in progress. Check that payment before choosing another pack.",
         );
       intent ??= {
         requestId: crypto.randomUUID(),
-        offerId: offer.id,
+        offerId,
         quantity: 1,
         returnPath: returnPath(),
       };
@@ -263,9 +288,19 @@ export async function mountBilling(
       work: () => Promise<void>,
       progress: string,
     ) {
-      return button(label, () => {
-        void view.run(work, progress);
+      const control = button(label, () => {
+        void view.run(async () => {
+          try {
+            await work();
+          } catch (cause) {
+            await recoverAuthorization();
+            render();
+            throw cause;
+          }
+        }, progress);
       });
+      control.dataset.focusId = service.id + ":" + label;
+      return control;
     }
     function render() {
       if (!usable()) return;
@@ -294,10 +329,12 @@ export async function mountBilling(
       balances.className = "clawscarf-cloud-balances";
       if (service.ai) {
         const item = element("section");
+        const balance = element("p", usd(allowance.ai.available));
+        balance.className = "clawscarf-cloud-amount";
         item.append(
           element("h4", "AI credits"),
-          element("p", usd(allowance.ai.available) + " available"),
-          element("small", stateCopy[allowance.ai.state]),
+          balance,
+          element("small", stateCopy[allowance.ai.state] + " · USD credit"),
         );
         if (allowance.ai.state === "exhausted")
           item.append(
@@ -334,12 +371,12 @@ export async function mountBilling(
       }
       if (service.connections) {
         const item = element("section");
+        const balance = element("p", count(allowance.connections.available));
+        balance.className = "clawscarf-cloud-amount";
         item.append(
           element("h4", "Connections"),
-          element(
-            "p",
-            count(allowance.connections.available) + " actions available",
-          ),
+          balance,
+          element("small", "Actions available"),
           element(
             "small",
             count(allowance.connections.freeRemaining) +
@@ -377,6 +414,7 @@ export async function mountBilling(
       }
       target.append(balances, element("small", "Last checked " + checkedAt));
       const payment = element("section");
+      payment.className = "clawscarf-cloud-payment";
       payment.append(element("h4", "Add credits and actions"));
       const authorized = authorization?.state === "authorized";
       if (!authorized) {
@@ -403,6 +441,14 @@ export async function mountBilling(
               "Check that this code matches the Cloud sign-in page. Waiting for approval…",
             ),
             action("Check sign-in", poll, "Checking billing sign-in…"),
+            action(
+              "Cancel sign-in",
+              async () => {
+                await api.forgetCloudAuthorization(write());
+                await load();
+              },
+              "Cancelling billing sign-in…",
+            ),
           );
         } else
           payment.append(
@@ -446,12 +492,13 @@ export async function mountBilling(
         pending = readIntent(key);
       } catch {
         invalidIntent = true;
-        payment.append(
-          element(
-            "p",
-            "The saved checkout cannot be read. Review purchase history before clearing this browser’s saved checkout.",
-          ),
-        );
+        if (!error)
+          payment.append(
+            element(
+              "p",
+              "The saved checkout cannot be read. Review purchase history before clearing this browser’s saved checkout.",
+            ),
+          );
       }
 
       const availableOffers = offers.filter(
@@ -459,27 +506,56 @@ export async function mountBilling(
           (offer.service === "ai" ? service.ai : service.connections) &&
           offer.maxQuantity > 0,
       );
+      const packGroups = new Map<string, HTMLElement>();
       for (const offer of availableOffers) {
+        let group = packGroups.get(offer.service);
+        if (!group) {
+          group = element("div");
+          group.className = "clawscarf-cloud-packs";
+          group.append(
+            element(
+              "h5",
+              offer.service === "ai" ? "AI credit packs" : "Connections packs",
+            ),
+          );
+          packGroups.set(offer.service, group);
+          payment.append(group);
+        }
         const amount =
           offer.service === "ai"
             ? usd(offer.amount) + " AI credit"
             : count(offer.amount) + " Connections actions";
         const price = usd(offer.priceMinor * 10_000);
         const buy = action(
-          pending?.offerId === offer.id && paymentWaiting
-            ? `${order ? orderCopy[order.status] : "Payment pending"} — ${amount}`
-            : `${pending?.offerId === offer.id ? "Resume checkout for" : "Buy"} ${amount} — ${price} + tax`,
-          () => checkout(offer),
+          `${pending?.offerId === offer.id && !paymentWaiting ? "Resume checkout for" : "Buy"} ${amount}`,
+          () => checkout(offer.id),
           "Preparing secure checkout…",
         );
+        buy.append(element("small", `${price} + tax`));
         buy.disabled =
           invalidIntent ||
           Boolean(error) ||
           !authorized ||
           !purchasing ||
+          !["available", "exhausted"].includes(
+            allowance[offer.service].state,
+          ) ||
           paymentWaiting ||
           Boolean(pending && pending.offerId !== offer.id);
-        payment.append(buy);
+        group.append(buy);
+      }
+      if (
+        pending &&
+        !availableOffers.some((offer) => offer.id === pending.offerId)
+      ) {
+        const savedOfferId = pending.offerId;
+        const resume = action(
+          "Resume saved checkout",
+          () => checkout(savedOfferId),
+          "Checking saved checkout…",
+        );
+        resume.disabled = !authorized || paymentWaiting;
+        payment.append(resume);
       }
       payment.append(
         element(
@@ -562,14 +638,29 @@ export async function mountBilling(
               if (!result.orders.length)
                 rows.append(element("p", "No purchases yet."));
               history.replaceChildren(rows);
+              historyReviewed = true;
+              render();
             },
             "Loading recent purchases…",
           ),
         );
-      const history = element("div");
+      if (authorized && invalidIntent && historyReviewed)
+        payment.append(
+          button("Clear unreadable checkout", () => {
+            confirm(
+              view,
+              "Clear saved checkout",
+              "Check your recent purchases before continuing. This only clears this browser’s saved request; it does not cancel a Stripe checkout or refund a payment. Do not buy again if a payment is still processing.",
+              async () => {
+                sessionStorage.removeItem(key);
+                order = undefined;
+                await load();
+              },
+            );
+          }),
+        );
       payment.append(history);
       target.append(payment);
-      const modelPrices = element("div");
       if (service.ai)
         target.append(
           action(
@@ -582,8 +673,11 @@ export async function mountBilling(
                 "Model",
                 "Input / 1M tokens",
                 "Output / 1M tokens",
-              ])
-                heading.append(element("th", label));
+              ]) {
+                const cell = element("th", label);
+                cell.scope = "col";
+                heading.append(cell);
+              }
               const head = element("thead");
               head.append(heading);
               table.append(head);
