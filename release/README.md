@@ -26,9 +26,9 @@ reads it from the checkout; it does not query a remote latest version or build i
 The `cloudBilling: true` manifest field declares companion and native plugin support
 for Account billing and Cloud AI. Candidates built from this source declare it;
 custom development manifests must declare it only with matching newly built images.
-The installer refuses Cloud AI on earlier runtimes, while provider-key and existing
-Connections setups keep their prior behavior. The currently published runtime pin
-is unchanged by this source feature.
+The installer refuses Cloud AI on runtimes without this capability, while provider-key
+and existing Connections setups keep their prior behavior. Inspect the selected
+runtime manifest to confirm which capabilities are packaged.
 New installations retain their own copy. Updating this file or the CLI never changes
 an existing installation's saved selection.
 
@@ -122,6 +122,8 @@ or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Rep
 a GitHub upload is allowed only when the existing checksums match exactly. An npm
 version already published with the same tarball integrity and channel is skipped
 on retry; different bytes or a newer selected version stop publication.
+The retry and runtime update fetch the known public asset URLs and verify their
+checksums, without depending on GitHub's release asset listing.
 A separate dependent job then advances the checkout's current runtime selection;
 a failure there leaves the published release available and can be retried without
 republishing npm or rebuilding artifacts.

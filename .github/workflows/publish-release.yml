@@ -82,7 +82,10 @@ jobs:
           # Make tool URLs available before exposing the npm installer.
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             mkdir existing
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir existing
+            curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --retry 3 --connect-timeout 15 --max-time 60 \
+              "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/SHA256SUMS" \
+              --output existing/SHA256SUMS
             cmp SHA256SUMS existing/SHA256SUMS
             rm -rf existing
           else
@@ -120,9 +123,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/published-runtime"
-          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" \
-            --pattern clawscarf-release.json --pattern SHA256SUMS \
-            --dir "$RUNNER_TEMP/published-runtime"
+          for asset in clawscarf-release.json SHA256SUMS; do
+            curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --retry 3 --connect-timeout 15 --max-time 60 \
+              "https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION/$asset" \
+              --output "$RUNNER_TEMP/published-runtime/$asset"
+          done
           cd "$RUNNER_TEMP/published-runtime"
           awk '$2 == "clawscarf-release.json" { print }' SHA256SUMS > selected.sha256
           test "$(wc -l < selected.sha256)" -eq 1
