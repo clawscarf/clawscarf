@@ -69,11 +69,11 @@ await test("runtime artifacts relocate independently of recipes and reject alter
     const context = await setupContext({ recipe: file });
     assert.equal(context.release.version, release.version);
     assert.equal(
-      recipeConfiguration(context, recipe.id).recipe?.version,
+      recipeConfiguration(context, recipe.id, directory).recipe?.version,
       recipe.version,
     );
     assert.equal(
-      recipeConfiguration(context, recipe.id).packs[0]?.directory,
+      recipeConfiguration(context, recipe.id, directory).packs[0]?.directory,
       resolve("packs/research-team"),
     );
   }
@@ -95,7 +95,6 @@ await test("bundled recipes pin a runtime and validate their editable defaults",
   assert.deepEqual(recipe.models, {
     service: "cloud",
     model: "openai/gpt-6-astra",
-    provider: "openai",
     reasoning: "medium",
   });
   assert.equal(
@@ -104,6 +103,18 @@ await test("bundled recipes pin a runtime and validate their editable defaults",
     currentRuntime.version,
   );
   assert.equal(recipe.runtime, resolve("runtime/current.json"));
+  const { recipeSchema } = await import("./installation/recipes/definition.js");
+  const models = recipeSchema.shape.models;
+  assert.equal(models.parse(recipe.models).service, "cloud");
+  assert.throws(() => models.parse({ ...recipe.models, provider: "openai" }));
+  assert.throws(() =>
+    models.parse({ service: "provider", model: "gpt-6-astra" }),
+  );
+  assert.deepEqual(models.parse({ model: "gpt-6-astra", provider: "openai" }), {
+    service: "provider",
+    model: "gpt-6-astra",
+    provider: "openai",
+  });
 });
 
 await test("release browser capability requires its complete browser and relay image set", () => {

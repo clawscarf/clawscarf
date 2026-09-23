@@ -174,7 +174,7 @@ export async function prepareLocal(
         subject: input.team.administratorSubject ?? "urn:clawscarf:unclaimed",
         email: input.team.administratorEmail ?? "",
         claimRequired: !input.team.administratorSubject,
-        name: input.administratorName,
+        name: input.team.administratorEmail ?? "Administrator",
       },
     );
     const identity = await store.initialize();

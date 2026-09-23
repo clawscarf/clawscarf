@@ -59,6 +59,7 @@ export const installationSchema = z
         registrationFile: path.default("./secrets/hosted-login.json"),
         administratorSubject: z.string().min(1).optional(),
         administratorEmail: z.email().optional(),
+        // Preserve retained setup inputs without exposing a name override.
         administratorName: localInput.shape.administratorName,
       }),
       z.strictObject({

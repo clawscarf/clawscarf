@@ -96,7 +96,7 @@ clawscarf configure \
 ```
 
 Choose a recipe, then review its editable settings. **Accept settings and continue**
-is the first action. Names, team login, AI service, default model and Connections
+is the first action. Team login, AI service, default model and Connections
 come first, followed by optional capabilities, then location, network and resources.
 Cloud login is free; recommended Cloud AI is prepaid. Connections is optional and
 paid beyond the account’s allowance. Provider-key billing remains selectable.
@@ -108,9 +108,10 @@ files with `--llm-key-file` or `--provider-env-file`.
 **Ctrl+C** exits. No services change until the final confirmation.
 
 The [recipe definition](../../recipes/README.md) supplies editable defaults.
-The Names section sets the installation name, initial default agent name and first
-administrator's display name. `--agent-name` also sets the initial agent name;
-rename agents in OpenClaw after installation.
+The installation label comes from its directory; internal IDs distinguish installations,
+so matching labels do not collide. Saved installations keep their existing label.
+The recipe supplies the initial agent name; rename agents in OpenClaw after installation.
+The administrator's name comes from their login identity.
 The runtime selection, OpenShell protection and authenticated entry are fixed.
 
 `--recipe <name-or-file>` skips the picker: use `personal-assistant`, `team-server`
@@ -224,7 +225,7 @@ Run `clawscarf configure --help` for descriptions. The relevant groups are:
 
 | Choices                | Options                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Initial setup          | `--directory`, `--recipe`, `--name`, `--agent-name`, `--administrator-name`                                                            |
+| Initial setup          | `--directory`, `--recipe`                                                                                                              |
 | Models                 | `--ai-service`, `--model`, `--provider`, `--reasoning`, `--llm-key-file`, `--provider-env-file`                                        |
 | Login                  | `--access hosted\|oidc`, `--oidc-issuer`, `--oidc-client-id`, `--oidc-secret-file`, `--administrator-subject`, `--administrator-email` |
 | Local networking       | `--port`, `--widget-port`                                                                                                              |

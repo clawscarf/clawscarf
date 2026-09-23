@@ -146,6 +146,7 @@ export const localInput = z
       .string()
       .max(30)
       .regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/),
+    // Read retained installation files; new setup takes the name from login.
     administratorName: z
       .string()
       .min(1)
@@ -158,7 +159,8 @@ export const localInput = z
               character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
           ),
         "Use a display name without control characters.",
-      ),
+      )
+      .optional(),
     runtimeImage: image,
     companionImage: image,
     openshellCli: absolutePath,

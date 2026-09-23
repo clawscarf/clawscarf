@@ -35,11 +35,6 @@ export function installationMenu(
         : "Credentials come next",
     },
     row(
-      "identity",
-      "Names",
-      `${config.name} · ${config.agentName} · ${config.access.administratorName}`,
-    ),
-    row(
       "access",
       "Team login",
       config.access.mode === "hosted"

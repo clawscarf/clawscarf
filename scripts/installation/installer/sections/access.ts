@@ -21,7 +21,6 @@ export async function collectAccess(
     return {
       access: {
         mode: "hosted" as const,
-        administratorName: current.access.administratorName,
         registrationFile: "./secrets/hosted-login.json",
         cloudUrl:
           current.access.mode === "hosted" ? current.access.cloudUrl : cloudUrl,
@@ -41,7 +40,6 @@ export async function collectAccess(
   return {
     access: {
       mode: "oidc" as const,
-      administratorName: current.access.administratorName,
       issuer,
       clientId,
       clientSecretFile:

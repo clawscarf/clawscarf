@@ -132,7 +132,9 @@ export async function resolveInstallation(
     ...(cloudServices.length ? { cloudServices } : {}),
     name: config.name,
     agentName: config.agentName,
-    administratorName: access.administratorName,
+    ...(access.administratorName !== undefined
+      ? { administratorName: access.administratorName }
+      : {}),
     runtimeImage: release.images.gateway,
     publicWeb: config.publicWeb,
     companionImage: release.images.companion,

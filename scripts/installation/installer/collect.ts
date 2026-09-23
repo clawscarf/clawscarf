@@ -1,8 +1,7 @@
 import { installationCatalog, readRecipe } from "../recipes/catalog.js";
-import { defaultInstallationDirectory } from "../location.js";
+import { defaultInstallationDirectory, installationName } from "../location.js";
 import { isDeepStrictEqual } from "node:util";
 import { resolve } from "node:path";
-import { localInput } from "../../deployment/configuration.js";
 import {
   installationSchema,
   type InstallationDraft,
@@ -18,7 +17,7 @@ import {
   setupContext,
 } from "../setup.js";
 import type { InstallerPrompts } from "./prompts.js";
-import { absolute, field, newDirectory, inputErrorMessage } from "./inputs.js";
+import { absolute, newDirectory, inputErrorMessage } from "./inputs.js";
 import { collectAccess, collectExposure } from "./sections/access.js";
 import { collectConnections } from "./sections/connections.js";
 import {
@@ -187,33 +186,7 @@ export async function collectInstallation(
             );
             await newDirectory(next);
             directory = next;
-            break;
-          }
-          case "identity": {
-            const name = await field(
-              ui,
-              "Installation name",
-              localInput.shape.name,
-              config.name,
-            );
-            const administratorName = await field(
-              ui,
-              "Administrator display name",
-              localInput.shape.administratorName,
-              config.access.administratorName,
-            );
-            const agentName = await field(
-              ui,
-              "Default agent name",
-              installationSchema.shape.agentName,
-              config.agentName,
-            );
-            config = {
-              ...config,
-              name,
-              agentName,
-              access: { ...config.access, administratorName },
-            };
+            config.name = installationName(next);
             break;
           }
           case "exposure":
