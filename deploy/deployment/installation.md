@@ -96,7 +96,8 @@ clawscarf configure \
 ```
 
 Choose a recipe, then review its editable settings. **Accept settings and continue**
-is the first action. The menu separates team login, AI service and default model.
+is the first action. Names, team login, AI service, default model and Connections
+come first, followed by optional capabilities, then location, network and resources.
 Cloud login is free; recommended Cloud AI is prepaid. Connections is optional and
 paid beyond the account’s allowance. Provider-key billing remains selectable.
 The menu shows the selected model and reasoning before
@@ -107,8 +108,9 @@ files with `--llm-key-file` or `--provider-env-file`.
 **Ctrl+C** exits. No services change until the final confirmation.
 
 The [recipe definition](../../recipes/README.md) supplies editable defaults.
-The Names section and `--agent-name` set the initial default agent name. Rename
-agents in OpenClaw after installation.
+The Names section sets the installation name, initial default agent name and first
+administrator's display name. `--agent-name` also sets the initial agent name;
+rename agents in OpenClaw after installation.
 The runtime selection, OpenShell protection and authenticated entry are fixed.
 
 `--recipe <name-or-file>` skips the picker: use `personal-assistant`, `team-server`
