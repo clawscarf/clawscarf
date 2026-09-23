@@ -80,8 +80,8 @@ and Responses, JSON and streaming, successful requests and HTTP 402 failures wit
 no replay. It uses a controlled upstream on port 14501, no paid provider account.
 Set `CLAWSCARF_TEST_CLOUD_GATEWAY=1`, `CLAWSCARF_TEST_MODEL_CONFIGURATION` to the
 isolated rendered model input, and `CLAWSCARF_TEST_LITELLM_MASTER_KEY_FILE` to that
-gateway's private test key. Its route must use `openai/openai/cloud-fixture`, public
-model ID `openai/cloud-fixture`, and upstream key `scoped-test-cloud-secret`.
+gateway's private test key. Its route must use `openai/cloud-fixture`, public
+model ID `cloud-fixture`, and upstream key `scoped-test-cloud-secret`.
 LiteLLM preserves the HTTP status and readable message but rewrites the public
 error code to `402`; native Account reads the authoritative Cloud allowance state.
 
@@ -149,7 +149,7 @@ a discovery call made during installation. The current catalog conservatively en
 text input; it does not claim tested image handling or every upstream model capability.
 
 The separate [Cloud catalog snapshot](cloud-catalog.json) supplies initial hosted
-model choices. It was imported from the configured Cloud catalog on 2026-09-22;
+model choices. Its model capabilities were checked against OpenRouter on 2026-09-23;
 the installer validates availability against the authenticated live API before
 enablement. Its prices are indicative snapshot data, not installer promises.
 Every hosted route uses the selected Cloud origin's `/v1` endpoint through LiteLLM;
@@ -169,3 +169,12 @@ can update routes, defaults and provider keys. Changing enabled models updates o
 the existing runtime key’s model permissions through LiteLLM; it does not regenerate
 the key, unblock it or extend its expiry. Explicit recovery first observes matching
 permissions and native managed fields instead of repeating a confirmed mutation.
+
+Cloud and provider-key offerings share canonical model IDs (for example,
+`gpt-6-astra` or `claude-fable-5-1`). Native selection is `clawscarf/<model>`;
+LiteLLM and Cloud own the upstream route names. The public Cloud model contract
+includes accepted reasoning efforts and temperature support. These are carried
+into native `compat` metadata, including for internal calls such as permission
+reviewers that do not inherit the conversation's reasoning setting. Omitting
+`none` preserves the provider default for mandatory-reasoning models; it does not
+choose a different reviewer model or change permissions.

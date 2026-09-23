@@ -48,6 +48,56 @@ for await (const event of stream) {
 }
 assert.equal(requestTools?.[0]?.strict, false);
 assert.deepEqual(requestTools[0].parameters, parameters);
+
+// Reviewers omit reasoning. Required-reasoning models must retain the provider
+// default, including names the pinned runtime has never seen before.
+for (const id of [
+  "gpt-6-astra",
+  "gpt-6-astra-pro",
+  "future-required-reasoning-model",
+]) {
+  let request;
+  const events = createOpenAIResponsesTransportStreamFn()(
+    {
+      id,
+      name: id,
+      provider: "clawscarf",
+      api: "openai-responses",
+      baseUrl: "https://gateway.invalid/v1",
+      reasoning: true,
+      input: ["text"],
+      contextWindow: 100000,
+      maxTokens: 1024,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      compat: {
+        supportsTemperature: false,
+        supportedReasoningEfforts: ["low", "medium", "high", "xhigh", "max"],
+      },
+    },
+    {
+      messages: [
+        { role: "user", content: "Synthetic permission review", timestamp: 0 },
+      ],
+    },
+    {
+      apiKey: "synthetic-not-a-key",
+      temperature: 0,
+      maxTokens: 1024,
+      onPayload(payload) {
+        request = payload;
+        throw new Error("Diagnostic stop before HTTP");
+      },
+    },
+  );
+  for await (const event of events) {
+    if (event.type === "error" && !request)
+      throw new Error(event.error.errorMessage);
+  }
+  assert.ok(request, id);
+  assert.equal(request.model, id);
+  assert.equal(request.reasoning, undefined, id);
+  assert.equal(request.temperature, undefined, id);
+}
 let factory;
 lobster.register({
   registerTool(value) {

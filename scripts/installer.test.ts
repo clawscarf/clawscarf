@@ -936,9 +936,9 @@ await test(
     const { gatewayRoutesSchema, configurationSchema, nativeAssignments } =
       await import("./models/configuration.js");
     const routes = gatewayRoutesSchema.parse(modelConfig);
-    assert.equal(routes.defaultModel, "openai/gpt-6-astra");
+    assert.equal(routes.defaultModel, "gpt-6-astra");
     assert.deepEqual(routes.models[0]?.route, {
-      model: "openai/openai/gpt-6-astra",
+      model: "openai/gpt-6-astra",
       apiKeyEnv: "CLAWSCARF_CLOUD_AI_KEY",
       apiBase: "https://cloud.clawscarf.com/v1",
     });
@@ -1409,7 +1409,7 @@ for (const mode of ["menu", "flags"] as const)
         first.config.models,
         context.modelCatalog,
         first.inputs,
-        "openai/gpt-6-astra",
+        "gpt-6-astra",
       );
       const key = join(f.parent, "openrouter-key");
       await writeFile(key, "test-own-provider-key", { mode: 0o600 });

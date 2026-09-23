@@ -1,6 +1,6 @@
 import { selectModel } from "../../models.js";
 import type { InstallationConfiguration } from "../../configuration.js";
-import { modelIdentity, type ModelCatalog } from "../../../models/catalog.js";
+import { type ModelCatalog } from "../../../models/catalog.js";
 import type { InstallerPrompts } from "../prompts.js";
 import {
   gatewayRoutesSchema,
@@ -91,8 +91,7 @@ export async function collectModels(
       });
   const choices = new Map<string, ModelCatalog[number]>();
   for (const offer of available)
-    if (!choices.has(modelIdentity(offer)))
-      choices.set(modelIdentity(offer), offer);
+    if (!choices.has(offer.model.id)) choices.set(offer.model.id, offer);
   if (!choices.size)
     throw new InstallationError(
       "invalid_configuration",
@@ -101,10 +100,7 @@ export async function collectModels(
   const previous = routes?.models.find(
     (model) => model.id === routes.defaultModel,
   );
-  const identity =
-    current?.mode === "litellm" && current.cloud
-      ? previous?.id
-      : previous?.route?.model.replace(/^openrouter\//, "");
+  const identity = previous?.id;
   const selected = await ui.select(
     "Default model",
     [...choices.values()].map((offer) => ({
@@ -123,9 +119,7 @@ export async function collectModels(
     );
   const offer = await chooseModelService(
     ui,
-    available.filter(
-      (item) => modelIdentity(item) === modelIdentity(selectedOffer),
-    ),
+    available.filter((item) => item.model.id === selectedOffer.model.id),
     current,
     previous?.route?.model,
   );
@@ -271,10 +265,8 @@ export async function collectAiService(
   const selected = routes.models.find(
     (model) => model.id === routes.defaultModel,
   );
-  const identity = current.cloud
-    ? selected?.id
-    : selected?.route?.model.replace(/^openrouter\//, "");
-  const matches = catalog.filter((offer) => modelIdentity(offer) === identity);
+  const identity = selected?.id;
+  const matches = catalog.filter((offer) => offer.model.id === identity);
   if (!matches.length) return current;
   const offer = await chooseModelService(
     ui,

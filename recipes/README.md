@@ -24,7 +24,7 @@ no executable hooks, secrets or user identities.
 
 - `models` selects AI `service` (`cloud` or `provider`), model ID and
   reasoning from the bundled [model catalogs](../deploy/models/README.md#installer-choices).
-  Cloud recipes use a Cloud catalog model ID, such as `openai/gpt-6-astra`;
+  Cloud recipes use a Cloud catalog model ID, such as `gpt-6-astra`;
   requests go to ClawScarf Cloud. Only provider-key recipes include the required
   `provider` field to select the upstream route and credentials.
   Omitted `service` selects provider billing for existing custom recipes.

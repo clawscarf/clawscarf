@@ -1,7 +1,7 @@
 # Cloud client
 
 [openapi.json](openapi.json) is the public contract copied from
-[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/aa03c76b09571cde0d3613142aeb2ca088e62cde/api/openapi.json).
+[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/4c2773c/api/openapi.json).
 It includes registration, Connections, billing and hosted AI. Installation registration
 and the Connections management adapter consume this client. The installer also
 uses owner-authorized AI enablement, catalog validation and scoped credentials.

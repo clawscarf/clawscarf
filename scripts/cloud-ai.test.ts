@@ -31,11 +31,13 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
   let issued: unknown;
   let balance = { available: 0, state: "exhausted" };
   const model = {
-    id: "openai/test",
+    id: "test",
     name: "Test",
     protocols: ["responses" as const],
     contextTokens: 8192,
     maxOutputTokens: 1024,
+    supportsTemperature: false,
+    reasoningEfforts: ["low" as const, "medium" as const, "high" as const],
     inputMicrosPerMillion: 1,
     outputMicrosPerMillion: 1,
     rateVersion: "test",
