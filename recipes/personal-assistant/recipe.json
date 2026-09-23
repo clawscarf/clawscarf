@@ -1,7 +1,7 @@
 {
   "id": "personal-assistant",
   "name": "Personal assistant",
-  "description": "An OpenClaw assistant for your research, writing and everyday work. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
+  "description": "An OpenClaw assistant for your research, writing and everyday work.",
   "maturity": "supported",
   "defaults": {
     "agentName": "ClawScarf",

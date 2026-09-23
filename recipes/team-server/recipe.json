@@ -1,7 +1,7 @@
 {
   "id": "team-server",
   "name": "Team server",
-  "description": "A shared OpenClaw workspace for your team. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
+  "description": "A shared OpenClaw workspace for your team.",
   "maturity": "supported",
   "defaults": {
     "agentName": "ClawScarf",
