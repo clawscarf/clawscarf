@@ -11,6 +11,7 @@ export const cloudModelsSchema = z.array(
     protocols: z.array(z.enum(["responses", "chat/completions"])).min(1),
     contextTokens: z.number().int().positive(),
     maxOutputTokens: z.number().int().positive(),
+    replyBudgetTokens: z.number().int().positive(),
     supportsTemperature: z.boolean(),
     reasoningEfforts: z
       .array(
@@ -41,6 +42,10 @@ export function cloudModelCatalog(
         : "openai-completions",
       contextWindow: model.contextTokens,
       maxTokens: model.maxOutputTokens,
+      replyBudgetTokens: Math.min(
+        model.replyBudgetTokens,
+        model.maxOutputTokens,
+      ),
       reasoning: model.reasoningEfforts.some((effort) => effort !== "none"),
       compat: {
         supportsTemperature: model.supportsTemperature,

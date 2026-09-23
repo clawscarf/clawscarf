@@ -399,6 +399,10 @@ export type BillingAllowances = {
         paidRemaining: number;
         available: number;
         usageAsOf: string | null;
+        /**
+         * Retail USD micros used beyond purchased credit; deducted from the next top-up.
+         */
+        overrun: number;
     };
     purchasingAvailable: boolean;
 };
@@ -432,6 +436,10 @@ export type AiModel = {
      * Accepted reasoning efforts. Omit none for models that require reasoning; an empty array means no reasoning support.
      */
     reasoningEfforts: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'>;
+    /**
+     * Cloud request output ceiling and installation starting reply budget, including reasoning tokens.
+     */
+    replyBudgetTokens: number;
 };
 
 export type AiError = {

@@ -265,7 +265,12 @@ credits from us). Neither is labelled recommended. Accepting a new Cloud recipe
 also asks this question unless AI service was already explicitly selected.
 The normal catalog uses exact upstream model identities supported by the bundled
 LiteLLM adapter and Cloud's OpenRouter catalog; changing billing never silently
-selects another model. Existing model reply limits are retained.
+selects another model. Cloud discovery supplies a separate reply budget (currently
+32,768 tokens, including reasoning, or the model's lower output limit). The installer
+sets native per-model `params.maxTokens` while retaining the advertised model
+capability. Cloud enforces its published reply ceiling for every request. Provider-key
+models keep their existing limits. Explicit model reapplication updates managed reply
+budgets and preserves other per-model parameters.
 
 At zero/exhausted credit, choose **Add credits**, **Change AI setup**, or **Finish
 setup and add credits later**. Setup displays the current packs and opens Stripe's
@@ -454,7 +459,10 @@ and payment details open on Stripe; selecting a paid service in the installer do
 not purchase a pack or enable automatic recharge. Prices and any free allocation
 come from Cloud and may change for new accounts.
 
-When AI credit runs out, requests fail with OpenClaw's normal chat error. Installation
+Cloud admits new AI requests while credit is positive. Requests already running
+may finish beyond that balance; Account shows the negative balance, which the next
+top-up covers first. Cloud limits concurrent requests across all installations sharing
+an account. When AI credit runs out, new requests fail with OpenClaw's normal chat error. Installation
 administrators can open Account to manage credits; other team members should ask
 their installation administrator. When Connections actions run out, Account shows
 the daily reset and prepaid packs.

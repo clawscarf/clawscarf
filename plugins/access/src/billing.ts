@@ -401,7 +401,14 @@ export async function mountBilling(
       balances.className = "clawscarf-cloud-balances";
       if (service.ai) {
         const item = element("section");
-        const balance = element("p", usd(allowance.ai.available));
+        const balance = element(
+          "p",
+          usd(
+            allowance.ai.overrun > 0
+              ? -allowance.ai.overrun
+              : allowance.ai.available,
+          ),
+        );
         balance.className = "clawscarf-cloud-amount";
         item.append(
           element("h4", "AI credits"),
@@ -413,6 +420,13 @@ export async function mountBilling(
               : stateCopy[allowance.ai.state],
           ),
         );
+        if (allowance.ai.overrun > 0)
+          item.append(
+            element(
+              "p",
+              "Completed requests used the remaining credit. Your next top-up covers this balance first.",
+            ),
+          );
         if (allowance.ai.state === "exhausted")
           item.append(
             element(

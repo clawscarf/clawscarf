@@ -40,6 +40,10 @@ await test(
         agents: {
           defaults: {
             model: { primary: "customer/own", fallbacks: ["customer/own"] },
+            models: {
+              "customer/own": { alias: "Own" },
+              "clawscarf/team": { alias: "Team", params: { temperature: 0.3 } },
+            },
           },
         },
       };
@@ -58,6 +62,7 @@ await test(
             enabled: true,
             contextWindow: 10000,
             maxTokens: 1000,
+            replyBudgetTokens: 500,
             reasoning: false,
             tools: true,
             input: ["text"],
@@ -114,6 +119,22 @@ await test(
           "x-previous",
         ),
       );
+      const budgets = z
+        .object({
+          agents: z.object({
+            defaults: z.object({ models: z.record(z.string(), z.unknown()) }),
+          }),
+        })
+        .parse(
+          JSON.parse(await readFile(join(directory, "openclaw.json"), "utf8")),
+        );
+      assert.deepEqual(budgets.agents.defaults.models, {
+        "customer/own": { alias: "Own" },
+        "clawscarf/team": {
+          alias: "Team",
+          params: { temperature: 0.3, maxTokens: 500 },
+        },
+      });
       const first = config.secrets.providers["clawscarf-models"].path;
       assert.equal((await stat(first)).mode & 0o777, 0o600);
       assert.equal(

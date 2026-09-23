@@ -8,6 +8,7 @@ export const modelSchema = z.strictObject({
   enabled: z.boolean(),
   contextWindow: z.number().int().positive(),
   maxTokens: z.number().int().positive(),
+  replyBudgetTokens: z.number().int().positive().optional(),
   reasoning: z.boolean(),
   compat: modelCapabilitiesSchema.optional(),
   tools: z.boolean(),
@@ -133,6 +134,23 @@ export function nativeAssignments(config: ModelConfiguration) {
       value: nativeModelProvider(config),
     },
   ];
+  const budgets = Object.fromEntries(
+    config.models
+      .filter((m) => m.enabled && m.replyBudgetTokens !== undefined)
+      .map((m) => [
+        `clawscarf/${m.id}`,
+        {
+          params: {
+            maxTokens: Math.min(
+              m.replyBudgetTokens ?? m.maxTokens,
+              m.maxTokens,
+            ),
+          },
+        },
+      ]),
+  );
+  if (Object.keys(budgets).length)
+    assignments.push({ path: "agents.defaults.models", value: budgets });
   if (defaults.model.primary !== undefined)
     assignments.push({
       path: "agents.defaults.model.primary",

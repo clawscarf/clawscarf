@@ -189,6 +189,7 @@ await test("Cloud model capabilities cannot silently disappear from discovery", 
     protocols: ["responses" as const],
     contextTokens: 8192,
     maxOutputTokens: 1024,
+    replyBudgetTokens: 1024,
     inputMicrosPerMillion: 1,
     outputMicrosPerMillion: 1,
     rateVersion: "test",
@@ -200,4 +201,48 @@ await test("Cloud model capabilities cannot silently disappear from discovery", 
   );
   assert.equal(catalog[0]?.model.reasoning, false);
   assert.deepEqual(catalog[0]?.reasoningLevels, []);
+});
+
+await test("Cloud reply budgets configure native request parameters without lowering advertised capability", () => {
+  const catalog = cloudModelCatalog(
+    [
+      {
+        id: "gpt-6-astra",
+        name: "Astra",
+        protocols: ["responses"],
+        contextTokens: 1000000,
+        maxOutputTokens: 128000,
+        replyBudgetTokens: 32768,
+        supportsTemperature: false,
+        reasoningEfforts: ["low", "medium", "high"],
+        inputMicrosPerMillion: 1,
+        outputMicrosPerMillion: 1,
+        rateVersion: "test",
+      },
+    ],
+    "https://cloud.example.test",
+  );
+  const config = configurationSchema.parse({
+    mode: "external",
+    baseUrl: "https://gateway.example.test/v1",
+    defaultModel: "gpt-6-astra",
+    models: catalog.map((entry) => entry.model),
+  });
+  const assignments = nativeAssignments(config);
+  assert.deepEqual(
+    assignments.find((a) => a.path === "agents.defaults.models")?.value,
+    {
+      "clawscarf/gpt-6-astra": { params: { maxTokens: 32768 } },
+    },
+  );
+  assert.equal(catalog[0]?.model.maxTokens, 128000);
+  assert.equal(
+    modelInputSchema.safeParse({
+      assignments,
+      token: "test",
+      ca: null,
+      apply: true,
+    }).success,
+    true,
+  );
 });
