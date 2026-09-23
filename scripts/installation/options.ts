@@ -74,6 +74,8 @@ export type ConfigureOptions = SetupOptions &
     cloudCredentialFile?: string;
     json?: boolean;
     reapply?: "models" | "connections";
+    aiCreditOffer?: string;
+    allowUnfundedAi?: boolean;
   };
 
 export function installationOptions(command: Command) {
@@ -119,6 +121,14 @@ export function installationOptions(command: Command) {
         "--ai-service <service>",
         "AI billing: Cloud prepaid credits or your provider key",
       ).choices(["cloud", "provider"]),
+    )
+    .option(
+      "--ai-credit-offer <id>",
+      "Open checkout for one Cloud AI credit pack (unattended setup)",
+    )
+    .option(
+      "--allow-unfunded-ai",
+      "Finish setup even when Cloud AI is not ready; add credits in Account later",
     )
     .option(
       "--provider <id>",
@@ -372,6 +382,7 @@ export async function selectedDraft(
         config.models,
         context.modelCatalog,
         inputs,
+        o.model,
       );
     }
   }

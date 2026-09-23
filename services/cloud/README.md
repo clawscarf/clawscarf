@@ -1,11 +1,14 @@
 # Cloud client
 
 [openapi.json](openapi.json) is the public contract copied from
-[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/c8a6159dd4a35427c9063c7b00424d4c9e46c989/api/openapi.json).
+[clawscarf-cloud](https://github.com/clawscarf/clawscarf-cloud/blob/aa03c76b09571cde0d3613142aeb2ca088e62cde/api/openapi.json).
 It includes registration, Connections, billing and hosted AI. Installation registration
 and the Connections management adapter consume this client. The installer also
 uses owner-authorized AI enablement, catalog validation and scoped credentials.
-Native purchase controls are maintained separately from registration.
+Installer purchases use the same owner-authorized checkout, order and allowance APIs
+as native Account. An installer return uses `path: null`; the native plugin supplies
+its installation-relative path. Both bind checkout to the return request ID.
+The installer retains purchase intent privately across interruptions.
 The Connections plugin derives only the runtime routes for its portable SDK.
 
 Run `pnpm cloud:generate` after updating the source contract; generated clients use

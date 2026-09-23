@@ -98,7 +98,7 @@ export async function registerCloudManagement(
         service_unavailable:
           "Cloud billing is unavailable. Check order status before trying again.",
         credit_exhausted:
-          "AI credits have run out. Add credits in Account to continue.",
+          "There is not enough AI credit for this request. Check credits in Account.",
         revision_conflict: "Cloud settings changed. Refresh and try again.",
       };
       return reply

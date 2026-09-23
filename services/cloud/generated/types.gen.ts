@@ -487,6 +487,10 @@ export type GetSessionErrors = {
      */
     401: Problem;
     /**
+     * Verified email is not permitted by this deployment.
+     */
+    403: Problem;
+    /**
      * Response
      */
     503: Problem;
@@ -2424,7 +2428,10 @@ export type GetInstallationAllowancesResponse = GetInstallationAllowancesRespons
 export type CreateBillingReturnData = {
     body: {
         requestId: string;
-        path: string;
+        /**
+         * Installation-relative return path, or null for the fixed Cloud installer return page (owner only). Reuse requestId for checkout.
+         */
+        path: string | null;
     };
     path: {
         id: string;

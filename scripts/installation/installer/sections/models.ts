@@ -1,6 +1,6 @@
-import { selectModel, selectAiService } from "../../models.js";
+import { selectModel } from "../../models.js";
 import type { InstallationConfiguration } from "../../configuration.js";
-import type { ModelCatalog } from "../../../models/catalog.js";
+import { modelIdentity, type ModelCatalog } from "../../../models/catalog.js";
 import type { InstallerPrompts } from "../prompts.js";
 import {
   gatewayRoutesSchema,
@@ -74,57 +74,61 @@ export async function collectModels(
     };
   }
   const file = current?.configurationFile ?? presetFile;
-  const cloud = current?.mode === "litellm" && Boolean(current.cloud);
-  offers = offers.filter(
-    (offer) => (offer.provider === "ClawScarf Cloud") === cloud,
-  );
   const routes = file ? await modelRoutes(file, inputs) : undefined;
-  const choices = new Map([
-    ...offers.map((offer) => [offer.model.id, offer.model.name] as const),
-    ...(routes?.models.map((model) => [model.id, model.name] as const) ?? []),
-  ]);
+  const available = [...offers];
+  for (const model of routes?.models ?? [])
+    if (
+      model.route &&
+      !available.some((offer) => offer.model.route.model === model.route?.model)
+    )
+      available.push({
+        provider:
+          current?.mode === "litellm" && current.cloud
+            ? "ClawScarf Cloud"
+            : providerLabel(model.route),
+        model: { ...model, route: model.route },
+        reasoningLevels: model.reasoning ? ["low", "medium", "high"] : [],
+      });
+  const choices = new Map<string, ModelCatalog[number]>();
+  for (const offer of available)
+    if (!choices.has(modelIdentity(offer)))
+      choices.set(modelIdentity(offer), offer);
   if (!choices.size)
     throw new InstallationError(
       "invalid_configuration",
-      "No model choices are available. Supply a catalog with --model-catalog.",
+      "No supported models are available.",
     );
-  const id = await ui.select(
+  const previous = routes?.models.find(
+    (model) => model.id === routes.defaultModel,
+  );
+  const identity =
+    current?.mode === "litellm" && current.cloud
+      ? previous?.id
+      : previous?.route?.model.replace(/^openrouter\//, "");
+  const selected = await ui.select(
     "Default model",
-    [...choices].map(([value, label]) => ({ value, label })),
-    routes?.defaultModel,
+    [...choices.values()].map((offer) => ({
+      value: offer.model.id,
+      label: offer.model.name,
+    })),
+    identity ? choices.get(identity)?.model.id : undefined,
   );
-  const existing = routes?.models.find((model) => model.id === id);
-  const matching = offers.filter((offer) => offer.model.id === id);
-  const providerOptions = new Map(
-    matching.map((offer) => [offer.model.route.model, offer]),
+  const selectedOffer = [...choices.values()].find(
+    (offer) => offer.model.id === selected,
   );
-  if (existing?.route && !providerOptions.has(existing.route.model))
-    providerOptions.set(existing.route.model, {
-      provider: providerLabel(existing.route),
-      model: { ...existing, route: existing.route },
-      reasoningLevels: existing.reasoning ? ["low", "medium", "high"] : [],
-    });
-  if (!providerOptions.size)
+  if (!selectedOffer)
     throw new InstallationError(
       "invalid_configuration",
-      "This model has no configured provider. Choose another model or supply a catalog with --model-catalog.",
+      "Choose a supported model.",
     );
-  const selectedRoute = cloud
-    ? (existing?.route?.model ?? matching[0]?.model.route.model ?? "")
-    : await ui.select(
-        "Provider",
-        [...providerOptions].map(([value, offer]) => ({
-          value,
-          label: offer.provider,
-        })),
-        existing?.route?.model,
-      );
-  const offer = providerOptions.get(selectedRoute);
-  if (!offer?.model.route)
-    throw new InstallationError(
-      "invalid_configuration",
-      "Select a supported provider route.",
-    );
+  const offer = await chooseModelService(
+    ui,
+    available.filter(
+      (item) => modelIdentity(item) === modelIdentity(selectedOffer),
+    ),
+    current,
+    previous?.route?.model,
+  );
   const thinkingDefault = offer.reasoningLevels.length
     ? await ui.select(
         "Reasoning",
@@ -203,43 +207,87 @@ export async function collectModelCredentials(
   };
 }
 
+async function chooseModelService(
+  ui: InstallerPrompts,
+  offers: ModelCatalog,
+  current: InstallationConfiguration["models"] | undefined,
+  previousRoute?: string,
+) {
+  const cloud = offers.filter((offer) => offer.provider === "ClawScarf Cloud");
+  const own = offers.filter((offer) => offer.provider !== "ClawScarf Cloud");
+  const service =
+    cloud.length && own.length
+      ? await ui.select(
+          "How would you like to use this model?",
+          [
+            {
+              value: "provider",
+              label: "Your own API key",
+              hint: "Use your provider account. Your provider bills you.",
+            },
+            {
+              value: "cloud",
+              label: "ClawScarf Cloud",
+              hint: "No provider key needed. Buy prepaid AI credits from us.",
+            },
+          ],
+          current?.mode === "litellm" && current.cloud ? "cloud" : "provider",
+        )
+      : cloud.length
+        ? "cloud"
+        : "provider";
+  const candidates = service === "cloud" ? cloud : own;
+  const route =
+    candidates.length > 1
+      ? await ui.select(
+          "Provider",
+          candidates.map((offer) => ({
+            value: offer.model.route.model,
+            label: offer.provider,
+          })),
+          candidates.find((offer) => offer.model.route.model === previousRoute)
+            ?.model.route.model ?? candidates[0]?.model.route.model,
+        )
+      : candidates[0]?.model.route.model;
+  const offer = candidates.find(
+    (candidate) => candidate.model.route.model === route,
+  );
+  if (!offer)
+    throw new InstallationError(
+      "invalid_configuration",
+      "This model has no supported route for that AI service.",
+    );
+  return offer;
+}
+
 export async function collectAiService(
   ui: InstallerPrompts,
   catalog: ModelCatalog,
   current: InstallationConfiguration["models"],
   inputs: SetupInputs,
 ) {
-  if (current.mode === "external") {
-    ui.note(
-      "This installation uses an existing LiteLLM gateway. Its operator manages AI providers and billing.",
-      "AI service",
-    );
-    return current;
-  }
-  ui.note(
-    "Cloud AI uses prepaid credits shared across your Cloud account's installations. Usage varies by model. There is no automatic recharge; AI pauses when credits run out. Selecting this service makes no purchase.",
-    "AI usage and payment",
+  if (current.mode === "external") return current;
+  const routes = await modelRoutes(current.configurationFile, inputs);
+  const selected = routes.models.find(
+    (model) => model.id === routes.defaultModel,
   );
-  const selected = await ui.select(
-    "AI service",
-    [
-      {
-        value: "cloud",
-        label: "ClawScarf Cloud · Recommended · Prepaid",
-        hint: "No provider API key to manage",
-      },
-      {
-        value: "provider",
-        label: "Use your own API key",
-        hint: "Usage billed by your provider",
-      },
-    ],
-    current.cloud ? "cloud" : "provider",
-  );
-  return selectAiService(
-    selected === "cloud" ? "cloud" : "provider",
+  const identity = current.cloud
+    ? selected?.id
+    : selected?.route?.model.replace(/^openrouter\//, "");
+  const matches = catalog.filter((offer) => modelIdentity(offer) === identity);
+  if (!matches.length) return current;
+  const offer = await chooseModelService(
+    ui,
+    matches,
     current,
-    catalog,
+    selected?.route?.model,
+  );
+  return selectModel(
+    current,
+    routes,
+    offer,
+    routes.thinkingDefault,
     inputs,
+    true,
   );
 }

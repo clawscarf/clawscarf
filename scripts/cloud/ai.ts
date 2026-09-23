@@ -43,6 +43,14 @@ const configurationSchema = z.object({
   credentialActive: z.boolean(),
   inferenceUrl: z.url(),
 });
+/** Temporary owner authorization stays inside the installer process. Never serialize this value. */
+export interface CloudAiSession {
+  url: string;
+  installationId: string;
+  accountId: string;
+  authorization: string;
+  registrationFile: string;
+}
 
 /** Owner approval and caller-retained intents make interrupted enablement safe to resume. */
 async function configure(
@@ -59,11 +67,14 @@ async function configure(
     file: string,
     administrator: boolean,
   ) => Promise<string>,
-  report?: (message: string) => void,
 ) {
   if (models.mode !== "litellm" || !models.cloud) return;
   const id = registration.installationId;
-  if (!id || registration.cloudUrl !== models.cloud.url)
+  if (
+    !id ||
+    !registration.accountId ||
+    registration.cloudUrl !== models.cloud.url
+  )
     throw new InstallationError(
       "invalid_configuration",
       "Cloud AI registration is incomplete or belongs to another service.",
@@ -102,7 +113,13 @@ async function configure(
   const catalog = cloudModelsSchema.parse(available.data.models);
   const modelIds = catalog.map((model) => model.id);
   if (
-    routes.models.some((model) => model.enabled && !modelIds.includes(model.id))
+    routes.models.some((model) => {
+      if (!model.enabled) return false;
+      const offered = catalog.find((item) => item.id === model.id);
+      const protocol =
+        model.api === "openai-responses" ? "responses" : "chat/completions";
+      return !offered?.protocols.includes(protocol);
+    })
   )
     throw new InstallationError(
       "invalid_configuration",
@@ -217,24 +234,26 @@ async function configure(
       "unavailable",
       "AI is configured, but its available balance could not be verified. Retry configuration before starting.",
     );
-  const balance = z
-    .object({
-      ai: z.object({
-        available: z.number().int().nonnegative(),
-        state: z.enum([
-          "disabled",
-          "pending",
-          "available",
-          "exhausted",
-          "suspended",
-          "unavailable",
-        ]),
-      }),
-    })
-    .parse(balances.data).ai;
-  report?.(
-    `Cloud AI balance: $${(balance.available / 1_000_000).toFixed(2)} USD · ${balance.state}. ${balance.state === "available" ? "Usage consumes prepaid credit." : "AI cannot run yet. An administrator can open Account to check service status and add credits."}`,
-  );
+  z.object({
+    ai: z.object({
+      available: z.number().int().nonnegative(),
+      state: z.enum([
+        "disabled",
+        "pending",
+        "available",
+        "exhausted",
+        "suspended",
+        "unavailable",
+      ]),
+    }),
+  }).parse(balances.data);
+  return {
+    url: models.cloud.url,
+    installationId: id,
+    accountId: registration.accountId,
+    authorization: auth,
+    registrationFile,
+  } satisfies CloudAiSession;
 }
 
 export async function configureCloudAi(...args: Parameters<typeof configure>) {
@@ -246,7 +265,7 @@ export async function configureCloudAi(...args: Parameters<typeof configure>) {
     retries: 0,
   });
   try {
-    await configure(...args);
+    return await configure(...args);
   } finally {
     await unlock();
   }

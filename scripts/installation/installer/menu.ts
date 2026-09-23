@@ -41,18 +41,13 @@ export function installationMenu(
       "Free team sign-in; company OIDC is also available",
     ),
     row(
-      "ai-service",
-      "AI service",
-      config.models?.mode === "external"
-        ? "Existing LiteLLM gateway"
-        : config.models?.cloud
-          ? "ClawScarf Cloud · Recommended · Prepaid"
-          : "Your API key · Provider billing",
+      "models",
+      "AI",
+      modelSummary ?? "Choose a model",
       config.models?.mode === "litellm" && config.models.cloud
-        ? "No provider key to manage. AI pauses when credits run out."
-        : undefined,
+        ? "ClawScarf Cloud · Prepaid credits · No provider key needed"
+        : "Your provider account and billing",
     ),
-    row("models", "Default model", modelSummary ?? "Choose a model"),
     row(
       "connections",
       "Connections",
@@ -111,14 +106,9 @@ export function installationMenu(
   return existing
     ? [
         ...choices.filter(({ value }) =>
-          [
-            "review",
-            "ai-service",
-            "models",
-            "connections",
-            "packs",
-            "public-web",
-          ].includes(value),
+          ["review", "models", "connections", "packs", "public-web"].includes(
+            value,
+          ),
         ),
         ...(config.models?.mode === "litellm" && config.models.cloud
           ? []
