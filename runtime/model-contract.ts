@@ -48,6 +48,15 @@ const assignmentSchema = z.discriminatedUnion("path", [
     }),
   }),
   z.strictObject({
+    path: z.literal("agents.defaults.models"),
+    value: z.record(
+      z.string().regex(/^clawscarf\/[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/),
+      z.strictObject({
+        params: z.strictObject({ maxTokens: z.number().int().positive() }),
+      }),
+    ),
+  }),
+  z.strictObject({
     path: z.literal("agents.defaults.model.primary"),
     value: z.string().startsWith("clawscarf/").min(11),
   }),
@@ -58,7 +67,7 @@ const assignmentSchema = z.discriminatedUnion("path", [
 ]);
 export const modelInputSchema = z
   .strictObject({
-    assignments: z.array(assignmentSchema).min(2).max(4),
+    assignments: z.array(assignmentSchema).min(2).max(5),
     token: z.string().trim().min(1).max(65536),
     ca: z.string().min(1).max(262144).nullable(),
     apply: z.boolean(),

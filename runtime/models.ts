@@ -62,6 +62,20 @@ async function alreadyConfigured(input: ModelInput, stateDirectory: string) {
     return false;
   return input.assignments.every((assignment) => {
     if (assignment.path === "secrets.providers.clawscarf-models") return true;
+    if (assignment.path === "agents.defaults.models") {
+      const configured = at(native, assignment.path);
+      return (
+        record(configured) &&
+        Object.entries(assignment.value).every(([id, value]) => {
+          const model = configured[id];
+          return (
+            record(model) &&
+            record(model.params) &&
+            model.params.maxTokens === value.params.maxTokens
+          );
+        })
+      );
+    }
     const expected =
       assignment.path === "models.providers.clawscarf"
         ? {
@@ -106,7 +120,28 @@ export async function configure(
       provider: "clawscarf-models",
       id: `/${name}`,
     });
+    const native: unknown = JSON.parse(
+      await readFile(join(options.stateDirectory, "openclaw.json"), "utf8"),
+    );
     const assignments = input.assignments.map((entry) => {
+      if (entry.path === "agents.defaults.models") {
+        const existing = at(native, entry.path);
+        const models: Record<string, unknown> = record(existing)
+          ? { ...existing }
+          : {};
+        for (const [id, value] of Object.entries(entry.value)) {
+          const previous = models[id];
+          const model = record(previous) ? previous : {};
+          models[id] = {
+            ...model,
+            params: {
+              ...(record(model.params) ? model.params : {}),
+              ...value.params,
+            },
+          };
+        }
+        return { path: entry.path, value: models };
+      }
       if (entry.path === "secrets.providers.clawscarf-models")
         return {
           path: entry.path,

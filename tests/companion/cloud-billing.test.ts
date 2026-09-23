@@ -68,6 +68,7 @@ await test("Cloud billing separates native administration from session-bound fin
         paidRemaining: 0,
         available: 0,
         usageAsOf: null,
+        overrun: 0,
       },
       connections: {
         unit: "executions",

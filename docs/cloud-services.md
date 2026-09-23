@@ -75,7 +75,7 @@ account-wide financial access. Team login remains independent of payment and quo
 
 Hosted AI credit always routes through ClawScarf Cloud's authenticated inference
 endpoint in the existing Cloud API. Cloud checks model access and account funding,
-then forwards to OpenRouter using an account-capped provider key held only inside
+then forwards to OpenRouter using an account usage-metering key held only inside
 Cloud. Installations receive only their own revocable scoped Cloud credential;
 model selection never redirects them to an upstream provider or supplies a provider
 key. The Cloud specification owns the trust boundary and beta accounting behavior.

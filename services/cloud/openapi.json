@@ -5218,6 +5218,11 @@
               "usageAsOf": {
                 "type": ["string", "null"],
                 "format": "date-time"
+              },
+              "overrun": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Retail USD micros used beyond purchased credit; deducted from the next top-up."
               }
             },
             "required": [
@@ -5227,7 +5232,8 @@
               "freeRemaining",
               "paidRemaining",
               "available",
-              "usageAsOf"
+              "usageAsOf",
+              "overrun"
             ]
           },
           "purchasingAvailable": {
@@ -5333,6 +5339,11 @@
               ]
             },
             "description": "Accepted reasoning efforts. Omit none for models that require reasoning; an empty array means no reasoning support."
+          },
+          "replyBudgetTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cloud request output ceiling and installation starting reply budget, including reasoning tokens."
           }
         },
         "required": [
@@ -5345,7 +5356,8 @@
           "outputMicrosPerMillion",
           "rateVersion",
           "supportsTemperature",
-          "reasoningEfforts"
+          "reasoningEfforts",
+          "replyBudgetTokens"
         ]
       },
       "AiError": {
