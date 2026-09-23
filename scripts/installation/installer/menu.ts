@@ -30,9 +30,7 @@ export function installationMenu(
     {
       value: "review",
       label: existing ? "Review and apply\n" : "Accept settings and continue\n",
-      hint: existing
-        ? "Review before changing the server"
-        : "Credentials come next",
+      ...(existing ? { hint: "Review before changing the server" } : {}),
     },
     row(
       "access",
