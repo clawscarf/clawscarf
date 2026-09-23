@@ -1,6 +1,6 @@
 import { installationCatalog, readRecipe } from "../recipes/catalog.js";
 import { defaultInstallationDirectory, installationName } from "../location.js";
-import { isDeepStrictEqual } from "node:util";
+import { isDeepStrictEqual, styleText } from "node:util";
 import { resolve } from "node:path";
 import {
   installationSchema,
@@ -148,7 +148,21 @@ export async function collectInstallation(
     const initialCloudAi = Boolean(
       config.models?.mode === "litellm" && config.models.cloud,
     );
-    if (recipe) ui.note(recipe.description, recipe.name);
+    if (!options.existing && initialCloudAi)
+      ui.note(
+        [
+          ...(recipe ? [recipe.description, ""] : []),
+          "One account for team login, AI and connections to your business apps.",
+          "No AI provider keys to manage.",
+          "",
+          "Team login is free. AI uses prepaid credits.",
+          "Connections is optional, with paid usage beyond your allowance.",
+          "",
+          "Have your own login provider or API key? Choose those below.",
+        ].join("\n"),
+        styleText(["bold", "cyan"], "Get started with ClawScarf Cloud"),
+      );
+    else if (recipe) ui.note(recipe.description, recipe.name);
     for (;;) {
       const customized = JSON.stringify(config) !== initialConfiguration;
       const pendingPacks = await packRequirements(config);

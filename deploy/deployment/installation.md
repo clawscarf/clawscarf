@@ -100,6 +100,8 @@ is the first action. Team login, AI service, default model and Connections
 come first, followed by optional capabilities, then location, network and resources.
 Cloud login is free; recommended Cloud AI is prepaid. Connections is optional and
 paid beyond the account’s allowance. Provider-key billing remains selectable.
+New Cloud AI setups show a short introduction above the menu explaining the
+convenience, paid usage and options to use your own login provider or API key.
 The menu shows the selected model and reasoning before
 asking for missing credentials. Explicit command options preselect those same choices.
 Provider API keys are entered in hidden prompts. Unattended setup can supply private
