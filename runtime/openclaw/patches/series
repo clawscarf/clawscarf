@@ -10,3 +10,4 @@ curated-channel-setup.patch
 remove-cloud-workers.patch
 browser-shared-artifacts.patch
 disable-native-github.patch
+managed-inference-cooldown.patch
