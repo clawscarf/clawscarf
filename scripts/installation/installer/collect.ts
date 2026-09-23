@@ -147,6 +147,9 @@ export async function collectInstallation(
       };
 
     const initialConfiguration = JSON.stringify(config);
+    const initialCloudAi = Boolean(
+      config.models?.mode === "litellm" && config.models.cloud,
+    );
     if (recipe) ui.note(recipe.description, recipe.name);
     for (;;) {
       const customized = JSON.stringify(config) !== initialConfiguration;
@@ -230,7 +233,11 @@ export async function collectInstallation(
               config.models,
               inputs,
               presetFile,
-              options.existing,
+              options.existing &&
+                initialCloudAi ===
+                  Boolean(
+                    config.models?.mode === "litellm" && config.models.cloud,
+                  ),
             );
             break;
           case "ai-service":

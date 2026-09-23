@@ -1346,6 +1346,84 @@ await test(
   },
 );
 
+for (const mode of ["menu", "flags"] as const)
+  await test(
+    `switching retained Cloud AI to an own-key model needs only its selected provider (${mode})`,
+    local,
+    async (t) => {
+      const f = await fixture(t);
+      await writeFile(
+        f.release,
+        JSON.stringify({
+          ...releaseSchema.parse(await readJson(f.release)),
+          cloudBilling: true,
+        }),
+      );
+      const first = await collectInstallation(new Answers(f.answers), f);
+      const { setupContext } = await import("./installation/setup.js");
+      const { selectAiService } = await import("./installation/models.js");
+      const { selectedDraft } = await import("./installation/options.js");
+      const { gatewayRoutesSchema } = await import("./models/configuration.js");
+      const context = await setupContext(f);
+      first.config.models = await selectAiService(
+        "cloud",
+        first.config.models,
+        context.modelCatalog,
+        first.inputs,
+      );
+      const key = join(f.parent, "openrouter-key");
+      await writeFile(key, "test-own-provider-key", { mode: 0o600 });
+      const ui = new Answers(
+        {
+          ...f.answers,
+          "AI service": "provider",
+          "Default model": "gpt-5.6-luna",
+          Provider: "openrouter/openai/gpt-5.6-luna",
+          Reasoning: "low",
+          "secret:OpenRouter API key": "test-own-provider-key",
+        },
+        ["ai-service", "models"],
+      );
+      const result =
+        mode === "menu"
+          ? await collectInstallation(
+              ui,
+              { recipe: f.recipe, existing: true },
+              first,
+            )
+          : {
+              inputs: first.inputs,
+              config: await selectedDraft(
+                context,
+                "team-server",
+                {
+                  aiService: "provider",
+                  provider: "openrouter",
+                  model: "gpt-5.6-luna",
+                  reasoning: "low",
+                  llmKeyFile: key,
+                },
+                first.inputs,
+                first.config,
+              ),
+            };
+      const models = result.config.models;
+      assert.equal(models?.mode, "litellm");
+      assert.equal(models.cloud, undefined);
+      const routes = gatewayRoutesSchema.parse(
+        await result.inputs.readJson(models.configurationFile),
+      );
+      assert.deepEqual(
+        routes.models.map((model) => model.route?.model),
+        ["openrouter/openai/gpt-5.6-luna"],
+      );
+      assert.equal(routes.defaultModel, "gpt-5.6-luna");
+      assert.equal(routes.thinkingDefault, "low");
+      assert.ok(models.upstreamEnvironmentFile);
+      assert.ok(!ui.questions.includes("secret:OpenAI API key"));
+    },
+  );
+
 await test(
   "retained default changes preserve previously configured model routes for native overrides",
   local,

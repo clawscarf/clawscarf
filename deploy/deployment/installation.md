@@ -251,6 +251,9 @@ become provider keys in the runtime.
 `--ai-service provider` selects your own provider billing. Supplying `--provider`,
 `--llm-key-file` or `--provider-env-file` also selects that path. An existing
 installation keeps its accepted service unless you explicitly change it.
+Changing AI service replaces its managed model routes; selecting a different model
+within the same service preserves other configured models. Switching to your own
+key asks only for the selected provider's credentials.
 Cloud AI enablement requires the owning Cloud user's authorization; a provisioning
 credential alone cannot authorize spending. Native purchase controls are separate
 from installer registration.

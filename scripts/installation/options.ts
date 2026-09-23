@@ -372,16 +372,19 @@ export async function selectedDraft(
   const requestedService =
     o.aiService ??
     (o.provider || o.llmKeyFile || o.providerEnvFile ? "provider" : undefined);
+  let changedAiService = false;
   if (requestedService && config.models) {
     if (config.models.mode === "external")
       invalid("Select a bundled model gateway before changing its AI service.");
-    if (Boolean(config.models.cloud) !== (requestedService === "cloud"))
+    if (Boolean(config.models.cloud) !== (requestedService === "cloud")) {
+      changedAiService = true;
       config.models = await selectAiService(
         requestedService,
         config.models,
         context.modelCatalog,
         inputs,
       );
+    }
   }
   const current = config.models;
   const catalog = current
@@ -505,7 +508,7 @@ export async function selectedDraft(
         offer,
         thinking,
         inputs,
-        Boolean(retained),
+        Boolean(retained) && !changedAiService,
       );
     }
   }
