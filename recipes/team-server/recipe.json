@@ -22,7 +22,6 @@
   "models": {
     "service": "cloud",
     "model": "openai/gpt-6-astra",
-    "provider": "openai",
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",

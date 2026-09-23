@@ -16,12 +16,19 @@ export const recipeSchema = z.strictObject({
     publicWeb: z.boolean().default(false),
     connections: z.strictObject({ enabled: z.boolean() }).optional(),
   }),
-  models: z.strictObject({
-    service: z.enum(["cloud", "provider"]).default("provider"),
-    model: z.string().min(1),
-    provider: z.string().min(1),
-    reasoning: z.enum(["low", "medium", "high"]).optional(),
-  }),
+  models: z.union([
+    z.strictObject({
+      service: z.literal("cloud"),
+      model: z.string().min(1),
+      reasoning: z.enum(["low", "medium", "high"]).optional(),
+    }),
+    z.strictObject({
+      service: z.literal("provider").default("provider"),
+      model: z.string().min(1),
+      provider: z.string().min(1),
+      reasoning: z.enum(["low", "medium", "high"]).optional(),
+    }),
+  ]),
   packs: z
     .array(
       z.strictObject({

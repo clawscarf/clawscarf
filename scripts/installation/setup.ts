@@ -17,6 +17,7 @@ import {
 import { defaultCloudUrl } from "../cloud/url.js";
 import type { ModelCatalog } from "../models/catalog.js";
 import { cloudAiVariable } from "../cloud/models.js";
+import { installationName } from "./location.js";
 
 export type SetupOptions = {
   recipe?: string;
@@ -85,6 +86,7 @@ export type SetupContext = Awaited<ReturnType<typeof setupContext>>;
 export function recipeConfiguration(
   context: SetupContext,
   recipeId: string,
+  directory: string,
 ): InstallationDraft {
   const recipe = context.recipes.find((recipe) => recipe.id === recipeId);
   if (!recipe)
@@ -94,14 +96,13 @@ export function recipeConfiguration(
     );
   return {
     schemaVersion: 1,
-    name: "team",
+    name: installationName(directory),
     agentName: recipe.defaults.agentName,
     releaseFile: context.releaseFile,
     stateDirectory: "./state",
     exposure: { mode: "local", applicationPort: 18800, widgetPort: 18802 },
     access: {
       mode: "hosted",
-      administratorName: "Administrator",
       registrationFile: "./secrets/hosted-login.json",
       cloudUrl: context.cloudUrl,
     },

@@ -17,13 +17,16 @@ The resolved runtime release is retained separately; automatic advancement of th
 [current selection](../release/README.md#published-and-development-use) does not change recipe defaults.
 
 A recipe's `runtime` points to an exact runtime definition, relative to the recipe
-file. Runtime images and tools are fixed; its other fields are defaults that users
-can change in the settings menu or through CLI flags. Recipes cannot disable
+file. Runtime images and tools are fixed. Service, model and capability defaults
+can be changed in the settings menu or through CLI flags. Recipes cannot disable
 OpenShell protection or authenticated entry, admission and revocation. They contain
 no executable hooks, secrets or user identities.
 
-- `models` selects AI `service` (`cloud` or `provider`), model ID, provider and
+- `models` selects AI `service` (`cloud` or `provider`), model ID and
   reasoning from the bundled [model catalogs](../deploy/models/README.md#installer-choices).
+  Cloud recipes use a Cloud catalog model ID, such as `openai/gpt-6-astra`;
+  requests go to ClawScarf Cloud. Only provider-key recipes include the required
+  `provider` field to select the upstream route and credentials.
   Omitted `service` selects provider billing for existing custom recipes.
 - `defaults` selects the initial `agentName`, resources, public web access, browser and Connections enablement.
   The name configures OpenClaw's default agent once; later renaming belongs in OpenClaw.

@@ -97,9 +97,7 @@ export async function selectAiService(
 
 /** Recipes select an offering; model catalog metadata has one owner. */
 export function recipeModelRoutes(
-  choice: Omit<Recipe["models"], "service"> & {
-    service?: Recipe["models"]["service"];
-  },
+  choice: Recipe["models"],
   catalog: ModelCatalog,
 ) {
   const matches = catalog.filter(

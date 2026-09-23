@@ -589,20 +589,65 @@ await test(
     const ui = new Answers(
       {
         ...f.answers,
-        "Installation name": "my-team",
-        "Default agent name": "Atlas",
-        "Administrator display name": "Owner",
-        "gateway CPUs": "4",
+        "Runtime CPUs": "6",
       },
-      ["identity", "resources", "identity", "connections"],
+      ["resources", "connections", "resources"],
     );
     const { config } = await collectInstallation(ui, f);
-    assert.equal(config.name, "my-team");
-    assert.equal(config.agentName, "Atlas");
-    assert.equal(config.access.administratorName, "Owner");
-    assert.equal(config.resources.runtime.cpu, "4");
+    assert.equal(config.name, "new");
+    assert.equal(config.agentName, "ClawScarf");
+    assert.equal(config.access.administratorName, undefined);
+    assert.equal(config.resources.runtime.cpu, "6");
     assert.equal(config.connections.mode, "disabled");
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "new labels follow the selected directory without changing retained installation names",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const { installationName } = await import("./installation/location.js");
+    for (const [folder, expected] of [
+      ["Research Team", "research-team"],
+      ["Équipe", "equipe"],
+      ["2026", "team-2026"],
+      ["团队", "team"],
+      ["a".repeat(29) + " b", "a".repeat(29)],
+    ]) {
+      assert.ok(folder && expected);
+      assert.equal(installationName(join(f.parent, folder)), expected);
+    }
+    const directory = join(f.parent, "Research Team");
+    const draft = await collectInstallation(
+      new Answers({ ...f.answers, "New installation directory": directory }, [
+        "location",
+      ]),
+      f,
+    );
+    assert.equal(draft.directory, directory);
+    assert.equal(draft.config.name, "research-team");
+    const { selectedDraft } = await import("./installation/options.js");
+    const { setupContext } = await import("./installation/setup.js");
+    const { SetupInputs } = await import("./installation/save.js");
+    const retained = installationSchema.parse({
+      ...draft.config,
+      name: "saved-name",
+      agentName: "Renamed agent",
+      access: { ...draft.config.access, administratorName: "Previous owner" },
+    });
+    assert.deepEqual(
+      await selectedDraft(
+        await setupContext(f),
+        "team-server",
+        {},
+        new SetupInputs(join(f.parent, "moved")),
+        retained,
+      ),
+      retained,
+    );
+    await assert.rejects(lstat(directory), { code: "ENOENT" });
   },
 );
 
@@ -665,7 +710,6 @@ await test(
     const options = {
       ...f,
       recipe: f.recipe,
-      name: "chosen-name",
       port: 19800,
       widgetPort: 19802,
     };
@@ -673,7 +717,8 @@ await test(
     const unattended = await prepareConfiguration(options);
     assert.deepEqual(unattended.config, terminal.config);
     assert.equal(unattended.config.connections.mode, "hosted");
-    assert.equal(unattended.config.name, "chosen-name");
+    assert.equal(unattended.config.name, "new");
+    assert.ok(!("administratorName" in unattended.config.access));
     const context = await setupContext({
       recipe: f.recipe,
       cloudUrl: "https://staging.example.test",
@@ -921,9 +966,8 @@ await test(
       ...f,
       directory: join(f.parent, "supplied"),
       recipe: f.recipe,
-      agentName: "Atlas",
     });
-    assert.equal(customized.config.agentName, "Atlas");
+    assert.equal(customized.config.agentName, preset.defaults.agentName);
     assert.ok(
       !supplied.questions.some((question) => question.startsWith("secret:")),
     );
@@ -944,12 +988,12 @@ await test(
     const ui = new CancelSection(
       {
         ...f.answers,
-        "Installation name": "accepted-team",
+        "Runtime CPUs": "6",
       },
-      ["identity", "connections"],
+      ["resources", "connections"],
     );
     const draft = await collectInstallation(ui, f);
-    assert.equal(draft.config.name, "accepted-team");
+    assert.equal(draft.config.resources.runtime.cpu, "6");
     assert.equal(
       ui.questions.filter((question) =>
         question.endsWith("— configure installation"),
@@ -1042,14 +1086,12 @@ await test(
   async (t) => {
     const f = await fixture(t);
     const first = await collectInstallation(
-      new Answers({ ...f.answers, "Installation name": "keep-final" }, [
-        "identity",
-      ]),
+      new Answers({ ...f.answers, "Runtime CPUs": "6" }, ["resources"]),
       f,
     );
     const ui = new Answers(f.answers);
     const second = await collectInstallation(ui, f, first);
-    assert.equal(second.config.name, "keep-final");
+    assert.equal(second.config.resources.runtime.cpu, "6");
     assert.ok(!ui.questions.some((question) => question.startsWith("secret:")));
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
   },
@@ -1589,7 +1631,7 @@ await test(
     for (const options of [
       { reasoning: "high" as const },
       { provider: "unknown" },
-      { name: "changed" },
+      { cpu: "6" },
       { oidcIssuer: "https://other.example" },
       { llmKeyFile: key, providerEnvFile: f.providerEnvFile },
     ])
@@ -1885,6 +1927,7 @@ await test("recipe model choices resolve catalog metadata and reject missing or 
     await readJson("deploy/models/catalog.json"),
   );
   const choice = {
+    service: "provider" as const,
     model: "gpt-6-astra",
     provider: "openai",
     reasoning: "medium" as const,

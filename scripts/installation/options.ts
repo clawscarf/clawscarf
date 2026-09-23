@@ -27,9 +27,6 @@ const port = z.coerce.number().int().min(1024).max(65535);
 const text = z.string().min(1);
 /** Public selections only; internal paths and bootstrap state are never CLI overrides. */
 export const selectionSchema = z.object({
-  name: installationSchema.shape.name.optional(),
-  agentName: installationSchema.shape.agentName.optional(),
-  administratorName: text.optional(),
   port: port.optional(),
   widgetPort: port.optional(),
   origin: cloudUrlSchema.optional(),
@@ -81,9 +78,6 @@ export type ConfigureOptions = SetupOptions &
 
 export function installationOptions(command: Command) {
   return command
-    .option("--name <name>", "Installation name")
-    .option("--agent-name <name>", "Initial default agent name")
-    .option("--administrator-name <name>", "First administrator display name")
     .option("--port <number>", "Local application port (default: 18800)")
     .option("--widget-port <number>", "Local widgets port (default: 18802)")
     .option("--origin <url>", "Public HTTPS application origin")
@@ -222,12 +216,8 @@ export async function selectedDraft(
       );
   }
   const config = structuredClone(
-    retained ?? recipeConfiguration(context, recipe),
+    retained ?? recipeConfiguration(context, recipe, inputs.directory),
   );
-  if (o.name !== undefined) config.name = o.name;
-  if (o.agentName !== undefined) config.agentName = o.agentName;
-  if (o.administratorName !== undefined)
-    config.access.administratorName = o.administratorName;
   if (o.cpu !== undefined) config.resources.runtime.cpu = o.cpu;
   if (o.memory !== undefined) config.resources.runtime.memory = o.memory;
   if (o.browser !== undefined) config.browser.enabled = o.browser;
@@ -267,7 +257,6 @@ export async function selectedDraft(
       invalid("Company login requires --oidc-issuer and --oidc-client-id.");
     config.access = {
       mode: "oidc",
-      administratorName: config.access.administratorName,
       issuer: o.oidcIssuer,
       clientId: o.oidcClientId,
       clientSecretFile: o.oidcSecretFile ?? "",
