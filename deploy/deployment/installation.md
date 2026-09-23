@@ -454,10 +454,10 @@ and payment details open on Stripe; selecting a paid service in the installer do
 not purchase a pack or enable automatic recharge. Prices and any free allocation
 come from Cloud and may change for new accounts.
 
-When AI credit runs out, requests fail and the native plugin directs administrators
-to Account. Other team members should ask their installation administrator. When
-Connections actions run out, Account shows the daily reset and prepaid packs.
+When AI credit runs out, requests fail with OpenClaw's normal chat error. Installation
+administrators can open Account to manage credits; other team members should ask
+their installation administrator. When Connections actions run out, Account shows
+the daily reset and prepaid packs.
 A pending payment or credit activation should be checked before paying again.
-Neither case blocks team login. These features require the CLI, companion and
-native plugin built from this source; they have not been published by this change.
+Neither case blocks team login.
 Existing installations retain their configured services and credentials.

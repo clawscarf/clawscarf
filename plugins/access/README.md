@@ -5,22 +5,26 @@ OpenClaw, using its public experimental Control UI plugin API. The
 [package manifest](package.json) pins the SDK.
 Account shows the signed-in identity and sign-out. When Cloud AI or Connections
 is configured, installation administrators also see account-wide balances, current
-packs and model rates. Payments use an explicit Cloud owner sign-in and Stripe's
-hosted Checkout/Portal. Native administrator rights alone cannot purchase; the
+packs and model rates. Selecting a pack opens Cloud owner sign-in when needed,
+then continues automatically to Stripe's hosted Checkout. Billing details and
+purchase history use the same owner approval. The sign-in tab opens during the
+click; an Open sign-in link is a fallback when the browser blocks it. Native
+administrator rights alone cannot purchase; the
 companion holds the temporary owner token, never browser JavaScript. Prices and
 balances come from Cloud; no fixed introductory allocation is promised.
 Saved checkout requests resume with the same idempotency key. A payment awaiting
 credit activation remains pending, with new purchases disabled for the affected
 service and a warning against paying again. Expired or declined billing sign-in
-offers a fresh sign-in; pending approval can be cancelled. An unreadable saved
+allows another attempt; pending approval can be cancelled before any checkout is
+created. Pack prices appear once when the credit amount and price are equal;
+tax and one-time purchase terms accompany the packs. An unreadable saved
 checkout can be cleared after viewing recent purchases and confirming that this
 does not cancel or refund a payment. A return
 from Stripe is not proof that credit was granted. Recent purchases and refunds
 remain visible through purchase history and Stripe payment details. Refreshes
 retain expanded prices and purchase history and preserve keyboard focus.
-A native session-header accessory supplies Account recovery guidance after failed
-Cloud AI chats; OpenClaw keeps its own error presentation. Members are directed to
-an installation administrator. It neither buys credits nor redirects automatically.
+OpenClaw presents chat errors. Installation administrators manage Cloud AI credits
+in Account; other team members should ask their installation administrator.
 
 People is visible to native
 administrators: it lists members and their observed native roles, assigns existing

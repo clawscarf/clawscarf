@@ -9,10 +9,11 @@ import type {
 import type { Page } from "../../common/native-page.js";
 import { element, button, confirm, failure } from "./page.js";
 
-const usd = (micros: number) =>
+const usd = (micros: number, minimumFractionDigits = 2) =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits,
     maximumFractionDigits: 2,
   }).format(micros / 1_000_000);
 const rate = (micros: number) =>
@@ -75,6 +76,7 @@ function stripeUrl(value: string) {
   if (
     url.protocol !== "https:" ||
     !["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname) ||
+    url.port ||
     url.username ||
     url.password
   )
@@ -116,17 +118,9 @@ export async function mountBilling(
     return () => {};
   const root = element("section");
   root.className = "clawscarf-cloud";
-  const introduction = element("div");
-  introduction.append(
-    element("h3", "Cloud services"),
-    element(
-      "p",
-      "Balances are shared across your Cloud account’s installations. Team login remains free and works when credits run out.",
-    ),
-  );
-  root.append(introduction);
   view.content.append(root);
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const signIns: Array<() => void> = [];
   let disposed = false;
   const usable = () =>
     !disposed && !context.signal.aborted && context.host.connection.canAdmin;
@@ -135,6 +129,7 @@ export async function mountBilling(
       root.replaceChildren();
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
+      for (const close of signIns) close();
     }
   });
   function later(id: string, run: () => Promise<void>, seconds: number) {
@@ -163,12 +158,65 @@ export async function mountBilling(
     let error = "";
     let checkedAt = "";
     let pollCount = 0;
+    let afterSignIn: (() => Promise<void>) | undefined;
+    let signInWindow: Window | null = null;
     const history = element("div");
     const modelPrices = element("div");
     let historyReviewed = false;
     const path = { id: service.id };
     const read = () => ({ ...view.request, path });
     const write = () => ({ ...view.write(), path });
+    function closeSignIn() {
+      signInWindow?.close();
+      signInWindow = null;
+    }
+    signIns.push(() => {
+      afterSignIn = undefined;
+      closeSignIn();
+    });
+    function signInUrl() {
+      if (!authorization?.url) throw Error("Cloud sign-in is unavailable.");
+      const url = new URL(authorization.url);
+      if (url.origin !== new URL(service.url).origin)
+        throw Error("Unexpected Cloud sign-in destination.");
+      return url.href;
+    }
+    async function withOwner(work: () => Promise<void>) {
+      if (!usable() || afterSignIn) return;
+      if (
+        authorization?.state === "authorized" &&
+        (!authorization.expiresAt ||
+          Date.parse(authorization.expiresAt) > Date.now())
+      )
+        return work();
+      afterSignIn = work;
+      // Open during the click gesture; asynchronous window.open can be blocked.
+      closeSignIn();
+      signInWindow = window.open("about:blank", "_blank");
+      if (signInWindow) signInWindow.opener = null;
+      try {
+        authorization = (
+          await api.startCloudAuthorization({ ...write(), body: {} })
+        ).data;
+        if (!usable()) {
+          closeSignIn();
+          afterSignIn = undefined;
+          return;
+        }
+        if (authorization.state === "authorized") {
+          closeSignIn();
+          afterSignIn = undefined;
+          return work();
+        }
+        const url = signInUrl();
+        if (signInWindow) signInWindow.location.replace(url);
+        await load();
+      } catch (cause) {
+        closeSignIn();
+        afterSignIn = undefined;
+        throw cause;
+      }
+    }
     const returnPath = () => {
       const url = new URL(
         context.host.navigation.pageHref({ id: "account" }),
@@ -198,6 +246,12 @@ export async function mountBilling(
         }
         checkedAt = new Date().toLocaleTimeString();
         error = "";
+        if (afterSignIn && authorization.state === "disconnected") {
+          afterSignIn = undefined;
+          closeSignIn();
+          view.error.textContent =
+            "Cloud sign-in expired. Choose a pack to try again.";
+        }
         const intent = readIntent(key);
         if (intent?.orderId && authorization.state === "authorized") {
           order = (
@@ -220,6 +274,7 @@ export async function mountBilling(
         render();
         if (authorization.state === "pending")
           later(service.id, poll, Math.max(authorization.pollAfterSeconds, 3));
+        else if (afterSignIn) later(service.id, poll, 1);
       } catch (cause) {
         if (!usable()) return;
         error = failure(cause);
@@ -245,13 +300,24 @@ export async function mountBilling(
           await api.pollCloudAuthorization({ ...write(), body: {} })
         ).data;
         await load();
+        if (usable() && authorization?.state === "authorized" && afterSignIn) {
+          const next = afterSignIn;
+          afterSignIn = undefined;
+          closeSignIn();
+          await next();
+        }
       } catch (cause) {
         await recoverAuthorization();
+        if (authorization?.state !== "pending") {
+          closeSignIn();
+          afterSignIn = undefined;
+        } else
+          later(service.id, poll, Math.max(authorization.pollAfterSeconds, 3));
         render();
         throw cause;
       }
     }
-    async function checkout(offerId: string) {
+    function saveCheckout(offerId: string) {
       let intent = readIntent(key);
       if (intent && intent.offerId !== offerId)
         throw Error(
@@ -264,6 +330,10 @@ export async function mountBilling(
         returnPath: returnPath(),
       };
       sessionStorage.setItem(key, JSON.stringify(intent));
+      return intent;
+    }
+    async function checkout(offerId: string) {
+      const intent = saveCheckout(offerId);
       const result = (
         await api.createCloudCheckout({
           ...write(),
@@ -287,6 +357,7 @@ export async function mountBilling(
       label: string,
       work: () => Promise<void>,
       progress: string,
+      ownerAction = false,
     ) {
       const control = button(label, () => {
         void view.run(async () => {
@@ -300,6 +371,7 @@ export async function mountBilling(
         }, progress);
       });
       control.dataset.focusId = service.id + ":" + label;
+      control.disabled = ownerAction && Boolean(afterSignIn);
       return control;
     }
     function render() {
@@ -334,37 +406,29 @@ export async function mountBilling(
         item.append(
           element("h4", "AI credits"),
           balance,
-          element("small", stateCopy[allowance.ai.state] + " · USD credit"),
+          element(
+            "small",
+            allowance.ai.state === "available"
+              ? "USD available"
+              : stateCopy[allowance.ai.state],
+          ),
         );
         if (allowance.ai.state === "exhausted")
           item.append(
             element(
               "p",
               paymentWaiting && order?.service === "ai"
-                ? "A payment is pending. Check its status below before buying more credits."
-                : "AI credits have run out. Add credits to resume requests.",
+                ? "Payment processing…"
+                : "Add credits to resume AI requests.",
             ),
           );
         else if (allowance.ai.state === "pending")
-          item.append(
-            element(
-              "p",
-              "Credits are being activated. A confirmed payment does not need to be repeated.",
-            ),
-          );
+          item.append(element("p", "Activating your credits…"));
         else if (allowance.ai.state === "suspended")
           item.append(
             element(
               "p",
               "Resolve the payment issue before buying more AI credit.",
-            ),
-          );
-        if (allowance.ai.usageAsOf)
-          item.append(
-            element(
-              "small",
-              "Usage updated " +
-                new Date(allowance.ai.usageAsOf).toLocaleString(),
             ),
           );
         balances.append(item);
@@ -376,21 +440,32 @@ export async function mountBilling(
         item.append(
           element("h4", "Connections"),
           balance,
-          element("small", "Actions available"),
+          element("small", "Actions remaining"),
           element(
             "small",
             count(allowance.connections.freeRemaining) +
-              " daily allowance remaining · " +
-              count(allowance.connections.paidRemaining) +
-              " prepaid",
+              " free today" +
+              (allowance.connections.paidRemaining
+                ? " · " +
+                  count(allowance.connections.paidRemaining) +
+                  " prepaid"
+                : ""),
           ),
         );
         if (allowance.connections.resetsAt)
           item.append(
             element(
               "small",
-              "Daily allowance resets " +
-                new Date(allowance.connections.resetsAt).toLocaleString(),
+              "Resets " +
+                new Date(allowance.connections.resetsAt).toLocaleString(
+                  undefined,
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                ),
             ),
           );
         if (allowance.connections.state === "exhausted")
@@ -398,94 +473,47 @@ export async function mountBilling(
             element(
               "p",
               paymentWaiting && order?.service === "connections"
-                ? "A payment is pending. Check its status below before buying another pack."
-                : "The Connections allowance has run out. Buy an actions pack to continue.",
+                ? "Payment processing…"
+                : "Add actions or wait for the daily reset.",
             ),
           );
         else if (allowance.connections.state !== "available")
           item.append(element("p", stateCopy[allowance.connections.state]));
-        item.append(
-          element(
-            "small",
-            "One action is one connector execution. AI credits are separate.",
-          ),
-        );
         balances.append(item);
       }
-      target.append(balances, element("small", "Last checked " + checkedAt));
+      target.append(balances, element("small", "Updated " + checkedAt));
       const payment = element("section");
       payment.className = "clawscarf-cloud-payment";
-      payment.append(element("h4", "Add credits and actions"));
       const authorized = authorization?.state === "authorized";
-      if (!authorized) {
+      if (authorization?.state === "pending" && authorization.url) {
+        const link = element("a", "Open sign-in");
+        link.className = "btn";
+        link.href = signInUrl();
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
         payment.append(
           element(
             "p",
-            "Installation administrators can view usage. Only this Cloud account’s owner can purchase or manage payments.",
+            afterSignIn
+              ? "Sign in as the Cloud account owner in the opened tab. We’ll continue automatically."
+              : "Complete Cloud owner sign-in to continue.",
           ),
-        );
-        if (authorization?.state === "pending" && authorization.url) {
-          const url = new URL(authorization.url);
-          if (url.origin !== service.url)
-            throw Error("Unexpected Cloud sign-in destination.");
-          const link = element("a", "Continue to Cloud sign-in");
-          link.className = "btn";
-          link.href = url.href;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          payment.append(
-            link,
-            element("p", "Approval code: " + authorization.code),
-            element(
-              "small",
-              "Check that this code matches the Cloud sign-in page. Waiting for approval…",
-            ),
-            action("Check sign-in", poll, "Checking billing sign-in…"),
-            action(
-              "Cancel sign-in",
-              async () => {
-                await api.forgetCloudAuthorization(write());
-                await load();
-              },
-              "Cancelling billing sign-in…",
-            ),
-          );
-        } else
-          payment.append(
-            action(
-              "Sign in to manage billing",
-              async () => {
-                authorization = (
-                  await api.startCloudAuthorization({ ...write(), body: {} })
-                ).data;
-                await load();
-              },
-              "Preparing Cloud owner sign-in…",
-            ),
-          );
-      } else {
-        payment.append(
-          element(
-            "p",
-            "Cloud owner verified. Purchases are one-time; there is no automatic recharge.",
-          ),
+          element("small", "Approval code: " + authorization.code),
+          ...(!signInWindow || signInWindow.closed ? [link] : []),
           action(
-            "Disconnect billing sign-in",
+            "Cancel",
             async () => {
               await api.forgetCloudAuthorization(write());
+              afterSignIn = undefined;
+              closeSignIn();
               await load();
             },
-            "Disconnecting billing sign-in…",
+            "Cancelling billing sign-in…",
           ),
         );
       }
       if (!purchasing)
-        payment.append(
-          element(
-            "p",
-            "New purchases are temporarily unavailable. Existing balances remain visible.",
-          ),
-        );
+        payment.append(element("p", "Purchases are temporarily unavailable."));
       let pending: Intent | undefined;
       let invalidIntent = false;
       try {
@@ -515,27 +543,39 @@ export async function mountBilling(
           group.append(
             element(
               "h5",
-              offer.service === "ai" ? "AI credit packs" : "Connections packs",
+              offer.service === "ai"
+                ? "Add AI credits"
+                : "Add Connections actions",
             ),
           );
           packGroups.set(offer.service, group);
           payment.append(group);
         }
-        const amount =
+        const price = usd(offer.priceMinor * 10_000, 0);
+        const label =
           offer.service === "ai"
-            ? usd(offer.amount) + " AI credit"
-            : count(offer.amount) + " Connections actions";
-        const price = usd(offer.priceMinor * 10_000);
+            ? usd(offer.amount, 0)
+            : `${count(offer.amount)} actions · ${price}`;
         const buy = action(
-          `${pending?.offerId === offer.id && !paymentWaiting ? "Resume checkout for" : "Buy"} ${amount}`,
-          () => checkout(offer.id),
-          "Preparing secure checkout…",
+          `${pending?.offerId === offer.id && !paymentWaiting ? "Continue · " : ""}${label}`,
+          () => withOwner(() => checkout(offer.id)),
+          "Opening checkout…",
         );
-        buy.append(element("small", `${price} + tax`));
+        if (
+          offer.service === "ai" &&
+          offer.amount !== offer.priceMinor * 10_000
+        )
+          buy.append(element("small", `${price} + tax`));
+        buy.setAttribute(
+          "aria-label",
+          offer.service === "ai"
+            ? `Add ${usd(offer.amount, 0)} AI credits${offer.amount === offer.priceMinor * 10_000 ? "" : ` for ${price}`}, plus tax`
+            : `Add ${count(offer.amount)} Connections actions for ${price} plus tax`,
+        );
         buy.disabled =
           invalidIntent ||
           Boolean(error) ||
-          !authorized ||
+          Boolean(afterSignIn) ||
           !purchasing ||
           !["available", "exhausted"].includes(
             allowance[offer.service].state,
@@ -551,24 +591,16 @@ export async function mountBilling(
         const savedOfferId = pending.offerId;
         const resume = action(
           "Resume saved checkout",
-          () => checkout(savedOfferId),
+          () => withOwner(() => checkout(savedOfferId)),
           "Checking saved checkout…",
         );
-        resume.disabled = !authorized || paymentWaiting;
+        resume.disabled = Boolean(afterSignIn) || paymentWaiting;
         payment.append(resume);
       }
-      payment.append(
-        element(
-          "small",
-          "Prices are in USD, before applicable tax. Purchased credits and packs do not expire. Card details are entered on Stripe.",
-        ),
-      );
-      if (pending && !order)
+      payment.append(element("small", "USD + tax · No automatic recharge"));
+      if (pending && !order && !afterSignIn)
         payment.append(
-          element(
-            "p",
-            "A checkout request is saved. Resume that checkout to confirm its status; it will not create a duplicate order.",
-          ),
+          element("p", "Continue your saved checkout to check its status."),
         );
       if (order) {
         const status = element("p", orderCopy[order.status]);
@@ -590,11 +622,11 @@ export async function mountBilling(
             }),
           );
       }
-      if (authorized)
-        payment.append(
-          action(
-            "Payment details on Stripe",
-            async () => {
+      payment.append(
+        action(
+          "Billing details",
+          () =>
+            withOwner(async () => {
               const result = (
                 await api.createCloudPortal({
                   ...write(),
@@ -605,15 +637,16 @@ export async function mountBilling(
                 })
               ).data;
               window.location.assign(stripeUrl(result.url));
-            },
-            "Opening Stripe billing…",
-          ),
-        );
-      if (authorized)
-        payment.append(
-          action(
-            "Purchase history",
-            async () => {
+            }),
+          "Opening Stripe billing…",
+          true,
+        ),
+      );
+      payment.append(
+        action(
+          "Purchase history",
+          () =>
+            withOwner(async () => {
               const result = (await api.listCloudOrders(read())).data;
               const rows = element("div");
               for (const purchase of result.orders)
@@ -640,10 +673,11 @@ export async function mountBilling(
               history.replaceChildren(rows);
               historyReviewed = true;
               render();
-            },
-            "Loading recent purchases…",
-          ),
-        );
+            }),
+          "Loading recent purchases…",
+          true,
+        ),
+      );
       if (authorized && invalidIntent && historyReviewed)
         payment.append(
           button("Clear unreadable checkout", () => {
@@ -664,7 +698,7 @@ export async function mountBilling(
       if (service.ai)
         target.append(
           action(
-            "View model prices",
+            "Model prices",
             async () => {
               const result = (await api.getCloudModels(read())).data;
               const table = element("table");
@@ -713,6 +747,7 @@ export async function mountBilling(
     disposed = true;
     unsubscribe();
     for (const timer of timers.values()) clearTimeout(timer);
+    for (const close of signIns) close();
     root.remove();
   };
 }

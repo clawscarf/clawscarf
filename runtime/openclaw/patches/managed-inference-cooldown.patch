@@ -1,0 +1,126 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Wed, 23 Sep 2026 15:27:32 +0200
+Subject: [PATCH] fix(agents): defer ClawScarf cooldowns to managed inference
+
+ClawScarf-Patch: managed-inference-cooldown
+---
+ src/agents/auth-profiles/usage-state.ts       |  4 +-
+ ...ed-agent.auth-profile-rotation.e2e.test.ts | 75 ++++++++++++++++++-
+ 2 files changed, 76 insertions(+), 3 deletions(-)
+
+diff --git a/src/agents/auth-profiles/usage-state.ts b/src/agents/auth-profiles/usage-state.ts
+index 254c940a9711d3f5fd1f8fcf7f4667a7ed4a2de5..baedd041def264e3cf46ca5e0c8b8cc63ade5c40 100644
+--- a/src/agents/auth-profiles/usage-state.ts
++++ b/src/agents/auth-profiles/usage-state.ts
+@@ -34,7 +34,9 @@ export function resetAuthProfileFailureState(
+ /** Returns true for providers whose auth-profile cooldowns are provider-managed. */
+ export function isAuthCooldownBypassedForProvider(provider: string | undefined): boolean {
+   const normalized = normalizeProviderId(provider ?? "");
+-  return normalized === "openrouter" || normalized === "kilocode";
++  // ClawScarf's scoped credential targets managed LiteLLM; funding and provider
++  // health belong to that gateway, so local cooldowns would outlive a recharge.
++  return normalized === "openrouter" || normalized === "kilocode" || normalized === "clawscarf";
+ }
+ 
+ export function resolveInlineProviderApiKeyUsageId(provider: string): string {
+diff --git a/src/agents/embedded-agent-runner.run-embedded-agent.auth-profile-rotation.e2e.test.ts b/src/agents/embedded-agent-runner.run-embedded-agent.auth-profile-rotation.e2e.test.ts
+index 05291177b199815d566834973b4361fed00aff52..c2d7524dd6195f098244287997a25418aa2ebb1d 100644
+--- a/src/agents/embedded-agent-runner.run-embedded-agent.auth-profile-rotation.e2e.test.ts
++++ b/src/agents/embedded-agent-runner.run-embedded-agent.auth-profile-rotation.e2e.test.ts
+@@ -166,7 +166,11 @@ afterEach(() => {
+   resetLoggerFn();
+ });
+ 
+-const makeConfig = (opts?: { fallbacks?: string[]; apiKey?: string }): OpenClawConfig =>
++const makeConfig = (opts?: {
++  fallbacks?: string[];
++  apiKey?: string;
++  provider?: string;
++}): OpenClawConfig =>
+   ({
+     agents: {
+       defaults: {
+@@ -178,7 +182,7 @@ const makeConfig = (opts?: { fallbacks?: string[]; apiKey?: string }): OpenClawC
+     },
+     models: {
+       providers: {
+-        openai: {
++        [opts?.provider ?? "openai"]: {
+           api: "openai-responses",
+           apiKey: opts?.apiKey ?? "sk-test",
+           baseUrl: "https://example.com",
+@@ -1026,6 +1030,73 @@ describe("runEmbeddedAgent auth profile rotation", () => {
+     });
+   });
+ 
++  it.each([false, true])(
++    "retries the managed ClawScarf route after funding (old cached cooldown: %s)",
++    async (cachedCooldown) => {
++      await withAgentWorkspace(async ({ agentDir, workspaceDir }) => {
++        saveAuthProfileStore({ version: 1, profiles: {}, usageStats: {} }, agentDir);
++        const params = {
++          sessionId: "session:test",
++          sessionKey: "agent:test:clawscarf-billing",
++          workspaceDir,
++          agentDir,
++          config: makeConfig({ provider: "clawscarf" }),
++          prompt: "hello",
++          provider: "clawscarf",
++          model: "mock-1",
++          authProfileIdSource: "auto" as const,
++          timeoutMs: 5_000,
++        };
++        runEmbeddedAttemptMock.mockResolvedValueOnce(
++          makeAttempt({
++            terminal: {
++              kind: "failed",
++              source: "prompt",
++              error: new Error("insufficient credits"),
++            },
++          }),
++        );
++        await expect(
++          runEmbeddedAgentInline({ ...params, runId: "run:clawscarf-unfunded" }),
++        ).rejects.toThrow(/insufficient credits/);
++        expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(1);
++        const usageId = resolveInlineProviderApiKeyUsageId("clawscarf");
++        expect((await readUsageStats(agentDir))[usageId]).toBeUndefined();
++
++        if (cachedCooldown) {
++          saveAuthProfileStore(
++            {
++              version: 1,
++              profiles: {},
++              usageStats: {
++                [usageId]: {
++                  disabledUntil: Date.now() + 10 * 60_000,
++                  disabledReason: "billing",
++                },
++              },
++            },
++            agentDir,
++          );
++          expect((await readUsageStats(agentDir))[usageId]?.disabledReason).toBe("billing");
++        }
++        runEmbeddedAttemptMock.mockResolvedValueOnce(
++          makeAttempt({
++            assistantTexts: ["ok"],
++            lastAssistant: buildAssistant({
++              provider: "clawscarf",
++              stopReason: "stop",
++              content: [{ type: "text", text: "ok" }],
++            }),
++          }),
++        );
++        const result = await runEmbeddedAgentInline({ ...params, runId: "run:clawscarf-funded" });
++        expect(result.payloads?.[0]?.text).toBe("ok");
++        expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(2);
++        expect(sleepWithAbortMock).not.toHaveBeenCalled();
++      });
++    },
++  );
++
+   it("rotates after provider-started timeouts and records the failed profile cooldown", async () => {
+     const { usageStats } = await runAutoPinnedRotationCase({
+       exhaustTransientRetries: true,
