@@ -1237,11 +1237,11 @@ await test(
             choices.map((choice) => choice.value),
             [
               "review",
-              "public-web",
               "ai-service",
               "models",
               "connections",
               "packs",
+              "public-web",
               "model-credentials",
             ],
           );

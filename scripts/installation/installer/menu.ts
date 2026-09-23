@@ -35,12 +35,6 @@ export function installationMenu(
         : "Credentials come next",
     },
     row(
-      "location",
-      "Location",
-      location.length > 40 ? "…" + location.slice(-39) : location,
-      directory,
-    ),
-    row(
       "identity",
       "Names",
       `${config.name} · ${config.agentName} · ${config.access.administratorName}`,
@@ -52,19 +46,6 @@ export function installationMenu(
         ? "ClawScarf Cloud · Free"
         : "Custom OIDC",
       "Free team sign-in; company OIDC is also available",
-    ),
-    row(
-      "exposure",
-      "Network",
-      config.exposure.mode === "local"
-        ? "This computer"
-        : config.exposure.applicationOrigin,
-    ),
-    row(
-      "public-web",
-      "Public web",
-      config.publicWeb ? "On" : "Off",
-      "HTTP(S) for agents and tools; private destinations blocked",
     ),
     row(
       "ai-service",
@@ -99,12 +80,6 @@ export function installationMenu(
           : "None",
       packIssues.length ? packIssues.join(" ") : agents.join(", "),
     ),
-    row(
-      "resources",
-      "Resources",
-      `${config.resources.runtime.cpu} CPU / ${config.resources.runtime.memory}`,
-      "Protected team runtime",
-    ),
     ...(browserAvailable
       ? [
           row(
@@ -114,6 +89,31 @@ export function installationMenu(
           ),
         ]
       : []),
+    row(
+      "public-web",
+      "Public web",
+      config.publicWeb ? "On" : "Off",
+      "HTTP(S) for agents and tools; private destinations blocked",
+    ),
+    row(
+      "location",
+      "Location",
+      location.length > 40 ? "…" + location.slice(-39) : location,
+      directory,
+    ),
+    row(
+      "exposure",
+      "Network",
+      config.exposure.mode === "local"
+        ? "This computer"
+        : config.exposure.applicationOrigin,
+    ),
+    row(
+      "resources",
+      "Resources",
+      `${config.resources.runtime.cpu} CPU / ${config.resources.runtime.memory}`,
+      "Protected team runtime",
+    ),
   ];
   return existing
     ? [
@@ -131,5 +131,9 @@ export function installationMenu(
           ? []
           : [{ value: "model-credentials", label: "Change LLM API keys" }]),
       ]
-    : choices;
+    : choices.map((choice) =>
+        ["connections", "public-web"].includes(choice.value)
+          ? { ...choice, label: choice.label + "\n" }
+          : choice,
+      );
 }
