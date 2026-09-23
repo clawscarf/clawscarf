@@ -22,8 +22,9 @@ can change in the settings menu or through CLI flags. Recipes cannot disable
 OpenShell protection or authenticated entry, admission and revocation. They contain
 no executable hooks, secrets or user identities.
 
-- `models` selects model ID, provider and reasoning from the bundled
-  [model catalog](../deploy/models/catalog.json).
+- `models` selects AI `service` (`cloud` or `provider`), model ID, provider and
+  reasoning from the bundled [model catalogs](../deploy/models/README.md#installer-choices).
+  Omitted `service` selects provider billing for existing custom recipes.
 - `defaults` selects the initial `agentName`, resources, public web access, browser and Connections enablement.
   The name configures OpenClaw's default agent once; later renaming belongs in OpenClaw.
 - `packs: [{ id, members }]` selects agents from the bundled [packs](../packs/README.md).
@@ -43,5 +44,8 @@ remain available in both; Personal assistant can welcome teammates later.
 The recipe files own the exact defaults; `clawscarf recipes` displays the bundled selection.
 Document workflows are separate
 [open work](../TODO.md#openclaw-curation).
+Cloud AI is recommended and prepaid; Cloud login is free. Connections remains
+optional and uses paid packs beyond the account’s allowance. No recipe promises
+a particular free credit amount or changes an existing installation’s AI service.
 
 See [runtime and package distribution](../release/README.md).

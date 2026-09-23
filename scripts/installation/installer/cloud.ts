@@ -15,21 +15,26 @@ export function registerWithBrowser(
   register = registerCloudServices,
 ) {
   return task("Connecting selected cloud services", (signal) =>
-    register(configFile, (url, file, administrator) =>
-      authorizeCloud(url, file, {
-        wait: true,
-        present: async (link, code, expiresAt) => {
-          ui.note(
-            `${administrator ? "Create an account or sign in to set up this installation and become its first administrator." : "Create an account or sign in to authorize the selected cloud services."}\n\n${terminalLink(link)}\n\nApproval code: ${code} — check that it matches the website.\n\nExpires at ${expiresAt}. Return to this terminal after approval.`,
-            styleText(
-              ["bold", "yellow"],
-              "ACTION REQUIRED — Create an account or sign in",
-            ),
-          );
-          await ui.openBrowser(link);
-        },
-        signal,
-      }),
+    register(
+      configFile,
+      (url, file, administrator) =>
+        authorizeCloud(url, file, {
+          wait: true,
+          present: async (link, code, expiresAt) => {
+            ui.note(
+              `${administrator ? "Create an account or sign in to set up this installation and become its first administrator." : "Create an account or sign in to authorize the selected cloud services."}\n\n${terminalLink(link)}\n\nApproval code: ${code} — check that it matches the website.\n\nExpires at ${expiresAt}. Return to this terminal after approval.`,
+              styleText(
+                ["bold", "yellow"],
+                "ACTION REQUIRED — Create an account or sign in",
+              ),
+            );
+            await ui.openBrowser(link);
+          },
+          signal,
+        }),
+      (message) => {
+        ui.note(message, "Cloud AI");
+      },
     ),
   );
 }

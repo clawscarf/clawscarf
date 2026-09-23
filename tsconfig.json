@@ -30,7 +30,8 @@
   "exclude": [
     "services/access/generated",
     "services/cloud/generated",
-    "services/connections/cloud/generated"
+    "services/connections/cloud/generated",
+    "services/cloud/management/generated"
   ],
   "references": [
     {

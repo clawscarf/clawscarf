@@ -1,3 +1,4 @@
+import { cloudServicesSchema } from "../../services/cloud/management/config.js";
 import { OperatorError } from "../errors.js";
 import { isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
@@ -139,6 +140,7 @@ const teamInput = z
 export const localInput = z
   .strictObject({
     team: teamInput,
+    cloudServices: cloudServicesSchema.optional(),
     agentName: configurationInput.shape.agentName,
     name: z
       .string()
@@ -349,6 +351,14 @@ export function generateLocalConfiguration(options: {
 export function companionConfiguration(input: LocalInput) {
   return {
     accessConfigurationFile: "/run/clawscarf/access.json",
+    ...(input.cloudServices?.length
+      ? {
+          cloudServices: input.cloudServices.map((target) => ({
+            ...target,
+            managementKeyFile: `/run/clawscarf/cloud-services/${target.id}.key`,
+          })),
+        }
+      : {}),
     ...(input.connections?.mode === "external" &&
     input.connections.managementKeyFile
       ? {

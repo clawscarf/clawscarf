@@ -1,9 +1,15 @@
 import { defineControlUiPlugin } from "openclaw/plugin-sdk/control-ui";
+import { creditNotice } from "./credit-notice.js";
 import { account as mountAccount } from "./account.js";
 import { people as mountPeople } from "./people.js";
 export default defineControlUiPlugin({
   id: "clawscarf-access",
   activate(host) {
+    const credits = host.ui.registerAccessory({
+      id: "cloud-credit-notice",
+      placement: "session-header",
+      mount: creditNotice,
+    });
     const account = host.ui.registerPage({
       id: "account",
       label: "Account",
@@ -40,6 +46,7 @@ export default defineControlUiPlugin({
     const unsubscribe = host.subscribe(update);
     return () => {
       unsubscribe();
+      credits();
       peopleNavigation?.();
       accountNavigation();
       people();

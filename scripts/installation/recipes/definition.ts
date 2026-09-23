@@ -17,6 +17,7 @@ export const recipeSchema = z.strictObject({
     connections: z.strictObject({ enabled: z.boolean() }).optional(),
   }),
   models: z.strictObject({
+    service: z.enum(["cloud", "provider"]).default("provider"),
     model: z.string().min(1),
     provider: z.string().min(1),
     reasoning: z.enum(["low", "medium", "high"]).optional(),

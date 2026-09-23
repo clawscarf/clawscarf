@@ -16,6 +16,12 @@ export const bundledLiteLlmSchema = z.strictObject({
   mode: z.literal("litellm"),
   configurationFile: path,
   upstreamEnvironmentFile: path,
+  cloud: z
+    .strictObject({
+      url: cloudUrlSchema,
+      registrationFile: path,
+    })
+    .optional(),
 });
 /** Product contract: the whole team runtime is always protected by OpenShell. */
 export const installationSchema = z

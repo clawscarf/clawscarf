@@ -1,9 +1,11 @@
+import { cloudServicesSchema } from "../../services/cloud/management/config.js";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { readConfiguration } from "../../services/access/runtime/config.js";
 const schema = z
   .object({
     accessConfigurationFile: z.string().min(1),
+    cloudServices: cloudServicesSchema.optional(),
     cloudConnections: z
       .strictObject({
         url: z.url().refine((value) => {
@@ -27,6 +29,7 @@ const schema = z
 export async function readCompanionConfiguration(path: string) {
   const config = schema.parse(JSON.parse(await readFile(path, "utf8")));
   return {
+    cloudServices: config.cloudServices ?? [],
     ...(config.cloudConnections
       ? { cloudConnections: config.cloudConnections }
       : {}),

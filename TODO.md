@@ -2,6 +2,10 @@
 
 ## Browser
 
+- [ ] Qualify a newly built `cloudBilling` runtime against staging: Cloud AI first-run,
+      native owner sign-in, Stripe test checkout/return, pending fulfillment and exhausted
+      credits. Publish the matching CLI, companion and native plugin together.
+
 - [ ] Qualify administrator browser file transfers in released Linux ARM64/x86-64
       installations before enabling browser by default.
       [Current support](deploy/execution/browser-node/README.md#verified-release-limits).

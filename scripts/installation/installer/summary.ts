@@ -1,5 +1,4 @@
 import { inputErrorMessage } from "./inputs.js";
-import { providerLabel } from "./sections/models.js";
 import { z } from "zod";
 import { gatewayRoutesSchema } from "../../models/configuration.js";
 import { readJson } from "../files.js";
@@ -28,7 +27,7 @@ export async function modelSummary(
       const selected = catalog.models.find(
         (entry) => entry.id === catalog.defaultModel,
       );
-      model = `${selected?.route ? providerLabel(selected.route) : placement} · ${selected?.name ?? "No default"}${catalog.thinkingDefault ? ` · ${catalog.thinkingDefault}` : ""}`;
+      model = `${selected?.name ?? "No default"}${catalog.thinkingDefault ? ` · ${catalog.thinkingDefault}` : ""}`;
     } catch (error) {
       if (!inputErrorMessage(error)) throw error;
       model = `${placement} · Check model catalog`;
@@ -50,8 +49,9 @@ export async function installationSummary(
     `${config.name} — ${origin}`,
     `Agent: ${config.agentName}`,
     `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
-    `Models: ${model}`,
-    `Connections: ${config.connections.mode === "disabled" ? "Off" : "On"}`,
+    `AI service: ${config.models?.mode === "external" ? "Existing LiteLLM gateway" : config.models?.cloud ? "ClawScarf Cloud · Prepaid usage" : "Your API key · Billed by your provider"}`,
+    `Default model: ${model}`,
+    `Connections: ${config.connections.mode === "disabled" ? "Off" : "ClawScarf Cloud · Paid beyond your allowance"}`,
     `Public web: ${config.publicWeb ? "On" : "Off"} (private destinations blocked)`,
     `Browser: ${config.browser.enabled ? "Experimental" : "Off"} · Packs: ${config.packs.flatMap((pack) => pack.members).join(", ") || "None"}`,
   ].join("\n");

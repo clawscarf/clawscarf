@@ -80,7 +80,14 @@ export async function editInstallationSettings(
   let authorizing: string | undefined;
   let retained = Boolean(pending);
   try {
-    const context = await setupContext({}, config.releaseFile);
+    const context = await setupContext(
+      config.models.mode === "litellm" && config.models.cloud
+        ? { cloudUrl: config.models.cloud.url }
+        : config.access.mode === "hosted"
+          ? { cloudUrl: config.access.cloudUrl }
+          : {},
+      config.releaseFile,
+    );
     const selected = await selectedDraft(
       context,
       config.recipe?.id ?? "custom",

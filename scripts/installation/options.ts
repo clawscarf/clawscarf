@@ -16,7 +16,7 @@ import {
   configurationSchema,
   gatewayRoutesSchema,
 } from "../models/configuration.js";
-import { selectModel } from "./models.js";
+import { selectModel, selectAiService } from "./models.js";
 import { openPack } from "../packs/source.js";
 
 const file = z
@@ -50,6 +50,7 @@ export const selectionSchema = z.object({
   browser: z.boolean().optional(),
   publicWeb: z.boolean().optional(),
   model: text.optional(),
+  aiService: z.enum(["cloud", "provider"]).optional(),
   provider: text.optional(),
   reasoning: z.enum(["low", "medium", "high"]).optional(),
   llmKeyFile: file.optional(),
@@ -119,6 +120,12 @@ export function installationOptions(command: Command) {
     .option("--public-web", "Allow public HTTP(S) from agents and tools")
     .option("--no-public-web", "Restrict runtime egress to configured services")
     .option("--model <id>", "Default model from the model catalog")
+    .addOption(
+      new Option(
+        "--ai-service <service>",
+        "AI billing: Cloud prepaid credits or your provider key",
+      ).choices(["cloud", "provider"]),
+    )
     .option(
       "--provider <id>",
       "Model provider, for example openai or openrouter",
@@ -189,6 +196,7 @@ export async function selectedDraft(
   if (retained) {
     const mutable = new Set([
       "model",
+      "aiService",
       "provider",
       "reasoning",
       "llmKeyFile",
@@ -328,8 +336,22 @@ export async function selectedDraft(
   if (!config.models && preset)
     config.models = {
       mode: "litellm",
-      configurationFile: recipeModelFile(preset, inputs, context.modelCatalog),
-      upstreamEnvironmentFile: "",
+      configurationFile: recipeModelFile(
+        preset,
+        inputs,
+        context.modelCatalog,
+        context.cloudUrl,
+      ),
+      upstreamEnvironmentFile:
+        preset.service === "cloud" ? "./secrets/cloud-ai.env" : "",
+      ...(preset.service === "cloud"
+        ? {
+            cloud: {
+              url: context.cloudUrl,
+              registrationFile: "./secrets/ai-registration.json",
+            },
+          }
+        : {}),
     };
   if (o.modelCatalog)
     config.models =
@@ -340,6 +362,30 @@ export async function selectedDraft(
             configurationFile: o.modelCatalog,
             upstreamEnvironmentFile: "",
           };
+  if (
+    o.aiService === "cloud" &&
+    (o.provider || o.llmKeyFile || o.providerEnvFile || o.modelGatewayUrl)
+  )
+    invalid(
+      "Cloud AI uses its own scoped credential. Do not supply provider keys or an external gateway.",
+    );
+  const requestedService =
+    o.aiService ??
+    (o.provider || o.llmKeyFile || o.providerEnvFile ? "provider" : undefined);
+  let changedAiService = false;
+  if (requestedService && config.models) {
+    if (config.models.mode === "external")
+      invalid("Select a bundled model gateway before changing its AI service.");
+    if (Boolean(config.models.cloud) !== (requestedService === "cloud")) {
+      changedAiService = true;
+      config.models = await selectAiService(
+        requestedService,
+        config.models,
+        context.modelCatalog,
+        inputs,
+      );
+    }
+  }
   const current = config.models;
   const catalog = current
     ? await inputs.readJson(current.configurationFile)
@@ -413,7 +459,11 @@ export async function selectedDraft(
           "Select --model before choosing a provider or reasoning level.",
         );
       const existing = routes?.models.find((item) => item.id === id);
-      const offers = [...context.modelCatalog];
+      const isCloud =
+        config.models?.mode === "litellm" && Boolean(config.models.cloud);
+      const offers = context.modelCatalog.filter(
+        (offer) => (offer.provider === "ClawScarf Cloud") === isCloud,
+      );
       if (
         existing?.route &&
         !offers.some(
@@ -458,7 +508,7 @@ export async function selectedDraft(
         offer,
         thinking,
         inputs,
-        Boolean(retained),
+        Boolean(retained) && !changedAiService,
       );
     }
   }
@@ -468,7 +518,7 @@ export async function selectedDraft(
     invalid("Use --model-gateway-key-file for an existing gateway.");
   if (!config.models && (o.llmKeyFile || o.providerEnvFile))
     invalid("Select a recipe model or --model before supplying credentials.");
-  if (config.models?.mode === "litellm") {
+  if (config.models?.mode === "litellm" && !config.models.cloud) {
     if (o.providerEnvFile)
       config.models.upstreamEnvironmentFile = o.providerEnvFile;
     if (o.llmKeyFile) {
@@ -506,6 +556,11 @@ export async function selectedDraft(
       inputs.directory,
       "secrets/connections-registration.json",
     );
+    if (config.models?.mode === "litellm" && config.models.cloud)
+      config.models.cloud.registrationFile = resolve(
+        inputs.directory,
+        "secrets/ai-registration.json",
+      );
   }
   return config;
 }

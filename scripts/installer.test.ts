@@ -1,3 +1,4 @@
+import { releaseSchema } from "./release/definition.js";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -848,7 +849,7 @@ await test(
 );
 
 await test(
-  "recipe reviews defaults before asking for missing credentials; CLI settings skip credential questions",
+  "Cloud recipe reviews prepaid services without asking for provider credentials",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -860,19 +861,23 @@ await test(
       f.recipe,
       JSON.stringify({ ...preset, runtime: f.release }),
     );
+    await writeFile(
+      f.release,
+      JSON.stringify({
+        ...releaseSchema.parse(await readJson(f.release)),
+        cloudBilling: true,
+      }),
+    );
     const ui = new Answers(f.answers);
     const draft = await collectInstallation(ui, {
       recipe: f.recipe,
       directory: f.directory,
     });
     assert.equal(draft.config.agentName, preset.defaults.agentName);
-    assert.ok(ui.questions.includes("secret:OpenAI API key"));
+    assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
-    assert.ok(
-      ui.questions.findIndex((question) =>
-        question.endsWith("— configure installation"),
-      ) < ui.questions.indexOf("secret:OpenAI API key"),
-    );
+    assert.match(ui.notes.join(), /Prepaid usage/);
+    assert.ok(!ui.notes.join().includes("$1"));
     assert.ok(!ui.questions.includes("Connections"));
     const file = await saveConfiguration(
       draft.directory,
@@ -886,10 +891,11 @@ await test(
     const { gatewayRoutesSchema, configurationSchema, nativeAssignments } =
       await import("./models/configuration.js");
     const routes = gatewayRoutesSchema.parse(modelConfig);
-    assert.equal(routes.defaultModel, "gpt-6-astra");
+    assert.equal(routes.defaultModel, "openai/gpt-6-astra");
     assert.deepEqual(routes.models[0]?.route, {
-      model: "openai/gpt-6-astra",
-      apiKeyEnv: "OPENAI_API_KEY",
+      model: "openai/openai/gpt-6-astra",
+      apiKeyEnv: "CLAWSCARF_CLOUD_AI_KEY",
+      apiBase: "https://cloud.clawscarf.com/v1",
     });
     assert.equal(routes.thinkingDefault, "medium");
     assert.ok(
@@ -955,7 +961,7 @@ await test(
 );
 
 await test(
-  "noninteractive setup rejects absent or disabled Models before creating any files",
+  "noninteractive provider setup rejects missing credentials and unknown models before creating files",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -965,6 +971,7 @@ await test(
       prepareConfiguration({
         recipe: f.recipe,
         directory: f.directory,
+        aiService: "provider",
       }),
       { code: "invalid_configuration" },
     );
@@ -1233,6 +1240,7 @@ await test(
             [
               "review",
               "public-web",
+              "ai-service",
               "models",
               "connections",
               "packs",
@@ -1337,6 +1345,84 @@ await test(
     ]);
   },
 );
+
+for (const mode of ["menu", "flags"] as const)
+  await test(
+    `switching retained Cloud AI to an own-key model needs only its selected provider (${mode})`,
+    local,
+    async (t) => {
+      const f = await fixture(t);
+      await writeFile(
+        f.release,
+        JSON.stringify({
+          ...releaseSchema.parse(await readJson(f.release)),
+          cloudBilling: true,
+        }),
+      );
+      const first = await collectInstallation(new Answers(f.answers), f);
+      const { setupContext } = await import("./installation/setup.js");
+      const { selectAiService } = await import("./installation/models.js");
+      const { selectedDraft } = await import("./installation/options.js");
+      const { gatewayRoutesSchema } = await import("./models/configuration.js");
+      const context = await setupContext(f);
+      first.config.models = await selectAiService(
+        "cloud",
+        first.config.models,
+        context.modelCatalog,
+        first.inputs,
+      );
+      const key = join(f.parent, "openrouter-key");
+      await writeFile(key, "test-own-provider-key", { mode: 0o600 });
+      const ui = new Answers(
+        {
+          ...f.answers,
+          "AI service": "provider",
+          "Default model": "gpt-5.6-luna",
+          Provider: "openrouter/openai/gpt-5.6-luna",
+          Reasoning: "low",
+          "secret:OpenRouter API key": "test-own-provider-key",
+        },
+        ["ai-service", "models"],
+      );
+      const result =
+        mode === "menu"
+          ? await collectInstallation(
+              ui,
+              { recipe: f.recipe, existing: true },
+              first,
+            )
+          : {
+              inputs: first.inputs,
+              config: await selectedDraft(
+                context,
+                "team-server",
+                {
+                  aiService: "provider",
+                  provider: "openrouter",
+                  model: "gpt-5.6-luna",
+                  reasoning: "low",
+                  llmKeyFile: key,
+                },
+                first.inputs,
+                first.config,
+              ),
+            };
+      const models = result.config.models;
+      assert.equal(models?.mode, "litellm");
+      assert.equal(models.cloud, undefined);
+      const routes = gatewayRoutesSchema.parse(
+        await result.inputs.readJson(models.configurationFile),
+      );
+      assert.deepEqual(
+        routes.models.map((model) => model.route?.model),
+        ["openrouter/openai/gpt-5.6-luna"],
+      );
+      assert.equal(routes.defaultModel, "gpt-5.6-luna");
+      assert.equal(routes.thinkingDefault, "low");
+      assert.ok(models.upstreamEnvironmentFile);
+      assert.ok(!ui.questions.includes("secret:OpenAI API key"));
+    },
+  );
 
 await test(
   "retained default changes preserve previously configured model routes for native overrides",
@@ -2033,7 +2119,7 @@ await test("image download reports layer progress, hides registry errors and sup
 });
 
 await test(
-  "no recipe flag lists bundled recipes and uses their runtime with staging defaults",
+  "no recipe flag uses the published runtime with provider-key AI and staging login",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -2044,6 +2130,7 @@ await test(
     const result = await collectInstallation(ui, {
       directory: f.directory,
       cloudUrl: "https://cloud-staging.clawscarf.com",
+      aiService: "provider",
     });
     assert.ok(ui.questions.includes("Starting point"));
     assert.equal(result.config.releaseFile, resolve("runtime/current.json"));
@@ -2058,5 +2145,75 @@ await test(
       result.config.connections.cloudUrl,
     );
     await assert.rejects(lstat(f.directory), { code: "ENOENT" });
+  },
+);
+
+await test(
+  "Cloud AI refuses an older runtime before reading registration secrets",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const draft = await collectInstallation(new Answers(f.answers), f);
+    assert.equal(draft.config.models.mode, "litellm");
+    draft.config.models.cloud = {
+      url: "https://cloud.example",
+      registrationFile: "secrets/not-registered.json",
+    };
+    const file = await saveConfiguration(
+      f.directory,
+      draft.config,
+      draft.inputs,
+    );
+    const { resolveInstallation } = await import("./installation/resolve.js");
+    await assert.rejects(
+      resolveInstallation(file, []),
+      /runtime predates Cloud AI/,
+    );
+  },
+);
+
+await test(
+  "Cloud AI keeps its chosen registration when optional Connections is disabled",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const draft = await collectInstallation(new Answers(f.answers), f);
+    assert.equal(draft.config.models.mode, "litellm");
+    const cloudUrl = "https://cloud.example";
+    draft.config.models.cloud = {
+      url: cloudUrl,
+      registrationFile: "./secrets/ai-registration.json",
+    };
+    draft.config.connections = {
+      ...draft.config.connections,
+      mode: "hosted",
+      cloudUrl,
+    };
+    const file = await saveConfiguration(
+      f.directory,
+      draft.config,
+      draft.inputs,
+    );
+    const original = installationSchema.parse(await readJson(file));
+    const { aiRegistration } = await import("./cloud/registration.js");
+    assert.equal(
+      aiRegistration(original)?.registrationFile,
+      original.connections.registrationFile,
+    );
+    const { resolveConfigurationInputs } =
+      await import("./installation/configure.js");
+    const accepted = resolveConfigurationInputs(original, f.directory);
+    accepted.connections = { ...accepted.connections, mode: "disabled" };
+    const retained = await saveConfiguration(
+      join(f.parent, "retained-ai"),
+      accepted,
+      undefined,
+      true,
+    );
+    const next = installationSchema.parse(await readJson(retained));
+    assert.deepEqual(
+      aiRegistration(next),
+      aiRegistration(resolveConfigurationInputs(original, f.directory)),
+    );
   },
 );

@@ -31,6 +31,7 @@ const tool = z.partialRecord(hostPlatformSchema, file);
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/),
+  cloudBilling: z.literal(true).optional(),
   sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
   platforms: z.array(hostPlatformSchema).min(1),
   images: z

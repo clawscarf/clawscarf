@@ -146,6 +146,7 @@ export function composeConfiguration(
         volumes: [
           "access.json",
           "companion.json",
+          ...(input.cloudServices?.length ? ["cloud-services"] : []),
           "encryption.key",
           "management-ca.pem",
           "management-cert.pem",

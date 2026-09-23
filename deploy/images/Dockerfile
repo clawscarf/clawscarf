@@ -39,6 +39,7 @@ WORKDIR /build/plugins/access
 COPY plugins/access/ ./
 COPY plugins/common/native-page.ts /build/plugins/common/native-page.ts
 COPY services/access/generated/ /build/services/access/generated/
+COPY services/cloud/management/generated/ /build/services/cloud/management/generated/
 COPY generated/http/ /build/generated/http/
 RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
     && npm run build \

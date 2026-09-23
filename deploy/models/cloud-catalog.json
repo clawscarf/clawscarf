@@ -1,0 +1,252 @@
+[
+  {
+    "id": "openai/gpt-6-luna-pro",
+    "name": "OpenAI: GPT-6 Luna Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 120005,
+    "outputMicrosPerMillion": 600025,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-6-luna",
+    "name": "OpenAI: GPT-6 Luna",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 120005,
+    "outputMicrosPerMillion": 600025,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-6-sol-pro",
+    "name": "OpenAI: GPT-6 Sol Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 12000481,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-6-sol",
+    "name": "OpenAI: GPT-6 Sol",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 12000481,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-5.5",
+    "name": "Anthropic: Claude Opus 5.5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 4800193,
+    "outputMicrosPerMillion": 24000961,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-6-astra",
+    "name": "OpenAI: GPT-6 Astra",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 12000481,
+    "outputMicrosPerMillion": 60002401,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-6-astra-pro",
+    "name": "OpenAI: GPT-6 Astra Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 12000481,
+    "outputMicrosPerMillion": 60002401,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-fable-5.1",
+    "name": "Anthropic: Claude Fable 5.1",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 12000481,
+    "outputMicrosPerMillion": 60002401,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-5",
+    "name": "Anthropic: Claude Opus 5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 6000241,
+    "outputMicrosPerMillion": 30001201,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-luna-pro",
+    "name": "OpenAI: GPT-5.6 Luna Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 240010,
+    "outputMicrosPerMillion": 1440058,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-luna",
+    "name": "OpenAI: GPT-5.6 Luna",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 240010,
+    "outputMicrosPerMillion": 1440058,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-terra-pro",
+    "name": "OpenAI: GPT-5.6 Terra Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 14400577,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-terra",
+    "name": "OpenAI: GPT-5.6 Terra",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 14400577,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-sol-pro",
+    "name": "OpenAI: GPT-5.6 Sol Pro",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 12000481,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "openai/gpt-5.6-sol",
+    "name": "OpenAI: GPT-5.6 Sol",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1050000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 12000481,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-sonnet-5",
+    "name": "Anthropic: Claude Sonnet 5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 2400097,
+    "outputMicrosPerMillion": 12000481,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-fable-5",
+    "name": "Anthropic: Claude Fable 5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 12000481,
+    "outputMicrosPerMillion": 60002401,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-4.8",
+    "name": "Anthropic: Claude Opus 4.8",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 6000241,
+    "outputMicrosPerMillion": 30001201,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-4.7",
+    "name": "Anthropic: Claude Opus 4.7",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 6000241,
+    "outputMicrosPerMillion": 30001201,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-sonnet-4.6",
+    "name": "Anthropic: Claude Sonnet 4.6",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 3600145,
+    "outputMicrosPerMillion": 18000721,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-4.6",
+    "name": "Anthropic: Claude Opus 4.6",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 128000,
+    "inputMicrosPerMillion": 6000241,
+    "outputMicrosPerMillion": 30001201,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-4.5",
+    "name": "Anthropic: Claude Opus 4.5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 200000,
+    "maxOutputTokens": 64000,
+    "inputMicrosPerMillion": 6000241,
+    "outputMicrosPerMillion": 30001201,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-sonnet-4.5",
+    "name": "Anthropic: Claude Sonnet 4.5",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 1000000,
+    "maxOutputTokens": 64000,
+    "inputMicrosPerMillion": 3600145,
+    "outputMicrosPerMillion": 18000721,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-opus-4.1",
+    "name": "Anthropic: Claude Opus 4.1",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 200000,
+    "maxOutputTokens": 32000,
+    "inputMicrosPerMillion": 18000721,
+    "outputMicrosPerMillion": 90003601,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  },
+  {
+    "id": "anthropic/claude-sonnet-4",
+    "name": "Anthropic: Claude Sonnet 4",
+    "protocols": ["chat/completions", "responses"],
+    "contextTokens": 200000,
+    "maxOutputTokens": 64000,
+    "inputMicrosPerMillion": 3600145,
+    "outputMicrosPerMillion": 18000721,
+    "rateVersion": "openrouter-2026-09-22-bp8333"
+  }
+]

@@ -32,7 +32,9 @@ The terminal setup walks you through it, downloads the runtime, and opens OpenCl
 in your browser. Your sign-in becomes the first administrator account. No checkout,
 Docker configuration files or separate OpenClaw installation required.
 
-You’ll need Docker and a model-provider API key. Check the
+You’ll need Docker. The Team server recipe recommends ClawScarf Cloud for free
+team login and prepaid AI; using your own model-provider API key is also supported.
+Optional Connections uses prepaid packs beyond your account’s allowance. Check the
 [platform requirements](deploy/deployment/installation.md) before installing.
 
 <details>
@@ -98,7 +100,8 @@ This view is filtered to service startup events.
 | **Use your preferred models**          | Choose the provider, model and reasoning level in setup. Run `clawscarf configure` again to change them.                  |
 
 Review the [recipe settings](recipes/README.md) and choose your provider and model.
-Usage is billed by your provider; its API key stays outside OpenClaw.
+AI uses Cloud credits or your provider’s billing, according to your selection.
+Provider keys and scoped Cloud inference credentials stay outside OpenClaw.
 
 Setup opens **[http://127.0.0.1:18800](http://127.0.0.1:18800)** by default.
 That address is local to your machine. To share the server with teammates, use a

@@ -1,7 +1,7 @@
 {
   "id": "team-server",
   "name": "Team server",
-  "description": "A shared OpenClaw workspace for your team. Invite teammates, assign roles and connect the services you work with.",
+  "description": "A shared OpenClaw workspace for your team. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
   "maturity": "supported",
   "defaults": {
     "agentName": "ClawScarf",
@@ -20,10 +20,11 @@
     "publicWeb": true
   },
   "models": {
-    "model": "gpt-6-astra",
+    "service": "cloud",
+    "model": "openai/gpt-6-astra",
     "provider": "openai",
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",
-  "version": "0.1.4"
+  "version": "0.1.5"
 }

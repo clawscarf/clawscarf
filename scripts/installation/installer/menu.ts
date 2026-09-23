@@ -47,9 +47,11 @@ export function installationMenu(
     ),
     row(
       "access",
-      "Access",
-      config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC",
-      "Configure your own OIDC provider (optional)",
+      "Team login",
+      config.access.mode === "hosted"
+        ? "ClawScarf Cloud · Free"
+        : "Custom OIDC",
+      "Free team sign-in; company OIDC is also available",
     ),
     row(
       "exposure",
@@ -64,11 +66,28 @@ export function installationMenu(
       config.publicWeb ? "On" : "Off",
       "HTTP(S) for agents and tools; private destinations blocked",
     ),
-    row("models", "Models", modelSummary ?? "Choose a model"),
+    row(
+      "ai-service",
+      "AI service",
+      config.models?.mode === "external"
+        ? "Existing LiteLLM gateway"
+        : config.models?.cloud
+          ? "ClawScarf Cloud · Recommended · Prepaid"
+          : "Your API key · Provider billing",
+      config.models?.mode === "litellm" && config.models.cloud
+        ? "No provider key to manage. AI pauses when credits run out."
+        : undefined,
+    ),
+    row("models", "Default model", modelSummary ?? "Choose a model"),
     row(
       "connections",
       "Connections",
-      config.connections.mode === "disabled" ? "Off" : "On",
+      config.connections.mode === "disabled"
+        ? "Off"
+        : "ClawScarf Cloud · Paid beyond allowance",
+      config.connections.mode === "disabled"
+        ? undefined
+        : "Connect business apps; extra usage uses prepaid packs",
     ),
     row(
       "packs",
@@ -100,11 +119,18 @@ export function installationMenu(
   return existing
     ? [
         ...choices.filter(({ value }) =>
-          ["review", "models", "connections", "packs", "public-web"].includes(
-            value,
-          ),
+          [
+            "review",
+            "ai-service",
+            "models",
+            "connections",
+            "packs",
+            "public-web",
+          ].includes(value),
         ),
-        { value: "model-credentials", label: "Change LLM API keys" },
+        ...(config.models?.mode === "litellm" && config.models.cloud
+          ? []
+          : [{ value: "model-credentials", label: "Change LLM API keys" }]),
       ]
     : choices;
 }

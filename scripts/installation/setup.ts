@@ -16,6 +16,7 @@ import {
 } from "./recipes/catalog.js";
 import { defaultCloudUrl } from "../cloud/url.js";
 import type { ModelCatalog } from "../models/catalog.js";
+import { cloudAiVariable } from "../cloud/models.js";
 
 export type SetupOptions = {
   recipe?: string;
@@ -42,6 +43,9 @@ export async function setupContext(
   retainedRelease?: string,
 ) {
   const catalog = await installationCatalog();
+  for (const offer of catalog.modelCatalog)
+    if (offer.provider === "ClawScarf Cloud")
+      offer.model.route.apiBase = (options.cloudUrl ?? defaultCloudUrl) + "/v1";
   let recipe = catalog.recipes.find((recipe) => recipe.id === options.recipe);
   if (!retainedRelease && !recipe) {
     if (!options.recipe)
@@ -125,10 +129,19 @@ export function recipeModelFile(
   models: Recipe["models"],
   inputs: SetupInputs,
   catalog: ModelCatalog,
+  cloudUrl = defaultCloudUrl,
 ) {
+  const routes = recipeModelRoutes(models, catalog);
+  if (models.service === "cloud")
+    for (const model of routes.models)
+      model.route = {
+        model: `openai/${model.id}`,
+        apiKeyEnv: cloudAiVariable,
+        apiBase: cloudUrl + "/v1",
+      };
   return inputs.set(
     "recipe-models.json",
-    JSON.stringify(recipeModelRoutes(models, catalog), null, 2) + "\n",
+    JSON.stringify(routes, null, 2) + "\n",
   );
 }
 
@@ -143,6 +156,15 @@ export function assertReleaseCapabilities(
     throw new InstallationError(
       "invalid_configuration",
       "This release does not include browser images.",
+    );
+  if (
+    config.models.mode === "litellm" &&
+    config.models.cloud &&
+    !context.release.cloudBilling
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "This runtime predates Cloud AI and Account billing. Select a runtime with Cloud billing support, or use your own provider key.",
     );
   if (config.models.mode === "litellm" && !context.release.images.models)
     throw new InstallationError(

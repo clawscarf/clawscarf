@@ -23,6 +23,12 @@ CLI installation, platform requirements and runtime downloads. Use the
 The tracked [current runtime](../runtime/current.json) selects a published release
 by exact image digests and downloadable tool checksums. The development command
 reads it from the checkout; it does not query a remote latest version or build images.
+The `cloudBilling: true` manifest field declares companion and native plugin support
+for Account billing and Cloud AI. Candidates built from this source declare it;
+custom development manifests must declare it only with matching newly built images.
+The installer refuses Cloud AI on earlier runtimes, while provider-key and existing
+Connections setups keep their prior behavior. The currently published runtime pin
+is unchanged by this source feature.
 New installations retain their own copy. Updating this file or the CLI never changes
 an existing installation's saved selection.
 

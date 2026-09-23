@@ -1,7 +1,7 @@
 import { openPack } from "../packs/source.js";
 import { retainRuntime } from "./runtime.js";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { readInputFile } from "./files.js";
 import {
   installationSchema,
@@ -60,7 +60,23 @@ export async function saveConfiguration(
       config.models.credentialFile,
       "model-key",
     );
-  if (config.models.mode === "litellm")
+  if (config.models.mode === "litellm" && config.models.cloud) {
+    // Bind once to the selected registration; later Connections toggles cannot replace AI identity.
+    if (!retained || !isAbsolute(config.models.cloud.registrationFile)) {
+      const cloud = config.models.cloud;
+      if (
+        config.access.mode === "hosted" &&
+        config.access.cloudUrl === cloud.url
+      )
+        cloud.registrationFile = config.access.registrationFile;
+      else if (
+        config.connections.mode === "hosted" &&
+        config.connections.cloudUrl === cloud.url
+      )
+        cloud.registrationFile = config.connections.registrationFile;
+    }
+    config.models.upstreamEnvironmentFile = "./secrets/cloud-ai.env";
+  } else if (config.models.mode === "litellm")
     config.models.upstreamEnvironmentFile = await secret(
       config.models.upstreamEnvironmentFile,
       "models.env",

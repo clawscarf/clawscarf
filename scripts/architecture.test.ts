@@ -177,7 +177,7 @@ await test("domain layers and the public access seam enforce allowed and forbidd
         "cloud/http",
         "../../access/types/native.js",
         "../../access/repo/private.js",
-        "connections-use-access-public-boundary",
+        "cloud-adapters-use-access-public-boundary",
       ],
     ];
     await write("services/access/types/local.ts", "export const value = 1;");

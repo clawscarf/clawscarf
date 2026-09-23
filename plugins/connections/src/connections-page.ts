@@ -458,6 +458,12 @@ export const connections: ControlUiView = (container, context) => {
     rows.append(
       element("small", `Resets ${new Date(usage.resetsAt).toLocaleString()}`),
     );
+    rows.append(
+      element(
+        "small",
+        "For ClawScarf Cloud allowances and prepaid actions packs, open Account. Only the Cloud account owner can purchase.",
+      ),
+    );
     usageArea.append(rows);
   }
   const returned = new URLSearchParams(window.location.hash.slice(1));

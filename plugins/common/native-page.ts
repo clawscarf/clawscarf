@@ -105,6 +105,19 @@ export function page<T extends { csrfToken: string }>(
     .clawscarf-invitations li{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
     .clawscarf-invitations li>div:first-child{flex:1;min-width:160px;overflow-wrap:anywhere}
     .clawscarf-page td .btn{margin:2px}
+    .clawscarf-account-identity{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+    .clawscarf-account-identity h3,.clawscarf-account-identity p{margin:4px 0;overflow-wrap:anywhere}
+    .clawscarf-cloud{display:grid;gap:16px}.clawscarf-cloud h3,.clawscarf-cloud h4,.clawscarf-cloud h5{margin:0 0 8px}
+    .clawscarf-cloud p{margin:8px 0 12px}.clawscarf-cloud-service{border-top:1px solid var(--border);padding-top:12px;min-width:0}
+    .clawscarf-cloud-service>header{justify-content:space-between;margin-bottom:12px}.clawscarf-cloud-service>header h4{margin:0;overflow-wrap:anywhere}
+    .clawscarf-cloud-balances{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:16px}
+    .clawscarf-cloud-balances>section{border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+    .clawscarf-cloud .clawscarf-cloud-amount{font-size:28px;font-weight:600;line-height:1.2;margin:12px 0 4px;font-variant-numeric:tabular-nums}
+    .clawscarf-cloud-payment{margin:24px 0 16px}.clawscarf-cloud-packs{margin:20px 0 12px}
+    .clawscarf-cloud-packs h5{font-size:inherit}.clawscarf-cloud-packs .btn{display:inline-flex;align-items:flex-start;flex-direction:column;min-width:180px}
+    .clawscarf-cloud-packs .btn small{color:inherit;font-weight:400}.clawscarf-cloud table{font-variant-numeric:tabular-nums}
+    .clawscarf-cloud-service .btn{margin:4px 8px 4px 0;white-space:normal;text-align:left}
+    .clawscarf-cloud [role=status]:not(:empty)::before{content:none}
     @media(max-width:600px){
       .clawscarf-catalog-filters{grid-template-columns:1fr}
       .clawscarf-page{padding:0 12px;margin:16px auto}
@@ -117,6 +130,12 @@ export function page<T extends { csrfToken: string }>(
       .clawscarf-page td{border:0;padding:0;min-width:0}
       .clawscarf-page td:first-child{grid-column:1/-1}
       .clawscarf-connections-table td:last-child{grid-column:1/-1;text-align:left}
+      .clawscarf-cloud-packs .btn{width:100%;margin-right:0}
+      .clawscarf-page .clawscarf-cloud table thead{display:table-header-group}
+      .clawscarf-page .clawscarf-cloud tbody{display:table-row-group}
+      .clawscarf-page .clawscarf-cloud tr{display:table-row}
+      .clawscarf-page .clawscarf-cloud td{padding:8px 4px}
+      .clawscarf-page .clawscarf-cloud td:last-child{width:auto}
     }
     @keyframes clawscarf-spin{to{transform:rotate(360deg)}}
     @media(prefers-reduced-motion:reduce){.clawscarf-page [role=status]::before{animation:none}}
@@ -177,7 +196,10 @@ export function page<T extends { csrfToken: string }>(
     return value;
   }
   async function run(work: () => Promise<void>, label: string) {
-    if (busy || context.signal.aborted) return;
+    if (busy || context.signal.aborted) return false;
+    const focused = document.activeElement;
+    const focusId =
+      focused instanceof HTMLElement ? focused.dataset.focusId : undefined;
     pending(true, label);
     error.textContent = "";
     try {
@@ -185,8 +207,19 @@ export function page<T extends { csrfToken: string }>(
     } catch (cause) {
       if (!context.signal.aborted) error.textContent = failure(cause);
     } finally {
-      if (!context.signal.aborted) pending(false);
+      if (!context.signal.aborted) {
+        pending(false);
+        if (
+          focusId &&
+          (document.activeElement === document.body ||
+            document.activeElement === focused)
+        )
+          [...root.querySelectorAll<HTMLElement>("[data-focus-id]")]
+            .find((control) => control.dataset.focusId === focusId)
+            ?.focus({ preventScroll: true });
+      }
     }
+    return true;
   }
   return {
     root,

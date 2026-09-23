@@ -7,6 +7,8 @@ import { modelCatalogSchema } from "../../models/catalog.js";
 import { openPack } from "../../packs/source.js";
 import { recipeModelRoutes } from "../models.js";
 import { InstallationError } from "../errors.js";
+import { cloudModelsSchema, cloudModelCatalog } from "../../cloud/models.js";
+import { defaultCloudUrl } from "../../cloud/url.js";
 
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -31,6 +33,10 @@ export async function installationCatalog(root = packageRoot) {
   const modelCatalog = modelCatalogSchema.parse(
     await readJson(join(root, "deploy/models/catalog.json")),
   );
+  const cloudModels = cloudModelsSchema.parse(
+    await readJson(join(root, "deploy/models/cloud-catalog.json")),
+  );
+  modelCatalog.push(...cloudModelCatalog(cloudModels, defaultCloudUrl));
   const packEntries = await readdir(join(root, "packs"), {
     withFileTypes: true,
   });

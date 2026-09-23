@@ -1,5 +1,9 @@
 import { verifyReleaseTool } from "./files.js";
-import { hostedOidc, hostedConnections } from "../cloud/registration.js";
+import {
+  hostedOidc,
+  hostedConnections,
+  hostedBilling,
+} from "../cloud/registration.js";
 import { dirname, resolve, join } from "node:path";
 import { loadGatewayConfiguration } from "../deployment/model-gateway.js";
 import { createServer } from "node:net";
@@ -18,6 +22,7 @@ import { installationSchema } from "./configuration.js";
 import { fingerprint, readInputFile, readJson } from "./files.js";
 import { InstallationError } from "./errors.js";
 import { openPack } from "../packs/source.js";
+import { validateCloudRoutes } from "../cloud/models.js";
 
 export async function allocatePorts() {
   const servers = Array.from({ length: 7 }, () => createServer());
@@ -64,6 +69,15 @@ export async function resolveInstallation(
   const releasePath = path(config.releaseFile);
   const release = releaseSchema.parse(await readJson(releasePath));
   if (
+    config.models.mode === "litellm" &&
+    config.models.cloud &&
+    !release.cloudBilling
+  )
+    throw new InstallationError(
+      "invalid_configuration",
+      "This runtime predates Cloud AI and Account billing. Select a runtime with Cloud billing support, or use your own provider key.",
+    );
+  if (
     !release.platforms.some(
       (platform) => platform === `${process.platform}-${process.arch}`,
     )
@@ -104,7 +118,18 @@ export async function resolveInstallation(
         }
       : config.access;
   const cloudConnections = await hostedConnections(config, configFile);
+  if (config.models.mode === "litellm" && config.models.cloud)
+    validateCloudRoutes(
+      await readJson(path(config.models.configurationFile)),
+      config.models.cloud.url,
+    );
+  const cloudServices = release.cloudBilling
+    ? await hostedBilling(config, configFile)
+    : [];
+  for (const target of cloudServices)
+    await inputFile(target.managementKeyFile, true);
   const input: LocalInput = parseLocalInput({
+    ...(cloudServices.length ? { cloudServices } : {}),
     name: config.name,
     agentName: config.agentName,
     administratorName: access.administratorName,
