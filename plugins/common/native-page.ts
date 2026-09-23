@@ -113,10 +113,12 @@ export function page<T extends { csrfToken: string }>(
     .clawscarf-cloud-balances{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:16px}
     .clawscarf-cloud-balances>section{border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
     .clawscarf-cloud .clawscarf-cloud-amount{font-size:28px;font-weight:600;line-height:1.2;margin:12px 0 4px;font-variant-numeric:tabular-nums}
-    .clawscarf-cloud-payment{margin:24px 0 16px}.clawscarf-cloud-packs{margin:20px 0 12px}
-    .clawscarf-cloud-packs h5{font-size:inherit}.clawscarf-cloud-packs .btn{display:inline-flex;align-items:flex-start;flex-direction:column;min-width:180px}
+    .clawscarf-cloud-payment{margin:24px 0 16px}.clawscarf-cloud-payment>small{display:block;margin:12px 0}
+    .clawscarf-cloud-packs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 12px}
+    .clawscarf-cloud-packs h5{flex-basis:100%;font-size:inherit}.clawscarf-cloud-packs .btn{display:inline-flex;align-items:flex-start;flex-direction:column;min-width:88px}
     .clawscarf-cloud-packs .btn small{color:inherit;font-weight:400}.clawscarf-cloud table{font-variant-numeric:tabular-nums}
     .clawscarf-cloud-service .btn{margin:4px 8px 4px 0;white-space:normal;text-align:left}
+    .clawscarf-cloud-service .clawscarf-cloud-packs .btn{margin:0}
     .clawscarf-cloud [role=status]:not(:empty)::before{content:none}
     @media(max-width:600px){
       .clawscarf-catalog-filters{grid-template-columns:1fr}
@@ -130,7 +132,7 @@ export function page<T extends { csrfToken: string }>(
       .clawscarf-page td{border:0;padding:0;min-width:0}
       .clawscarf-page td:first-child{grid-column:1/-1}
       .clawscarf-connections-table td:last-child{grid-column:1/-1;text-align:left}
-      .clawscarf-cloud-packs .btn{width:100%;margin-right:0}
+      .clawscarf-cloud-packs .btn{flex:1}
       .clawscarf-page .clawscarf-cloud table thead{display:table-header-group}
       .clawscarf-page .clawscarf-cloud tbody{display:table-row-group}
       .clawscarf-page .clawscarf-cloud tr{display:table-row}
