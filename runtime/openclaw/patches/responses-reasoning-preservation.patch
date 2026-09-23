@@ -1,0 +1,167 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Wed, 23 Sep 2026 18:24:06 +0200
+Subject: [PATCH] fix(agents): preserve dotted Responses reasoning ciphertext
+
+ClawScarf-Patch: responses-reasoning-preservation
+---
+ .../transcript-redact.responses.test.ts       | 113 ++++++++++++++++++
+ src/agents/transcript-redact.ts               |  11 +-
+ 2 files changed, 123 insertions(+), 1 deletion(-)
+ create mode 100644 src/agents/transcript-redact.responses.test.ts
+
+diff --git a/src/agents/transcript-redact.responses.test.ts b/src/agents/transcript-redact.responses.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..79869c6faa2a1e0e949d3e9760cf0dbf44dbabca
+--- /dev/null
++++ b/src/agents/transcript-redact.responses.test.ts
+@@ -0,0 +1,113 @@
++import { describe, expect, it } from "vitest";
++import type { OpenClawConfig } from "../config/types.openclaw.js";
++import { castAgentMessage } from "./test-helpers/agent-message-fixtures.js";
++import { redactTranscriptMessage } from "./transcript-redact.js";
++
++const config: OpenClawConfig = { logging: {} };
++const CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES = `gAAAA${"synthetic-base64url-".repeat(75)}`;
++const DOTTED_RESPONSES_CIPHERTEXT = `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.${Buffer.from("synthetic-openrouter-replay-routing").toString("base64url")}`;
++
++describe("Responses reasoning transcript redaction", () => {
++  it.each(["openai", "openrouter", "litellm", "clawscarf"])(
++    "preserves dotted Responses ciphertext through transcript serialization for %s",
++    (provider) => {
++      const replayItem = {
++        id: "rs_synthetic",
++        type: "reasoning",
++        summary: [],
++        status: "completed",
++        encrypted_content: DOTTED_RESPONSES_CIPHERTEXT,
++      };
++      const signature = JSON.stringify(replayItem);
++      for (const api of ["openai-responses", "openclaw-openai-responses-transport"]) {
++        const msg = castAgentMessage({
++          role: "assistant",
++          api,
++          model: "test-model",
++          provider,
++          content: [
++            {
++              type: "thinking",
++              thinking: "secret sk-abcdef1234567890xyz",
++              thinkingSignature: JSON.stringify({
++                ...replayItem,
++                summary: [{ type: "summary_text", text: "secret sk-abcdef1234567890xyz" }],
++                content: [{ type: "reasoning_text", text: "secret sk-abcdef1234567890xyz" }],
++              }),
++            },
++            { type: "text", text: DOTTED_RESPONSES_CIPHERTEXT },
++          ],
++        });
++        const result = redactTranscriptMessage(msg, config);
++        expect(result).toMatchObject({ content: [{ thinkingSignature: signature }, {}] });
++        const serialized = JSON.stringify(result);
++        expect(serialized).not.toContain("sk-abcdef1234567890xyz");
++        expect(result).not.toMatchObject({
++          content: [{}, { text: DOTTED_RESPONSES_CIPHERTEXT }],
++        });
++        const reloaded = castAgentMessage(JSON.parse(serialized));
++        expect(redactTranscriptMessage(reloaded, config)).toMatchObject({
++          content: [{ thinkingSignature: signature }, {}],
++        });
++      }
++    },
++  );
++
++  it.each([
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.`,
++    `.${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}..suffix`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.suffix.extra`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.not a token`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.suffix\n`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.suffix=middle`,
++    `${CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES}.suffix…`,
++  ])("does not preserve malformed dotted Responses ciphertext %s", (encryptedContent) => {
++    const msg = castAgentMessage({
++      role: "assistant",
++      api: "openai-responses",
++      model: "test-model",
++      provider: "openrouter",
++      content: [
++        {
++          type: "thinking",
++          thinking: "visible",
++          thinkingSignature: JSON.stringify({
++            type: "reasoning",
++            encrypted_content: encryptedContent,
++            summary: [],
++          }),
++        },
++      ],
++    });
++    expect(JSON.stringify(redactTranscriptMessage(msg, config))).not.toContain(
++      CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES,
++    );
++  });
++
++  it.each(["custom-provider-api", "anthropic-messages", "openai-completions"])(
++    "keeps dotted payload redaction on %s unchanged",
++    (api) => {
++      const msg = castAgentMessage({
++        role: "assistant",
++        api,
++        model: "test-model",
++        provider: "custom-provider",
++        content: [
++          {
++            type: "thinking",
++            thinking: "visible",
++            thinkingSignature: JSON.stringify({
++              type: "reasoning",
++              encrypted_content: DOTTED_RESPONSES_CIPHERTEXT,
++              summary: [],
++            }),
++          },
++        ],
++      });
++      expect(JSON.stringify(redactTranscriptMessage(msg, config))).not.toContain(
++        CIPHERTEXT_WITH_TOKEN_SHAPED_BYTES,
++      );
++    },
++  );
++});
+diff --git a/src/agents/transcript-redact.ts b/src/agents/transcript-redact.ts
+index bbed3625b754c196831cfe63424900f49dfc8f15..dfcd2d5a26fa24ad4aacb9158a38591e57f8aa67 100644
+--- a/src/agents/transcript-redact.ts
++++ b/src/agents/transcript-redact.ts
+@@ -70,6 +70,8 @@ const OPENAI_COMPLETIONS_APIS = new Set([
+   "openclaw-openai-completions-transport",
+ ]);
+ const OPAQUE_REPLAY_TOKEN_RE = /^[A-Za-z0-9+/_-]+={0,2}$/;
++// Responses gateways can append one base64url routing segment to the encrypted payload.
++const DOTTED_RESPONSES_CIPHERTEXT_RE = /^[A-Za-z0-9+/_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/;
+ const GOOGLE_THOUGHT_SIGNATURE_RE =
+   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+ // Transport replay fences use the two-word base-36 output from shortHash.
+@@ -145,6 +147,13 @@ function isStructurallyValidOpaqueReplayToken(value: string): boolean {
+   );
+ }
+ 
++function isOpenAIResponsesEncryptedContent(value: string): boolean {
++  return (
++    isStructurallyValidOpaqueReplayToken(value) ||
++    (value === value.trim() && DOTTED_RESPONSES_CIPHERTEXT_RE.test(value))
++  );
++}
++
+ function isCredentialSafeOpaqueReplayToken(value: string): boolean {
+   if (!isStructurallyValidOpaqueReplayToken(value)) {
+     return false;
+@@ -369,7 +378,7 @@ function sanitizeOpenAIReasoningSignature(
+   const encryptedContent = parsed.encrypted_content;
+   const hasEncryptedContent = Object.hasOwn(parsed, "encrypted_content");
+   const isValidEncryptedContent = isOpenAIResponsesRoute(route)
+-    ? isStructurallyValidOpaqueReplayToken
++    ? isOpenAIResponsesEncryptedContent
+     : isCredentialSafeOpaqueReplayToken;
+   if (
+     encryptedContent !== undefined &&

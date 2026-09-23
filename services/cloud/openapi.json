@@ -3393,6 +3393,16 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request or rejected encrypted reasoning. Structured upstream reasoning failures use code invalid_encrypted_content for client recovery; other request failures use invalid_request. Vendor details are not exposed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -3576,6 +3586,16 @@
           },
           "default": {
             "description": "Failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or rejected encrypted reasoning. Structured upstream reasoning failures use code invalid_encrypted_content for client recovery; other request failures use invalid_request. Vendor details are not exposed.",
             "content": {
               "application/json": {
                 "schema": {

@@ -178,3 +178,7 @@ into native `compat` metadata, including for internal calls such as permission
 reviewers that do not inherit the conversation's reasoning setting. Omitting
 `none` preserves the provider default for mandatory-reasoning models; it does not
 choose a different reviewer model or change permissions.
+
+Responses reasoning must survive transcript persistence unchanged. The
+[reasoning preservation patch](../../runtime/openclaw/patches/responses-reasoning-preservation.prompt.md)
+owns the encoded-payload validation and redaction boundary for routed Responses APIs.

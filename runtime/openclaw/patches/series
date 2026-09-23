@@ -11,3 +11,4 @@ remove-cloud-workers.patch
 browser-shared-artifacts.patch
 disable-native-github.patch
 managed-inference-cooldown.patch
+responses-reasoning-preservation.patch

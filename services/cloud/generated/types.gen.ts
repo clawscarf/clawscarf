@@ -2853,6 +2853,10 @@ export type AiChatCompletionsData = {
 
 export type AiChatCompletionsErrors = {
     /**
+     * Invalid request or rejected encrypted reasoning. Structured upstream reasoning failures use code invalid_encrypted_content for client recovery; other request failures use invalid_request. Vendor details are not exposed.
+     */
+    400: AiError;
+    /**
      * Failure
      */
     default: AiError;
@@ -2915,6 +2919,10 @@ export type AiResponsesData = {
 };
 
 export type AiResponsesErrors = {
+    /**
+     * Invalid request or rejected encrypted reasoning. Structured upstream reasoning failures use code invalid_encrypted_content for client recovery; other request failures use invalid_request. Vendor details are not exposed.
+     */
+    400: AiError;
     /**
      * Failure
      */
