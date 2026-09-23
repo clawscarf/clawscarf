@@ -39,6 +39,12 @@ jobs:
           source="$(jq -er 'select(.path == ".github/workflows/build-release.yml" and .event == "workflow_dispatch" and .head_branch == "main" and .conclusion == "success") | .head_sha' <<< "$run")"
           [[ "$source" =~ ^[0-9a-f]{40}$ ]]
           echo "sha=$source" >> "$GITHUB_OUTPUT"
+      - name: Check out current main for publication checks
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-candidate
@@ -49,6 +55,7 @@ jobs:
         with:
           node-version: 24.19.0
           registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
       - name: Publish the previously built artifacts
         id: publish
         working-directory: candidate
@@ -65,6 +72,13 @@ jobs:
           channel=latest
           prerelease=()
           if [[ "$version" == *-* ]]; then channel=next; prerelease=(--prerelease); fi
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          git show "$SOURCE_SHA:runtime/current.json" > "$RUNNER_TEMP/expected-runtime.json"
+          publication="$(node --import tsx ../scripts/release/publication.ts \
+            --current ../runtime/current.json \
+            --expected "$RUNNER_TEMP/expected-runtime.json" \
+            --candidate clawscarf-release.json \
+            --tarball "clawscarf-cli-$version.tgz")"
           # Make tool URLs available before exposing the npm installer.
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             mkdir existing
@@ -76,7 +90,9 @@ jobs:
               --title "ClawScarf $version" --generate-notes "${prerelease[@]}" ./*
           fi
           # npm trusted publishing must be configured for this workflow and environment.
-          npm publish "clawscarf-cli-$version.tgz" --access public --tag "$channel" --provenance
+          if [[ "$publication" == publish ]]; then
+            npm publish "clawscarf-cli-$version.tgz" --access public --tag "$channel" --provenance
+          fi
   advance-runtime:
     needs: publish
     runs-on: ubuntu-24.04

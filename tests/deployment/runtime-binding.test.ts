@@ -19,6 +19,7 @@ function fixture() {
     ownerId: "00000000-0000-4000-8000-000000000001",
     input: {
       name: "team",
+      agentName: "ClawScarf",
       administratorName: "Admin",
       publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,

@@ -5,6 +5,7 @@ import {
   element,
   button,
   confirm,
+  dialog,
   failure,
 } from "../../common/native-page.js";
 import { session } from "../../../services/access/generated/sdk.gen.js";
@@ -27,19 +28,26 @@ export const connections: ControlUiView = (container, context) => {
   let query = "";
   const search = element("input");
   search.type = "search";
+  search.hidden = true;
   search.placeholder = "Search connections";
   search.setAttribute("aria-label", "Search connections");
   search.oninput = () => {
     query = search.value.toLowerCase();
     render();
   };
+  const addConnection = () => {
+    void view.run(add, "Loading services…");
+  };
+  const addButton = button("Add connection", addConnection, "primary");
   view.header.append(
-    button("Refresh", () => {
-      void view.run(load, "Refreshing connections…");
-    }),
-    button("Add connection", () => {
-      void view.run(add, "Loading services…");
-    }),
+    button(
+      "Refresh",
+      () => {
+        void view.run(load, "Refreshing connections…");
+      },
+      "btn--ghost",
+    ),
+    addButton,
   );
   const tableArea = element("div"),
     usageArea = element("details");
@@ -81,6 +89,19 @@ export const connections: ControlUiView = (container, context) => {
     render();
   }
   function render() {
+    search.hidden = !items.length;
+    addButton.hidden = !items.length;
+    if (!items.length && !cursor) {
+      const empty = element("div");
+      empty.className = "clawscarf-empty";
+      empty.append(
+        element("h3", "Connect your team's services"),
+        element("p", "Link an account so your agents can work with it."),
+        button("Add connection", addConnection, "primary"),
+      );
+      tableArea.replaceChildren(empty);
+      return;
+    }
     const table = element("table"),
       head = element("thead"),
       row = element("tr"),
@@ -110,7 +131,11 @@ export const connections: ControlUiView = (container, context) => {
               needs_attention: "Needs attention",
               disconnected: "Disconnected",
             }[item.state];
-      const status = element("td", state);
+      const status = element("td");
+      const badge = element("span", state);
+      badge.className = "clawscarf-badge";
+      badge.dataset.state = item.state;
+      status.append(badge);
       if (item.failure) status.append(element("small", item.failure.detail));
       const setup = item.setup;
       if (setup && ["creating", "pending", "verifying"].includes(setup.state)) {
@@ -148,19 +173,22 @@ export const connections: ControlUiView = (container, context) => {
         }),
       );
       actions.append(
-        button(item.state === "connected" ? "Disconnect" : "Remove", () =>
-          confirm(
-            view,
-            item.state === "connected" ? "Disconnect" : "Remove",
-            `${item.state === "connected" ? "Disconnect" : "Remove"} ${item.name}?`,
-            async () => {
-              await api.disconnectConnection({
-                ...writes(item.revision),
-                path: { connectionId: item.id },
-              });
-              await load();
-            },
-          ),
+        button(
+          item.state === "connected" ? "Disconnect" : "Remove",
+          () =>
+            confirm(
+              view,
+              item.state === "connected" ? "Disconnect" : "Remove",
+              `${item.state === "connected" ? "Disconnect" : "Remove"} ${item.name}?`,
+              async () => {
+                await api.disconnectConnection({
+                  ...writes(item.revision),
+                  path: { connectionId: item.id },
+                });
+                await load();
+              },
+            ),
+          "btn--ghost",
         ),
       );
       tr.append(
@@ -222,21 +250,6 @@ export const connections: ControlUiView = (container, context) => {
     }
     await load();
   }
-  function dialog(title: string, content: HTMLElement) {
-    content.prepend(element("h3", title));
-    const mount = element("div");
-    view.root.append(mount);
-    const close = () => {
-      handle.dispose();
-      mount.remove();
-    };
-    const handle = context.host.components.mountDialog(mount, {
-      label: title,
-      content,
-      onCancel: close,
-    });
-    return close;
-  }
   async function add() {
     const catalog = (
       await api.listConnectors({ ...view.request, query: { limit: 100 } })
@@ -251,25 +264,58 @@ export const connections: ControlUiView = (container, context) => {
       catalog.items.push(...next.items);
       catalog.nextCursor = next.nextCursor;
     }
-    const form = element("div"),
-      filter = element("input"),
+    const filter = element("input"),
       list = element("div");
     list.className = "clawscarf-catalog";
     filter.type = "search";
+    filter.autofocus = true;
     filter.placeholder = "Search services";
     filter.setAttribute("aria-label", "Search services");
-    form.append(filter, list);
-    const close = dialog("Add connection", form);
-    form.append(button("Cancel", close));
+    const modal = dialog(view, "Add connection");
+    modal.body.classList.add("clawscarf-catalog-body");
+    const category = element("select");
+    category.setAttribute("aria-label", "Service category");
+    const all = element("option", "All categories");
+    all.value = "";
+    category.append(all);
+    for (const name of [
+      ...new Set(catalog.items.map((item) => item.category)),
+    ].sort((a, b) => a.localeCompare(b))) {
+      const option = element("option", name);
+      option.value = name;
+      category.append(option);
+    }
+    const filters = element("div");
+    filters.className = "clawscarf-catalog-filters";
+    filters.append(filter, category);
+    modal.body.append(filters, list);
+    modal.footer.append(button("Cancel", modal.close));
     const show = () => {
       list.replaceChildren();
-      for (const connector of catalog.items.filter((c) =>
-        `${c.name} ${c.description}`
-          .toLowerCase()
-          .includes(filter.value.toLowerCase()),
-      )) {
-        const choose = button(connector.name, () => {
-          close();
+      const results = catalog.items
+        .filter(
+          (item) =>
+            (!category.value || item.category === category.value) &&
+            `${item.name} ${item.description} ${item.category}`
+              .toLowerCase()
+              .includes(filter.value.trim().toLowerCase()),
+        )
+        .sort(
+          (a, b) =>
+            a.category.localeCompare(b.category) ||
+            a.name.localeCompare(b.name),
+        );
+      let group: HTMLElement | undefined;
+      let previousCategory: string | undefined;
+      for (const connector of results) {
+        if (previousCategory !== connector.category) {
+          group = element("section");
+          group.append(element("h4", connector.category));
+          list.append(group);
+          previousCategory = connector.category;
+        }
+        const choose = button("", () => {
+          modal.close();
           void view.run(async () => {
             const created = (
               await api.createConnection({
@@ -293,10 +339,22 @@ export const connections: ControlUiView = (container, context) => {
           icon.referrerPolicy = "no-referrer";
           choose.prepend(icon);
         }
-        choose.append(element("small", connector.description));
-        list.append(choose);
+        const text = element("span");
+        text.className = "clawscarf-identity-copy";
+        text.append(
+          element("span", connector.name),
+          element("small", connector.description),
+        );
+        choose.append(text);
+        group?.append(choose);
+      }
+      if (!list.children.length) {
+        const empty = element("p", "No matching services.");
+        empty.className = "clawscarf-muted";
+        list.append(empty);
       }
     };
+    category.onchange = show;
     filter.oninput = show;
     show();
     filter.focus();
@@ -307,6 +365,7 @@ export const connections: ControlUiView = (container, context) => {
       name = element("input"),
       label = element("label", "Name");
     name.value = item.name;
+    name.autofocus = true;
     name.required = true;
     name.maxLength = 120;
     label.append(name);
@@ -347,13 +406,14 @@ export const connections: ControlUiView = (container, context) => {
     choices.hidden = mode.value === "all";
     const error = element("p");
     error.setAttribute("role", "alert");
-    form.append(label, mode, choices, error);
-    const close = dialog("Edit connection", form);
-    form.append(button("Cancel", close));
+    const access = element("label", "Available to");
+    access.append(mode);
+    const modal = dialog(view, "Edit connection", form);
+    modal.body.append(label, access, choices, error);
     const save = element("button", "Save");
     save.type = "submit";
-    save.className = "btn";
-    form.append(save);
+    save.className = "btn primary";
+    modal.footer.append(button("Cancel", modal.close), save);
     form.onsubmit = (e) => {
       e.preventDefault();
       const grant: ConnectorAgentGrant =
@@ -362,6 +422,7 @@ export const connections: ControlUiView = (container, context) => {
           : { mode: "selected", agentIds: [...selected] };
       void view.run(async () => {
         error.textContent = "";
+        save.textContent = "Saving…";
         try {
           await api.updateConnection({
             ...writes(item.revision),
@@ -371,8 +432,10 @@ export const connections: ControlUiView = (container, context) => {
         } catch (cause) {
           error.textContent = failure(cause);
           return;
+        } finally {
+          save.textContent = "Save";
         }
-        close();
+        modal.close();
         await load();
       }, "Saving connection…");
     };

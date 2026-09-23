@@ -1,0 +1,30 @@
+{
+  "id": "personal-assistant",
+  "name": "Personal assistant",
+  "description": "An OpenClaw assistant for your research, writing and everyday work. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
+  "maturity": "supported",
+  "defaults": {
+    "agentName": "ClawScarf",
+    "resources": {
+      "runtime": {
+        "cpu": "4",
+        "memory": "4Gi"
+      }
+    },
+    "browser": {
+      "enabled": false
+    },
+    "connections": {
+      "enabled": true
+    },
+    "publicWeb": true
+  },
+  "models": {
+    "model": "openai/gpt-6-astra",
+    "provider": "openai",
+    "reasoning": "medium",
+    "service": "cloud"
+  },
+  "runtime": "../../runtime/current.json",
+  "version": "0.1.1"
+}

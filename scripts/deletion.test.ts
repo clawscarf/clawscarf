@@ -67,6 +67,7 @@ await test(
     const directory = join(root, "state");
     const state = await initializeState(directory, {
       name: "delete-test",
+      agentName: "ClawScarf",
       administratorName: "Ada",
       publicWeb: false,
       runtimeImage: `sha256:${"a".repeat(64)}`,

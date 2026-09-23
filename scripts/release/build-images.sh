@@ -30,7 +30,7 @@ echo '{}' > "$output/images.json"
 while read -r name dockerfile; do
   image="ghcr.io/${GITHUB_REPOSITORY,,}/$name:build-$GITHUB_RUN_ID-$IMAGE_ARCH"
   source_labels=()
-  if [[ "$name" == runtime ]]; then
+  if [[ "$name" == runtime || "$name" == browser-node ]]; then
     source_labels+=(--label "io.clawscarf.openclaw.upstream-revision=$upstream_revision"
       --label "io.clawscarf.openclaw.revision=$revision"
       --label "io.clawscarf.openclaw.source-tree=$source_tree"
@@ -51,6 +51,13 @@ while read -r name dockerfile; do
   fi
   if [[ "$name" == browser ]]; then
     CLAWSCARF_TEST_BROWSER_IMAGE="$image" node --import tsx --test tests/runtime/browser.test.ts
+  fi
+  if [[ "$name" == browser-node ]]; then
+    CLAWSCARF_TEST_BROWSER_NODE_IMAGE="$image" \
+      node --import tsx --test tests/runtime/browser-node-image.test.ts
+    CLAWSCARF_TEST_BROWSER_IMAGE="$(jq -er '.browser' "$output/images.json")" \
+      CLAWSCARF_TEST_BROWSER_NODE_IMAGE="$image" \
+      node --import tsx --test tests/runtime/browser-transfer.test.ts
   fi
   docker push "$image"
   digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"

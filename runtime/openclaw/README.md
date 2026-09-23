@@ -41,7 +41,8 @@ has plugin, core RPC and HTTP entry points; it is distinct from teammate enrollm
 bootstrap-token and pairing operations. Messaging channels are alternative inbound
 conversation paths with their own identity/admission rules, not merely Connections.
 
-Feature patches keep one native availability decision shared with the UI. Cover
+Optional feature controls keep one native availability decision shared with the UI;
+distribution removal patches delete the selected surface. Cover
 direct routes, search/palette/contextual links, prompts, RPC/HTTP, CLI/tools,
 background work and outbound calls. Disabled operations reject before effects;
 document restart requirements. Preserve shared administration APIs, native
@@ -56,6 +57,13 @@ before final layers are copied, and checks actual files and native discovery.
 Additional plugins are ClawScarf's own packages and the separately pinned Lobster.
 A catalog listing does not prove a plugin is installed or active. Built-in selection
 does not restrict administrator additions or delete user-installed packages.
+The [channel setup patch](patches/curated-channel-setup.prompt.md) keeps native
+setup and the Channels page aligned with locally available channel plugins.
+The [worker removal patch](patches/remove-cloud-workers.prompt.md) removes native
+remote session hosting while preserving browser-node management.
+The later [GitHub patch](patches/disable-native-github.prompt.md) disables native
+account linking, publication, previews and credential/background services through
+the runtime launcher. Ordinary links and deliberate Git/`gh` commands remain available.
 
 [Recipes](../../recipes/README.md) choose a pinned runtime and editable defaults;
 [packs](../../packs/README.md) supply native files. Several recipes can share an
@@ -122,7 +130,7 @@ reordering and rebasing. After preparation, initialize it in the OpenClaw checko
 ```sh
 stg init
 # Supply every series entry in reverse order (newest first), without .patch.
-stg uncommit curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
+stg uncommit disable-native-github browser-shared-artifacts remove-cloud-workers curated-channel-setup disable-server-updates remove-labs plugin-navigation-selection curated-image-inventory remove-systems-page membership-hot-reload browser-routing-guidance optional-marketplace
 stg series
 ```
 
@@ -183,10 +191,9 @@ behavior before dropping a patch already implemented upstream.
 Export updates the expected tree after exact replay. Run relevant upstream tests,
 type checks, full build and ClawScarf acceptance against the reconstructed source.
 A clean application cannot detect a newly introduced marketplace path or unwanted
-built-in; requalify implemented feature contracts and review the
-[pending inventory requirements](../../TODO.md#openclaw-curation). Upgrade
-candidate automation and a real newer-upstream qualification are not implemented
-by this initial workflow; the tooling trial exercised conflicting synthetic bases.
+built-in. Check behavior against the patch intents and packaged files against the
+[inventory](inventory.json). Upstream updates are manual; the tooling has only been
+tested across synthetic conflicting bases, not a newer upstream release.
 
 ## Release and verification boundaries
 
@@ -195,8 +202,8 @@ source before the existing Docker build. Both architectures must agree on the
 reconstructed revision, tree and patch-set digest. Candidate assets include
 source provenance and the exact patches/intents; these are validated against
 the candidate checkout before packaging. [Release documentation](../../release/README.md)
-owns publication. The browser-node controller still uses its separately pinned,
-published upstream image; these patches are built into the Gateway source image.
+owns publication. The Gateway and browser-node controller consume the same patched
+source image; the controller's immutable configuration enables only browser hosting.
 
 The [provenance generator](../../scripts/openclaw-patches.ts) records upstream and
 reconstructed commits, the source tree, ordered patch/intent hashes and the complete

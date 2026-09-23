@@ -98,6 +98,14 @@ function fixture(
         .object({ raw: z.string(), replacePaths: z.array(z.string()) })
         .parse(input);
       const patch: unknown = JSON.parse(request.raw);
+      if (
+        z.object({ gateway: z.object({ roles: z.unknown() }) }).safeParse(patch)
+          .success
+      ) {
+        config.gateway.roles.default = pendingRole;
+        writes++;
+        throw new NativeFailure("outcome_unknown");
+      }
       const auth = z
         .object({
           gateway: z.object({
@@ -168,6 +176,19 @@ await test("team preparation preserves a native administrator's edited display n
   );
   assert.equal(f.displayName(), "My chosen name");
   assert.equal(f.writes(), 0);
+});
+await test("persisted team roles do not turn an unconfirmed restart into successful setup", async () => {
+  const f = fixture("access_denied", "Ada");
+  f.config.gateway.roles.default = "admin";
+  await assert.rejects(
+    f.authority.prepareTeam(
+      { identity: f.identity, sessionHash: "hash", email: "ada@example.test" },
+      "credential",
+    ),
+    { code: "outcome_unknown" },
+  );
+  assert.equal(f.config.gateway.roles.default, pendingRole);
+  assert.equal(f.writes(), 1);
 });
 await test("self-revocation never treats malformed response as proof of denied access", async () => {
   const f = fixture("invalid_response");

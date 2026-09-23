@@ -70,6 +70,7 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
   const native = initialConfiguration({
     publicOrigin: "http://127.0.0.1:18800",
     widgetOrigin: "http://127.0.0.1:18802",
+    agentName: "ClawScarf",
     administratorIdentity: "test-admin",
   });
   const configured = withInitialModels(native, models);
@@ -92,6 +93,12 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
     "clawscarf/team-model",
   );
   assert.equal(configured.agents.defaults.thinkingDefault, "medium");
+  assert.deepEqual(configured.agents.entries, native.agents.entries);
+  assert.equal(
+    configured.agents.defaults.workspace,
+    "/home/node/.openclaw/workspace",
+  );
+  assert.deepEqual(configured.agents.defaults.sandbox, { mode: "off" });
   for (const assignment of nativeAssignments(models.configuration)) {
     if (assignment.path === "agents.defaults.model.primary")
       assert.equal(assignment.value, configured.agents.defaults.model?.primary);
@@ -175,6 +182,7 @@ await test("repeated preparation keeps private initial material and rejects chan
   const { directory, input } = await fixture(t);
   await prepareRuntimePolicy(
     directory,
+    "c350086f-1e9e-4d47-aad8-474ef1d138aa",
     await prepareInitialModels(directory, input),
     undefined,
   );
@@ -187,6 +195,7 @@ await test("repeated preparation keeps private initial material and rejects chan
   assert.equal(initialPolicy.includes("test-scoped-runtime-key"), false);
   await prepareRuntimePolicy(
     directory,
+    "c350086f-1e9e-4d47-aad8-474ef1d138aa",
     await prepareInitialModels(directory, input),
     undefined,
   );

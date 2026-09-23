@@ -1,0 +1,741 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Tue, 22 Sep 2026 18:20:04 +0200
+Subject: [PATCH] Align channel setup with locally available plugins
+
+ClawScarf-Patch: curated-channel-setup
+---
+ docs/web/control-ui/settings.md               |  9 ++
+ .../channel-setup/discovery.local.test.ts     | 81 ++++++++++++++++++
+ src/commands/channel-setup/discovery.test.ts  | 43 ++++++++++
+ src/commands/channel-setup/discovery.ts       | 41 +++++++--
+ .../onboarding-plugin-install.test.ts         |  9 +-
+ src/commands/onboarding-plugin-install.ts     |  1 +
+ src/flows/channel-setup.test.ts               | 14 ++++
+ src/flows/channel-setup.ts                    |  9 ++
+ .../server-methods/channels.status.test.ts    | 39 +++++++++
+ src/gateway/server-methods/channels.ts        | 18 +++-
+ ui/src/i18n/locales/en.ts                     |  6 +-
+ ui/src/pages/channels/view.test.ts            | 81 ++++++++++++++----
+ ui/src/pages/channels/view.ts                 | 83 ++++++-------------
+ 13 files changed, 350 insertions(+), 84 deletions(-)
+ create mode 100644 src/commands/channel-setup/discovery.local.test.ts
+
+diff --git a/docs/web/control-ui/settings.md b/docs/web/control-ui/settings.md
+index c316dea80ec91c2d0d48ddf4c41d8345b0ce2171..e59b7180dd1f1fdcf4af1536aecdf6cc72b5fbdc 100644
+--- a/docs/web/control-ui/settings.md
++++ b/docs/web/control-ui/settings.md
+@@ -46,6 +46,15 @@ openclaw config set gateway.controlUi.communityInvite false
+ 
+ After the Gateway applies the change, reload the browser page or reconnect to pick it up. The setting belongs to the Gateway serving the UI, including when that UI connects to a different remote Gateway. Setting it to `false` hides the card even in new browser profiles. Re-enabling it with `true` preserves existing browser-local dismissals.
+ 
++## Channels
++
++The Channels page lists locally available channel plugins, including bundled plugins
++that have not been configured and administrator-installed plugins. It does not add
++recommendations for missing plugins or a separate catalog-browsing entry point.
++When marketplace integration is disabled, native channel setup uses the same local
++inventory and reports unavailable requested channels explicitly. Bundling a plugin
++does not supply external services or credentials required by that channel.
++
+ ## Personal identity
+ 
+ Authenticated people have a durable Gateway profile with a display name, avatar, linked emails, and optional verified GitHub identity. Open **Settings → Profile → Identity** to update the editable fields. The profile follows the authenticated person across browsers; clearing browser site data does not delete it.
+diff --git a/src/commands/channel-setup/discovery.local.test.ts b/src/commands/channel-setup/discovery.local.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..48c30cec02af51d40dc715564d5a2fe6f76e5207
+--- /dev/null
++++ b/src/commands/channel-setup/discovery.local.test.ts
+@@ -0,0 +1,81 @@
++import fs from "node:fs";
++import path from "node:path";
++import { afterEach, expect, it } from "vitest";
++import { createTempDirTracker } from "../../../test/helpers/temp-dir.js";
++import type { OpenClawConfig } from "../../config/types.openclaw.js";
++import { resolveInstalledPluginIndexStorePath } from "../../plugins/installed-plugin-index-store-path.js";
++import { createPluginCache, withPluginCache } from "../../plugins/plugin-cache.js";
++import { clearPluginMetadataLifecycleCaches } from "../../plugins/plugin-metadata-lifecycle.js";
++import { closeOpenClawStateDatabaseByPath } from "../../state/openclaw-state-db-cache.js";
++import { resolveChannelSetupEntries } from "./discovery.js";
++
++const tempDirs = createTempDirTracker();
++afterEach(() => {
++  clearPluginMetadataLifecycleCaches();
++  for (const root of tempDirs.dirs) {
++    closeOpenClawStateDatabaseByPath(
++      resolveInstalledPluginIndexStorePath({ env: { OPENCLAW_STATE_DIR: root } }),
++    );
++  }
++  tempDirs.cleanup();
++});
++
++it("discovers unconfigured bundled and administrator-installed channels without executing their code", () => {
++  const root = tempDirs.make("openclaw-local-channel-setup-");
++  const bundledRoot = path.join(root, "bundled");
++  const installedRoot = path.join(root, "installed");
++  const env = {
++    HOME: root,
++    OPENCLAW_STATE_DIR: root,
++    OPENCLAW_BUNDLED_PLUGINS_DIR: bundledRoot,
++    OPENCLAW_TEST_TRUST_BUNDLED_PLUGINS_DIR: "1",
++  };
++  for (const [rootDir, pluginId, channelId] of [
++    [path.join(bundledRoot, "whatsapp"), "whatsapp", "whatsapp"],
++    [installedRoot, "team-plugin", "team-chat"],
++    [path.join(root, ".openclaw/extensions/signal-shadow"), "signal-shadow", "signal"],
++  ] as const) {
++    fs.mkdirSync(rootDir, { recursive: true });
++    fs.writeFileSync(
++      path.join(rootDir, "index.js"),
++      'throw new Error("must not execute during discovery");\n',
++    );
++    fs.writeFileSync(
++      path.join(rootDir, "openclaw.plugin.json"),
++      JSON.stringify({
++        id: pluginId,
++        channels: [channelId],
++        configSchema: { type: "object", properties: {} },
++      }),
++    );
++    fs.writeFileSync(
++      path.join(rootDir, "package.json"),
++      JSON.stringify({
++        name: `@example/${pluginId}`,
++        type: "module",
++        openclaw: {
++          extensions: ["./index.js"],
++          channel: { id: channelId, label: channelId, description: "Synthetic local channel" },
++        },
++      }),
++    );
++  }
++  const cfg: OpenClawConfig = {
++    marketplace: { enabled: false },
++    plugins: { allow: ["whatsapp", "team-plugin"], load: { paths: [installedRoot] } },
++  };
++  const result = withPluginCache(createPluginCache(), () =>
++    resolveChannelSetupEntries({
++      cfg,
++      installedPlugins: [],
++      workspaceDir: root,
++      env,
++    }),
++  );
++  expect(result.entries.map((entry) => entry.id)).toEqual(["whatsapp", "team-chat"]);
++  expect(result.entries.some((entry) => entry.id === "signal" || entry.id === "imessage")).toBe(
++    false,
++  );
++  expect(result.installedCatalogById.get("team-chat")?.pluginId).toBe("team-plugin");
++  expect(result.installableCatalogById.get("whatsapp")?.origin).toBe("bundled");
++});
+diff --git a/src/commands/channel-setup/discovery.test.ts b/src/commands/channel-setup/discovery.test.ts
+index e3a3e7a60726810a15faab6a54bdec282a1b609f..9d844e729f58ec9a207ed8d7f71acb97065f0d49 100644
+--- a/src/commands/channel-setup/discovery.test.ts
++++ b/src/commands/channel-setup/discovery.test.ts
+@@ -137,6 +137,49 @@ describe("listManifestInstalledChannelIds", () => {
+     expect(resolved.entries.map((entry) => entry.id)).toEqual(["telegram"]);
+   });
+ 
++  it.each([
++    { enabled: false, includeRemoteCatalog: undefined },
++    { enabled: true, includeRemoteCatalog: undefined },
++    { enabled: true, includeRemoteCatalog: false },
++  ])("limits local setup discovery with policy %j", ({ enabled, includeRemoteCatalog }) => {
++    const remoteAllowed = enabled && includeRemoteCatalog !== false;
++    listChatChannels.mockReturnValue([
++      makeMeta("whatsapp", "WhatsApp"),
++      makeMeta("signal", "Signal"),
++      makeMeta("imessage", "iMessage"),
++    ]);
++    const bundled = makeCatalogEntry("whatsapp", "WhatsApp", { origin: "bundled" });
++    const installed = makeCatalogEntry("team-chat", "Team Chat", {
++      pluginId: "team-plugin",
++      origin: "global",
++    });
++    const remote = makeCatalogEntry("remote-chat", "Remote Chat");
++    listPluginContributionIds.mockImplementation((params) =>
++      params && typeof params === "object" && "includeDisabled" in params
++        ? ["whatsapp", "team-chat"]
++        : ["team-chat"],
++    );
++    listChannelPluginCatalogEntries.mockReturnValue([bundled, installed, remote]);
++
++    const resolved = resolveChannelSetupEntries({
++      cfg: { marketplace: { enabled }, plugins: { allow: ["team-plugin"] } },
++      includeRemoteCatalog,
++      installedPlugins: [],
++      workspaceDir: "/tmp/workspace",
++      env: { OPENCLAW_HOME: "/tmp/home" },
++    });
++
++    expect(resolved.entries.map((entry) => entry.id)).toEqual(
++      remoteAllowed
++        ? ["whatsapp", "signal", "imessage", "team-chat", "remote-chat"]
++        : ["whatsapp", "team-chat"],
++    );
++    expect(resolved.installedCatalogById.get("team-chat")?.pluginId).toBe("team-plugin");
++    // A shipped but inactive plugin retains the existing local activation path.
++    expect(resolved.installableCatalogById.has("whatsapp")).toBe(true);
++    expect(resolved.installableCatalogById.has("remote-chat")).toBe(remoteAllowed);
++  });
++
+   it("preserves source precedence and catalog metadata across setup views", () => {
+     listChatChannels.mockReturnValue([
+       makeMeta("telegram", "Telegram", { blurb: "bot token" }),
+diff --git a/src/commands/channel-setup/discovery.ts b/src/commands/channel-setup/discovery.ts
+index ae39effc80df4fe211c9710f95e2c45fc2b2dd7b..69d7cb0d308738dea1aadb47db859ed16164ebda 100644
+--- a/src/commands/channel-setup/discovery.ts
++++ b/src/commands/channel-setup/discovery.ts
+@@ -7,6 +7,7 @@ import { normalizeChannelMeta } from "../../channels/plugins/meta-normalization.
+ import type { ChannelPlugin } from "../../channels/plugins/types.plugin.js";
+ import type { ChannelMeta } from "../../channels/plugins/types.public.js";
+ import { isStaticallyChannelConfigured } from "../../config/channel-configured-shared.js";
++import { isMarketplaceEnabled } from "../../config/marketplace.js";
+ import { applyPluginAutoEnable } from "../../config/plugin-auto-enable.js";
+ import type { OpenClawConfig } from "../../config/types.openclaw.js";
+ import type { InstalledPluginIndex } from "../../plugins/installed-plugin-index.js";
+@@ -45,6 +46,7 @@ export function listManifestInstalledChannelIds(params: {
+   workspaceDir?: string;
+   env?: NodeJS.ProcessEnv;
+   index?: InstalledPluginIndex;
++  includeDisabled?: boolean;
+ }): Set<ChannelChoice> {
+   const resolvedConfig = applyPluginAutoEnable({
+     config: params.cfg,
+@@ -54,6 +56,7 @@ export function listManifestInstalledChannelIds(params: {
+   return new Set(
+     listPluginContributionIds({
+       contribution: "channels",
++      ...(params.includeDisabled ? { includeDisabled: true } : {}),
+       config: resolvedConfig,
+       workspaceDir,
+       env: params.env ?? process.env,
+@@ -76,6 +79,8 @@ export function isCatalogChannelInstalled(params: {
+ export function resolveChannelSetupEntries(params: {
+   cfg: OpenClawConfig;
+   installedPlugins: ChannelPlugin[];
++  /** Status/UI discovery can request local inventory even when remote setup is allowed. */
++  includeRemoteCatalog?: boolean;
+   workspaceDir?: string;
+   env?: NodeJS.ProcessEnv;
+ }): ResolvedChannelSetupEntries {
+@@ -85,6 +90,16 @@ export function resolveChannelSetupEntries(params: {
+     workspaceDir,
+     env: params.env,
+   });
++  const allowRemoteCatalog =
++    isMarketplaceEnabled(params.cfg) && params.includeRemoteCatalog !== false;
++  const manifestAvailableIds = allowRemoteCatalog
++    ? undefined
++    : listManifestInstalledChannelIds({
++        cfg: params.cfg,
++        workspaceDir,
++        env: params.env,
++        includeDisabled: true,
++      });
+   const installedPluginIds = new Set(params.installedPlugins.map((plugin) => plugin.id));
+   // Discovery keeps workspace-only install candidates visible, while the
+   // installed bucket must still reflect what setup can safely auto-load.
+@@ -93,14 +108,26 @@ export function resolveChannelSetupEntries(params: {
+     workspaceDir,
+     env: params.env,
+   });
+-  const installableCatalogEntriesSource = listSetupDiscoveryChannelPluginCatalogEntries({
+-    cfg: params.cfg,
+-    workspaceDir,
+-    env: params.env,
+-  });
++  // A manifest can be visible for diagnostics without trusting its workspace owner.
++  // Require a trusted local catalog source too; a remote fallback is not installed.
++  const availableIds = manifestAvailableIds
++    ? new Set(
++        installedCatalogEntriesSource
++          .filter((entry) => entry.origin && manifestAvailableIds.has(entry.id))
++          .map((entry) => entry.id),
++      )
++    : undefined;
++  const installableCatalogEntriesSource = allowRemoteCatalog
++    ? listSetupDiscoveryChannelPluginCatalogEntries({
++        cfg: params.cfg,
++        workspaceDir,
++        env: params.env,
++      })
++    : installedCatalogEntriesSource;
+   const installedCatalogEntries = installedCatalogEntriesSource
+     .filter(
+       (entry) =>
++        (!availableIds || availableIds.has(entry.id)) &&
+         !installedPluginIds.has(entry.id) &&
+         manifestInstalledIds.has(entry.id as ChannelChoice) &&
+         shouldShowChannelInSetup(entry.meta),
+@@ -113,6 +140,7 @@ export function resolveChannelSetupEntries(params: {
+   const installableCatalogEntries = installableCatalogEntriesSource
+     .filter(
+       (entry) =>
++        (!availableIds || availableIds.has(entry.id)) &&
+         !installedPluginIds.has(entry.id) &&
+         !manifestInstalledIds.has(entry.id as ChannelChoice) &&
+         !isStaticallyChannelConfigured(params.cfg, entry.id, params.env ?? process.env) &&
+@@ -126,6 +154,9 @@ export function resolveChannelSetupEntries(params: {
+ 
+   const metaById = new Map<string, ChannelMeta>();
+   for (const meta of listChatChannels()) {
++    if (availableIds && !availableIds.has(meta.id) && !installedPluginIds.has(meta.id)) {
++      continue;
++    }
+     metaById.set(
+       meta.id,
+       normalizeChannelMeta({
+diff --git a/src/commands/onboarding-plugin-install.test.ts b/src/commands/onboarding-plugin-install.test.ts
+index 82bc1ff65eba1dba90f35172890d303b20fdba8c..0fcea4c586510b7cbd7992e4828e73e52efabe0f 100644
+--- a/src/commands/onboarding-plugin-install.test.ts
++++ b/src/commands/onboarding-plugin-install.test.ts
+@@ -238,10 +238,11 @@ describe("ensureOnboardingPluginInstalled", () => {
+   });
+ 
+   it.each([true, false])(
+-    "rejects catalog npm installs before prompting when marketplace is disabled (prompt=%s)",
++    "explains rejected catalog installs without offering sources when marketplace is disabled (prompt=%s)",
+     async (promptInstall) => {
+       const select = vi.fn();
+       const progress = vi.fn();
++      const note = vi.fn();
+       const cfg = { marketplace: { enabled: false } };
+       const result = await ensureOnboardingPluginInstalled({
+         cfg,
+@@ -251,7 +252,7 @@ describe("ensureOnboardingPluginInstalled", () => {
+           preferRemoteInstall: true,
+           install: { npmSpec: "@example/demo@1.0.0", clawhubSpec: "clawhub:demo@1.0.0" },
+         },
+-        prompter: { select, progress } as never,
++        prompter: { select, progress, note } as never,
+         runtime: {} as never,
+         promptInstall,
+       });
+@@ -261,6 +262,10 @@ describe("ensureOnboardingPluginInstalled", () => {
+         status: "failed",
+         error: expect.stringContaining("marketplace.enabled"),
+       });
++      expect(note).toHaveBeenCalledWith(
++        expect.stringContaining("marketplace.enabled"),
++        expect.any(String),
++      );
+       expect(select).not.toHaveBeenCalled();
+       expect(progress).not.toHaveBeenCalled();
+       expect(withPluginLifecycleLease).not.toHaveBeenCalled();
+diff --git a/src/commands/onboarding-plugin-install.ts b/src/commands/onboarding-plugin-install.ts
+index bd1826aabccb5e3fb164d2c34426d58e2c65adb1..4f7b4ab947074db6ea6e7943675109e5b82d5fcd 100644
+--- a/src/commands/onboarding-plugin-install.ts
++++ b/src/commands/onboarding-plugin-install.ts
+@@ -1103,6 +1103,7 @@ export async function ensureOnboardingPluginInstalled(params: {
+           allowLocal,
+         }));
+   if (!marketplaceEnabled && !localPath) {
++    await prompter.note(new MarketplaceDisabledError().message, t("wizard.plugins.installTitle"));
+     return incompletePluginInstall(
+       next,
+       entry.pluginId,
+diff --git a/src/flows/channel-setup.test.ts b/src/flows/channel-setup.test.ts
+index d8dc3d63ae4f1386e776a5fe51266258de3c245a..07dcfcf996b2ad1ca4ff6d025159fa505307b6ec 100644
+--- a/src/flows/channel-setup.test.ts
++++ b/src/flows/channel-setup.test.ts
+@@ -807,6 +807,20 @@ describe("setupChannels workspace shadow exclusion", () => {
+     },
+   );
+ 
++  it("rejects an unavailable targeted channel visibly when marketplace downloads are disabled", async () => {
++    resolveChannelSetupEntries.mockReturnValueOnce(makeChannelSetupEntries());
++    const select = vi.fn();
++    await expect(
++      runChannelSetup(
++        { marketplace: { enabled: false } },
++        { select },
++        TARGETED_CHANNEL_SETUP_OPTIONS,
++      ),
++    ).rejects.toThrow("Channel external-chat is unavailable");
++    expect(select).not.toHaveBeenCalled();
++    expect(ensureChannelSetupPluginInstalled).not.toHaveBeenCalled();
++  });
++
+   it("enters an explicitly targeted channel before the generic setup prompts", async () => {
+     const promptOrder: string[] = [];
+     const configureInteractive = vi.fn(async ({ cfg }) => {
+diff --git a/src/flows/channel-setup.ts b/src/flows/channel-setup.ts
+index 59012d3968ceb314fd313e5b0bc709c48685f112..b60d22127c582e9c592bfa5d9d746a75ebb9700f 100644
+--- a/src/flows/channel-setup.ts
++++ b/src/flows/channel-setup.ts
+@@ -31,6 +31,7 @@ import { isChannelConfigured } from "../config/channel-configured.js";
+ import { createConfigIO } from "../config/io.factory.js";
+ import { createManagedRuntimeEnvBase } from "../config/io.read-helpers.js";
+ import { formatConfigIssueSummary } from "../config/issue-format.js";
++import { isMarketplaceEnabled } from "../config/marketplace.js";
+ import type { OpenClawConfig } from "../config/types.openclaw.js";
+ import { formatErrorMessage } from "../infra/errors.js";
+ import { resolveBundledPluginSources } from "../plugins/bundled-sources.js";
+@@ -735,6 +736,14 @@ export async function setupChannels(
+   const handleChannelChoice = async (
+     channel: ChannelChoice,
+   ): Promise<"done" | "retry_selection"> => {
++    if (
++      !isMarketplaceEnabled(next) &&
++      !getChannelEntries().entries.some((entry) => entry.id === channel)
++    ) {
++      throw new Error(
++        `Channel ${sanitizeTerminalText(channel)} is unavailable: its plugin is not installed or available for setup, and marketplace downloads are disabled.`,
++      );
++    }
+     const cfgBeforeChoice = next;
+     let cfgOnBack = cfgBeforeChoice;
+     const scopedPluginsBeforeChoice = new Map(scopedPluginsById);
+diff --git a/src/gateway/server-methods/channels.status.test.ts b/src/gateway/server-methods/channels.status.test.ts
+index 01846c3900b5c21887f1883059f09fa11eaf5d73..c809edd757239b8b7b6c2f3d49c46e1de4400fa4 100644
+--- a/src/gateway/server-methods/channels.status.test.ts
++++ b/src/gateway/server-methods/channels.status.test.ts
+@@ -33,6 +33,9 @@ import type { GatewayRequestHandlerOptions } from "./types.js";
+ 
+ const mocks = vi.hoisted(() => ({
+   getRuntimeConfig: vi.fn(() => ({})),
++  resolveChannelSetupEntries: vi.fn<
++    () => { entries: Array<{ id: string; meta: ChannelPlugin["meta"] }> }
++  >(() => ({ entries: [] })),
+   listChannelPlugins: vi.fn(),
+   normalizeChannelId: vi.fn<(value: string) => string | null>((value) => value),
+   listReadOnlyChannelPluginsForConfig: vi.fn(),
+@@ -70,6 +73,10 @@ vi.mock("../../channels/plugins/read-only.js", () => ({
+   listReadOnlyChannelPluginsForConfig: mocks.listReadOnlyChannelPluginsForConfig,
+ }));
+ 
++vi.mock("../../commands/channel-setup/discovery.js", () => ({
++  resolveChannelSetupEntries: mocks.resolveChannelSetupEntries,
++}));
++
+ vi.mock("../../channels/plugins/catalog.js", () => ({
+   buildChannelUiCatalog: mocks.buildChannelUiCatalog,
+ }));
+@@ -128,6 +135,7 @@ describe("channelsHandlers channels.status", () => {
+     mocks.normalizeChannelId.mockImplementation((value: string) => value);
+     mocks.listReadOnlyChannelPluginsForConfig.mockImplementation(() => mocks.listChannelPlugins());
+     mocks.getRuntimeConfig.mockReturnValue({});
++    mocks.resolveChannelSetupEntries.mockReturnValue({ entries: [] });
+     mocks.buildChannelUiCatalog.mockReturnValue({
+       order: ["whatsapp"],
+       labels: { whatsapp: "WhatsApp" },
+@@ -146,6 +154,37 @@ describe("channelsHandlers channels.status", () => {
+     mocks.listChannelPlugins.mockReturnValue([createChannelPlugin()]);
+   });
+ 
++  it("includes unloaded local setup metadata without inspecting its accounts", async () => {
++    mocks.getRuntimeConfig.mockReturnValue({ marketplace: { enabled: false } });
++    const setupOnly = createChannelTestPluginBase({ id: "team-chat" });
++    mocks.resolveChannelSetupEntries.mockReturnValue({
++      entries: [{ id: setupOnly.id, meta: setupOnly.meta }],
++    });
++    const payload = await runChannelsStatus({});
++    expect(mocks.resolveChannelSetupEntries).toHaveBeenCalledWith({
++      cfg: { marketplace: { enabled: false } },
++      installedPlugins: mocks.listChannelPlugins(),
++      includeRemoteCatalog: false,
++    });
++    expect(mocks.buildChannelUiCatalog).toHaveBeenCalledWith([
++      expect.objectContaining({ id: "whatsapp" }),
++      { id: setupOnly.id, meta: setupOnly.meta },
++    ]);
++    expect(requireGatewayRecord(payload.channels, "channels")["team-chat"]).toBeUndefined();
++    expect(
++      requireGatewayRecord(payload.channelAccounts, "channelAccounts")["team-chat"],
++    ).toBeUndefined();
++  });
++
++  it("requests only local setup metadata even when marketplace is enabled", async () => {
++    await runChannelsStatus({});
++    expect(mocks.resolveChannelSetupEntries).toHaveBeenCalledWith({
++      cfg: {},
++      installedPlugins: mocks.listChannelPlugins(),
++      includeRemoteCatalog: false,
++    });
++  });
++
+   it("keeps filtered account diagnostics without inspecting unrelated channels", async () => {
+     const resolveAccount = vi.fn(() => {
+       throw new Error("unavailable account must not resolve credentials");
+diff --git a/src/gateway/server-methods/channels.ts b/src/gateway/server-methods/channels.ts
+index 290220e9e19f57abb9cedce508f3a5f322d50a34..35287dbe06e76d24450f37592cdc1953002c3137 100644
+--- a/src/gateway/server-methods/channels.ts
++++ b/src/gateway/server-methods/channels.ts
+@@ -24,6 +24,7 @@ import type {
+   ChannelStatusIssue,
+ } from "../../channels/plugins/types.public.js";
+ import { resolveUnavailableChannelAccountSnapshot } from "../../channels/status/account-state.js";
++import { resolveChannelSetupEntries } from "../../commands/channel-setup/discovery.js";
+ import { readConfigFileSnapshot } from "../../config/config.js";
+ import type { OpenClawConfig } from "../../config/types.openclaw.js";
+ import { getChannelActivity } from "../../infra/channel-activity.js";
+@@ -544,7 +545,22 @@ export const channelsHandlers: GatewayRequestHandlers = {
+       return { accounts, defaultAccountId, defaultAccount, resolvedAccounts };
+     };
+ 
+-    const uiCatalog = buildChannelUiCatalog(selectedPlugins);
++    // Setup discovery reads local manifests/catalog metadata without activating plugin code.
++    // Keep account/status inspection limited to the already selected status plugins.
++    const setupEntries = resolveChannelSetupEntries({
++      cfg,
++      installedPlugins: plugins,
++      includeRemoteCatalog: false,
++    }).entries;
++    const uiPlugins = new Map(
++      selectedPlugins.map((plugin) => [plugin.id, { id: plugin.id, meta: plugin.meta }]),
++    );
++    for (const entry of setupEntries) {
++      if ((!requestedChannel || entry.id === requestedChannel) && !uiPlugins.has(entry.id)) {
++        uiPlugins.set(entry.id, entry);
++      }
++    }
++    const uiCatalog = buildChannelUiCatalog([...uiPlugins.values()]);
+     const payload: Record<string, unknown> = {
+       ts: Date.now(),
+       channelOrder: uiCatalog.order,
+diff --git a/ui/src/i18n/locales/en.ts b/ui/src/i18n/locales/en.ts
+index a49876f218076b189b10fd606faa22bd60de34b4..7f86d8c0affe96af6929818d654cb31d70f76acb 100644
+--- a/ui/src/i18n/locales/en.ts
++++ b/ui/src/i18n/locales/en.ts
+@@ -352,7 +352,9 @@ export const en: TranslationMap & {
+       addTitle: "Add a channel",
+       addSubtitle: "Pick a service and follow the guided setup.",
+       updatedAgo: "Updated {ago}",
+-      noneConnected: "No channels connected yet. Pick one below to get started.",
++      noneConnected: "No channels connected yet.",
++      noneAvailable: "No additional channels are available.",
++      unavailable: "Channel availability could not be loaded. Refresh to retry.",
+       partialSnapshot: "Some channel checks did not finish before the UI budget.",
+       stateRunning: "Running",
+       stateConfigured: "Configured",
+@@ -361,8 +363,6 @@ export const en: TranslationMap & {
+       guidedSetup: "Guided step-by-step setup",
+       openDetails: "Open details",
+       lastMessageAgo: "Last message {ago}",
+-      browseAllTitle: "More channels…",
+-      browseAllSubtitle: "Browse every available channel, including installable plugins.",
+       runSetup: "Run setup",
+       adminRequired: "Browsing only. Channel setup requires operator.admin access.",
+       saveBeforeSetup:
+diff --git a/ui/src/pages/channels/view.test.ts b/ui/src/pages/channels/view.test.ts
+index 6d4a278563854b28bf161ef10a67e53c1269ac76..bca2df0e0cd7ebb9e568a5cab016e3a3b9db0ac2 100644
+--- a/ui/src/pages/channels/view.test.ts
++++ b/ui/src/pages/channels/view.test.ts
+@@ -137,33 +137,80 @@ describe("channels plugin presentation metadata", () => {
+ });
+ 
+ describe("channels setup access", () => {
+-  it("keeps unconfigured recommended channels available after one channel is configured", () => {
++  it("lists only discovered channels, including unconfigured administrator additions", () => {
+     const props = createProps({
+       ts: Date.now(),
+-      channelOrder: ["slack"],
+-      channelLabels: { slack: "Slack" },
+-      channelMeta: [{ id: "slack", label: "Slack", detailLabel: "Slack Bot" }],
++      channelOrder: ["slack", "whatsapp", "custom-chat"],
++      channelLabels: {},
++      channelMeta: [
++        { id: "slack", label: "Slack", detailLabel: "Slack Bot" },
++        { id: "whatsapp", label: "WhatsApp", detailLabel: "WhatsApp Web" },
++        { id: "custom-chat", label: "Custom Chat", detailLabel: "Team channel" },
++      ],
+       channels: { slack: { configured: true } },
+       channelAccounts: {},
+       channelDefaultAccountId: {},
+     });
++    props.onStartSetup = vi.fn();
+     const container = document.createElement("div");
++    render(renderChannels(props), container);
++    expect(
++      Array.from(
++        container.querySelectorAll(".channels-item__detail .settings-row__title"),
++        (node) => node.textContent?.trim(),
++      ),
++    ).toEqual(["WhatsApp", "Custom Chat"]);
++    expect(container.textContent).not.toMatch(/More channels|signal|imessage|nostr/i);
++    const setupButtons = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).filter(
++      (button) => button.textContent?.trim() === "Set up",
++    );
++    setupButtons[1]!.click();
++    expect(props.onStartSetup).toHaveBeenCalledWith("custom-chat");
++  });
+ 
++  it("distinguishes loading, unavailable and empty channel inventory", () => {
++    const props = createProps(null);
++    const container = document.createElement("div");
++    props.loading = true;
++    render(renderChannels(props), container);
++    expect(container.textContent).toContain("Loading…");
++    expect(container.textContent).not.toContain("No additional channels");
++    props.loading = false;
++    props.lastError = "Gateway unavailable";
++    render(renderChannels(props), container);
++    expect(container.textContent).toContain("Channel availability could not be loaded");
++    expect(container.textContent).not.toContain("No channels connected");
++    props.lastError = null;
++    props.snapshot = {
++      ts: 0,
++      channelOrder: [],
++      channelLabels: {},
++      channels: {},
++      channelAccounts: {},
++      channelDefaultAccountId: {},
++    };
+     render(renderChannels(props), container);
++    expect(container.textContent).toContain("No additional channels are available.");
++    expect(container.querySelector(".channels-item__detail")).toBeNull();
++  });
+ 
+-    const availableLabels = Array.from(
+-      container.querySelectorAll(".channels-item__detail .settings-row__title"),
+-      (node) => node.textContent?.trim(),
+-    );
+-    expect(availableLabels).toEqual([
+-      "whatsapp",
+-      "telegram",
+-      "discord",
+-      "googlechat",
+-      "signal",
+-      "imessage",
+-      "nostr",
+-    ]);
++  it("retains discovered setup choices during refresh failures", () => {
++    const props = createProps({
++      ts: 1,
++      channelOrder: ["whatsapp"],
++      channelLabels: {},
++      channels: {},
++      channelAccounts: {},
++      channelDefaultAccountId: {},
++    });
++    props.loading = true;
++    props.lastSuccessAt = 1;
++    props.lastError = "Refresh failed";
++    const container = document.createElement("div");
++    render(renderChannels(props), container);
++    expect(container.textContent).toContain("Refresh failed");
++    expect(container.querySelector(".channels-item__detail")?.textContent).toContain("whatsapp");
++    expect(container.textContent).not.toContain("Channel availability could not be loaded");
+   });
+ 
+   it("replaces setup actions with an admin-required notice for non-admin viewers", () => {
+diff --git a/ui/src/pages/channels/view.ts b/ui/src/pages/channels/view.ts
+index 61fb94e2ac9713127878f9b0812cb0d2a91746c2..766043e1822fa95508561032d35476632d1dae9e 100644
+--- a/ui/src/pages/channels/view.ts
++++ b/ui/src/pages/channels/view.ts
+@@ -39,17 +39,6 @@ import { renderChannelWizard } from "./wizard-view.ts";
+ 
+ type ChannelCardState = "running" | "configured" | "attention";
+ 
+-const RECOMMENDED_CHANNEL_ORDER: ChannelKey[] = [
+-  "whatsapp",
+-  "telegram",
+-  "discord",
+-  "googlechat",
+-  "slack",
+-  "signal",
+-  "imessage",
+-  "nostr",
+-];
+-
+ export function renderChannels(props: ChannelsProps) {
+   const channelOrder = resolveChannelOrder(props.snapshot);
+   // Key both lists so status updates cannot retarget an in-flight channel click.
+@@ -96,19 +85,21 @@ export function renderChannels(props: ChannelsProps) {
+             onRefresh: () => props.onRefresh(true),
+           }),
+         },
+-        connected.length === 0
+-          ? html`
+-              <div class="channels-empty">
+-                <!-- No configured transports is a true empty state, so Clawd rests here. -->
+-                <openclaw-mascot mood="sleepy" .size=${80}></openclaw-mascot>
+-                ${renderSettingsEmpty(t("channels.hub.noneConnected"))}
+-              </div>
+-            `
+-          : repeat(
+-              connected,
+-              (key) => key,
+-              (key) => renderConnectedRow(key, props),
+-            ),
++        !props.snapshot
++          ? renderSettingsEmpty(t(props.loading ? "common.loading" : "channels.hub.unavailable"))
++          : connected.length === 0
++            ? html`
++                <div class="channels-empty">
++                  <!-- No configured transports is a true empty state, so Clawd rests here. -->
++                  <openclaw-mascot mood="sleepy" .size=${80}></openclaw-mascot>
++                  ${renderSettingsEmpty(t("channels.hub.noneConnected"))}
++                </div>
++              `
++            : repeat(
++                connected,
++                (key) => key,
++                (key) => renderConnectedRow(key, props),
++              ),
+       )}
+       ${renderSettingsSection(
+         {
+@@ -119,12 +110,17 @@ export function renderChannels(props: ChannelsProps) {
+           ${
+             !props.canAdmin
+               ? html`<div class="callout info" role="note">${t("channels.hub.adminRequired")}</div>`
+-              : html`${repeat(
+-                  available,
+-                  (key) => key,
+-                  (key) => renderAvailableRow(key, props),
+-                )}
+-                ${renderBrowseAllRow(props)}`
++              : !props.snapshot
++                ? renderSettingsEmpty(
++                    t(props.loading ? "common.loading" : "channels.hub.unavailable"),
++                  )
++                : available.length === 0
++                  ? renderSettingsEmpty(t("channels.hub.noneAvailable"))
++                  : repeat(
++                      available,
++                      (key) => key,
++                      (key) => renderAvailableRow(key, props),
++                    )
+           }
+         `,
+       )}
+@@ -189,7 +185,7 @@ export function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): Ch
+   const statusOrder = snapshot?.channelMeta?.length
+     ? snapshot.channelMeta.map((entry) => entry.id)
+     : (snapshot?.channelOrder ?? []);
+-  return [...new Set([...statusOrder, ...RECOMMENDED_CHANNEL_ORDER])];
++  return [...new Set(statusOrder)];
+ }
+ 
+ function resolveChannelPlugin(props: ChannelsProps, key: string) {
+@@ -315,28 +311,3 @@ function renderAvailableRow(key: ChannelKey, props: ChannelsProps) {
+     </div>
+   `;
+ }
+-
+-function renderBrowseAllRow(props: ChannelsProps) {
+-  return html`
+-    <button
+-      type="button"
+-      class="settings-row settings-row--nav channels-item"
+-      @click=${() => props.onStartSetup(null)}
+-    >
+-      <span
+-        class="channels-tile channels-tile--fallback"
+-        style="--channels-art-a:#64748b;--channels-art-b:#1e293b"
+-        aria-hidden="true"
+-      >
+-        <span>+</span>
+-      </span>
+-      <div class="settings-row__text">
+-        <span class="settings-row__title">${t("channels.hub.browseAllTitle")}</span>
+-        <span class="settings-row__desc">${t("channels.hub.browseAllSubtitle")}</span>
+-      </div>
+-      <div class="settings-row__control">
+-        <span class="settings-row__chevron">${icons.chevronRight}</span>
+-      </div>
+-    </button>
+-  `;
+-}

@@ -10,8 +10,6 @@ import {
 } from "./connections.js";
 import { configureConnectionsVolume } from "./connections-runtime.js";
 import { writePrivate, type LocalState } from "./state.js";
-import { stageNetworkPolicyChange } from "./network-policy.js";
-import { initialRuntimePolicy } from "./policy.js";
 
 /** Explicit capability edit, with the installation stopped and its operator lock held. */
 export async function applyConnectionSettings(
@@ -74,10 +72,4 @@ export async function applyConnectionSettings(
   );
   if (loaded?.managementKey) config.services.companion.volumes.push(mount);
   await writePrivate(file, JSON.stringify(config));
-  const rule =
-    initialRuntimePolicy("network_policies: {}", undefined, endpoint)
-      .network_policies.connections_broker ?? null;
-  await stageNetworkPolicyChange(directory, state, {
-    connections_broker: rule,
-  });
 }

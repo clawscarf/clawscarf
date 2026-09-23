@@ -115,10 +115,13 @@ its packaging checks alone do not establish that journey. Check the owning compo
 limitations before claiming support for optional capabilities.
 
 [Publish release candidate](../.github/workflows/publish-release.yml) accepts a successful
-build run from `main`. It checks the source commit and artifact checksums, creates the
-GitHub Release and publishes the already-built npm tarball. It never rebuilds images
+build run from `main`. Before publishing anything, it checks the source commit,
+artifact checksums, current runtime pin and npm channel progression. It then creates
+the GitHub Release and publishes the already-built npm tarball. It never rebuilds images
 or packages. Prereleases use npm's `next` tag; stable versions use `latest`. Repeating
-a GitHub upload is allowed only when the existing checksums match exactly.
+a GitHub upload is allowed only when the existing checksums match exactly. An npm
+version already published with the same tarball integrity and channel is skipped
+on retry; different bytes or a newer selected version stop publication.
 A separate dependent job then advances the checkout's current runtime selection;
 a failure there leaves the published release available and can be retried without
 republishing npm or rebuilding artifacts.
@@ -152,7 +155,6 @@ component READMEs. Current capability limits remain with their owners:
 [browser integration](../deploy/execution/browser-node/README.md#verified-release-limits),
 [runtime boundary](../deploy/openshell/README.md), [models](../deploy/models/README.md),
 [Access](../services/access/README.md) and [Connections](../plugins/connections/README.md).
-Open acceptance requirements live only in [TODO.md](../TODO.md).
 
 ## Assemble runtime artifacts
 
@@ -165,7 +167,9 @@ clawscarf release-create --input /absolute/built-components.json \
 ```
 
 The input follows the [runtime schema](../scripts/release/definition.ts), except
-`tools.openshell.cli` and `gateway` are source executable paths. Relative inputs
+`platforms` contains exactly one host and `tools.openshell.cli` and `gateway` are
+source executable paths. The output indexes tool artifacts by platform, using the
+same format as published releases. Relative inputs
 resolve beside that input file. The result is:
 
 ```text

@@ -3,3 +3,10 @@ browser-routing-guidance.patch
 membership-hot-reload.patch
 remove-systems-page.patch
 curated-image-inventory.patch
+plugin-navigation-selection.patch
+remove-labs.patch
+disable-server-updates.patch
+curated-channel-setup.patch
+remove-cloud-workers.patch
+browser-shared-artifacts.patch
+disable-native-github.patch

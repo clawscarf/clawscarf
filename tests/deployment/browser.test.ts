@@ -30,6 +30,7 @@ import {
 
 const input = {
   name: "browser-test",
+  agentName: "ClawScarf",
   administratorName: "Ada",
   runtimeImage: `sha256:${"a".repeat(64)}`,
   companionImage: `sha256:${"b".repeat(64)}`,
@@ -132,7 +133,7 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
   );
   assert.ok(node.volumes.includes("browser-node-config:/configuration:ro"));
   assert.equal(
-    node.volumes.some((value) => /docker.sock|worker|controller/.test(value)),
+    node.volumes.some((value) => /docker.sock|controller/.test(value)),
     false,
   );
   assert.throws(() =>
@@ -174,7 +175,17 @@ await test("browser remains on the isolated bridge while only the fixed relay pu
       "seccomp:/private/browser-test/private/browser-seccomp.json",
     ),
   );
-  assert.deepEqual(service.volumes, ["browser:/state"]);
+  assert.deepEqual(service.volumes, [
+    "browser:/state",
+    "browser-artifacts:/browser-artifacts",
+  ]);
+  assert.ok(node.volumes.includes("browser-artifacts:/browser-artifacts"));
+  assert.equal(
+    node.environment.OPENCLAW_BROWSER_SHARED_ARTIFACTS_DIR,
+    "/browser-artifacts",
+  );
+  assert.ok(compose.volumes["browser-artifacts"]);
+  assert.equal(compose.volumes["browser-artifacts"].external, true);
   assert.equal(
     service.environment.CLAWSCARF_BROWSER_PROXY_SERVER,
     "http://browser-egress:3128",

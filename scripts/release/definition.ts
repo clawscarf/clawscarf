@@ -26,7 +26,7 @@ export const hostPlatformSchema = z.enum([
   "linux-arm64",
   "linux-x64",
 ]);
-const tool = z.union([file, z.partialRecord(hostPlatformSchema, file)]);
+const tool = z.partialRecord(hostPlatformSchema, file);
 /** Pinned runtime metadata, independent of recipe defaults and deployment state. */
 export const releaseSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -87,13 +87,6 @@ export function releaseTools(
   if (!release.platforms.includes(host))
     throw new Error(`Runtime ${release.version} does not include ${host}.`);
   const select = (value: z.infer<typeof tool>) => {
-    if ("file" in value) {
-      if (release.platforms.length !== 1)
-        throw new Error(
-          "Multi-platform runtimes require a tool for each platform.",
-        );
-      return value;
-    }
     const selected = value[host];
     if (!selected) throw new Error(`Missing runtime tool for ${host}.`);
     return selected;

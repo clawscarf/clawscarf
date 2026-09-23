@@ -4,6 +4,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends squid=5.7-2+deb12u6 ca-certificates=20250419~deb12u1 \
     && rm -rf /var/lib/apt/lists/*
 COPY deploy/execution/network/squid.conf /etc/squid/squid.conf
+COPY deploy/execution/network/public-addresses.json /tmp/public-addresses.json
+RUN node --input-type=module -e 'import fs from "node:fs"; const {families, excluded} = JSON.parse(fs.readFileSync("/tmp/public-addresses.json")); for (const [name, ranges] of [["public-families", families], ["nonpublic", excluded]]) fs.writeFileSync(`/etc/squid/${name}.acl`, ranges.join("\n") + "\n");' \
+    && rm /tmp/public-addresses.json
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/clawscarf-browser-network/
 USER proxy
 EXPOSE 3128

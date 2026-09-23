@@ -1,3 +1,4 @@
+import { verifyServiceRoutes } from "./service-network.js";
 import { applyNetworkPolicy } from "./network-policy.js";
 import { verifyRuntimeImage } from "./images.js";
 import { startBrowserNode } from "./browser-node-pairing.js";
@@ -8,18 +9,15 @@ import {
   verifyBrowserConfiguration,
 } from "./browser.js";
 import { probeTeamAccess } from "./team.js";
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { z } from "zod";
-import { readState, resourceNames } from "./state.js";
+import { readState, resourceNames, requirePrepared } from "./state.js";
 import { verifyLocalNetworks } from "./networks.js";
 import { compose } from "./compose.js";
-import { ensureRuntime, stopRuntime } from "./runtime.js";
+import { ensureRuntime, stopRuntime, runtimeEnvironment } from "./runtime.js";
 import { LocalSetupError, run } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
 import { verifyRuntimeBinding } from "./runtime-binding.js";
-import { requireNoUpgrade } from "./upgrade-state.js";
 
 /** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function launchLocal(
@@ -32,27 +30,14 @@ export async function launchLocal(
 ) {
   const directory = resolve(directoryInput);
   const state = await readState(directory);
-  z.strictObject({
-    ownerId: z.literal(state.ownerId),
-    settingsCandidate: z.string().optional(),
-    settingsReapply: z.enum(["models", "connections"]).optional(),
-  }).parse(
-    JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
-  );
+  await requirePrepared(directory);
   if (Object.keys(process.env).some((key) => key.startsWith("OPENSHELL_")))
     throw new LocalSetupError(
       "configuration_changed",
       "Unset OPENSHELL_* overrides before starting this installation.",
     );
-  const controller = join(directory, "controller");
-  const env = {
-    ...process.env,
-    XDG_CONFIG_HOME: join(controller, "config"),
-    XDG_STATE_HOME: join(controller, "state"),
-    XDG_DATA_HOME: join(controller, "data"),
-  };
+  const env = runtimeEnvironment(directory);
   const name = resourceNames(state).sandbox;
-  await requireNoUpgrade(directory);
   await verifyRuntimeImage(state.input.runtimeImage);
   await verifyLocalExecutables(state);
   await verifyLocalPorts(state);
@@ -144,6 +129,8 @@ export async function launchLocal(
     });
     await verifyRuntimeBinding(state, runtime);
     await waitFor(() => applyNetworkPolicy(directory, state, env, true));
+    report("Checking runtime service routes…");
+    await verifyServiceRoutes(state, env);
     if (state.input.browser) {
       report("Starting native browser node…");
       await startBrowserNode(directory, state, cancellation.signal);
@@ -171,13 +158,7 @@ export async function launchLocal(
 /** Stop entry first, then the owned runtime, and only then its controller. */
 export async function stopLocal(directory: string) {
   const state = await readState(directory);
-  const controller = join(directory, "controller");
-  const env = {
-    ...process.env,
-    XDG_CONFIG_HOME: join(controller, "config"),
-    XDG_STATE_HOME: join(controller, "state"),
-    XDG_DATA_HOME: join(controller, "data"),
-  };
+  const env = runtimeEnvironment(directory);
   await compose(directory, [
     "stop",
     "companion",

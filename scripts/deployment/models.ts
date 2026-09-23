@@ -91,7 +91,11 @@ export function withInitialModels(
       },
     },
     agents: {
-      defaults: nativeModelDefaults(models.configuration),
+      ...native.agents,
+      defaults: {
+        ...native.agents.defaults,
+        ...nativeModelDefaults(models.configuration),
+      },
     },
   };
 }

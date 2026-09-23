@@ -1,6 +1,14 @@
 import { applyCloudManagement } from "../deployment/cloud-management.js";
-import { publicWebPolicy } from "../deployment/public-web.js";
-import { stageNetworkPolicyChange } from "../deployment/network-policy.js";
+import { validatePublicWebServices } from "../deployment/service-network.js";
+import { serviceNetworkRule } from "../deployment/policy.js";
+import {
+  publicWebPolicy,
+  type NetworkChanges,
+} from "../deployment/public-web.js";
+import {
+  stageNetworkPolicyChange,
+  planNetworkPolicyChange,
+} from "../deployment/network-policy.js";
 import { applyConnectionSettings } from "../deployment/connection-settings.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -26,12 +34,12 @@ import { configureStoppedRuntimeModels } from "../models/runtime.js";
 import { loadInitialModels } from "../deployment/models.js";
 import {
   readState,
+  readPreparation,
   resourceNames,
   withInstallationLock,
   writePrivate,
 } from "../deployment/state.js";
-import { requireNoUpgrade } from "../deployment/upgrade-state.js";
-import { run } from "../deployment/process.js";
+import { run, LocalSetupError } from "../deployment/process.js";
 import { selectionSchema } from "./packs.js";
 import { installationSchema } from "./configuration.js";
 import { resolveInstallation } from "./resolve.js";
@@ -127,14 +135,7 @@ export async function planSettingsChange(
         )
       ).configuration
     : (await loadInitialModels(next.models))?.configuration;
-  const pending = z
-    .strictObject({
-      ownerId: z.literal(state.ownerId),
-      settingsPending: z.string().optional(),
-      settingsCandidate: z.string().optional(),
-      settingsReapply: z.enum(["models", "connections"]).optional(),
-    })
-    .parse(await readJson(join(directory, "prepared.json")));
+  const pending = await readPreparation(directory);
   if (
     pending.settingsPending &&
     pending.settingsPending !== desired.fingerprint
@@ -152,6 +153,16 @@ export async function planSettingsChange(
     resolveConfigurationInputs(config, dirname(resolve(configFile))),
   );
   if (reapply) scopes[reapply] = true;
+  await validatePublicWebServices(next.publicWeb, {
+    models:
+      next.publicWeb && !nextGateway && (scopes.models || scopes.publicWeb)
+        ? (await loadInitialModels(next.models))?.network
+        : undefined,
+    connections:
+      scopes.connections || scopes.publicWeb
+        ? connections?.endpoint.network
+        : undefined,
+  });
   return {
     directory,
     state,
@@ -207,10 +218,14 @@ export async function reconfigureInstallation(
   expectedFingerprint: string,
   reapply?: "models" | "connections",
 ) {
-  const planned = await planSettingsChange(configFile, reapply);
-  return withInstallationLock(planned.directory, async () => {
+  const config = installationSchema.parse(await readJson(configFile));
+  const location = resolve(dirname(resolve(configFile)), config.stateDirectory);
+  return withInstallationLock(location, async () => {
     const checked = await planSettingsChange(configFile, reapply);
-    if (checked.fingerprint !== expectedFingerprint)
+    if (
+      checked.directory !== location ||
+      checked.fingerprint !== expectedFingerprint
+    )
       throw new InstallationError(
         "stale_plan",
         "Settings changed after preview. Review them again.",
@@ -218,7 +233,6 @@ export async function reconfigureInstallation(
     const { directory, state, desired, scopes } = checked;
     if (!checked.resuming && !Object.values(scopes).some(Boolean))
       return { state: "unchanged", restartRequired: false, directory };
-    await requireNoUpgrade(directory);
     const names = resourceNames(state);
     for (const filter of [
       `label=com.docker.compose.project=${names.project}`,
@@ -286,6 +300,21 @@ export async function reconfigureInstallation(
         credential: models.credential,
         apply: false,
       });
+    // Reconcile native policy before any native/service settings are written.
+    const network: NetworkChanges = {};
+    if (scopes.connections)
+      network.connections_broker = serviceNetworkRule(
+        "Connections broker",
+        (await loadInitialConnections(desired.input.connections))?.endpoint
+          .network,
+      );
+    if (scopes.publicWeb)
+      network.public_web = publicWebPolicy(desired.input.publicWeb);
+    let networkChange;
+    if (Object.keys(network).length) {
+      await compose(directory, ["up", "-d", "--wait", "controller"]);
+      networkChange = await planNetworkPolicyChange(directory, state, network);
+    }
     // Startup already requires this exact prepared record. An interrupted mutation must not announce readiness.
     await writePrivate(
       prepared,
@@ -296,8 +325,11 @@ export async function reconfigureInstallation(
         ...(checked.reapply ? { settingsReapply: checked.reapply } : {}),
       }),
     );
-    let stage = "model gateway configuration";
+    let stage = "network policy staging";
     try {
+      if (networkChange)
+        await stageNetworkPolicyChange(directory, networkChange);
+      stage = "model gateway configuration";
       if (scopes.models) {
         await prepareModelGateway(
           directory,
@@ -350,11 +382,6 @@ export async function reconfigureInstallation(
       stage = "Cloud management configuration";
       if (scopes.models || scopes.connections)
         await applyCloudManagement(directory, desired.input);
-      stage = "public web policy";
-      if (scopes.publicWeb)
-        await stageNetworkPolicyChange(directory, state, {
-          public_web: publicWebPolicy(desired.input.publicWeb),
-        });
       stage = "accepted settings";
       if (scopes.models)
         await writePrivate(
@@ -387,10 +414,70 @@ export async function reconfigureInstallation(
       await writePrivate(prepared, JSON.stringify({ ownerId: state.ownerId }));
       return { state: "configured", restartRequired: true, directory };
     } catch (error) {
+      if (error instanceof LocalSetupError)
+        throw new LocalSetupError(
+          error.code,
+          `Settings were not confirmed during ${stage}; the installation remains stopped. ${error.message} Run clawscarf configure to review and resume the change.`,
+          error.commandFailure,
+        );
       throw new InstallationError(
         "unavailable",
         `Settings were not confirmed during ${stage}; the installation remains stopped. Run configure --directory again to review and explicitly resume the same change. The gateway key is observed first and matching native settings are not repeated.${error instanceof ModelConfigurationError ? ` Native result: ${error.code}.` : ""}`,
       );
     }
+  });
+}
+
+/** Retain an authorization draft without blocking startup; no service mutation has begun. */
+export async function retainSettingsAuthorization(
+  directory: string,
+  candidate: string,
+  acceptedSettings: string,
+  reapply?: "models" | "connections",
+) {
+  await withInstallationLock(directory, async () => {
+    if (
+      (await readFile(join(directory, "settings.json"), "utf8")) !==
+      acceptedSettings
+    )
+      throw new InstallationError(
+        "stale_plan",
+        "Settings changed during authorization. Reopen configure before applying.",
+      );
+    const prepared = await readPreparation(directory);
+    if (prepared.settingsCandidate || prepared.settingsPending)
+      throw new InstallationError(
+        "stale_plan",
+        "Another configuration is pending. Resume it before applying these settings.",
+      );
+    await writePrivate(
+      join(directory, "prepared.json"),
+      JSON.stringify({
+        ...prepared,
+        settingsCandidate: candidate,
+        ...(reapply ? { settingsReapply: reapply } : {}),
+      }),
+    );
+  });
+}
+
+/** A draft can be discarded only before service mutation begins. */
+export async function discardSettingsCandidate(
+  directory: string,
+  candidate: string,
+) {
+  return withInstallationLock(directory, async () => {
+    const prepared = await readPreparation(directory);
+    if (prepared.settingsCandidate !== candidate)
+      throw new InstallationError(
+        "stale_plan",
+        "The pending change has changed. Reopen configure.",
+      );
+    if (prepared.settingsPending) return false;
+    await writePrivate(
+      join(directory, "prepared.json"),
+      JSON.stringify({ ownerId: prepared.ownerId }),
+    );
+    return true;
   });
 }

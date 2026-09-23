@@ -131,6 +131,7 @@ export async function resolveInstallation(
   const input: LocalInput = parseLocalInput({
     ...(cloudServices.length ? { cloudServices } : {}),
     name: config.name,
+    agentName: config.agentName,
     administratorName: access.administratorName,
     runtimeImage: release.images.gateway,
     publicWeb: config.publicWeb,

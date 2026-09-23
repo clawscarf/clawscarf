@@ -28,6 +28,7 @@ export const installationSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
     name: localInput.shape.name,
+    agentName: localInput.shape.agentName,
     recipe: z
       .strictObject({
         id: z.string().min(1),

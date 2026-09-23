@@ -7,7 +7,20 @@ import type { InitialConnectionsEndpoint } from "./connections.js";
 import { LocalSetupError } from "./process.js";
 import { ensurePrivateFile } from "./state.js";
 
-import { publicWebPolicy, publicWebEndpointConstraints } from "./public-web.js";
+import { publicWebPolicy, composeNetworkRules } from "./public-web.js";
+
+export function serviceNetworkRule(
+  name: string,
+  network?: { host: string; port: number; binary: string },
+) {
+  return network
+    ? {
+        name,
+        endpoints: [{ host: network.host, port: network.port, tls: "skip" }],
+        binaries: [{ path: network.binary }],
+      }
+    : null;
+}
 
 export function initialRuntimePolicy(
   source: string,
@@ -30,54 +43,32 @@ export function initialRuntimePolicy(
       "invalid_runtime_policy",
       "Initial model setup requires the shipped deny-by-default runtime policy.",
     );
+  const services = {
+    ...(models
+      ? { model_gateway: serviceNetworkRule("Model gateway", models.network) }
+      : {}),
+    ...(connections
+      ? {
+          connections_broker: serviceNetworkRule(
+            "Connections broker",
+            connections.network,
+          ),
+        }
+      : {}),
+  };
   return {
     ...parsed.data,
-    network_policies: {
-      ...(publicWeb ? { public_web: publicWebPolicy(true) } : {}),
-      ...(connections
-        ? {
-            connections_broker: {
-              name: "Connections broker",
-              endpoints: [
-                {
-                  host: connections.network.host,
-                  port: connections.network.port,
-                  ...publicWebEndpointConstraints(
-                    connections.network.port,
-                    publicWeb,
-                  ),
-                  tls: "skip",
-                },
-              ],
-              binaries: [{ path: connections.network.binary }],
-            },
-          }
-        : {}),
-      ...(models
-        ? {
-            model_gateway: {
-              name: "Model gateway",
-              endpoints: [
-                {
-                  host: models.network.host,
-                  port: models.network.port,
-                  ...publicWebEndpointConstraints(
-                    models.network.port,
-                    publicWeb,
-                  ),
-                  tls: "skip",
-                },
-              ],
-              binaries: [{ path: models.network.binary }],
-            },
-          }
-        : {}),
-    },
+    network_policies: composeNetworkRules(
+      services,
+      { public_web: publicWebPolicy(publicWeb) },
+      {},
+    ).rules,
   };
 }
 
 export async function prepareRuntimePolicy(
   directory: string,
+  ownerId: string,
   models: InitialModels | undefined,
   connections?: InitialConnectionsEndpoint,
   publicWeb = false,
@@ -89,8 +80,18 @@ export async function prepareRuntimePolicy(
     ),
     models,
     connections,
-    publicWeb,
+    false,
   );
+  const composed = composeNetworkRules(
+    policy.network_policies,
+    { public_web: publicWebPolicy(publicWeb) },
+    {},
+  );
+  await ensurePrivateFile(
+    join(directory, "private/network-policy-adjustments.json"),
+    JSON.stringify({ ownerId, rules: composed.adjustments }),
+  );
+  policy.network_policies = composed.rules;
   await ensurePrivateFile(
     join(directory, "private/runtime-policy.json"),
     JSON.stringify(policy),

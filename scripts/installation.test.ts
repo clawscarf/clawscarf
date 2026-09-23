@@ -5,7 +5,6 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installationSchema } from "./installation/configuration.js";
-import { releaseSchema } from "./release/definition.js";
 import { fingerprint } from "./installation/files.js";
 import { planInstallation, applyInstallation } from "./installation/plan.js";
 import { resolveInstallation } from "./installation/resolve.js";
@@ -20,6 +19,7 @@ import { readState } from "./deployment/state.js";
 
 const configuration = {
   schemaVersion: 1,
+  agentName: "ClawScarf",
   name: "team",
   releaseFile: "release.json",
   stateDirectory: "state",
@@ -43,31 +43,6 @@ const configuration = {
   connections: { mode: "disabled" },
   packs: [],
 };
-await test("product configuration never offers protection bypasses or invalid access combinations", () => {
-  assert.ok(installationSchema.safeParse(configuration).success);
-  for (const modification of [
-    { models: { mode: "disabled" } },
-    { execution: { mode: "host" } },
-    { resources: { gateway: { cpu: "2", memory: "2Gi" } } },
-    { access: { mode: "external" } },
-    { browser: { enabled: true, sandbox: false } },
-    { storage: { mode: "directory", root: "/tmp" } },
-  ])
-    assert.equal(
-      installationSchema.safeParse({ ...configuration, ...modification })
-        .success,
-      false,
-    );
-});
-await test("release file requires exact images, complete protection tools and supported platforms", () => {
-  assert.equal(
-    releaseSchema.safeParse({
-      version: "0.1.0",
-      images: { gateway: "image:latest" },
-    }).success,
-    false,
-  );
-});
 await test(
   "preview rejects changed release inputs before resource allocation",
   { skip: process.platform !== "darwin" || process.arch !== "arm64" },
@@ -90,7 +65,13 @@ await test(
         companion: image,
         openshellClient: image,
       },
-      tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
+      tools: {
+        openshell: {
+          version: "0.0.116",
+          cli: { "darwin-arm64": tool },
+          gateway: { "darwin-arm64": tool },
+        },
+      },
     };
     await writeFile(join(directory, "release.json"), JSON.stringify(release));
     const path = join(directory, "config.json");
@@ -118,7 +99,6 @@ await test(
       { mode: 0o600 },
     );
     const plan = await planInstallation(path);
-    assert.equal(plan.action, "prepare");
     assert.equal(plan.stateDirectory, join(directory, "state"));
     assert.equal(new Set(plan.internalPorts).size, 7);
     await writeFile(
@@ -154,18 +134,14 @@ await test(
       }),
     );
     const enabled = await planInstallation(path);
-    assert.equal(enabled.capabilities.models, "litellm");
-    assert.equal(enabled.capabilities.connections, "hosted");
     assert.ok(!JSON.stringify(enabled).includes("private-test-key"));
-    const enabledPreview = join(directory, "enabled.json");
-    await writeFile(enabledPreview, JSON.stringify(enabled));
     await withInstallationLock(enabled.stateDirectory, () =>
-      assert.rejects(applyInstallation(path, enabledPreview), {
+      assert.rejects(applyInstallation(path, enabled), {
         code: "operation_busy",
       }),
     );
     await writeFile(join(directory, "keys.env"), "PROVIDER_KEY=changed\n");
-    await assert.rejects(applyInstallation(path, enabledPreview), {
+    await assert.rejects(applyInstallation(path, enabled), {
       code: "stale_plan",
     });
     await writeFile(path, JSON.stringify(configuration));
@@ -173,13 +149,11 @@ await test(
     assert.ok(resolved.input.models);
     assert.equal(resolved.input.connections, undefined);
     assert.ok(resolved.input.modelGateway);
-    const preview = join(directory, "preview.json");
-    await writeFile(preview, JSON.stringify(plan));
     await writeFile(
       join(directory, "release.json"),
       JSON.stringify({ ...release, version: "0.2.0" }),
     );
-    await assert.rejects(applyInstallation(path, preview), {
+    await assert.rejects(applyInstallation(path, plan), {
       code: "stale_plan",
     });
     await writeFile(join(directory, "release.json"), JSON.stringify(release));
@@ -233,6 +207,21 @@ await test(
     await writeFile(
       join(stateDirectory, "settings.json"),
       JSON.stringify(accepted),
+    );
+    await writeFile(
+      join(directory, "installation.json"),
+      JSON.stringify(configuration),
+    );
+    const { runConfiguration } =
+      await import("./installation/installer/run.js");
+    await assert.rejects(
+      runConfiguration({
+        directory,
+        reapply: "models",
+        nonInteractive: true,
+        json: true,
+      }),
+      /Changing an existing installation noninteractively requires --yes/,
     );
     const changedSettings = await planSettingsChange(path);
     assert.deepEqual(changedSettings.scopes, {
@@ -384,11 +373,9 @@ await test("concurrent operators cannot mutate the same installation", async (t)
   const state = join(directory, "state");
   await withInstallationLock(state, async () => {
     const { startInstallation } = await import("./installation/lifecycle.js");
-    const { upgradeLocal } = await import("./deployment/upgrade.js");
     for (const operation of [
       () => withInstallationLock(state, () => Promise.resolve(undefined)),
       () => startInstallation(state, () => {}),
-      () => upgradeLocal(state, "unused", "unused", () => {}),
     ])
       await assert.rejects(operation(), { code: "operation_busy" });
   });

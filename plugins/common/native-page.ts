@@ -6,10 +6,10 @@ export function element<K extends keyof HTMLElementTagNameMap>(
   node.textContent = text;
   return node;
 }
-export function button(label: string, run: () => void) {
+export function button(label: string, run: () => void, variant = "") {
   const node = element("button", label);
   node.type = "button";
-  node.className = "btn";
+  node.className = `btn ${variant}`.trim();
   node.onclick = run;
   return node;
 }
@@ -30,7 +30,11 @@ export interface PageContext {
     components: {
       mountDialog(
         container: HTMLElement,
-        options: { label: string; content: HTMLElement; onCancel: () => void },
+        options: {
+          label: string;
+          content: HTMLElement;
+          onCancel: () => boolean | void;
+        },
       ): { dispose(): void };
     };
   };
@@ -51,19 +55,55 @@ export function page<T extends { csrfToken: string }>(
   const style = element(
     "style",
     `
-    .clawscarf-page{max-width:960px;margin:24px auto;padding:0 16px;display:grid;gap:20px}
+    .clawscarf-page{max-width:960px;margin:24px auto;padding:0 20px;display:grid;gap:24px}
+    .clawscarf-page [hidden]{display:none!important}
     .clawscarf-page header,.clawscarf-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .clawscarf-page header h2{flex:1;margin:0}.clawscarf-page table{width:100%;border-collapse:collapse}
-    .clawscarf-page th,.clawscarf-page td{text-align:left;padding:12px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
-    .clawscarf-page small{display:block;color:var(--muted);margin-top:4px}.clawscarf-page [role=alert]{color:var(--danger)}
+    .clawscarf-page header h2,.clawscarf-page header h3{flex:1;margin:0}
+    .clawscarf-page table{width:100%;border-collapse:collapse}
+    .clawscarf-page th,.clawscarf-page td{text-align:left;padding:16px 12px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+    .clawscarf-page th{font-size:12px;font-weight:500;color:var(--muted)}
+    .clawscarf-page td:last-child{text-align:right}
+    .clawscarf-page small,.clawscarf-muted{color:var(--muted)}
+    .clawscarf-page small{display:block;margin-top:4px}
+    .clawscarf-page [role=alert]{color:var(--danger)}
     .clawscarf-page [role=status]:not(:empty)::before{content:'◌';display:inline-block;margin-right:8px;animation:clawscarf-spin 1s linear infinite}
     .clawscarf-page [role=alert]:empty,.clawscarf-page [role=status]:empty{display:none}
-    .clawscarf-page input,.clawscarf-page select{font:inherit;max-width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:inherit}
+    .clawscarf-page input,.clawscarf-page select{box-sizing:border-box;font:inherit;max-width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg);color:inherit}
+    .clawscarf-page input[type=search]{width:100%}
     .clawscarf-page label{display:grid;gap:8px}
-    .clawscarf-page input[readonly]{width:100%}.clawscarf-page form{display:grid;gap:16px}
-    .clawscarf-catalog{display:grid;gap:8px;margin-top:12px;max-height:55vh;overflow:auto}
-    .clawscarf-catalog .btn{display:block;text-align:left;white-space:normal;padding:12px}
-    .clawscarf-catalog img{vertical-align:middle;margin-right:8px}
+    .clawscarf-page input[readonly]{width:100%}
+    .clawscarf-actions input[readonly]{flex:1;min-width:0;width:auto}
+    .clawscarf-page form,.clawscarf-page-content{display:grid;gap:20px}
+    .clawscarf-page fieldset label{display:flex;align-items:center;margin:8px 0}
+    .clawscarf-page .clawscarf-dialog{box-sizing:border-box;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:0 16px 64px #0003;max-height:min(720px,calc(100dvh - 64px));display:flex;flex-direction:column;gap:0;overflow:hidden}
+    .clawscarf-dialog header{padding:20px 24px 12px;flex:none}
+    .clawscarf-dialog h3{font-size:18px}
+    .clawscarf-dialog-body{padding:8px 24px 24px;display:grid;gap:16px;overflow:auto;min-height:0}
+    .clawscarf-dialog-body p{margin:0}
+    .clawscarf-dialog-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border);flex:none}
+    .clawscarf-dialog-footer:empty{display:none}
+    .clawscarf-dialog .clawscarf-catalog-body{display:flex;flex-direction:column;overflow:hidden}
+    .clawscarf-catalog-filters{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:12px}
+    .clawscarf-catalog h4{margin:20px 8px 4px;color:var(--muted);font-size:12px;font-weight:600}
+    .clawscarf-catalog section:first-child h4{margin-top:0}
+    .clawscarf-catalog{overflow:auto;min-height:0;max-height:50vh}
+    .clawscarf-page .clawscarf-catalog .btn{display:flex;width:100%;justify-content:flex-start;text-align:left;white-space:normal;padding:14px 8px;gap:12px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;box-shadow:none}
+    .clawscarf-page .clawscarf-catalog .btn:hover{background:var(--bg-hover)}
+    .clawscarf-catalog .clawscarf-identity-copy small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .clawscarf-identity{display:flex;align-items:center;gap:12px;min-width:0}
+    .clawscarf-identity-copy{min-width:0;flex:1;text-align:left}
+    .clawscarf-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--secondary);color:var(--muted);font-size:12px;font-weight:600;flex:none}
+    .clawscarf-identity img,.clawscarf-catalog img{flex:none;object-fit:contain}
+    .clawscarf-badge{display:inline-block;padding:3px 8px;border-radius:var(--radius-full);font-size:12px;background:var(--secondary);color:var(--muted);white-space:nowrap}
+    .clawscarf-you{margin-left:8px}
+    .clawscarf-badge[data-state=connected]{background:var(--ok-subtle);color:var(--ok)}
+    .clawscarf-badge[data-state=needs_attention]{background:var(--warn-subtle);color:var(--warn)}
+    .clawscarf-empty{padding:48px 24px;text-align:center;border:1px dashed var(--border);border-radius:var(--radius-lg)}
+    .clawscarf-empty h3{margin:0 0 8px}.clawscarf-empty p{margin:0 0 20px;color:var(--muted)}
+    .clawscarf-invitations{display:grid;gap:16px;margin-top:12px}
+    .clawscarf-invitations ul{list-style:none;padding:0;margin:0}
+    .clawscarf-invitations li{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .clawscarf-invitations li>div:first-child{flex:1;min-width:160px;overflow-wrap:anywhere}
     .clawscarf-page td .btn{margin:2px}
     .clawscarf-account-identity{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
     .clawscarf-account-identity h3,.clawscarf-account-identity p{margin:4px 0;overflow-wrap:anywhere}
@@ -79,18 +119,26 @@ export function page<T extends { csrfToken: string }>(
     .clawscarf-cloud-service .btn{margin:4px 8px 4px 0;white-space:normal;text-align:left}
     .clawscarf-cloud [role=status]:not(:empty)::before{content:none}
     @media(max-width:600px){
+      .clawscarf-catalog-filters{grid-template-columns:1fr}
+      .clawscarf-page{padding:0 12px;margin:16px auto}
+      .clawscarf-dialog header{padding:16px 16px 8px}
+      .clawscarf-dialog-body{padding:8px 16px 20px}
+      .clawscarf-dialog-footer{padding:12px 16px}
+      .clawscarf-page table thead{display:none}
+      .clawscarf-page tbody{display:grid;gap:12px}
+      .clawscarf-page tr{display:grid;grid-template-columns:minmax(0,1fr) auto;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;gap:12px}
+      .clawscarf-page td{border:0;padding:0;min-width:0}
+      .clawscarf-page td:first-child{grid-column:1/-1}
+      .clawscarf-connections-table td:last-child{grid-column:1/-1;text-align:left}
       .clawscarf-cloud-packs .btn{width:100%;margin-right:0}
+      .clawscarf-page .clawscarf-cloud table thead{display:table-header-group}
+      .clawscarf-page .clawscarf-cloud tbody{display:table-row-group}
+      .clawscarf-page .clawscarf-cloud tr{display:table-row}
+      .clawscarf-page .clawscarf-cloud td{padding:8px 4px}
       .clawscarf-page .clawscarf-cloud td:last-child{width:auto}
-      .clawscarf-connections-table thead{display:none}
-      .clawscarf-connections-table tbody{display:grid;gap:12px;margin-top:16px}
-      .clawscarf-connections-table tr{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:10px;padding:12px;gap:8px}
-      .clawscarf-connections-table td{border:0;padding:0!important;overflow-wrap:normal}
-      .clawscarf-connections-table td:first-child{grid-column:1/-1;font-weight:600}
-      .clawscarf-connections-table td:last-child{grid-column:1/-1;width:auto!important}
     }
     @keyframes clawscarf-spin{to{transform:rotate(360deg)}}
     @media(prefers-reduced-motion:reduce){.clawscarf-page [role=status]::before{animation:none}}
-    @media(max-width:600px){.clawscarf-page th,.clawscarf-page td{padding:8px 4px}.clawscarf-page td:last-child{width:1%}}
   `,
   );
   const header = element("header");
@@ -100,6 +148,7 @@ export function page<T extends { csrfToken: string }>(
   const error = element("p");
   error.setAttribute("role", "alert");
   const content = element("div");
+  content.className = "clawscarf-page-content";
   root.append(style, header, status, error, content);
   container.replaceChildren(root);
   const request = {
@@ -110,24 +159,36 @@ export function page<T extends { csrfToken: string }>(
   } as const;
   let csrf = "";
   let busy = false;
-  const disabledBefore = new Map<
-    HTMLButtonElement | HTMLSelectElement,
+  const disabled = new Map<
+    HTMLButtonElement | HTMLSelectElement | HTMLInputElement,
     boolean
   >();
+  let focused:
+    HTMLButtonElement | HTMLSelectElement | HTMLInputElement | undefined;
   function pending(value: boolean, text = "") {
     busy = value;
     status.textContent = text;
     content.setAttribute("aria-busy", String(value));
-    for (const control of root.querySelectorAll<
-      HTMLButtonElement | HTMLSelectElement
-    >("button,select"))
-      if (value) {
-        disabledBefore.set(control, control.disabled);
+    if (value) {
+      for (const control of root.querySelectorAll<
+        HTMLButtonElement | HTMLSelectElement | HTMLInputElement
+      >("button,select,input")) {
+        if (control === document.activeElement) focused = control;
+        disabled.set(control, control.disabled);
         control.disabled = true;
-      } else if (disabledBefore.has(control)) {
-        control.disabled = disabledBefore.get(control) ?? false;
       }
-    if (!value) disabledBefore.clear();
+    } else {
+      for (const [control, wasDisabled] of disabled)
+        control.disabled = wasDisabled;
+      disabled.clear();
+      if (
+        focused?.isConnected &&
+        !focused.disabled &&
+        document.activeElement === document.body
+      )
+        focused.focus();
+      focused = undefined;
+    }
   }
   async function session() {
     const value = await loadSession(request);
@@ -162,6 +223,9 @@ export function page<T extends { csrfToken: string }>(
   }
   return {
     root,
+    get busy() {
+      return busy;
+    },
     header,
     content,
     context,
@@ -175,32 +239,56 @@ export function page<T extends { csrfToken: string }>(
 }
 export type Page = ReturnType<typeof page>;
 
+/** OpenClaw owns modal behavior; the plugin supplies its visible panel. */
+export function dialog(
+  page: Page,
+  label: string,
+  panel: HTMLElement = element("div"),
+) {
+  panel.className = "clawscarf-dialog";
+  const header = element("header");
+  const body = element("div");
+  body.className = "clawscarf-dialog-body";
+  const footer = element("div");
+  footer.className = "clawscarf-dialog-footer";
+  const mount = element("div");
+  page.root.append(mount);
+  const close = () => {
+    handle.dispose();
+    mount.remove();
+  };
+  const dismiss = button("×", close, "btn--ghost");
+  dismiss.setAttribute("aria-label", `Close ${label.toLowerCase()}`);
+  header.append(element("h3", label), dismiss);
+  panel.append(header, body, footer);
+  const handle = page.context.host.components.mountDialog(mount, {
+    label,
+    content: panel,
+    onCancel: () => {
+      if (!page.busy) close();
+      return false;
+    },
+  });
+  return { body, footer, close };
+}
+
 export function confirm(
   page: Page,
   label: string,
   message: string,
   action: () => Promise<void>,
 ) {
-  const content = element("div");
-  content.append(element("p", message));
-  const mount = element("div");
-  page.root.append(mount);
-  const close = () => {
-    dialog.dispose();
-    mount.remove();
-  };
-  content.append(
-    button("Cancel", close),
-    button(label, () => {
-      close();
-      void page.run(action, "Saving…");
-    }),
+  const modal = dialog(page, label);
+  modal.body.append(element("p", message));
+  modal.footer.append(
+    button("Cancel", modal.close),
+    button(
+      label,
+      () => {
+        modal.close();
+        void page.run(action, "Saving…");
+      },
+      "primary",
+    ),
   );
-  const dialog = page.context.host.components.mountDialog(mount, {
-    label,
-    content,
-    onCancel: () => {
-      close();
-    },
-  });
 }

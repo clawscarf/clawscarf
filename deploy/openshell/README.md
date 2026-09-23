@@ -49,7 +49,12 @@ same public-address constraints: the pinned OpenShell rejects overlapping rules
 with different `allowed_ips`, even when their binary selectors differ. Private
 services on those ports require public web to be off; services on other ports
 retain their explicit rules (including the bundled private model gateway on 4000).
-The controller resolves destination names and enforces `allowed_ips`.
+Setup and selected reconfiguration check DNS compatibility before writing service
+settings. Startup then tests each configured service's actual CONNECT route from
+inside OpenShell before opening Access. Host DNS alone is not treated as proof of
+runtime connectivity. These checks establish the proxy route, not service
+credentials, TLS trust or inference success. The controller resolves destination
+names and enforces `allowed_ips`.
 TLS passes through without interception; the rule allows TCP tunnels on those
 ports, not a payload-level guarantee that every byte is HTTP. It grants neither
 raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
@@ -57,13 +62,16 @@ raw outbound sockets nor direct DNS. Tools must honor the proxy environment;
 
 Enabling public web lets team code send data to public services. It does not isolate
 team members or prevent data export. Turning it off removes ClawScarf’s
-`public_web` rule and its IP constraints from managed service rules, restoring
-strict endpoint-based access. Other operator policies are preserved; custom IP
-restrictions on overlapping managed services cause an explicit configuration error
-rather than being overwritten. Retained changes use the
-[network policy updater](../../scripts/deployment/network-policy.ts), which waits
-for the selected policy version to become effective before reopening installation
-access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
+`public_web` rule and undoes only its recorded, unchanged endpoint adjustments.
+The [private adjustment record](../../scripts/deployment/policy.ts) stores those before/after values;
+equality with our address list alone never establishes ownership. Operator edits
+are preserved. Connections-only changes leave model rules untouched. Overlapping
+custom restrictions cause an explicit error before service settings are written.
+Retained changes use the [same composition](../../scripts/deployment/public-web.ts)
+as initial setup. The [updater](../../scripts/deployment/network-policy.ts) records
+the reviewed values of changed rules, preserves unrelated rules, and refuses to
+overwrite a selected rule changed since review. It reconciles a lost update response
+by observing OpenShell and waits for effective activation before reopening access. Native dashboard/widget grants remain OpenClaw-owned and apply in the
 user’s browser; inline previews do not inherit a saved dashboard’s network grants.
 
 The opt-in [public-web regression](../../tests/runtime/public-web.test.ts) creates
@@ -142,11 +150,13 @@ controller signing key. Replacing compute requires restarting its forwards.
 The pinned controller's [connection admission](https://github.com/NVIDIA/OpenShell/blob/d1155aa70042d3e2ee49dbfa15346b108b7c1d92/crates/openshell-server/src/grpc/sandbox.rs#L1313)
 limits forwarded connections to 20 per sandbox. The service forward consumes a slot
 for each application TCP connection, including long-lived streams. This is a
-capacity risk for concurrent UI traffic; earlier SSH `forward start` experiments
-do not qualify this path.
+capacity limit for concurrent streams. [Access](../../services/access/README.md#security-and-state)
+bounds ordinary HTTP concurrency and prevents stale connection reuse; WebSockets
+still share the controller's connection limit.
 The [installation test](../../tests/deployment/platform-live.test.ts) covers native
-WebSocket forwarding and authenticated administrator access through the companion;
-[TODO](../../TODO.md#installer-and-releases) owns remaining concurrency qualification.
+WebSocket forwarding and authenticated administrator access through the companion.
+[Access verification](../../services/access/README.md#reuse-and-verification) covers
+authenticated UI asset bursts, idle connections and membership changes.
 
 [Deployment networking](../deployment/README.md#ownership-and-recovery) owns bridge
 allocation and fixed service addresses. Public application/widget entry always goes

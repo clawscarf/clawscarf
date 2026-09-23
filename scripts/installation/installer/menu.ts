@@ -42,8 +42,8 @@ export function installationMenu(
     ),
     row(
       "identity",
-      "Name and administrator",
-      `${config.name} · ${config.access.administratorName}`,
+      "Names",
+      `${config.name} · ${config.agentName} · ${config.access.administratorName}`,
     ),
     row(
       "access",

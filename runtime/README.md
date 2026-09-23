@@ -7,12 +7,13 @@ This guide owns the native preset and runtime helpers. The
 [private-files.ts](private-files.ts) owns bounded private-file reads and staged directory publication. Runtime and browser initializers retain their own resume/identity policies; they share file ownership and publication mechanics.
 
 [configuration.ts](configuration.ts) defines the fresh-install preset used internally by installation.
-The input contains `publicOrigin`, `widgetOrigin` and the
+The input contains `agentName`, `publicOrigin`, `widgetOrigin` and the
 exact `administratorIdentity` produced by the [access service](../services/access/README.md)
 or a hosting platform's trusted ingress. The preset does not assign an identity
 namespace or depend on either platform's database. The public origin configures both
 browser admission and native OAuth callback/session/viewer link generation; widgets
 retain their separate origin.
+`agentName` initializes `agents.entries.main.name` and `identity.name` through native configuration.
 `standaloneNavigation` defaults to true and enables the bundled native account/People
 pages. A hosting platform supplying its own entry UI sets it to false.
 Initialization refuses to overwrite existing configuration and validates with the pinned OpenClaw CLI
@@ -37,6 +38,21 @@ Connections starts disabled in the native preset; selecting that capability enab
 its plugin. Native administrators can deliberately change application settings.
 The preset sets `gateway.cliAgents.enabled: false` to disable catalog-backed CLI
 agents while retaining the native Codex agent plugin.
+
+The preset disables background checks with `update.checkOnStart: false` and
+automatic updates with `update.auto.enabled: false`. The runtime launcher sets
+`OPENCLAW_NO_SELF_UPDATE=1`; ClawScarf releases supply the bundled OpenClaw.
+The [update patch](openclaw/patches/disable-server-updates.prompt.md) owns the
+manual-update restriction and UI removal; administrator-installed extension updates
+remain available. The [Labs patch](openclaw/patches/remove-labs.prompt.md) removes
+the experiments page while preserving custom plugin UI.
+
+The launcher also sets `OPENCLAW_NO_GITHUB=1` for new and retained installations.
+The [GitHub patch](openclaw/patches/disable-native-github.prompt.md) disables native
+account linking, publication, authenticated previews, managed credential injection
+and OAuth/profile background work. Ordinary links and deliberate Git/`gh` commands
+with separately supplied credentials remain available; this does not impose a
+GitHub network prohibition. Existing account records are preserved.
 
 Members use `gateway.roles.definitions.member.sessions.others: "view"`: they can
 read other people's ordinary sessions, while explicit native session membership
@@ -112,14 +128,6 @@ uses the actual pinned SDK and verifies configured observation without SQLite
 sidecars or filesystem changes, source-file hashes, retained disablement and refusal
 of invalid native core settings. Observation checks stored configuration, not loaded
 tools; see [local activation](../deploy/deployment/README.md#activate-connections).
-
-Replacement images support an operator-controlled startup gate. When
-`CLAWSCARF_START_GATE` contains an upgrade UUID, the launcher waits for the matching
-root-owned `/etc/clawscarf-start-ready` marker before starting OpenClaw. The operator
-restores controller settings and stops compute before publishing that marker. The next
-normal start boots the supervisor with restored settings before launching OpenClaw.
-It is absent from normal fresh startup; it does not change OpenClaw itself or store
-controller credentials in the guest. See the [upgrade procedure](../deploy/deployment/README.md#runtime-upgrade).
 
 ## Capability controls
 

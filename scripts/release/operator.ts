@@ -20,7 +20,6 @@ const assets = [
   "LICENSE",
   "THIRD_PARTY_NOTICES.md",
   "generated/http/LICENSE.md",
-  "scripts/deployment/upgrade-rpc.py",
   "scripts/packs/transport.py",
   "scripts/packs/requirements.in",
   "scripts/packs/requirements.txt",
@@ -37,6 +36,7 @@ const assets = [
   "deploy/openshell/policy.yaml",
   "deploy/execution/browser/seccomp.json",
   "deploy/execution/network/node-ingress.cfg",
+  "deploy/execution/network/public-addresses.json",
   "deploy/execution/browser/LICENSE.playwright",
 ];
 

@@ -149,7 +149,13 @@ async function fixture(t: TestContext) {
         companion: image,
         openshellClient: image,
       },
-      tools: { openshell: { version: "0.0.116", cli: tool, gateway: tool } },
+      tools: {
+        openshell: {
+          version: "0.0.116",
+          cli: { "darwin-arm64": tool },
+          gateway: { "darwin-arm64": tool },
+        },
+      },
     }),
   );
   const recipe = join(parent, "recipe.json");
@@ -192,7 +198,7 @@ async function fixture(t: TestContext) {
     Provider: "openai/test",
     "Model catalog": "file",
     "Model catalog file": models,
-    "secret:OpenAI LLM API key": "test-key",
+    "secret:OpenAI API key": "test-key",
     Connections: "off",
     "Start now?": false,
     [`Install in ${directory}?`]: true,
@@ -211,7 +217,7 @@ async function fixture(t: TestContext) {
     providerEnvFile: env,
   };
 }
-async function savePreview(
+async function saveAnswers(
   options: Parameters<typeof collectInstallation>[1],
   ui: InstallerPrompts,
 ) {
@@ -221,25 +227,19 @@ async function savePreview(
     draft.config,
     draft.inputs,
   );
-  const planFile = join(draft.directory, "preview.json");
-  await writeFile(
-    planFile,
-    JSON.stringify(await planInstallation(configFile)),
-    { mode: 0o600 },
-  );
-  return { state: "saved", configFile, planFile };
+  return { state: "saved", configFile };
 }
 const local = {
   skip: process.platform !== "darwin" || process.arch !== "arm64",
 };
 
 await test(
-  "collected settings use the real planner and save private files without applying",
+  "collected settings save private files without applying",
   local,
   async (t) => {
     const f = await fixture(t);
     const ui = new Answers(f.answers);
-    const result = await savePreview(f, ui);
+    const result = await saveAnswers(f, ui);
     assert.equal(result.state, "saved");
     const config = installationSchema.parse(
       await readJson(join(f.directory, "installation.json")),
@@ -248,20 +248,15 @@ await test(
     assert.equal(config.connections.mode, "disabled");
     assert.ok(config.resources.runtime);
     assert.deepEqual(config.packs, []);
-    assert.equal(
-      (await planInstallation(join(f.directory, "installation.json"))).action,
-      "prepare",
-    );
     for (const [path, mode] of [
       [f.directory, 0o700],
       [join(f.directory, "installation.json"), 0o600],
-      [join(f.directory, "preview.json"), 0o600],
     ] as const)
       assert.equal((await lstat(path)).mode & 0o777, mode);
     await assert.rejects(lstat(join(f.directory, "state")), { code: "ENOENT" });
     assert.ok(!ui.questions.some((question) => question.includes("key file")));
     const before = await readFile(join(f.directory, "installation.json"));
-    await assert.rejects(savePreview(f, new Answers(f.answers)), {
+    await assert.rejects(saveAnswers(f, new Answers(f.answers)), {
       code: "change_unsupported",
     });
     assert.deepEqual(
@@ -357,8 +352,7 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const modelFile = join(f.parent, "models.json"),
-      key = join(f.parent, "key");
+    const modelFile = join(f.parent, "models.json");
     await writeFile(
       modelFile,
       JSON.stringify({
@@ -378,15 +372,13 @@ await test(
         ],
       }),
     );
-    await writeFile(key, "PROVIDER_KEY=private-test-secret\n", { mode: 0o600 });
     const ui = new Answers(
       {
         ...f.answers,
         "Default model": "team",
         Provider: "openai/test",
         "Model catalog file": modelFile,
-        "LLM API keys": "file",
-        "Provider credentials file (.env)": key,
+        "secret:OpenAI API key": "private-test-secret",
         "Install a pack? (experimental native Claws)": true,
         Pack: resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
@@ -394,23 +386,16 @@ await test(
       },
       ["advanced-models", "packs"],
     );
-    const result = await savePreview(f, ui);
+    const result = await saveAnswers(f, ui);
     assert.equal(result.state, "saved");
-    const configFile = join(f.directory, "installation.json"),
-      planFile = join(f.directory, "preview.json");
+    const configFile = join(f.directory, "installation.json");
     const plan = await planInstallation(configFile);
-    assert.equal(plan.capabilities.models, "litellm");
-    assert.equal(plan.capabilities.connections, "disabled");
-    assert.deepEqual(plan.capabilities.packs[0]?.members, [
-      "researcher",
-      "reviewer",
-    ]);
     assert.ok(!JSON.stringify(plan).includes("private-test-secret"));
     await writeFile(
       join(f.directory, "secrets/models.env"),
       "PROVIDER_KEY=changed\n",
     );
-    await assert.rejects(applyInstallation(configFile, planFile), {
+    await assert.rejects(applyInstallation(configFile, plan), {
       code: "stale_plan",
     });
   },
@@ -487,18 +472,19 @@ await test(
                 images: 5,
               });
             },
-            apply: async (config, plan) => {
+            apply: (config, plan) => {
               calls.push("apply");
               assert.equal(config, join(f.directory, "installation.json"));
-              assert.equal(plan, join(f.directory, "preview.json"));
-              await readJson(plan);
-              if (fail === "cancel") throw new InstallerCancelled();
-              if (fail === true) throw Error("Fixture failure");
-              return {
+              assert.equal(plan.stateDirectory, join(f.directory, "state"));
+              if (fail === "cancel")
+                return Promise.reject(new InstallerCancelled());
+              if (fail === true)
+                return Promise.reject(Error("Fixture failure"));
+              return Promise.resolve({
                 state: "prepared",
                 directory: f.directory,
                 release: "0.1.0-dev",
-              };
+              });
             },
             start: (state) => {
               calls.push("start");
@@ -604,6 +590,7 @@ await test(
       {
         ...f.answers,
         "Installation name": "my-team",
+        "Default agent name": "Atlas",
         "Administrator display name": "Owner",
         "gateway CPUs": "4",
       },
@@ -611,6 +598,7 @@ await test(
     );
     const { config } = await collectInstallation(ui, f);
     assert.equal(config.name, "my-team");
+    assert.equal(config.agentName, "Atlas");
     assert.equal(config.access.administratorName, "Owner");
     assert.equal(config.resources.runtime.cpu, "4");
     assert.equal(config.connections.mode, "disabled");
@@ -838,8 +826,7 @@ await test(
         "Default model": "team",
         Provider: "openai/test",
         "Model catalog file": models,
-        "LLM API keys": "paste",
-        "secret:OpenAI LLM API key": "private-$key#value",
+        "secret:OpenAI API key": "private-$key#value",
       },
       ["advanced-models"],
     );
@@ -886,6 +873,7 @@ await test(
       recipe: f.recipe,
       directory: f.directory,
     });
+    assert.equal(draft.config.agentName, preset.defaults.agentName);
     assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
     assert.ok(!ui.questions.includes("Model configuration file"));
     assert.match(ui.notes.join(), /Prepaid usage/);
@@ -929,11 +917,13 @@ await test(
     );
     assert.ok(!ui.questions.includes("Use your own OIDC provider?"));
     const supplied = new Answers(f.answers);
-    await collectInstallation(supplied, {
+    const customized = await collectInstallation(supplied, {
       ...f,
       directory: join(f.parent, "supplied"),
       recipe: f.recipe,
+      agentName: "Atlas",
     });
+    assert.equal(customized.config.agentName, "Atlas");
     assert.ok(
       !supplied.questions.some((question) => question.startsWith("secret:")),
     );
@@ -1027,10 +1017,6 @@ await test(
     );
     assert.equal(catalog.mode, "external");
     assert.equal(catalog.baseUrl, "https://models.example.test/v1");
-    assert.equal(
-      (await planInstallation(file)).capabilities.models,
-      "external",
-    );
   },
 );
 
@@ -1082,7 +1068,7 @@ await test(
         ...f.answers,
         "Default model": "claude-sonnet-5",
         Provider: "anthropic/claude-sonnet-5",
-        "secret:Anthropic LLM API key": "selected-secret",
+        "secret:Anthropic API key": "selected-secret",
         Reasoning: "high",
       },
       ["models"],
@@ -1101,8 +1087,8 @@ await test(
       ["claude-sonnet-5"],
     );
     assert.equal(routes.thinkingDefault, "high");
-    assert.ok(ui.questions.includes("secret:Anthropic LLM API key"));
-    assert.ok(!ui.questions.includes("secret:OpenAI LLM API key"));
+    assert.ok(ui.questions.includes("secret:Anthropic API key"));
+    assert.ok(!ui.questions.includes("secret:OpenAI API key"));
   },
 );
 
@@ -1265,10 +1251,9 @@ await test(
       }
     }
     const result = await collectInstallation(
-      new DiscardKey(
-        { ...f.answers, "secret:OpenAI LLM API key": "discard-me" },
-        ["model-credentials"],
-      ),
+      new DiscardKey({ ...f.answers, "secret:OpenAI API key": "discard-me" }, [
+        "model-credentials",
+      ]),
       { recipe: f.recipe, existing: true },
       first,
     );
@@ -1324,12 +1309,14 @@ await test(
     const first = await collectInstallation(new Answers(f.answers), f);
     const state = join(f.parent, "state");
     await mkdir(state, { mode: 0o700 });
+    const ownerId = randomUUID();
+    await writeFile(
+      join(state, "installation.json"),
+      JSON.stringify({ schemaVersion: 1, ownerId }),
+    );
     const accepted = JSON.stringify({ ...first.config, stateDirectory: state });
     await writeFile(join(state, "settings.json"), accepted, { mode: 0o600 });
-    await writeFile(
-      join(state, "prepared.json"),
-      JSON.stringify({ ownerId: "test" }),
-    );
+    await writeFile(join(state, "prepared.json"), JSON.stringify({ ownerId }));
     class Exit extends Answers {
       override select(
         message: string,
@@ -1351,7 +1338,11 @@ await test(
       await readFile(join(state, "settings.json"), "utf8"),
       accepted,
     );
-    assert.deepEqual(await readdir(state), ["prepared.json", "settings.json"]);
+    assert.deepEqual(await readdir(state), [
+      "installation.json",
+      "prepared.json",
+      "settings.json",
+    ]);
   },
 );
 
@@ -1749,7 +1740,12 @@ await test(
       first.inputs,
     );
     const state = join(f.directory, "state");
-    await mkdir(state);
+    await mkdir(state, { mode: 0o700 });
+    const ownerId = randomUUID();
+    await writeFile(
+      join(state, "installation.json"),
+      JSON.stringify({ schemaVersion: 1, ownerId }),
+    );
     const accepted = {
       ...resolveConfigurationInputs(
         installationSchema.parse(await readJson(file)),
@@ -1758,10 +1754,7 @@ await test(
       stateDirectory: state,
     };
     await writeFile(join(state, "settings.json"), JSON.stringify(accepted));
-    await writeFile(
-      join(state, "prepared.json"),
-      JSON.stringify({ ownerId: randomUUID() }),
-    );
+    await writeFile(join(state, "prepared.json"), JSON.stringify({ ownerId }));
     assert.deepEqual(
       await editInstallationSettings(state, unattendedPrompts, {
         nonInteractive: true,

@@ -143,7 +143,7 @@ await test("launcher privately loads the token before exec without evaluating it
   const upstream = join(state, "upstream.mjs");
   await writeFile(
     upstream,
-    "process.stdout.write(JSON.stringify({token:process.env.CLAWSCARF_CONNECTIONS_TOKEN,args:process.argv.slice(2)}));",
+    "process.stdout.write(JSON.stringify({token:process.env.CLAWSCARF_CONNECTIONS_TOKEN,nativeGitHubDisabled:process.env.OPENCLAW_NO_GITHUB,args:process.argv.slice(2)}));",
   );
   // Relocate only installed executable paths; execute the production shell logic unchanged.
   const launcher = join(state, "openclaw.sh");
@@ -171,12 +171,16 @@ await test("launcher privately loads the token before exec without evaluating it
   const env = {
     ...process.env,
     OPENCLAW_STATE_DIR: state,
-    CLAWSCARF_START_GATE: "",
     NODE_EXTRA_CA_CERTS: "",
+    OPENCLAW_NO_GITHUB: "0",
     CLAWSCARF_CONNECTIONS_TOKEN: "stale-environment",
   };
   const result = await execute("sh", [launcher, "gateway"], { env, cwd: root });
-  assert.deepEqual(JSON.parse(result.stdout), { token, args: ["gateway"] });
+  assert.deepEqual(JSON.parse(result.stdout), {
+    token,
+    nativeGitHubDisabled: "1",
+    args: ["gateway"],
+  });
   assert.equal(result.stderr, "");
   await assert.rejects(readFile(marker), { code: "ENOENT" });
   for (const invalid of [
@@ -203,6 +207,7 @@ await test("launcher privately loads the token before exec without evaluating it
   const absent = await execute("sh", [launcher, "gateway"], { env, cwd: root });
   assert.deepEqual(JSON.parse(absent.stdout), {
     token: "stale-environment",
+    nativeGitHubDisabled: "1",
     args: ["gateway"],
   });
   assert.equal(absent.stderr, "");

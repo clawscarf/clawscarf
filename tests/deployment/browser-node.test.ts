@@ -2,6 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { encodeBrowserSetupCode } from "../../deploy/execution/browser-node/operator.js";
 import { browserNodeReady } from "../../scripts/deployment/browser-node-pairing.js";
+import { verifyBrowserNodeImage } from "../../scripts/deployment/images.js";
+
+await test("browser startup refuses controller images without download transport", async () => {
+  await verifyBrowserNodeImage("fixture", () =>
+    Promise.resolve("shared-artifacts-v1\n"),
+  );
+  for (const label of ["", "<no value>", "unknown"])
+    await assert.rejects(
+      verifyBrowserNodeImage("fixture", () => Promise.resolve(label)),
+      /does not support shared download artifacts/,
+    );
+});
 
 await test("native setup code uses an origin without the trailing slash rejected by OpenClaw", () => {
   const code = encodeBrowserSetupCode("wss://10.77.2.29:18803/", {

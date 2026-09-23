@@ -54,6 +54,8 @@ export async function withGateway<T>(
 ): Promise<T> {
   const scopes = options.scopes ?? ["operator.admin"];
   const ready = Promise.withResolvers<readonly string[]>();
+  let nextRestart = Promise.withResolvers<readonly string[]>();
+  let restarting = false;
   let mutationAttempted = false;
   let completedMutations = 0;
   let closing = false;
@@ -77,7 +79,15 @@ export async function withGateway<T>(
     deviceIdentity: null,
     requestTimeoutMs: 10_000,
     hostDeps: { logDebug() {}, logError() {} },
-    onHelloOk: (hello) => ready.resolve(hello.auth?.scopes ?? []),
+    onHelloOk: (hello) => {
+      const granted = hello.auth?.scopes ?? [];
+      ready.resolve(granted);
+      if (restarting) {
+        nextRestart.resolve(granted);
+        nextRestart = Promise.withResolvers<readonly string[]>();
+        restarting = false;
+      }
+    },
     onConnectError: (error) => {
       const details =
         error instanceof GatewayClientRequestError
@@ -89,7 +99,9 @@ export async function withGateway<T>(
         [401, 403].includes(details.data.httpStatus ?? 0);
       ready.reject(denied ? new NativeFailure("access_denied") : error);
     },
-    onClose: () => {
+    onClose: (code) => {
+      // OpenClaw uses 1012 for restart; an unrelated reconnect is not activation proof.
+      if (code === 1012) restarting = true;
       if (!closing) ready.reject(new NativeFailure("unavailable"));
     },
   });
@@ -115,8 +127,44 @@ export async function withGateway<T>(
         mutate: async (method, input) => {
           mutationAttempted = true;
           try {
+            const reconnect = nextRestart;
             const result = await client.request<unknown>(method, input);
             completedMutations++;
+            if (method === "config.patch") {
+              const acknowledgement = z
+                .union([
+                  z.object({ ok: z.literal(true), noop: z.literal(true) }),
+                  z.object({
+                    ok: z.literal(true),
+                    sentinel: z.object({
+                      payload: z.object({
+                        stats: z.object({ requiresRestart: z.boolean() }),
+                      }),
+                    }),
+                  }),
+                ])
+                .parse(result);
+              if (
+                "sentinel" in acknowledgement &&
+                acknowledgement.sentinel.payload.stats.requiresRestart
+              ) {
+                // A persisted config acknowledgement precedes the scheduled restart.
+                const timeout = setTimeout(
+                  () => reconnect.reject(new NativeFailure("outcome_unknown")),
+                  30_000,
+                );
+                try {
+                  const granted = await reconnect.promise;
+                  if (scopes.includes("operator.admin")) {
+                    if (!granted.includes("operator.admin"))
+                      throw new NativeFailure("access_denied");
+                    await client.request("exec.approvals.get", {});
+                  }
+                } finally {
+                  clearTimeout(timeout);
+                }
+              }
+            }
             return result;
           } catch (error) {
             // Only known pre-execution rejections prove that this write was refused.

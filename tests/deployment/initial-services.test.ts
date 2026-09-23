@@ -15,6 +15,7 @@ function preset() {
   return initialConfiguration({
     publicOrigin: "http://127.0.0.1:18800",
     widgetOrigin: "http://127.0.0.1:18802",
+    agentName: "ClawScarf",
     administratorIdentity: "clawscarf:test",
   });
 }

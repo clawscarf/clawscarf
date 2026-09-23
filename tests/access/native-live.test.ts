@@ -35,19 +35,44 @@ await test(
     );
     try {
       const browserCredential = (await readFile(sessionPath, "utf8")).trim();
+      const headers = { cookie: `clawscarf_session=${browserCredential}` };
+      const index = await fetch(config.origin, {
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      });
+      assert.equal(index.status, 200);
+      const html = await index.text();
+      const assets = Array.from(
+        html.matchAll(/(?:src|href)="([^"?#]+\.(?:js|css))"/gu),
+        (match) => new URL(match[1]!, config.origin),
+      );
+      assert.ok(assets.length > 0, "Built UI must expose its entry assets.");
+      for (const asset of assets) assert.equal(asset.origin, config.origin);
+      const resources = [config.origin, ...assets];
+      // Expired forwarded keep-alive connections previously stranded UI imports.
+      await delay(7000);
       await Promise.all(
-        Array.from({ length: 40 }, async () => {
-          const response = await fetch(config.origin, {
-            headers: { cookie: `clawscarf_session=${browserCredential}` },
+        Array.from({ length: 40 }, async (_, i) => {
+          const url = resources[i % resources.length]!;
+          const response = await fetch(url, {
+            headers: { ...headers, "cache-control": "no-cache" },
             signal: AbortSignal.timeout(10_000),
             redirect: "error",
           });
           assert.equal(response.status, 200);
-          assert.match(
-            response.headers.get("content-type") ?? "",
-            /text\/html/,
+          assert.ok(
+            response.headers
+              .get("content-type")
+              ?.includes(
+                typeof url === "string"
+                  ? "text/html"
+                  : url.pathname.endsWith(".css")
+                    ? "text/css"
+                    : "javascript",
+              ),
           );
-          assert.match(await response.text(), /<html/i);
+          assert.ok((await response.text()).length > 0);
         }),
       );
       const fixture = {
@@ -327,6 +352,7 @@ await test(
       return { socket, closed: closed.promise, hasClosed: () => hasClosed };
     }
     try {
+      const ownerStream = await stream(ownerCredential, ["operator.admin"]);
       // This fixture issuer is served only by the injected test handlers. The
       // running companion's local/OIDC configuration and owner remain unchanged.
       oidc.setUser(first.subject);
@@ -360,6 +386,12 @@ await test(
       assert.ok(secondCredential);
       const secondPerson = (await sessions.authenticate(secondCredential)).user;
       cleanup.add(secondPerson.id);
+      await ownerStream.socket.request<unknown>("exec.approvals.get", {});
+      assert.equal(
+        ownerStream.hasClosed(),
+        false,
+        "Enrollment and invitation acceptance must not reconnect the administrator.",
+      );
       assert.equal(
         (await (await beginOidcBrowserLogin(http, "/", secret)).complete())
           .statusCode,
@@ -425,6 +457,7 @@ await test(
         "Another identity's native stream must remain connected.",
       );
       await surviving.socket.request<unknown>("exec.approvals.get", {});
+      assert.equal(ownerStream.hasClosed(), false);
       assert.equal((await people(secondCredential)).statusCode, 200);
       assert.equal(
         (await app.access.authenticate(ownerCredential)).user.id,

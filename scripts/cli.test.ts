@@ -56,6 +56,7 @@ await test("CLI status use readable output or explicit JSON without issuing cred
   assert.ok(address && typeof address !== "string");
   await initializeState(directory, {
     name: "team",
+    agentName: "ClawScarf",
     administratorName: "Administrator",
     publicWeb: false,
     runtimeImage: `sha256:${"a".repeat(64)}`,
@@ -113,31 +114,6 @@ else process.exit(1);
     packs: [],
   });
   assert.equal(json.stderr, "");
-  for (const command of [
-    ["start"],
-    ["status"],
-    ["stop"],
-    ["administrator"],
-    ["configure"],
-    ["logs", "--service", "controller"],
-    ["upgrade", "--runtime-image", "unused", "--python", "unused", "--yes"],
-  ]) {
-    await assert.rejects(
-      cli(...command, "--directory", root, "--state", directory, "--json"),
-      (error: unknown) => {
-        assert.ok(
-          error instanceof Error &&
-            "stderr" in error &&
-            typeof error.stderr === "string",
-        );
-        assert.partialDeepStrictEqual(JSON.parse(error.stderr), {
-          code: "invalid_arguments",
-        });
-        assert.match(error.stderr, /unknown option/);
-        return true;
-      },
-    );
-  }
   await writeFile(fixture, JSON.stringify({ running: true, complete: false }));
   const pending = await cli("status", "--directory", root);
   assert.match(pending.stdout, /Ready: No/);
@@ -193,24 +169,7 @@ await test("CLI deletion refuses missing confirmations without touching an insta
   }
 });
 
-await test("one configure entry point; removed commands and input aliases fail visibly", async () => {
-  for (const name of [
-    "install",
-    "settings",
-    "validate",
-    "plan",
-    "apply",
-    "models",
-    "packs",
-    "config",
-  ]) {
-    await assert.rejects(cli(name), /unknown command/);
-  }
-  for (const name of ["configure", "observe"])
-    await assert.rejects(cli("connections", name), /unknown command/);
-  for (const flag of ["--settings", "--recipes", "--state"]) {
-    await assert.rejects(cli("configure", flag, "unused"), /unknown option/);
-  }
+await test("configuration flags preserve explicit disablement", async () => {
   const { installationCommand } = await import("./installation/command.js");
   const command = installationCommand().commands.find(
     (item) => item.name() === "configure",

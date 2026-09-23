@@ -28,6 +28,7 @@ function state(browser = true): LocalState {
     ownerId: "00000000-0000-4000-8000-000000000001",
     input: parseLocalInput({
       name: "relay-test",
+      agentName: "ClawScarf",
       administratorName: "Ada",
       runtimeImage: `sha256:${"a".repeat(64)}`,
       companionImage: `sha256:${"b".repeat(64)}`,

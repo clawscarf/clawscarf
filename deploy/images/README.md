@@ -4,8 +4,9 @@
 [components.json](../../release/components.json) and the ordered
 [patch series](../../runtime/openclaw/README.md), with immutable runtime dependencies.
 Customer configuration, identities, model keys, connection credentials and writable
-state are initialized separately. SDK package locks and the browser-node Dockerfile
-own their separate pins; source/package versions are not interchangeable.
+state are initialized separately. The browser-node controller consumes the same
+patched source image. SDK package locks own separate package pins;
+source/package versions are not interchangeable.
 OpenShell owns the runtime container. Its outer Docker health check is disabled;
 use the [native application probe](../openshell/README.md#application-transport)
 inside the sandbox to check Gateway health.
@@ -133,7 +134,7 @@ isolation. Python 3 is included in the runtime image for local code execution;
 additional document CLIs/libraries belong in this image or a recipe-selected runtime
 image, not a separate worker.
 The image declares `io.clawscarf.execution-model=team-runtime`; preparation,
-startup, doctor and replacement verify this packaging contract.
+startup and doctor verify this packaging contract.
 
 The selected [shared browser](../execution/browser/README.md) runs Chromium
 outside this Gateway image with its sandbox intact. [Local setup](../deployment/README.md#shared-browser)

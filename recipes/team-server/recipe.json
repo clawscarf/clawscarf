@@ -1,9 +1,10 @@
 {
   "id": "team-server",
   "name": "Team server",
-  "description": "A protected OpenClaw server for your team. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
+  "description": "A shared OpenClaw workspace for your team. Free Cloud login, prepaid Cloud AI and optional Connections with paid usage beyond your allowance.",
   "maturity": "supported",
   "defaults": {
+    "agentName": "ClawScarf",
     "resources": {
       "runtime": {
         "cpu": "4",
@@ -25,5 +26,5 @@
     "reasoning": "medium"
   },
   "runtime": "../../runtime/current.json",
-  "version": "0.1.4"
+  "version": "0.1.5"
 }

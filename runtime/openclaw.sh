@@ -3,15 +3,14 @@ set -eu
 export HOME="/home/node"
 export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/home/node/.openclaw}"
 export SQLITE_TMPDIR="/tmp"
+export OPENCLAW_NO_SELF_UPDATE=1
+export OPENCLAW_NO_GITHUB=1
 # OpenShell owns target resolution and destination enforcement. Native web tools
 # must use its proxy rather than attempting local DNS inside the sandbox.
 if [ -n "${HTTPS_PROXY:-}" ]; then
   OPENCLAW_PROXY_URL="$HTTPS_PROXY"
   export OPENCLAW_PROXY_URL
   export NODE_USE_ENV_PROXY=1
-fi
-if [ -n "${CLAWSCARF_START_GATE:-}" ]; then
-  /usr/local/bin/node /app/clawscarf/start-gate-main.js
 fi
 if [ -z "${OPENCLAW_GATEWAY_PASSWORD:-}" ]; then
   OPENCLAW_GATEWAY_PASSWORD="$(/usr/local/bin/node /app/clawscarf/gateway-password-main.js "${1:-}" "${2:-}")"

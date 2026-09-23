@@ -65,7 +65,10 @@ export function composeConfiguration(
                 CLAWSCARF_BROWSER_TOKEN_FILE: "/state/.clawscarf-browser/token",
                 CLAWSCARF_BROWSER_PROXY_SERVER: "http://browser-egress:3128",
               },
-              volumes: ["browser:/state"],
+              volumes: [
+                "browser:/state",
+                "browser-artifacts:/browser-artifacts",
+              ],
               tmpfs: ["/tmp:rw,nosuid,nodev,size=512m"],
               shm_size: "256m",
               mem_limit: "1g",

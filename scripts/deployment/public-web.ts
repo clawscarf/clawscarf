@@ -1,172 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { LocalSetupError } from "./process.js";
-
-// Public unicast ranges, excluding private and special-use destinations.
-// Keep aligned with the browser egress boundary in deploy/execution/network/squid.conf.
-export const publicWebAddresses = [
-  "1.0.0.0/8",
-  "2.0.0.0/7",
-  "4.0.0.0/6",
-  "8.0.0.0/7",
-  "11.0.0.0/8",
-  "12.0.0.0/6",
-  "16.0.0.0/4",
-  "32.0.0.0/3",
-  "64.0.0.0/3",
-  "96.0.0.0/6",
-  "100.0.0.0/10",
-  "100.128.0.0/9",
-  "101.0.0.0/8",
-  "102.0.0.0/7",
-  "104.0.0.0/5",
-  "112.0.0.0/5",
-  "120.0.0.0/6",
-  "124.0.0.0/7",
-  "126.0.0.0/8",
-  "128.0.0.0/3",
-  "160.0.0.0/5",
-  "168.0.0.0/8",
-  "169.0.0.0/9",
-  "169.128.0.0/10",
-  "169.192.0.0/11",
-  "169.224.0.0/12",
-  "169.240.0.0/13",
-  "169.248.0.0/14",
-  "169.252.0.0/15",
-  "169.255.0.0/16",
-  "170.0.0.0/7",
-  "172.0.0.0/12",
-  "172.32.0.0/11",
-  "172.64.0.0/10",
-  "172.128.0.0/9",
-  "173.0.0.0/8",
-  "174.0.0.0/7",
-  "176.0.0.0/4",
-  "192.0.1.0/24",
-  "192.0.3.0/24",
-  "192.0.4.0/22",
-  "192.0.8.0/21",
-  "192.0.16.0/20",
-  "192.0.32.0/19",
-  "192.0.64.0/18",
-  "192.0.128.0/17",
-  "192.1.0.0/16",
-  "192.2.0.0/15",
-  "192.4.0.0/14",
-  "192.8.0.0/13",
-  "192.16.0.0/12",
-  "192.32.0.0/11",
-  "192.64.0.0/12",
-  "192.80.0.0/13",
-  "192.88.0.0/18",
-  "192.88.64.0/19",
-  "192.88.96.0/23",
-  "192.88.98.0/24",
-  "192.88.100.0/22",
-  "192.88.104.0/21",
-  "192.88.112.0/20",
-  "192.88.128.0/17",
-  "192.89.0.0/16",
-  "192.90.0.0/15",
-  "192.92.0.0/14",
-  "192.96.0.0/11",
-  "192.128.0.0/11",
-  "192.160.0.0/13",
-  "192.169.0.0/16",
-  "192.170.0.0/15",
-  "192.172.0.0/14",
-  "192.176.0.0/12",
-  "192.192.0.0/10",
-  "193.0.0.0/8",
-  "194.0.0.0/7",
-  "196.0.0.0/7",
-  "198.0.0.0/12",
-  "198.16.0.0/15",
-  "198.20.0.0/14",
-  "198.24.0.0/13",
-  "198.32.0.0/12",
-  "198.48.0.0/15",
-  "198.50.0.0/16",
-  "198.51.0.0/18",
-  "198.51.64.0/19",
-  "198.51.96.0/22",
-  "198.51.101.0/24",
-  "198.51.102.0/23",
-  "198.51.104.0/21",
-  "198.51.112.0/20",
-  "198.51.128.0/17",
-  "198.52.0.0/14",
-  "198.56.0.0/13",
-  "198.64.0.0/10",
-  "198.128.0.0/9",
-  "199.0.0.0/8",
-  "200.0.0.0/7",
-  "202.0.0.0/8",
-  "203.0.0.0/18",
-  "203.0.64.0/19",
-  "203.0.96.0/20",
-  "203.0.112.0/24",
-  "203.0.114.0/23",
-  "203.0.116.0/22",
-  "203.0.120.0/21",
-  "203.0.128.0/17",
-  "203.1.0.0/16",
-  "203.2.0.0/15",
-  "203.4.0.0/14",
-  "203.8.0.0/13",
-  "203.16.0.0/12",
-  "203.32.0.0/11",
-  "203.64.0.0/10",
-  "203.128.0.0/9",
-  "204.0.0.0/6",
-  "208.0.0.0/4",
-  "2000::/16",
-  "2001:200::/23",
-  "2001:400::/22",
-  "2001:800::/22",
-  "2001:c00::/24",
-  "2001:d00::/25",
-  "2001:d80::/27",
-  "2001:da0::/28",
-  "2001:db0::/29",
-  "2001:db9::/32",
-  "2001:dba::/31",
-  "2001:dbc::/30",
-  "2001:dc0::/26",
-  "2001:e00::/23",
-  "2001:1000::/20",
-  "2001:2000::/19",
-  "2001:4000::/18",
-  "2001:8000::/17",
-  "2003::/16",
-  "2004::/14",
-  "2008::/13",
-  "2010::/12",
-  "2020::/11",
-  "2040::/10",
-  "2080::/9",
-  "2100::/8",
-  "2200::/7",
-  "2400::/6",
-  "2800::/5",
-  "3000::/5",
-  "3800::/6",
-  "3c00::/7",
-  "3e00::/8",
-  "3f00::/9",
-  "3f80::/10",
-  "3fc0::/11",
-  "3fe0::/12",
-  "3ff0::/13",
-  "3ff8::/14",
-  "3ffc::/15",
-  "3ffe::/16",
-  "3fff:1000::/20",
-  "3fff:2000::/19",
-  "3fff:4000::/18",
-  "3fff:8000::/17",
-];
+import { publicWebAddresses } from "./public-addresses.js";
+export { publicWebAddresses } from "./public-addresses.js";
 
 export function publicWebPolicy(enabled: boolean) {
   return enabled
@@ -180,56 +16,139 @@ export function publicWebPolicy(enabled: boolean) {
     : null;
 }
 
-/** OpenShell requires overlapping endpoints to have identical IP constraints. */
-export function publicWebEndpointConstraints(port: number, enabled: boolean) {
-  return enabled && (port === 80 || port === 443)
-    ? { allowed_ips: publicWebAddresses }
-    : {};
+const endpointSchema = z.looseObject({
+  host: z.string().optional(),
+  port: z.number().int().optional(),
+  ports: z.array(z.number().int()).optional(),
+  allowed_ips: z.array(z.string()).optional(),
+});
+const ruleSchema = z.looseObject({ endpoints: z.array(endpointSchema) });
+export const adjustmentsSchema = z.record(
+  z.string(),
+  z.strictObject({
+    before: z.array(endpointSchema),
+    after: z.array(endpointSchema),
+  }),
+);
+export type PolicyAdjustments = z.infer<typeof adjustmentsSchema>;
+const rule = z.record(z.string(), z.unknown());
+export const networkChangesSchema = z.strictObject({
+  connections_broker: rule.nullable().optional(),
+  public_web: rule.nullable().optional(),
+});
+export type NetworkChanges = z.infer<typeof networkChangesSchema>;
+const ports = (endpoint: z.infer<typeof endpointSchema>) =>
+  endpoint.ports?.length
+    ? endpoint.ports
+    : endpoint.port
+      ? [endpoint.port]
+      : [];
+const webPort = (port: number) => port === 80 || port === 443;
+function conflict(): never {
+  throw new LocalSetupError(
+    "invalid_runtime_policy",
+    "Public web conflicts with an operator's service policy. Keep public web off or reconcile the policy explicitly; existing restrictions were not changed.",
+  );
 }
 
-const managedRuleSchema = z.looseObject({
-  endpoints: z.array(
-    z.looseObject({
-      port: z.number(),
-      allowed_ips: z.array(z.string()).optional(),
-    }),
-  ),
-});
-
-/** Compose managed service rules with public web without broadening private access. */
-export function composePublicWebRules(rules: Record<string, unknown>) {
-  const enabled = rules.public_web !== undefined;
-  const result = { ...rules };
-  for (const key of ["connections_broker", "model_gateway"]) {
-    const rule = result[key];
-    if (rule === undefined) continue;
-    const parsed = managedRuleSchema.safeParse(rule);
-    if (!parsed.success)
-      throw new LocalSetupError(
-        "invalid_runtime_policy",
-        "A managed service network rule has been edited into an unsupported shape. Review its policy before changing public web access.",
-      );
-    result[key] = {
-      ...parsed.data,
-      endpoints: parsed.data.endpoints.map((endpoint) => {
-        if (endpoint.port !== 80 && endpoint.port !== 443) return endpoint;
-        const managed = isDeepStrictEqual(
-          endpoint.allowed_ips,
-          publicWebAddresses,
-        );
-        if (enabled && endpoint.allowed_ips?.length && !managed)
-          throw new LocalSetupError(
-            "invalid_runtime_policy",
-            "Public web overlaps a managed service's custom IP restrictions on port 80 or 443. Keep public web off or reconcile those restrictions explicitly.",
-          );
-        if (!enabled && !managed) return endpoint;
-        const { allowed_ips: _previous, ...rest } = endpoint;
-        return {
-          ...rest,
-          ...publicWebEndpointConstraints(endpoint.port, enabled),
-        };
-      }),
-    };
+/** Only a recorded before/after edit can be undone. Equal address lists do not establish ownership. */
+export function composeNetworkRules(
+  current: Record<string, unknown>,
+  changes: NetworkChanges,
+  owned: PolicyAdjustments,
+) {
+  const rules = { ...current };
+  const adjustments = { ...owned };
+  const toggle = Object.hasOwn(changes, "public_web");
+  const selected = new Set(Object.keys(changes));
+  if (toggle) for (const key of Object.keys(adjustments)) selected.add(key);
+  for (const key of selected) {
+    const adjustment = adjustments[key];
+    if (adjustment) {
+      const actual = ruleSchema.safeParse(rules[key]);
+      if (
+        actual.success &&
+        isDeepStrictEqual(actual.data.endpoints, adjustment.after)
+      )
+        rules[key] = { ...actual.data, endpoints: adjustment.before };
+      Reflect.deleteProperty(adjustments, key);
+    }
   }
-  return result;
+  for (const [key, replacement] of Object.entries(changes)) {
+    if (replacement === null) {
+      Reflect.deleteProperty(rules, key);
+      continue;
+    }
+    if (key === "connections_broker" && rules[key]) {
+      const before = ruleSchema.parse(rules[key]);
+      const after = ruleSchema.parse(replacement);
+      // Selected service updates retain explicit address restrictions on the same endpoint.
+      for (const endpoint of before.endpoints.filter(
+        (entry) => entry.allowed_ips?.length,
+      )) {
+        const target = after.endpoints.find(
+          (entry) =>
+            entry.host === endpoint.host &&
+            isDeepStrictEqual(ports(entry), ports(endpoint)),
+        );
+        if (!target) conflict();
+        target.allowed_ips = endpoint.allowed_ips;
+      }
+      rules[key] = after;
+    } else rules[key] = replacement;
+  }
+  if (rules.public_web !== undefined) {
+    for (const key of ["connections_broker", "model_gateway"]) {
+      if (!toggle && !selected.has(key)) continue;
+      if (rules[key] === undefined) continue;
+      const parsed = ruleSchema.parse(rules[key]);
+      const after = parsed.endpoints.flatMap((endpoint) => {
+        const covered = ports(endpoint).filter(webPort);
+        if (!covered.length) return [endpoint];
+        if (endpoint.allowed_ips?.length) {
+          if (
+            !isDeepStrictEqual(
+              [...endpoint.allowed_ips].sort(),
+              [...publicWebAddresses].sort(),
+            )
+          )
+            conflict();
+          return [endpoint];
+        }
+        const other = ports(endpoint).filter((port) => !webPort(port));
+        if (!other.length)
+          return [{ ...endpoint, allowed_ips: publicWebAddresses }];
+        const { port: _port, ports: _ports, ...rest } = endpoint;
+        return [
+          { ...rest, ports: other },
+          { ...rest, ports: covered, allowed_ips: publicWebAddresses },
+        ];
+      });
+      if (!isDeepStrictEqual(parsed.endpoints, after)) {
+        adjustments[key] = { before: parsed.endpoints, after };
+        rules[key] = { ...parsed, endpoints: after };
+      }
+    }
+    // The wildcard overlaps every host on these ports. Never rewrite unrelated rules to make it fit.
+    if (toggle || selected.has("connections_broker")) {
+      for (const [key, value] of Object.entries(rules)) {
+        if (!toggle && key !== "connections_broker") continue;
+        const parsed = ruleSchema.safeParse(value);
+        if (!parsed.success) continue;
+        for (const endpoint of parsed.data.endpoints) {
+          if (!ports(endpoint).some(webPort)) continue;
+          if (
+            endpoint.tls !== "skip" ||
+            endpoint.protocol === "tcp" ||
+            !isDeepStrictEqual(
+              [...(endpoint.allowed_ips ?? [])].sort(),
+              [...publicWebAddresses].sort(),
+            )
+          )
+            conflict();
+        }
+      }
+    }
+  }
+  return { rules, adjustments };
 }

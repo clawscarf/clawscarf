@@ -47,6 +47,7 @@ export async function installationSummary(
       : config.exposure.applicationOrigin;
   return [
     `${config.name} — ${origin}`,
+    `Agent: ${config.agentName}`,
     `Administrator: ${config.access.administratorName} · ${config.access.mode === "hosted" ? "ClawScarf login" : "Custom OIDC"}`,
     `AI service: ${config.models?.mode === "external" ? "Existing LiteLLM gateway" : config.models?.cloud ? "ClawScarf Cloud · Prepaid usage" : "Your API key · Billed by your provider"}`,
     `Default model: ${model}`,

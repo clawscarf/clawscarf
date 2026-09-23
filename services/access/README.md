@@ -87,7 +87,10 @@ unchanged and ingress records the actual network peer.
 - Run `pnpm access:start` for the backend alone; the [native plugin](../../plugins/access/README.md)
   owns UI build instructions and the [companion](../../apps/companion/README.md) owns combined startup.
 - Native preparation assigns the initial administrator explicitly before changing the
-  default role to pending. Invitation acceptance assigns the existing member role.
+  default role to pending. That initial role change requires a Gateway restart;
+  setup waits for authenticated reconnection and an administrator authority check
+  before completing. A saved configuration alone is not proof of readiness.
+  Invitation acceptance assigns the existing member role without this restart.
 - Run `pnpm access:generate` after changing [the contract](openapi.json).
 
 [The companion application](../../apps/companion/README.md) is the process entry for
@@ -276,6 +279,8 @@ disposable, already-prepared native server and a private current administrator
 session file. Run it with `pnpm exec tsx --test tests/access/native-live.test.ts`,
 with the management CA trusted through `NODE_EXTRA_CA_CERTS`. It creates and
 removes only fixture users through native APIs, retaining the original administrator.
+It requests UI documents and JavaScript/CSS concurrently after idle, and keeps an
+administrator socket connected across enrollment and invitation acceptance.
 A signed local IdP and the registered HTTP handlers exercise two fixture identities
 against the real Gateway: member denial, native administrator promotion and handover,
 rejoin resetting prior administrator authority, and logout closing only the affected

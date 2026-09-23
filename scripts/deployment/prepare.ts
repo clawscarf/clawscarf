@@ -1,5 +1,10 @@
 import { prepareCloudManagement } from "./cloud-management.js";
-import { openshellGatewayImage, verifyRuntimeImage } from "./images.js";
+import { validatePublicWebServices } from "./service-network.js";
+import {
+  openshellGatewayImage,
+  verifyRuntimeImage,
+  verifyBrowserNodeImage,
+} from "./images.js";
 import { ensureOwnedVolume } from "./volumes.js";
 import {
   prepareModelGateway,
@@ -20,6 +25,7 @@ import { readFile, lstat, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   prepareInitialModels,
+  loadInitialModels,
   withInitialModels,
   type InitialModels,
 } from "./models.js";
@@ -35,6 +41,7 @@ import {
 import { withPreparedDatabase } from "./database.js";
 import {
   initializeState,
+  requirePrepared,
   writePrivate,
   ensurePrivateFile,
   resourceNames,
@@ -43,7 +50,6 @@ import {
 import { composeConfiguration } from "./compose.js";
 import { run, LocalSetupError } from "./process.js";
 import { verifyLocalExecutables, verifyLocalPorts } from "./preflight.js";
-import { requireNoUpgrade } from "./upgrade-state.js";
 
 /** Internal operation: the caller holds the installation lock for its full lifetime. */
 export async function prepareLocal(
@@ -57,6 +63,13 @@ export async function prepareLocal(
   const directory = resolve(directoryInput);
   const input = parseLocalInput(inputValue);
   const connections = await loadInitialConnections(input.connections);
+  await validatePublicWebServices(input.publicWeb, {
+    models:
+      input.publicWeb && !input.modelGateway
+        ? (await loadInitialModels(input.models))?.network
+        : undefined,
+    connections: connections?.endpoint.network,
+  });
   const teamMaterials = await readTeamMaterials(input.team);
   if (
     !["darwin", "linux"].includes(process.platform) ||
@@ -84,15 +97,10 @@ export async function prepareLocal(
   ])
     await run("docker", ["image", "inspect", image]);
   await verifyRuntimeImage(input.runtimeImage);
+  if (input.browser) await verifyBrowserNodeImage(input.browser.nodeImage);
   const state = await initializeState(directory, input);
   try {
-    z.strictObject({
-      ownerId: z.literal(state.ownerId),
-      settingsCandidate: z.string().optional(),
-      settingsReapply: z.enum(["models", "connections"]).optional(),
-    }).parse(
-      JSON.parse(await readFile(join(directory, "prepared.json"), "utf8")),
-    );
+    await requirePrepared(directory);
   } catch (error) {
     if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
       throw new LocalSetupError(
@@ -100,7 +108,6 @@ export async function prepareLocal(
         "A retained settings change is unconfirmed. Inspect it before preparing or starting this installation.",
       );
   }
-  await requireNoUpgrade(directory);
   if (capabilities)
     await ensurePrivateFile(
       join(directory, "inputs.sha256"),
@@ -153,6 +160,7 @@ export async function prepareLocal(
   const models = await prepareInitialModels(directory, input.models);
   await prepareRuntimePolicy(
     directory,
+    state.ownerId,
     models,
     connectionsEndpoint,
     state.input.publicWeb,

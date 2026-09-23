@@ -1,0 +1,2058 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Miguel Branco <miguel@raw-labs.com>
+Date: Tue, 22 Sep 2026 22:58:47 +0200
+Subject: [PATCH] Disable native GitHub integration through distribution policy
+
+Keep native account linking, publication, previews, managed identity and background lifetimes consistently unavailable while preserving ordinary Git workflows and local chat.
+
+ClawScarf-Patch: disable-native-github
+---
+ docs/gateway/config-tools/github-identity.md  |  15 ++
+ src/agents/bash-tools.github-identity.test.ts |  40 +++-
+ src/agents/git-coauthor-prompt.test.ts        |  16 +-
+ src/agents/git-coauthor-prompt.ts             |   3 +-
+ src/agents/github-oauth-client.test.ts        |  15 ++
+ src/agents/github-oauth-client.ts             |   5 +
+ src/agents/github-read-identity.ts            |   3 +
+ src/agents/github-tool-identity.test.ts       |  24 +++
+ src/agents/github-tool-identity.ts            |  16 +-
+ .../openclaw-tools.registration.test.ts       |   8 +
+ src/agents/openclaw-tools.ts                  |   7 +-
+ .../tools/github-identity-status-tool.test.ts |  14 +-
+ .../tools/github-identity-status-tool.ts      |   2 +
+ src/agents/tools/github-publish-tool.test.ts  |  16 +-
+ src/agents/tools/github-publish-tool.ts       |   2 +
+ .../config-schema-presentation.test.ts        |  41 ++++
+ src/gateway/config-schema-presentation.ts     |  33 +++
+ src/gateway/control-ui-github-preview.ts      |   2 +
+ .../control-ui-session-pr-check-details.ts    |   2 +
+ src/gateway/control-ui-session-prs.ts         |   2 +
+ src/gateway/github-actions-read.ts            |   2 +
+ .../github-integration-disabled.test.ts       |  42 ++++
+ .../github-publication-availability.ts        |   4 +
+ src/gateway/methods/core-method-policy.ts     |  24 ++-
+ src/gateway/project-github-search.ts          |   2 +
+ src/gateway/server-lifetime-sidecars.test.ts  |   2 +
+ src/gateway/server-lifetime-sidecars.ts       |  41 ++--
+ src/gateway/server-methods/config.ts          |   5 +-
+ .../server-methods/session-create-project.ts  |  15 ++
+ src/gateway/server-startup-bootstrap.ts       |  27 +--
+ .../server.github-publication-startup.test.ts | 123 ++++++++++++
+ src/infra/github-policy.test.ts               |  17 ++
+ src/infra/github-policy.ts                    |  15 ++
+ ui/src/app/app-root.ts                        |   7 +-
+ ui/src/app/app-shell-view.ts                  |   1 +
+ .../github-link-hovercard.runtime.ts          |   2 +-
+ ui/src/e2e/native-github-disabled.e2e.test.ts | 188 ++++++++++++++++++
+ .../github-connections.test.ts                |   2 +-
+ .../github-connections/github-connections.ts  |  13 +-
+ .../github-identity-view.ts                   |   3 +
+ .../sessions/session-github-publication.ts    |   5 +-
+ ui/src/pages/activity/session-activity-git.ts |   7 +-
+ ui/src/pages/agents/agents-page.ts            |   2 +-
+ ui/src/pages/config/settings-search.test.ts   |  15 ++
+ ui/src/pages/config/settings-search.ts        |   3 +
+ ui/src/pages/config/settings-targets.ts       |   2 +
+ ui/src/pages/profile/identity-section.ts      |  91 +++++----
+ .../profile/profile-page.preferences.test.ts  |  95 +++++++--
+ .../profile/profile-page.test-support.ts      |   4 +-
+ ui/src/pages/profile/profile-page.test.ts     |  20 +-
+ ui/src/pages/profile/profile-page.ts          |   8 +-
+ ui/src/test-helpers/control-ui-e2e.ts         |   1 +
+ 52 files changed, 939 insertions(+), 115 deletions(-)
+ create mode 100644 src/gateway/config-schema-presentation.test.ts
+ create mode 100644 src/gateway/config-schema-presentation.ts
+ create mode 100644 src/gateway/github-integration-disabled.test.ts
+ create mode 100644 src/gateway/server.github-publication-startup.test.ts
+ create mode 100644 src/infra/github-policy.test.ts
+ create mode 100644 src/infra/github-policy.ts
+ create mode 100644 ui/src/e2e/native-github-disabled.e2e.test.ts
+
+diff --git a/docs/gateway/config-tools/github-identity.md b/docs/gateway/config-tools/github-identity.md
+index 45403a1b54a1e4f211c1ff72ae46f8ff00a1b21c..34aa97a8ff2d22011ac3d03a99d956cb8d44bca6 100644
+--- a/docs/gateway/config-tools/github-identity.md
++++ b/docs/gateway/config-tools/github-identity.md
+@@ -9,6 +9,21 @@ title: "Configuration — GitHub identity for agent tools"
+ 
+ `tools.github` selects the shared managed GitHub CLI identity used by agent execution, and defines which execution paths receive its credential.
+ 
++## Distribution policy
++
++`OPENCLAW_NO_GITHUB=1` disables the built-in GitHub integration for the Gateway
++process. Set it before startup and restart the Gateway after changing it. Native
++account linking, publication, authenticated previews, PR discovery, remote GitHub
++project imports and their RPCs/tools are unavailable; their Control UI entries are
++hidden. OAuth refresh and managed-profile cleanup do not start, and retained
++`tools.github` selections do not inject credentials or Git authorship into tools.
++
++Ordinary Git/`gh` commands and separately supplied credentials remain usable.
++Existing account records are preserved. Preview-secret exclusions still apply to
++agent execution, and shared credentials used by login identity verification keep
++their existing validation. This policy does not restrict trusted shell code from
++using GitHub. The remaining sections describe behavior when integration is enabled.
++
+ ## `tools.github`
+ 
+ GitHub CLI identity is native by default. When `tools.github` is omitted, local agent tools, the Codex harness, and Agent Settings follow normal `gh` resolution: `GH_TOKEN` or `GITHUB_TOKEN` from the Gateway process takes precedence, followed by the runtime user's `gh` keyring/config. The Git author comes from the selected agent's workspace.
+diff --git a/src/agents/bash-tools.github-identity.test.ts b/src/agents/bash-tools.github-identity.test.ts
+index 98d628c8e4e149d071f5830388f953bd2de520f9..b3c363acd91c4955b816a2bc07ef74d7fef2c88f 100644
+--- a/src/agents/bash-tools.github-identity.test.ts
++++ b/src/agents/bash-tools.github-identity.test.ts
+@@ -3,7 +3,7 @@ import os from "node:os";
+ import path from "node:path";
+ import { expectDefined } from "@openclaw/normalization-core";
+ import { afterEach, describe, expect, it, vi } from "vitest";
+-import { captureEnv, setTestEnvValue } from "../test-utils/env.js";
++import { captureEnv, setTestEnvValue, withEnvAsync } from "../test-utils/env.js";
+ import { resolvePreparedExecEnvironment } from "./bash-tools.exec-request-preparation.js";
+ import { createExecTool } from "./bash-tools.exec-run.js";
+ import { prepareGitHubToolEnvironment } from "./github-tool-identity.js";
+@@ -55,6 +55,44 @@ function prepare(
+ }
+ 
+ describe("exec GitHub identity", () => {
++  it("runs ordinary Git and preserves deliberate shell credentials with native GitHub disabled", async () => {
++    storeMocks.readSecretStoreExecEnvironment.mockReturnValue({ env: {} });
++    await withEnvAsync(
++      {
++        OPENCLAW_NO_GITHUB: "1",
++        GH_TOKEN: "synthetic-manual-token",
++        GH_CONFIG_DIR: "/manual/gh-profile",
++      },
++      async () => {
++        const tool = createExecTool({
++          host: "gateway",
++          security: "full",
++          ask: "off",
++          allowBackground: false,
++          config: { tools: { github: { profileId: "ghp_11111111111111111111111111111111" } } },
++        });
++        const git = await tool.execute("disabled-native-git", { command: "git --version" });
++        expect(git.details.status).toBe("completed");
++        expect(git.content).toEqual(
++          expect.arrayContaining([
++            expect.objectContaining({ text: expect.stringContaining("git version") }),
++          ]),
++        );
++        const shell = await tool.execute("disabled-native-identity", {
++          command: `node -e 'process.stdout.write(JSON.stringify({manualToken:process.env.GH_TOKEN === "synthetic-manual-token",manualProfile:process.env.GH_CONFIG_DIR === "/manual/gh-profile"}))'`,
++        });
++        expect(shell.details.status).toBe("completed");
++        expect(shell.content).toEqual(
++          expect.arrayContaining([
++            expect.objectContaining({
++              text: expect.stringContaining('{"manualToken":true,"manualProfile":true}'),
++            }),
++          ]),
++        );
++      },
++    );
++  });
++
+   it("blanks ambient service tokens and applies managed identity only to local gateway exec", () => {
+     setTestEnvValue("GH_TOKEN", "ambient-token");
+     setTestEnvValue("GITHUB_TOKEN", "ambient-fallback");
+diff --git a/src/agents/git-coauthor-prompt.test.ts b/src/agents/git-coauthor-prompt.test.ts
+index 5558a7a415dc4b807bbfe3a38809a078f92b5ad5..10a17232e5e60a29a288a9e81bc4c6ae78f87a1c 100644
+--- a/src/agents/git-coauthor-prompt.test.ts
++++ b/src/agents/git-coauthor-prompt.test.ts
+@@ -1,4 +1,4 @@
+-import { beforeEach, describe, expect, it, vi } from "vitest";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+ import { resolveGitCoauthorAttribution } from "./git-coauthor-attribution.js";
+ import { resolveSessionGitCoauthorPrompt } from "./git-coauthor-prompt.js";
+ 
+@@ -26,6 +26,20 @@ describe("resolveSessionGitCoauthorPrompt", () => {
+     warn.mockReset();
+   });
+ 
++  afterEach(() => vi.unstubAllEnvs());
++
++  it("omits native GitHub co-author instructions without reading retained accounts when disabled", () => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    expect(
++      resolveSessionGitCoauthorPrompt({
++        config: {},
++        agentId: "main",
++        sessionKey: "agent:main:main",
++      }),
++    ).toBeUndefined();
++    expect(resolveGitCoauthorAttribution).not.toHaveBeenCalled();
++  });
++
+   it.each(["agent:main:main", "agent:main:cron:nightly"])(
+     "resolves credit for a stable session %s",
+     (sessionKey) => {
+diff --git a/src/agents/git-coauthor-prompt.ts b/src/agents/git-coauthor-prompt.ts
+index 1ba02a754e4aa51c8b1b287cdd47a07ec1d93c4b..d0e45dc11e8ea91d2416ba6bf46f665ab2460a3b 100644
+--- a/src/agents/git-coauthor-prompt.ts
++++ b/src/agents/git-coauthor-prompt.ts
+@@ -1,4 +1,5 @@
+ import type { OpenClawConfig } from "../config/types.openclaw.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { createSubsystemLogger } from "../logging/subsystem.js";
+ import { isIncognitoSessionKey } from "../routing/session-key.js";
+ import { parseCronRunScopeSuffix } from "../sessions/session-key-utils.js";
+@@ -12,7 +13,7 @@ export function resolveSessionGitCoauthorPrompt(params: {
+   sessionKey?: string;
+   storePath?: string;
+ }): string | undefined {
+-  if (!params.config || !params.agentId || !params.sessionKey) {
++  if (!isGitHubIntegrationEnabled() || !params.config || !params.agentId || !params.sessionKey) {
+     return undefined;
+   }
+   if (parseCronRunScopeSuffix(params.sessionKey).runId !== undefined) {
+diff --git a/src/agents/github-oauth-client.test.ts b/src/agents/github-oauth-client.test.ts
+index 4b82c3fddf0669d04ef428df035ac0e16dad9e06..9a5ad606d388ae741e6ed596e5b10b61e119500b 100644
+--- a/src/agents/github-oauth-client.test.ts
++++ b/src/agents/github-oauth-client.test.ts
+@@ -55,9 +55,24 @@ function expectOAuthFormCall(expectedUrl: string, expectedForm: Record<string, s
+ 
+ afterEach(() => {
+   vi.restoreAllMocks();
++  vi.unstubAllEnvs();
+ });
+ 
+ describe("GitHub OAuth client", () => {
++  it("refuses native account operations before network effects when disabled", async () => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    const fetch = vi.spyOn(globalThis, "fetch");
++    await expect(verifyGitHubCredential("synthetic-token")).rejects.toThrow("disabled");
++    await expect(requestGitHubOAuthDeviceCode()).rejects.toThrow("disabled");
++    await expect(pollGitHubOAuthDeviceToken({ deviceCode: DEVICE_CODE })).rejects.toThrow(
++      "disabled",
++    );
++    await expect(refreshGitHubOAuthToken({ refreshToken: "synthetic-refresh" })).rejects.toThrow(
++      "disabled",
++    );
++    expect(fetch).not.toHaveBeenCalled();
++  });
++
+   it.each(["managed-user", "managed-user_org"])(
+     "verifies the supplied %s credential at a fixed origin and registers redaction",
+     async (login) => {
+diff --git a/src/agents/github-oauth-client.ts b/src/agents/github-oauth-client.ts
+index 1bebcde201c577c8af3d3de4370d147cff37bd3a..1f940232bf7e1dd44b42e8b44e878bea0a533c8e 100644
+--- a/src/agents/github-oauth-client.ts
++++ b/src/agents/github-oauth-client.ts
+@@ -1,6 +1,7 @@
+ import { createHash } from "node:crypto";
+ import { resolveTimerTimeoutMs } from "@openclaw/normalization-core/number-coercion";
+ import { asOptionalRecord } from "@openclaw/normalization-core/record-coerce";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { readResponseWithLimit } from "../infra/http-body.js";
+ import { pruneMapToMaxSize } from "../infra/map-size.js";
+ import { registerSecretValueForRedaction } from "../logging/secret-redaction-registry.js";
+@@ -315,6 +316,7 @@ export async function verifyGitHubCredential(
+   token: string,
+   options: GitHubOAuthRequestOptions = {},
+ ): Promise<GitHubCredentialVerificationResult> {
++  assertGitHubIntegrationEnabled();
+   registerSecretValueForRedaction(token);
+   try {
+     readBoundedString(token, "account");
+@@ -387,6 +389,7 @@ function throwGitHubOAuthHttpError(response: Response, surface: string): never {
+ export async function requestGitHubOAuthDeviceCode(
+   options: GitHubOAuthRequestOptions = {},
+ ): Promise<GitHubOAuthDeviceAuthorization> {
++  assertGitHubIntegrationEnabled();
+   const { response, body } = await postGitHubOAuthForm(
+     GITHUB_OAUTH_DEVICE_CODE_URL,
+     new URLSearchParams({
+@@ -429,6 +432,7 @@ export async function requestGitHubOAuthDeviceCode(
+ export async function pollGitHubOAuthDeviceToken(
+   params: GitHubOAuthRequestOptions & { deviceCode: string },
+ ): Promise<GitHubOAuthDevicePollResult> {
++  assertGitHubIntegrationEnabled();
+   const deviceCode = readBoundedString(params.deviceCode, "device token");
+   if (!/^[A-Za-z0-9_-]{40}$/u.test(deviceCode)) {
+     throw githubOAuthProtocolError("device token");
+@@ -476,6 +480,7 @@ export async function pollGitHubOAuthDeviceToken(
+ export async function refreshGitHubOAuthToken(
+   params: GitHubOAuthRequestOptions & { refreshToken: string },
+ ): Promise<GitHubOAuthRefreshResult> {
++  assertGitHubIntegrationEnabled();
+   const refreshToken = readBoundedString(params.refreshToken, "token refresh");
+   // Device-flow refresh is a public-client exchange. Sending a bundled client
+   // secret would not make it confidential and is not required by GitHub.
+diff --git a/src/agents/github-read-identity.ts b/src/agents/github-read-identity.ts
+index 500cf75ab5e364b3c5c073dc3ff543354dbf27de..9a50ef64db0dfecaf21a06e85da9744890a38095 100644
+--- a/src/agents/github-read-identity.ts
++++ b/src/agents/github-read-identity.ts
+@@ -5,6 +5,7 @@ import { isRecord } from "@openclaw/normalization-core/record-coerce";
+ import type { OpenClawConfig } from "../config/types.openclaw.js";
+ import { hasErrnoCode } from "../infra/errno.js";
+ import { resolveExecutablePath } from "../infra/executable-path.js";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { pruneMapToMaxSize } from "../infra/map-size.js";
+ import { mergeProcessEnv, resolveEnvironmentValue } from "../infra/process-env.js";
+ import { registerSecretValueForRedaction } from "../logging/secret-redaction-registry.js";
+@@ -30,6 +31,7 @@ export async function readCachedNativeGitHubToken(
+   env: NodeJS.ProcessEnv,
+   requireAbsentProof = false,
+ ): Promise<string | undefined> {
++  assertGitHubIntegrationEnabled();
+   const effectiveEnv = mergeProcessEnv([process.env, env]);
+   const token =
+     resolveEnvironmentValue(effectiveEnv, "GH_TOKEN") ||
+@@ -137,6 +139,7 @@ export async function readNativeGitHubToken(
+   env: NodeJS.ProcessEnv,
+   requireAbsentProof = false,
+ ): Promise<string | undefined> {
++  assertGitHubIntegrationEnabled();
+   // Match child-process overlay semantics: an explicit undefined must keep a
+   // preview or other owner's inherited credential scrubbed, including on Windows.
+   const effectiveEnv = mergeProcessEnv([process.env, env]);
+diff --git a/src/agents/github-tool-identity.test.ts b/src/agents/github-tool-identity.test.ts
+index a43114d4ae319b8ff9576f09899db7d2c8e4f778..47e634635021cc43eeea2490ccafee78c9c21f1c 100644
+--- a/src/agents/github-tool-identity.test.ts
++++ b/src/agents/github-tool-identity.test.ts
+@@ -75,6 +75,30 @@ describe("GitHub tool identity", () => {
+     oauthMocks.inspect.mockReset().mockReturnValue({ state: "missing" });
+   });
+ 
++  it("ignores retained managed identity when disabled without exporting preview secrets", async () => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    const config = {
++      tools: { github: { profileId: "ghp_11111111111111111111111111111111" } },
++      gateway: {
++        controlUi: {
++          github: { token: { source: "store" as const, provider: "default", id: "PREVIEW_TOKEN" } },
++        },
++      },
++    };
++    expect(prepareGitHubToolEnvironment({ config, agentId: "main" })).toEqual({
++      credentialScrubEnv: { PREVIEW_TOKEN: "" },
++      excludedStoreNames: ["PREVIEW_TOKEN"],
++      localIdentityEnv: {},
++      managedLocalIdentity: false,
++    });
++    await expect(resolveSystemGitHubIdentityStatus({ config })).rejects.toThrow("disabled");
++    await expect(prepareGitHubPublicationIdentity({ config, agentId: "main" })).rejects.toThrow(
++      "disabled",
++    );
++    expect(processMocks.runCommandBuffered).not.toHaveBeenCalled();
++    expect(fetch).not.toHaveBeenCalled();
++  });
++
+   it("gives a managed agent override complete precedence", async () => {
+     const stateDir = tempDirs.make("openclaw-github-state-");
+     const config = {
+diff --git a/src/agents/github-tool-identity.ts b/src/agents/github-tool-identity.ts
+index 58690bafaf2478772137b9eeed8cdf53ab0698d1..251b5d5a356aa6c64930f18ada2b04de63f7c23f 100644
+--- a/src/agents/github-tool-identity.ts
++++ b/src/agents/github-tool-identity.ts
+@@ -15,6 +15,10 @@ import { isSecretRef, isValidEnvSecretRefId } from "../config/types.secrets.js";
+ import type { GitHubToolIdentityConfig } from "../config/types.tools.js";
+ import { hasErrnoCode } from "../infra/errno.js";
+ import { readSecretFile } from "../infra/fs-safe-advanced.js";
++import {
++  assertGitHubIntegrationEnabled,
++  isGitHubIntegrationEnabled,
++} from "../infra/github-policy.js";
+ import { normalizeAgentId } from "../routing/session-key.js";
+ import { resolveAgentConfig, resolveAgentWorkspaceDir } from "./agent-scope.js";
+ import { verifyGitHubCredential } from "./github-oauth-client.js";
+@@ -89,6 +93,7 @@ export function resolveConfiguredGitHubToolIdentity(params: {
+ function resolveSystemGitHubToolIdentity(
+   params: Pick<GitHubIdentityPreparation, "config" | "env">,
+ ) {
++  assertGitHubIntegrationEnabled();
+   const config = params.config.tools?.github;
+   return config
+     ? {
+@@ -105,6 +110,7 @@ function resolveSystemGitHubToolIdentity(
+ }
+ 
+ function resolveGitHubToolIdentity(params: GitHubIdentityPreparation) {
++  assertGitHubIntegrationEnabled();
+   return (
+     resolveScopedGitHubToolIdentity({ ...params, scope: "agent" }) ??
+     resolveSystemGitHubToolIdentity(params)
+@@ -178,7 +184,14 @@ export function managedGitHubIdentityEnvironment(params: {
+ export function prepareGitHubToolEnvironment(
+   params: GitHubIdentityPreparation,
+ ): PreparedGitHubToolEnvironment {
+-  return prepareGitHubToolEnvironmentForIdentity(params, resolveGitHubToolIdentity(params));
++  // Retained managed profiles must not replace a deliberate shell/gh identity.
++  // Keep preview-secret exclusions even when the native integration is disabled.
++  return prepareGitHubToolEnvironmentForIdentity(
++    params,
++    isGitHubIntegrationEnabled()
++      ? resolveGitHubToolIdentity(params)
++      : { source: "system-detected" },
++  );
+ }
+ 
+ function prepareGitHubToolEnvironmentForIdentity(
+@@ -447,6 +460,7 @@ export async function preparePersonalGitHubPublicationIdentity(params: {
+   accountId: number;
+   assertCurrent: () => void;
+ }): Promise<PreparedGitHubPublicationIdentity> {
++  assertGitHubIntegrationEnabled();
+   params.assertCurrent();
+   const profileDir = resolveManagedGitHubProfileDir({
+     agentId: "",
+diff --git a/src/agents/openclaw-tools.registration.test.ts b/src/agents/openclaw-tools.registration.test.ts
+index e5599fdffafde1be5085cd113f3d05bb341b90dd..4e820c00e8fde9220add3309adf6bf470473c362 100644
+--- a/src/agents/openclaw-tools.registration.test.ts
++++ b/src/agents/openclaw-tools.registration.test.ts
+@@ -994,6 +994,14 @@ describe("gateway client capability tool filtering", () => {
+     ).toBe(true);
+   });
+ 
++  it("omits native GitHub tools even with an eligible session when distribution policy disables them", () => {
++    withEnv({ OPENCLAW_NO_GITHUB: "1" }, () => {
++      const tools = createOpenClawTools({ githubPublicationAvailable: true });
++      expect(hasTool(tools, "github_publish")).toBe(false);
++      expect(hasTool(tools, "github_identity_status")).toBe(false);
++    });
++  });
++
+   it("omits host UI runtime tools for sandboxed agents", () => {
+     expect(hasTool(createOpenClawTools({ agentSessionKey: "agent:main:main" }), "terminal")).toBe(
+       true,
+diff --git a/src/agents/openclaw-tools.ts b/src/agents/openclaw-tools.ts
+index 8e8505ca0e9e84bced15fb3c7ae01aa4df76c2e0..00b5d59509fd027cdb6d33ec8911f495746e8708 100644
+--- a/src/agents/openclaw-tools.ts
++++ b/src/agents/openclaw-tools.ts
+@@ -4,6 +4,7 @@ import { createShowWidgetTool, hasRegisteredShowWidgetKinds } from "../canvas/wi
+ import { selectApplicableRuntimeConfig } from "../config/config.js";
+ import { resolveControlUiSessionLinkBase } from "../config/control-ui-link-base.js";
+ import { isEmbeddedMode } from "../infra/embedded-mode.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { isSelfUpdateEnabled } from "../infra/self-update-policy.js";
+ import { getActiveSecretsRuntimeConfigSnapshot } from "../secrets/runtime-state.js";
+ import { getActiveRuntimeWebToolsMetadataFromState } from "../secrets/runtime-web-tools-state.js";
+@@ -452,10 +453,12 @@ export function createOpenClawTools(options?: OpenClawToolsOptions): AnyAgentToo
+       agentId: sessionAgentId,
+       agentAccountId: options?.agentAccountId,
+     }),
+-    ...(options?.githubPublicationAvailable !== undefined
++    ...(isGitHubIntegrationEnabled() && options?.githubPublicationAvailable !== undefined
+       ? [createGitHubIdentityStatusTool()]
+       : []),
+-    ...(options?.githubPublicationAvailable === true ? [createGitHubPublishTool()] : []),
++    ...(isGitHubIntegrationEnabled() && options?.githubPublicationAvailable === true
++      ? [createGitHubPublishTool()]
++      : []),
+     ...collectPresentOpenClawTools([transcriptsTool]),
+     ...collectPresentOpenClawTools([imageGenerateTool, musicGenerateTool, videoGenerateTool]),
+     ...(embedded
+diff --git a/src/agents/tools/github-identity-status-tool.test.ts b/src/agents/tools/github-identity-status-tool.test.ts
+index dc76458a575f0bc6e17bf3f8fd2d9fc383d0b724..20cfb9c77e7d58c1060db674713133290add4904 100644
+--- a/src/agents/tools/github-identity-status-tool.test.ts
++++ b/src/agents/tools/github-identity-status-tool.test.ts
+@@ -1,9 +1,21 @@
+-import { describe, expect, it, vi } from "vitest";
++import { afterEach, describe, expect, it, vi } from "vitest";
+ import { withGatewayToolCallerIdentity } from "./gateway-caller-context.js";
+ import { createGitHubIdentityStatusTool } from "./github-identity-status-tool.js";
+ import type { InProcessGatewayCaller } from "./in-process-gateway.js";
+ 
+ describe("github_identity_status tool", () => {
++  afterEach(() => vi.unstubAllEnvs());
++
++  it("rejects a retained tool before Gateway calls when disabled", async () => {
++    const callGateway = vi.fn(async () => {
++      throw new Error("Unexpected Gateway call");
++    });
++    const tool = createGitHubIdentityStatusTool({ callGateway });
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    await expect(tool.execute("disabled-status", {})).rejects.toThrow("OPENCLAW_NO_GITHUB");
++    expect(callGateway).not.toHaveBeenCalled();
++  });
++
+   it("returns status and an operator next action", async () => {
+     const callGatewayMock = vi.fn(async () => ({
+       agentId: "main",
+diff --git a/src/agents/tools/github-identity-status-tool.ts b/src/agents/tools/github-identity-status-tool.ts
+index 4ce768692b597e7a25b996e07a0cb9a38c3207e1..ec86157254dca0242ac7416f5f99e4a6b58d6f5b 100644
+--- a/src/agents/tools/github-identity-status-tool.ts
++++ b/src/agents/tools/github-identity-status-tool.ts
+@@ -1,5 +1,6 @@
+ import { Type } from "typebox";
+ import type { ToolsGitHubStatusResult } from "../../../packages/gateway-protocol/src/index.js";
++import { assertGitHubIntegrationEnabled } from "../../infra/github-policy.js";
+ import type { AnyAgentTool } from "./common.js";
+ import { jsonResult } from "./common.js";
+ import { getGatewayToolCallerIdentity } from "./gateway-caller-context.js";
+@@ -16,6 +17,7 @@ export function createGitHubIdentityStatusTool(
+       "Inspect the secret-free effective GitHub account, credential health, Git author, expiry, and scopes for this agent. If setup or reconnection is needed, ask the operator to connect GitHub in Agent Settings.",
+     parameters: Type.Object({}, { additionalProperties: false }),
+     execute: async () => {
++      assertGitHubIntegrationEnabled();
+       const caller = getGatewayToolCallerIdentity();
+       if (!caller?.agentId) {
+         throw new Error("GitHub identity status requires the current Gateway agent.");
+diff --git a/src/agents/tools/github-publish-tool.test.ts b/src/agents/tools/github-publish-tool.test.ts
+index 60c16c0271c1e70783b180b2f5cf2e6d8ea537a2..c34fc34ece00907bf99899b657ea2e612824e843 100644
+--- a/src/agents/tools/github-publish-tool.test.ts
++++ b/src/agents/tools/github-publish-tool.test.ts
+@@ -1,9 +1,23 @@
+-import { describe, expect, it, vi } from "vitest";
++import { afterEach, describe, expect, it, vi } from "vitest";
+ import { withGatewayToolCallerIdentity } from "./gateway-caller-context.js";
+ import { createGitHubPublishTool } from "./github-publish-tool.js";
+ import type { InProcessGatewayCaller } from "./in-process-gateway.js";
+ 
+ describe("github_publish tool", () => {
++  afterEach(() => vi.unstubAllEnvs());
++
++  it("rejects a retained tool before Gateway calls when disabled", async () => {
++    const callGateway = vi.fn(async () => {
++      throw new Error("Unexpected Gateway call");
++    });
++    const tool = createGitHubPublishTool({ callGateway });
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    await expect(tool.execute("disabled-publish", { title: "Example" })).rejects.toThrow(
++      "OPENCLAW_NO_GITHUB",
++    );
++    expect(callGateway).not.toHaveBeenCalled();
++  });
++
+   it("binds bounded model intent to the host-owned session", async () => {
+     const callGatewayMock = vi.fn(async () => ({
+       requestId: "publication-1",
+diff --git a/src/agents/tools/github-publish-tool.ts b/src/agents/tools/github-publish-tool.ts
+index cc35d3a09935ccde983ee5adf67d04d689e6660f..87f8a58b295997bd3b3e024b8a87f0a27d95e83e 100644
+--- a/src/agents/tools/github-publish-tool.ts
++++ b/src/agents/tools/github-publish-tool.ts
+@@ -5,6 +5,7 @@ import {
+   type SessionGitHubPublicationResult,
+   type SessionGitHubPublishParams,
+ } from "../../../packages/gateway-protocol/src/schema/session-github-publication.js";
++import { assertGitHubIntegrationEnabled } from "../../infra/github-policy.js";
+ import type { AnyAgentTool } from "./common.js";
+ import { jsonResult } from "./common.js";
+ import { getGatewayToolCallerIdentity } from "./gateway-caller-context.js";
+@@ -29,6 +30,7 @@ export function createGitHubPublishTool(
+       { additionalProperties: false },
+     ),
+     execute: async (toolCallId, rawArgs) => {
++      assertGitHubIntegrationEnabled();
+       // SAFETY: the tool runtime validates rawArgs against the closed schema above.
+       const input = rawArgs as Omit<SessionGitHubPublishParams, "idempotencyKey" | "sessionKey">;
+       const caller = getGatewayToolCallerIdentity();
+diff --git a/src/gateway/config-schema-presentation.test.ts b/src/gateway/config-schema-presentation.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..494c4d82d4971d43290ab1fc045d9f4941bd013c
+--- /dev/null
++++ b/src/gateway/config-schema-presentation.test.ts
+@@ -0,0 +1,41 @@
++import { afterEach, expect, it, vi } from "vitest";
++import { buildConfigSchemaCore } from "../config/schema.js";
++import { lookupConfigSchema } from "../config/schema.lookup.js";
++import { OpenClawSchema } from "../config/zod-schema.js";
++import { presentConfigSchema } from "./config-schema-presentation.js";
++
++afterEach(() => vi.unstubAllEnvs());
++
++it("hides disabled native GitHub controls while preserving canonical config and shared-auth hints", () => {
++  const canonical = buildConfigSchemaCore();
++  const profileId = "ghp_11111111111111111111111111111111";
++  const retained = {
++    tools: { github: { profileId } },
++    agents: { entries: { main: { tools: { github: { profileId } } } } },
++  };
++  const paths = ["tools.github", "agents.entries.main.tools.github"];
++  vi.stubEnv("OPENCLAW_NO_GITHUB", undefined);
++  expect(presentConfigSchema(canonical)).toBe(canonical);
++  for (const path of paths) {
++    expect(lookupConfigSchema(canonical, path)).not.toBeNull();
++  }
++
++  vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++  const presented = presentConfigSchema(canonical);
++  for (const path of paths) {
++    expect(lookupConfigSchema(presented, path)).toBeNull();
++    expect(lookupConfigSchema(canonical, path)).not.toBeNull();
++  }
++  expect(Object.keys(presented.uiHints).some((path) => path.startsWith("tools.github"))).toBe(
++    false,
++  );
++  expect(
++    Object.keys(presented.uiHints).some((path) => path.startsWith("agents.entries.*.tools.github")),
++  ).toBe(false);
++  expect(presented.uiHints["gateway.controlUi.github.token"]).toEqual(
++    canonical.uiHints["gateway.controlUi.github.token"],
++  );
++  expect(presented.uiHints["gateway.controlUi.github.token"]?.sensitive).toBe(true);
++  expect(lookupConfigSchema(presented, "tools.exec")).not.toBeNull();
++  expect(OpenClawSchema.safeParse(retained).success).toBe(true);
++});
+diff --git a/src/gateway/config-schema-presentation.ts b/src/gateway/config-schema-presentation.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4f5c298d7f1d848fd84c32fc2c8127fdd630b673
+--- /dev/null
++++ b/src/gateway/config-schema-presentation.ts
+@@ -0,0 +1,33 @@
++import { asSchemaObject, type ConfigSchemaResponse } from "../config/schema.shared.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
++
++/** Hide unavailable form controls without changing validation, stored config or redaction hints. */
++export function presentConfigSchema(response: ConfigSchemaResponse): ConfigSchemaResponse {
++  if (isGitHubIntegrationEnabled()) {
++    return response;
++  }
++  const presented = structuredClone(response);
++  const properties = asSchemaObject(presented.schema.properties);
++  const tools = asSchemaObject(properties?.tools);
++  if (tools?.properties) {
++    delete tools.properties.github;
++  }
++  const agents = asSchemaObject(properties?.agents);
++  const entries = asSchemaObject(agents?.properties?.entries);
++  const agent = asSchemaObject(entries?.additionalProperties);
++  const agentTools = asSchemaObject(agent?.properties?.tools);
++  if (agentTools?.properties) {
++    delete agentTools.properties.github;
++  }
++  for (const path of Object.keys(presented.uiHints)) {
++    if (
++      path === "tools.github" ||
++      path.startsWith("tools.github.") ||
++      path === "agents.entries.*.tools.github" ||
++      path.startsWith("agents.entries.*.tools.github.")
++    ) {
++      delete presented.uiHints[path];
++    }
++  }
++  return presented;
++}
+diff --git a/src/gateway/control-ui-github-preview.ts b/src/gateway/control-ui-github-preview.ts
+index 38958bf5f5c67281d5ea4d3ccaa4641627a99f32..c6854e282644140ce1a299dd318da45387d97999 100644
+--- a/src/gateway/control-ui-github-preview.ts
++++ b/src/gateway/control-ui-github-preview.ts
+@@ -5,6 +5,7 @@ import {
+   GitHubIdentityError,
+   type prepareGitHubReadIdentity,
+ } from "../agents/github-tool-identity.js";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { pruneMapToMaxSize } from "../infra/map-size.js";
+ import type { ControlUiGitHubPreview } from "./control-ui-contract.js";
+ import {
+@@ -358,6 +359,7 @@ export async function loadControlUiGitHubPreview(
+   identity?: ControlUiGitHubPreviewIdentity,
+   fetchImpl: typeof fetch = fetch,
+ ): Promise<ControlUiGitHubPreview> {
++  assertGitHubIntegrationEnabled();
+   await identity?.revalidate();
+   identity?.assertSelected();
+   const { token, cacheScope } = identity ?? resolveGitHubApiCredentialScope();
+diff --git a/src/gateway/control-ui-session-pr-check-details.ts b/src/gateway/control-ui-session-pr-check-details.ts
+index 1f8761dd9e2bab2bc867a7f5707922076606f217..1ac3c84c355bcc8244e3a39fa6e7c4829a0cbac9 100644
+--- a/src/gateway/control-ui-session-pr-check-details.ts
++++ b/src/gateway/control-ui-session-pr-check-details.ts
+@@ -1,3 +1,4 @@
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { createRetainedCache } from "../infra/retained-cache.js";
+ import type { ControlUiSessionPullRequestCheckDetails } from "./control-ui-contract.js";
+ import {
+@@ -42,6 +43,7 @@ export async function loadControlUiSessionPullRequestChecks(
+   params: ControlUiSessionPullRequestChecksParams,
+   deps: LoadSessionCheckDetailsDeps,
+ ): Promise<ControlUiSessionPullRequestCheckDetails> {
++  assertGitHubIntegrationEnabled();
+   const { owner, repo, number, headSha } = params;
+   const target = { owner, repo, number, headSha };
+   const unavailable = (error: string): ControlUiSessionPullRequestCheckDetails => ({
+diff --git a/src/gateway/control-ui-session-prs.ts b/src/gateway/control-ui-session-prs.ts
+index b9f4e1d137d57bf343350d917b83bf6c4237501b..1b8ca6b489e431e299078e1bdfca2fc689e58352 100644
+--- a/src/gateway/control-ui-session-prs.ts
++++ b/src/gateway/control-ui-session-prs.ts
+@@ -11,6 +11,7 @@ import type {
+   GitCheckoutContext,
+   GitMergedPullHead as MergedPullHead,
+ } from "../infra/git-read-operations.js";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { createRetainedCache } from "../infra/retained-cache.js";
+ import { normalizeAgentId, parseAgentSessionKey } from "../routing/session-key.js";
+ import { getSessionRepositoryWorkspaceStore } from "../state/session-repository-workspaces.js";
+@@ -539,6 +540,7 @@ export async function loadControlUiSessionPullRequests(
+   params: ControlUiSessionPullRequestsParams,
+   deps: LoadSessionPullRequestDeps = {},
+ ): Promise<ControlUiSessionPullRequests> {
++  assertGitHubIntegrationEnabled();
+   let context: GitCheckoutContext | null;
+   try {
+     context = deps.resolveGitContext
+diff --git a/src/gateway/github-actions-read.ts b/src/gateway/github-actions-read.ts
+index 7f2e346699d4eb3650ae87c92416643567736386..ec6553ebab102920c71e5ef82c1b9108ba66c2e8 100644
+--- a/src/gateway/github-actions-read.ts
++++ b/src/gateway/github-actions-read.ts
+@@ -2,6 +2,7 @@ import { z } from "zod";
+ import { GitHubIdentityError, prepareGitHubReadIdentity } from "../agents/github-tool-identity.js";
+ import { BoardValidationError } from "../boards/board-layout.js";
+ import { resolveGitHubActionsRequest } from "../boards/github-actions-capability.js";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { pruneMapToMaxSize } from "../infra/map-size.js";
+ import { getActiveSecretsRuntimeConfigSnapshot } from "../secrets/runtime-state.js";
+ import { getOrCreatePromise } from "../shared/lazy-promise.js";
+@@ -88,6 +89,7 @@ export async function prepareBoardGitHubIdentity(
+   authority: Pick<BoardCapabilityAuthority, "boardSession" | "assertActive"> &
+     Partial<Pick<BoardCapabilityAuthority, "useCurrent">>,
+ ) {
++  assertGitHubIntegrationEnabled();
+   try {
+     const config = context.getRuntimeConfig();
+     const identity = await prepareGitHubReadIdentity({
+diff --git a/src/gateway/github-integration-disabled.test.ts b/src/gateway/github-integration-disabled.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4ef229744591e9718fb802eb7cde95219848c9c2
+--- /dev/null
++++ b/src/gateway/github-integration-disabled.test.ts
+@@ -0,0 +1,42 @@
++import { afterEach, expect, it, vi } from "vitest";
++import { loadControlUiGitHubPreview } from "./control-ui-github-preview.js";
++import { loadControlUiSessionPullRequestChecks } from "./control-ui-session-pr-check-details.js";
++import { loadControlUiSessionPullRequests } from "./control-ui-session-prs.js";
++import { prepareGitHubPublicationAvailability } from "./github-publication-availability.js";
++import { searchRemoteProjects } from "./project-github-search.js";
++
++afterEach(() => vi.unstubAllEnvs());
++
++it("stops native GitHub reads before credentials, local repository inspection or HTTP", async () => {
++  vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++  vi.stubEnv("GH_TOKEN", "synthetic-unused-ambient-token");
++  const fetchImpl = vi.fn<typeof fetch>();
++  const resolveGitContext = vi.fn(async () => null);
++  const target = { owner: "example", repo: "synthetic", number: 1 };
++  const sessionKey = "agent:main:github-disabled";
++
++  await expect(
++    loadControlUiGitHubPreview({ ...target, kind: "pull" }, undefined, fetchImpl),
++  ).rejects.toThrow("OPENCLAW_NO_GITHUB");
++  expect(() => searchRemoteProjects("example/synthetic", { fetchImpl })).toThrow(
++    "OPENCLAW_NO_GITHUB",
++  );
++  await expect(
++    loadControlUiSessionPullRequests({ sessionKey }, { fetchImpl, resolveGitContext }),
++  ).rejects.toThrow("OPENCLAW_NO_GITHUB");
++  await expect(
++    loadControlUiSessionPullRequestChecks(
++      { ...target, sessionKey, headSha: "a".repeat(40) },
++      { fetchImpl, sessionScope: "synthetic", assertCurrent: () => {} },
++    ),
++  ).rejects.toThrow("OPENCLAW_NO_GITHUB");
++  await expect(
++    prepareGitHubPublicationAvailability({
++      sessionId: "synthetic-session",
++      sessionKey,
++      agentId: "main",
++    }),
++  ).resolves.toBe(false);
++  expect(resolveGitContext).not.toHaveBeenCalled();
++  expect(fetchImpl).not.toHaveBeenCalled();
++});
+diff --git a/src/gateway/github-publication-availability.ts b/src/gateway/github-publication-availability.ts
+index e7705e523bd0afa6880f548553b8603bd05ef82f..9336e836e13d3bf2c8a55aba81d033303582653c 100644
+--- a/src/gateway/github-publication-availability.ts
++++ b/src/gateway/github-publication-availability.ts
+@@ -7,6 +7,7 @@ import {
+ } from "../agents/github-tool-identity.js";
+ import { managedWorktrees } from "../agents/worktrees/service.js";
+ import { getRuntimeConfig } from "../config/config.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { getActiveSecretsRuntimeConfigSnapshot } from "../secrets/runtime-state.js";
+ import { readGitHubPublicationSessionLifecycle } from "../state/github-publication-session-lifecycles.js";
+ import { getSessionRepositoryWorkspaceStore } from "../state/session-repository-workspaces.js";
+@@ -214,6 +215,9 @@ export async function prepareGitHubPublicationAvailability(params: {
+   agentId: string;
+   assertCurrent?: () => boolean;
+ }): Promise<boolean> {
++  if (!isGitHubIntegrationEnabled()) {
++    return false;
++  }
+   try {
+     if (params.assertCurrent?.() === false) {
+       return false;
+diff --git a/src/gateway/methods/core-method-policy.ts b/src/gateway/methods/core-method-policy.ts
+index 54ae5c8866ea42c47b6bd661d984d4d678690ce7..11691303c70c4f6c3921ceefdb3013a19df7b94d 100644
+--- a/src/gateway/methods/core-method-policy.ts
++++ b/src/gateway/methods/core-method-policy.ts
+@@ -1,4 +1,5 @@
+ // Derives method lookup, authorization, startup, and dispatch policy from the canonical table.
++import { isGitHubIntegrationEnabled } from "../../infra/github-policy.js";
+ import type { OperatorScope } from "../operator-scopes.js";
+ import { CORE_GATEWAY_METHOD_SPECS, type CoreGatewayMethodSpec } from "./core-descriptors.js";
+ import { isCoreGatewayMethodProfileDependent } from "./core-profile-access.js";
+@@ -23,6 +24,21 @@ const CORE_GATEWAY_METHOD_SPEC_BY_NAME: ReadonlyMap<string, CoreGatewayMethodSpe
+   CORE_GATEWAY_METHOD_SPEC_LIST.map((spec) => [spec.name, spec]),
+ );
+ 
++function isMethodEnabled(spec: CoreGatewayMethodSpec): boolean {
++  return (
++    isGitHubIntegrationEnabled() ||
++    !(
++      spec.name.startsWith("users.github.") ||
++      spec.name.startsWith("tools.github.") ||
++      spec.name.startsWith("sessions.github.") ||
++      spec.name.startsWith("controlUi.sessionPullRequests.") ||
++      spec.name === "controlUi.githubPreview" ||
++      spec.name === "projects.searchRemote" ||
++      spec.name === "projects.add"
++    )
++  );
++}
++
+ /** Core methods that are listed early but return retryable unavailable until sidecars are ready. */
+ export const STARTUP_UNAVAILABLE_GATEWAY_METHODS = CORE_GATEWAY_METHOD_SPEC_LIST.filter(
+   (spec) => spec.startup === true,
+@@ -30,9 +46,9 @@ export const STARTUP_UNAVAILABLE_GATEWAY_METHODS = CORE_GATEWAY_METHOD_SPEC_LIST
+ 
+ /** Returns the core methods that should be advertised to external gateway clients. */
+ export function listCoreAdvertisedGatewayMethodNames(): string[] {
+-  return CORE_GATEWAY_METHOD_SPEC_LIST.filter((spec) => spec.advertise !== false).map(
+-    (spec) => spec.name,
+-  );
++  return CORE_GATEWAY_METHOD_SPEC_LIST.filter(
++    (spec) => spec.advertise !== false && isMethodEnabled(spec),
++  ).map((spec) => spec.name);
+ }
+ 
+ /** Returns all registered core method names, including hidden/internal compatibility methods. */
+@@ -91,7 +107,7 @@ export function createCoreGatewayMethodDescriptors(
+   const descriptors: GatewayMethodDescriptorInput[] = [];
+   for (const spec of CORE_GATEWAY_METHOD_SPEC_LIST) {
+     const handler = handlers[spec.name];
+-    if (!handler) {
++    if (!handler || !isMethodEnabled(spec)) {
+       continue;
+     }
+     descriptors.push({
+diff --git a/src/gateway/project-github-search.ts b/src/gateway/project-github-search.ts
+index a8c2e0d69aa70f4dd1a143a1795ae2ef4862cf63..5b9a687d28904c3dc2a250ed3e90e573c999a15c 100644
+--- a/src/gateway/project-github-search.ts
++++ b/src/gateway/project-github-search.ts
+@@ -4,6 +4,7 @@ import type {
+   RemoteProject,
+   ProjectsSearchRemoteResult,
+ } from "../../packages/gateway-protocol/src/index.js";
++import { assertGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { pruneMapToMaxSize } from "../infra/map-size.js";
+ import { parseProjectGitUrl } from "../projects/project-git-url.js";
+ import {
+@@ -161,6 +162,7 @@ export function searchRemoteProjects(
+   query: string,
+   options: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch; now?: number } = {},
+ ): Promise<ProjectsSearchRemoteResult> {
++  assertGitHubIntegrationEnabled();
+   const normalizedQuery = query.trim().toLowerCase();
+   const { token, cacheScope } = resolveGitHubApiCredentialScope(options.env);
+   // Gateway reloads run in-process, so cache results must stay credential-scoped.
+diff --git a/src/gateway/server-lifetime-sidecars.test.ts b/src/gateway/server-lifetime-sidecars.test.ts
+index 904c2c0bdca177db3c33aea9bded06f367d21758..022681689a58332511d063d2ac733502e1819d4a 100644
+--- a/src/gateway/server-lifetime-sidecars.test.ts
++++ b/src/gateway/server-lifetime-sidecars.test.ts
+@@ -52,6 +52,7 @@ function writeStoredSecret(name: string, value: string): void {
+ }
+ 
+ afterEach(() => {
++  vi.unstubAllEnvs();
+   vi.useRealTimers();
+   closeOpenClawStateDatabaseForTest();
+   for (const root of roots.splice(0)) {
+@@ -61,6 +62,7 @@ afterEach(() => {
+ 
+ describe("gateway lifetime sidecars", () => {
+   beforeEach(() => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", undefined);
+     oauth.start.mockReset();
+     oauth.stop.mockReset().mockResolvedValue(undefined);
+     oauth.uninstall.mockReset();
+diff --git a/src/gateway/server-lifetime-sidecars.ts b/src/gateway/server-lifetime-sidecars.ts
+index edc36f8ec89e2133e837a7f6c3464ceba518928c..714146f1306a7f72e666463972e8e017e81e75df 100644
+--- a/src/gateway/server-lifetime-sidecars.ts
++++ b/src/gateway/server-lifetime-sidecars.ts
+@@ -1,4 +1,5 @@
+ import { getRuntimeConfig } from "../config/config.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { purgeExpiredSecretStoreEntries } from "../secrets/store/secret-store.js";
+ import {
+   createGitHubOAuthLifecycle,
+@@ -95,29 +96,31 @@ export async function attachInitialGatewayLifetimeSidecars(params: {
+       }
+     },
+   });
+-  const githubOAuth = createGitHubOAuthLifecycle({
+-    getConfig: params.gatewayRequestContext.getRuntimeConfig,
+-    getPersistedConfig: () => getRuntimeConfig({ pin: false }),
+-    warn: params.logWarning,
+-  });
+-  params.gatewayRequestContext.githubOAuthService = githubOAuth;
+-  const uninstallGitHubOAuth = installActiveGitHubOAuthLifecycle(githubOAuth);
+-  if (!params.minimalTestGateway) {
+-    githubOAuth.start();
++  if (isGitHubIntegrationEnabled()) {
++    const githubOAuth = createGitHubOAuthLifecycle({
++      getConfig: params.gatewayRequestContext.getRuntimeConfig,
++      getPersistedConfig: () => getRuntimeConfig({ pin: false }),
++      warn: params.logWarning,
++    });
++    params.gatewayRequestContext.githubOAuthService = githubOAuth;
++    const uninstallGitHubOAuth = installActiveGitHubOAuthLifecycle(githubOAuth);
++    if (!params.minimalTestGateway) {
++      githubOAuth.start();
++    }
++    params.publishSidecars({
++      stop: async () => {
++        uninstallGitHubOAuth();
++        await githubOAuth.stop();
++        if (params.gatewayRequestContext.githubOAuthService === githubOAuth) {
++          delete params.gatewayRequestContext.githubOAuthService;
++        }
++      },
++    });
+   }
+-  params.publishSidecars({
+-    stop: async () => {
+-      uninstallGitHubOAuth();
+-      await githubOAuth.stop();
+-      if (params.gatewayRequestContext.githubOAuthService === githubOAuth) {
+-        delete params.gatewayRequestContext.githubOAuthService;
+-      }
+-    },
+-  });
+   if (!params.minimalTestGateway) {
+     params.publishSidecars(startSecretStoreExpiryMaintenance(params.logWarning));
+   }
+-  if (params.reconcileGitHubPublications) {
++  if (isGitHubIntegrationEnabled() && params.reconcileGitHubPublications) {
+     params.publishSidecars(
+       startGitHubPublicationMaintenance(params.reconcileGitHubPublications, params.logWarning),
+     );
+diff --git a/src/gateway/server-methods/config.ts b/src/gateway/server-methods/config.ts
+index 2ac97f53c47bcc9b2a7be0b19e09130d6e665a0b..d9c3de24a5bfd38805f5e6fd44c785fa59b53188 100644
+--- a/src/gateway/server-methods/config.ts
++++ b/src/gateway/server-methods/config.ts
+@@ -63,6 +63,7 @@ import {
+   resolveConfigReloadMetadata,
+ } from "../config-reload-plan.js";
+ import type { GatewayConfigRevisionProjector } from "../config-revision-token.js";
++import { presentConfigSchema } from "../config-schema-presentation.js";
+ import {
+   formatControlPlaneActor,
+   resolveControlPlaneActor,
+@@ -912,7 +913,7 @@ export const configHandlers: GatewayRequestHandlers = {
+     if (!assertValidParams(params, validateConfigSchemaParams, "config.schema", respond)) {
+       return;
+     }
+-    respond(true, loadSchemaWithPlugins(), undefined);
++    respond(true, presentConfigSchema(loadSchemaWithPlugins()), undefined);
+   },
+   "config.schema.lookup": ({ params, respond, context }) => {
+     if (
+@@ -921,7 +922,7 @@ export const configHandlers: GatewayRequestHandlers = {
+       return;
+     }
+     const path = (params as { path: string }).path;
+-    const schema = loadSchemaWithPlugins();
++    const schema = presentConfigSchema(loadSchemaWithPlugins());
+     const result = lookupConfigSchema(schema, path, resolveConfigReloadMetadata);
+     if (!result) {
+       respond(
+diff --git a/src/gateway/server-methods/session-create-project.ts b/src/gateway/server-methods/session-create-project.ts
+index 36096e1cc43a14cd80b867be92b9575181a84af5..9bfbd855fac8f788b3a53f1f349a04e5f3d4e218 100644
+--- a/src/gateway/server-methods/session-create-project.ts
++++ b/src/gateway/server-methods/session-create-project.ts
+@@ -9,6 +9,11 @@ import {
+ import { loadSessionEntry, patchSessionEntryCore } from "../../config/sessions/session-accessor.js";
+ import { assertAgentRunLifecycleGenerationCurrent } from "../../infra/agent-events.js";
+ import { emitAgentRunStatusEvent } from "../../infra/agent-run-status-events.js";
++import {
++  assertGitHubIntegrationEnabled,
++  GITHUB_INTEGRATION_DISABLED_MESSAGE,
++  isGitHubIntegrationEnabled,
++} from "../../infra/github-policy.js";
+ import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
+ import { materializeProjectClone, refreshProjectClone } from "../../projects/project-clone.js";
+ import { parseProjectGitUrl } from "../../projects/project-git-url.js";
+@@ -46,6 +51,9 @@ export function resolveSessionRepositoryCreation(
+   if (!params.repository) {
+     return ok(undefined);
+   }
++  if (!isGitHubIntegrationEnabled()) {
++    return err(errorShape(ErrorCodes.UNAVAILABLE, GITHUB_INTEGRATION_DISABLED_MESSAGE));
++  }
+   const url = normalizeSessionProjectGitUrl(params.repository.url);
+   const ref = params.repository.ref?.trim();
+   if (!url || (ref !== undefined && (!ref || ref.startsWith("-") || /\s|\0/u.test(ref)))) {
+@@ -170,6 +178,9 @@ export function validateSessionProjectPreparation(params: {
+         )
+       : undefined;
+   }
++  if (!isGitHubIntegrationEnabled()) {
++    return errorShape(ErrorCodes.UNAVAILABLE, GITHUB_INTEGRATION_DISABLED_MESSAGE);
++  }
+   if (!normalizeSessionProjectGitUrl(params.gitUrl)) {
+     return errorShape(
+       ErrorCodes.INVALID_REQUEST,
+@@ -265,6 +276,9 @@ export async function prepareSessionWorkspace(params: {
+       delete entry.pendingWorktree;
+       return;
+     }
++    if (gitUrl) {
++      assertGitHubIntegrationEnabled();
++    }
+     const project = gitUrl
+       ? await materializeProjectClone(
+           { cfg, gitUrl },
+@@ -328,6 +342,7 @@ export async function prepareSessionWorkspace(params: {
+           resolved.error.code === ErrorCodes.INVALID_REQUEST &&
+           project?.source === "cloned"
+         ) {
++          assertGitHubIntegrationEnabled();
+           await refreshProjectClone(project, {
+             signal,
+             token: githubApiToken(process.env, cfg),
+diff --git a/src/gateway/server-startup-bootstrap.ts b/src/gateway/server-startup-bootstrap.ts
+index 10a84aa648e630a82ee6719c675c44e935e0cf29..ffbaf8105e894fd2dfc145ceedc94f035963fd38 100644
+--- a/src/gateway/server-startup-bootstrap.ts
++++ b/src/gateway/server-startup-bootstrap.ts
+@@ -31,6 +31,7 @@ import {
+ } from "../infra/diagnostic-events.js";
+ import { isVitestRuntimeEnv, logAcceptedEnvOption } from "../infra/env.js";
+ import { formatErrorMessage } from "../infra/errors.js";
++import { isGitHubIntegrationEnabled } from "../infra/github-policy.js";
+ import { prepareGatewayAgentCliShim } from "../infra/openclaw-cli-shim.js";
+ import { readGatewayRestartHandoffSync } from "../infra/restart-handoff.js";
+ import { setGatewaySigusr1RestartPolicy, setPreRestartDeferralCheck } from "../infra/restart.js";
+@@ -276,20 +277,22 @@ export async function prepareGatewayServerBootstrap(input: {
+   );
+   const cfgAtStart = authBootstrap.cfg;
+   startupTrace.setConfig(cfgAtStart);
+-  try {
+-    const cleanup = await startupTrace.measure("agents.github-profile-cleanup", async () => {
+-      const { cleanupRetiredManagedGitHubProfiles } =
+-        await import("../agents/github-tool-profile-cleanup.js");
+-      return await cleanupRetiredManagedGitHubProfiles({
+-        config: cfgAtStart,
+-        env: process.env,
++  if (isGitHubIntegrationEnabled()) {
++    try {
++      const cleanup = await startupTrace.measure("agents.github-profile-cleanup", async () => {
++        const { cleanupRetiredManagedGitHubProfiles } =
++          await import("../agents/github-tool-profile-cleanup.js");
++        return await cleanupRetiredManagedGitHubProfiles({
++          config: cfgAtStart,
++          env: process.env,
++        });
+       });
+-    });
+-    for (const warning of cleanup.warnings) {
+-      log.warn(`managed GitHub profile cleanup: ${warning}`);
++      for (const warning of cleanup.warnings) {
++        log.warn(`managed GitHub profile cleanup: ${warning}`);
++      }
++    } catch (error) {
++      log.warn(`managed GitHub profile cleanup failed: ${formatErrorMessage(error)}`);
+     }
+-  } catch (error) {
+-    log.warn(`managed GitHub profile cleanup failed: ${formatErrorMessage(error)}`);
+   }
+   if (authBootstrap.generatedToken) {
+     log.warn(formatRuntimeGatewayAuthTokenWarning());
+diff --git a/src/gateway/server.github-publication-startup.test.ts b/src/gateway/server.github-publication-startup.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0df21e3a91baa9021c086e6b0b0158ec79b44639
+--- /dev/null
++++ b/src/gateway/server.github-publication-startup.test.ts
+@@ -0,0 +1,123 @@
++import { describe, expect, it, vi } from "vitest";
++import * as nativeGitHubIdentity from "../agents/github-read-identity.js";
++import * as githubProfiles from "../agents/github-tool-profile-cleanup.js";
++import { writeConfigFile } from "../config/config.js";
++import * as githubOAuth from "./github-oauth-lifecycle.js";
++import {
++  connectOk,
++  installGatewayTestHooks,
++  rpcReq,
++  startServerWithClient,
++} from "./test-helpers.js";
++
++installGatewayTestHooks();
++
++describe("disabled native GitHub integration", () => {
++  it("keeps local chat available without GitHub methods, credential probes or background lifecycles", async () => {
++    process.env.OPENCLAW_TEST_MINIMAL_GATEWAY = "0";
++    vi.stubEnv("OPENCLAW_NO_GITHUB", "1");
++    await writeConfigFile({
++      tools: { github: { profileId: "ghp_11111111111111111111111111111111", kind: "oauth" } },
++      gateway: { controlUi: { github: { token: "synthetic-unused-preview-token" } } },
++    });
++    // Prevent ambient credential access if startup regresses, then assert no probes occurred.
++    const nativeToken = vi
++      .spyOn(nativeGitHubIdentity, "readNativeGitHubToken")
++      .mockResolvedValue(undefined);
++    const cachedToken = vi
++      .spyOn(nativeGitHubIdentity, "readCachedNativeGitHubToken")
++      .mockResolvedValue(undefined);
++    const oauth = vi.spyOn(githubOAuth, "createGitHubOAuthLifecycle");
++    const cleanup = vi.spyOn(githubProfiles, "cleanupRetiredManagedGitHubProfiles");
++    try {
++      const { server, ws } = await startServerWithClient(undefined, { auth: { mode: "none" } });
++      try {
++        const hello = await connectOk(ws);
++        expect(hello).toMatchObject({
++          features: {
++            methods: expect.arrayContaining([
++              "sessions.create",
++              "chat.history",
++              "projects.register",
++              "node.list",
++            ]),
++          },
++        });
++        const sessionKey = "agent:main:dashboard:github-startup-proof";
++        const created = await rpcReq(ws, "sessions.create", {
++          key: sessionKey,
++          label: "Ordinary local chat",
++        });
++        expect(created.ok).toBe(true);
++
++        const history = await rpcReq(ws, "chat.history", { sessionKey });
++        expect(history.ok, history.error?.message).toBe(true);
++        const schema = await rpcReq(ws, "config.schema", {});
++        expect(schema.ok, schema.error?.message).toBe(true);
++        expect(schema.payload).not.toHaveProperty("schema.properties.tools.properties.github");
++        expect(schema.payload).not.toHaveProperty(["uiHints", "tools.github"]);
++        for (const path of ["tools.github", "agents.entries.main.tools.github"]) {
++          const lookup = await rpcReq(ws, "config.schema.lookup", { path });
++          expect(lookup).toMatchObject({
++            ok: false,
++            error: { message: "config schema path not found" },
++          });
++        }
++        for (const method of [
++          "users.github.status",
++          "users.github.authorize.start",
++          "users.github.authorize.poll",
++          "users.github.authorize.cancel",
++          "users.github.disconnect",
++          "tools.github.status",
++          "tools.github.configure",
++          "tools.github.authorize.start",
++          "tools.github.authorize.poll",
++          "tools.github.authorize.cancel",
++          "sessions.github.options",
++          "sessions.github.status",
++          "sessions.github.publish",
++          "sessions.github.confirm",
++          "controlUi.githubPreview",
++          "controlUi.sessionPullRequests.subscribe",
++          "controlUi.sessionPullRequests.checks",
++          "projects.searchRemote",
++          "projects.add",
++          "environments.create",
++          "sessions.dispatch",
++          "sessions.move",
++        ]) {
++          expect(hello).toMatchObject({
++            features: { methods: expect.not.arrayContaining([method]) },
++          });
++          const response = await rpcReq(ws, method, {});
++          expect(response).toMatchObject({
++            ok: false,
++            error: { message: expect.stringContaining("unknown method") },
++          });
++        }
++        const repository = await rpcReq(ws, "sessions.create", {
++          key: "agent:main:dashboard:disabled-repository",
++          repository: { url: "https://github.com/example/synthetic.git" },
++        });
++        expect(repository).toMatchObject({
++          ok: false,
++          error: { message: expect.stringContaining("OPENCLAW_NO_GITHUB") },
++        });
++        expect(nativeToken).not.toHaveBeenCalled();
++        expect(cachedToken).not.toHaveBeenCalled();
++        expect(oauth).not.toHaveBeenCalled();
++        expect(cleanup).not.toHaveBeenCalled();
++      } finally {
++        ws.close();
++        await server.close();
++      }
++    } finally {
++      nativeToken.mockRestore();
++      cachedToken.mockRestore();
++      oauth.mockRestore();
++      cleanup.mockRestore();
++      vi.unstubAllEnvs();
++    }
++  });
++});
+diff --git a/src/infra/github-policy.test.ts b/src/infra/github-policy.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b8ae242ebebd5314dcfede4157c33eed7c904e8
+--- /dev/null
++++ b/src/infra/github-policy.test.ts
+@@ -0,0 +1,17 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { assertGitHubIntegrationEnabled, isGitHubIntegrationEnabled } from "./github-policy.js";
++
++afterEach(() => vi.unstubAllEnvs());
++
++describe("native GitHub distribution policy", () => {
++  it.each([undefined, "", "0", "false"])("preserves the upstream default for %s", (value) => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", value);
++    expect(isGitHubIntegrationEnabled()).toBe(true);
++    expect(() => assertGitHubIntegrationEnabled()).not.toThrow();
++  });
++  it.each(["1", "true"])("disables native integration for %s", (value) => {
++    vi.stubEnv("OPENCLAW_NO_GITHUB", value);
++    expect(isGitHubIntegrationEnabled()).toBe(false);
++    expect(() => assertGitHubIntegrationEnabled()).toThrow("OPENCLAW_NO_GITHUB");
++  });
++});
+diff --git a/src/infra/github-policy.ts b/src/infra/github-policy.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8d62d56bbb72849dc8d4fdcc4ea9093d78f35d38
+--- /dev/null
++++ b/src/infra/github-policy.ts
+@@ -0,0 +1,15 @@
++import { isTruthyEnvValue } from "./env.js";
++
++export const GITHUB_INTEGRATION_DISABLED_MESSAGE =
++  "Built-in GitHub integration is disabled by this installation (OPENCLAW_NO_GITHUB=1).";
++
++/** Distribution policy for native integration; ordinary Git and gh commands remain available. */
++export function isGitHubIntegrationEnabled(): boolean {
++  return !isTruthyEnvValue(process.env.OPENCLAW_NO_GITHUB);
++}
++
++export function assertGitHubIntegrationEnabled(): void {
++  if (!isGitHubIntegrationEnabled()) {
++    throw new Error(GITHUB_INTEGRATION_DISABLED_MESSAGE);
++  }
++}
+diff --git a/ui/src/app/app-root.ts b/ui/src/app/app-root.ts
+index 42e2669cbb812e4b13df9bf162ca0af9dbad3e1c..fdd473ab4b45bfbdadaba1cd0805b5a06ad14ea4 100644
+--- a/ui/src/app/app-root.ts
++++ b/ui/src/app/app-root.ts
+@@ -12,6 +12,7 @@ import { renderConnectingSplash } from "../components/loading-skeleton.ts";
+ import { installTitleTooltips } from "../components/tooltip-title.ts";
+ import { t } from "../i18n/index.ts";
+ import { formatUiError } from "../lib/format-error.ts";
++import { isGatewayMethodAdvertised } from "../lib/gateway-methods.ts";
+ import { normalizeAgentId } from "../lib/sessions/session-key.ts";
+ import { isTerminalAvailable } from "../lib/terminal-availability.ts";
+ import { OpenClawLightDomElement } from "../lit/openclaw-element.ts";
+@@ -642,7 +643,11 @@ export class OpenClawApp extends OpenClawLightDomElement {
+     }
+     return html`
+       <openclaw-github-link-hovercard-provider
+-        .client=${gatewaySnapshot.client}
++        .client=${
++          isGatewayMethodAdvertised(gatewaySnapshot, "controlUi.githubPreview") === true
++            ? gatewaySnapshot.client
++            : null
++        }
+         .agentId=${
+           context.agentSelection.state.selectedId ?? gatewaySnapshot.assistantAgentId ?? undefined
+         }
+diff --git a/ui/src/app/app-shell-view.ts b/ui/src/app/app-shell-view.ts
+index 2424a287f13a60f546c6f344ee044c585b69eaf0..dc881db36566e9e11db429315d2832f09f52cca8 100644
+--- a/ui/src/app/app-shell-view.ts
++++ b/ui/src/app/app-shell-view.ts
+@@ -317,6 +317,7 @@ export function renderApplicationShell(host: ShellViewHost) {
+             value: runtimeConfig.configForm ?? runtimeConfig.configSnapshot?.config ?? null,
+             uiHints: runtimeConfig.configUiHints,
+             identityAvailable: Boolean(gatewaySnapshot.selfUser),
++            gatewayMethods: gatewaySnapshot.hello?.features?.methods,
+             basePath: context.basePath,
+             canAdmin: operatorAccess.canAdmin,
+             nativeDeviceSettings: context.nativeDeviceSettings,
+diff --git a/ui/src/components/github-link-hovercard.runtime.ts b/ui/src/components/github-link-hovercard.runtime.ts
+index b7cbcf470a27967443d9f67580d089191caf53c9..e97498bf3a8ceec51431354e6cf260b94f8c5663 100644
+--- a/ui/src/components/github-link-hovercard.runtime.ts
++++ b/ui/src/components/github-link-hovercard.runtime.ts
+@@ -472,7 +472,7 @@ export class GitHubLinkHovercardProvider extends ReactiveElement {
+       owner = owner.parentElement;
+     }
+     // Nested providers own their agent scope even when intent bubbles to the app provider.
+-    if (owner !== this) {
++    if (owner !== this || !this.client) {
+       return;
+     }
+     this.activate(anchor, target, delay);
+diff --git a/ui/src/e2e/native-github-disabled.e2e.test.ts b/ui/src/e2e/native-github-disabled.e2e.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..47d299057e46017a66e1658568cf214d80ff2795
+--- /dev/null
++++ b/ui/src/e2e/native-github-disabled.e2e.test.ts
+@@ -0,0 +1,188 @@
++import path from "node:path";
++import { expect, it } from "vitest";
++import { GIT_COAUTHOR_PREFERENCE_KEY } from "../../../packages/gateway-protocol/src/index.ts";
++import {
++  defaultControlUiFeatureMethods,
++  installMockGateway,
++} from "../test-helpers/control-ui-e2e.ts";
++import { createControlUiE2eSuite } from "./control-ui-e2e-suite.test-support.ts";
++
++const suite = createControlUiE2eSuite({
++  name: "Native GitHub disabled",
++  startServerBeforeBrowser: true,
++});
++const profile = {
++  id: "11111111-1111-4111-8111-111111111111",
++  displayName: "Test Person",
++  avatarMime: null,
++  mergedInto: null,
++  createdAt: 1,
++  updatedAt: 2,
++  emails: ["test@example.com"],
++  githubIdentity: {
++    login: "octocat",
++    profileUrl: "https://github.com/octocat",
++    avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
++  },
++  hasAvatar: false,
++};
++const nativeGitHubMethod = (method: string) =>
++  /^(?:tools|users|sessions)\.github\./u.test(method) ||
++  method === "controlUi.githubPreview" ||
++  method.startsWith("controlUi.sessionPullRequests") ||
++  method === "projects.searchRemote" ||
++  method === "projects.add";
++
++suite.define(() => {
++  for (const viewport of [
++    { width: 1440, height: 900 },
++    { width: 390, height: 844 },
++  ]) {
++    it(`keeps ordinary chat, account settings and links without native GitHub at ${viewport.width}px`, async () => {
++      await suite.withPage(
++        { viewport, locale: "en-US", serviceWorkers: "block" },
++        async ({ page }) => {
++          const gateway = await installMockGateway(page, {
++            operatorScopes: ["operator.admin"],
++            featureMethods: defaultControlUiFeatureMethods.filter(
++              (method) => !nativeGitHubMethod(method),
++            ),
++            presenceUsers: [
++              { self: true, id: profile.id, name: profile.displayName, email: profile.emails[0] },
++            ],
++            historyMessages: [
++              {
++                role: "assistant",
++                content: [
++                  {
++                    type: "text",
++                    text: "Ready to help. See [the example issue](https://github.com/example/project/issues/1).",
++                  },
++                ],
++              },
++            ],
++            methodResponses: { "users.self": { profile } },
++          });
++          await page.goto(`${suite.server.baseUrl}chat`);
++          const composer = page.locator(".agent-chat__composer-combobox textarea");
++          await composer.waitFor({ state: "visible" });
++          const link = page
++            .locator('a[href="https://github.com/example/project/issues/1"]')
++            .first();
++          await link.waitFor({ state: "visible" });
++          await link.focus();
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `chat-${viewport.width}.png`),
++            animations: "disabled",
++          });
++          const publicationPanels = await page
++            .getByRole("button", { name: "Publish PR", exact: true })
++            .count();
++          expect(await link.getAttribute("href")).toBe(
++            "https://github.com/example/project/issues/1",
++          );
++          expect(await link.getAttribute("target")).toBe("_blank");
++          const popupReady = page.waitForEvent("popup");
++          await link.click();
++          const popup = await popupReady;
++          await popup.waitForURL("https://github.com/example/project/issues/1");
++          await popup.close();
++          await composer.fill("Hello");
++          await page.getByRole("button", { name: "Send message", exact: true }).click();
++          const sent = await gateway.waitForRequest("chat.send");
++          const runId = Reflect.get(sent.params ?? {}, "idempotencyKey");
++          expect(typeof runId).toBe("string");
++          await gateway.emitChatFinal({ runId: String(runId), text: "Chat remains available." });
++          await page
++            .getByRole("paragraph")
++            .filter({ hasText: "Chat remains available." })
++            .waitFor();
++          const chatRequests = (await gateway.getRequests()).filter(({ method }) =>
++            nativeGitHubMethod(method),
++          );
++          expect(await page.locator(".github-link-hovercard").count()).toBe(0);
++          await page.goto(`${suite.server.baseUrl}settings/profile`);
++          await page.locator(".profile-hero__name").waitFor();
++          await page.locator(".identity-name-control input:enabled").waitFor();
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `profile-${viewport.width}.png`),
++            animations: "disabled",
++          });
++          const githubSettings = await page.locator("#settings-profile-github-connections").count();
++          const identity = await page.locator("#settings-profile-identity").textContent();
++          const requests = (await gateway.getRequests()).filter(({ method }) =>
++            nativeGitHubMethod(method),
++          );
++          expect(publicationPanels).toBe(0);
++          expect(githubSettings).toBe(0);
++          expect(identity).not.toContain("GitHub");
++          expect(
++            await gateway.getRequests("users.prefs.get", { keys: [GIT_COAUTHOR_PREFERENCE_KEY] }),
++          ).toEqual([]);
++          expect([...chatRequests, ...requests].map(({ method }) => method)).toEqual([]);
++          await page.goto(`${suite.server.baseUrl}settings/agents/main/tools`);
++          await page.getByText("Available Tools", { exact: true }).waitFor();
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `agent-tools-${viewport.width}.png`),
++            animations: "disabled",
++          });
++          expect(
++            await page
++              .locator(".settings-section__heading")
++              .filter({ hasText: "GitHub account" })
++              .count(),
++          ).toBe(0);
++          expect(
++            (await gateway.getRequests()).filter(({ method }) => nativeGitHubMethod(method)),
++          ).toEqual([]);
++        },
++      );
++    });
++  }
++
++  for (const viewport of [
++    { width: 1440, height: 900 },
++    { width: 390, height: 844 },
++  ]) {
++    it(`retains the native service error when GitHub is advertised at ${viewport.width}px`, async () => {
++      await suite.withPage(
++        { viewport, locale: "en-US", serviceWorkers: "block" },
++        async ({ page }) => {
++          const gateway = await installMockGateway(page, {
++            featureMethods: [...defaultControlUiFeatureMethods, "sessions.github.publish"],
++            heldMethods: ["sessions.github.options"],
++            presenceUsers: [
++              { self: true, id: profile.id, name: profile.displayName, email: profile.emails[0] },
++            ],
++            historyMessages: [
++              { role: "assistant", content: [{ type: "text", text: "Ready to help." }] },
++            ],
++            methodResponses: { "users.self": { profile } },
++          });
++          await page.goto(`${suite.server.baseUrl}chat`);
++          await gateway.waitForRequest("sessions.github.options");
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `advertised-loading-${viewport.width}.png`),
++            animations: "disabled",
++          });
++          const message = "GitHub publication state is unavailable; retry after Gateway startup.";
++          await gateway.rejectDeferred("sessions.github.options", { code: "UNAVAILABLE", message });
++          await page.getByText(message, { exact: true }).waitFor();
++          expect(await page.getByRole("button", { name: "Publish PR", exact: true }).count()).toBe(
++            1,
++          );
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `advertised-chat-${viewport.width}.png`),
++            animations: "disabled",
++          });
++          await page.goto(`${suite.server.baseUrl}settings/profile`);
++          await page.locator("#settings-profile-github-connections").waitFor();
++          await page.screenshot({
++            path: path.join(suite.artifactDir, `advertised-profile-${viewport.width}.png`),
++            animations: "disabled",
++          });
++        },
++      );
++    });
++  }
++});
+diff --git a/ui/src/features/github-connections/github-connections.test.ts b/ui/src/features/github-connections/github-connections.test.ts
+index a8587f496735c1eeb8f149f52df7a0a310508a3c..dd0bdd44e69ee3987e97e604d66a1ac5a668ae20 100644
+--- a/ui/src/features/github-connections/github-connections.test.ts
++++ b/ui/src/features/github-connections/github-connections.test.ts
+@@ -35,7 +35,7 @@ function mount(scopes: string[], profileId: string | null, request: ReturnType<t
+   const snapshot = {
+     client: { request } as unknown as GatewayBrowserClient,
+     phase: "connected",
+-    hello: gatewayHelloForMethods([], scopes),
++    hello: gatewayHelloForMethods(["users.github.status", "tools.github.status"], scopes),
+     selfUser: profileId ? { id: profileId } : null,
+   } as ApplicationGatewaySnapshot;
+   const agents = {
+diff --git a/ui/src/features/github-connections/github-connections.ts b/ui/src/features/github-connections/github-connections.ts
+index 3311c370c6140b60244d8a61ebc5b340f5222078..a79742d359f21135c50e76e1e3f864583ead136a 100644
+--- a/ui/src/features/github-connections/github-connections.ts
++++ b/ui/src/features/github-connections/github-connections.ts
+@@ -17,6 +17,7 @@ import {
+ } from "../../components/settings-ui.ts";
+ import { t } from "../../i18n/index.ts";
+ import { currentConfigObject } from "../../lib/config/config-state-model.ts";
++import { isGatewayMethodAdvertised } from "../../lib/gateway-methods.ts";
+ import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+ import { PROFILE_SETTINGS_TARGET_IDS } from "../../pages/config/settings-targets.ts";
+ import { GitHubIdentityController } from "./github-identity-controller.ts";
+@@ -85,9 +86,13 @@ export class GitHubConnections extends OpenClawLightDomElement {
+     // Access comes from the authenticated connection, never an error from users.github.status.
+     this.canRead =
+       snapshot.phase === "connected" &&
++      isGatewayMethodAdvertised(snapshot, "users.github.status") === true &&
+       Boolean(snapshot.hello?.auth) &&
+       hasOperatorReadAccess(snapshot.hello?.auth ?? null);
+-    this.canAdmin = this.canRead && hasOperatorAdminAccess(snapshot.hello?.auth ?? null);
++    this.canAdmin =
++      this.canRead &&
++      isGatewayMethodAdvertised(snapshot, "tools.github.status") === true &&
++      hasOperatorAdminAccess(snapshot.hello?.auth ?? null);
+     if (changed) {
+       this.revision += 1;
+       this.setupOpen = false;
+@@ -174,6 +179,12 @@ export class GitHubConnections extends OpenClawLightDomElement {
+   }
+ 
+   override render() {
++    if (
++      !this.snapshot ||
++      isGatewayMethodAdvertised(this.snapshot, "users.github.status") !== true
++    ) {
++      return nothing;
++    }
+     const personal = this.personal.personal;
+     const system = this.system.status?.selected.identity ?? this.personal.system;
+     const agentId = this.context.settingsAgentSelection.state.selectedId;
+diff --git a/ui/src/features/github-connections/github-identity-view.ts b/ui/src/features/github-connections/github-identity-view.ts
+index 456e3019550ea96cc8c7bdd8a4e45e1b95b277f3..545d1b7b0a8d4df88538a63c9a2fe59ad1b4c3e0 100644
+--- a/ui/src/features/github-connections/github-identity-view.ts
++++ b/ui/src/features/github-connections/github-identity-view.ts
+@@ -380,6 +380,9 @@ export function renderGitHubIdentity(
+   controller: GitHubIdentityController,
+   onOpenConnections: () => void,
+ ) {
++  if (!controller.statusReadable) {
++    return nothing;
++  }
+   const identity = controller.status?.effective ?? null;
+   return renderSettingsSection(
+     {
+diff --git a/ui/src/lib/sessions/session-github-publication.ts b/ui/src/lib/sessions/session-github-publication.ts
+index 81129cf2c45cad4615a8122d2d208c5b739be0b8..ef38e69e3e593582e6c5b5178af28da59b9a9a1e 100644
+--- a/ui/src/lib/sessions/session-github-publication.ts
++++ b/ui/src/lib/sessions/session-github-publication.ts
+@@ -113,7 +113,10 @@ export function createSessionGitHubPublication(host: Host) {
+       Controller: typeof GitHubPublicationController,
+     ): GitHubPublicationBinding | null {
+       const connection = host.connection.capture();
+-      if (!connection) {
++      if (
++        !connection ||
++        isGatewayMethodAdvertised(host.snapshot(), "sessions.github.publish") !== true
++      ) {
+         return null;
+       }
+       const route = resolveUiConversationIdentity(host.snapshot(), row.key, row.agentId);
+diff --git a/ui/src/pages/activity/session-activity-git.ts b/ui/src/pages/activity/session-activity-git.ts
+index 36b3ae57abc78d9fd48b07713f6d0c86f39273e9..b13c4a520a2f89ee2fd38493c5c0a45b7e8d33f4 100644
+--- a/ui/src/pages/activity/session-activity-git.ts
++++ b/ui/src/pages/activity/session-activity-git.ts
+@@ -6,6 +6,7 @@ import "../../components/github-link-hovercard-registration.ts";
+ import { icons } from "../../components/icons.ts";
+ import { t } from "../../i18n/index.ts";
+ import { registerActivityEnglish } from "../../i18n/locales/en-activity.ts";
++import { isGatewayMethodAdvertised } from "../../lib/gateway-methods.ts";
+ import { sessionPullRequestsForGateway } from "../../lib/session-pull-requests.ts";
+ import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+ import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
+@@ -97,7 +98,11 @@ class ActivitySessionGit extends OpenClawLightDomElement {
+     }
+     const stale = snapshot.status !== "ready" || gateway.snapshot.phase !== "connected";
+     return html`<openclaw-github-link-hovercard-provider
+-      .client=${gateway.snapshot.client}
++      .client=${
++        isGatewayMethodAdvertised(gateway.snapshot, "controlUi.githubPreview") === true
++          ? gateway.snapshot.client
++          : null
++      }
+       .agentId=${this.agentId}
+       .previewSeeds=${snapshot.pullRequests.map((pr) => ({
+         kind: "pull",
+diff --git a/ui/src/pages/agents/agents-page.ts b/ui/src/pages/agents/agents-page.ts
+index 79bc20ab03ad665596745a2eebc09be12a279316..daa6cec412da6d13c90f1056b76689c75d8fa0f5 100644
+--- a/ui/src/pages/agents/agents-page.ts
++++ b/ui/src/pages/agents/agents-page.ts
+@@ -646,7 +646,7 @@ class AgentsPage
+       this.githubProfileId = profileId;
+     }
+     const hasScope = (method: string, scope: GatewayMethodOperatorScope) =>
+-      canCallGatewayMethod(snapshot, method, scope, { requireAdvertisement: false });
++      canCallGatewayMethod(snapshot, method, scope);
+     this.githubIdentity.sync({
+       client: this.client,
+       connected: this.connected,
+diff --git a/ui/src/pages/config/settings-search.test.ts b/ui/src/pages/config/settings-search.test.ts
+index 6f38b88b18794c00f1af2d0fe529426d6329b51f..affb8fcb4324a8e598eca7ce01f98b8e4839a7ea 100644
+--- a/ui/src/pages/config/settings-search.test.ts
++++ b/ui/src/pages/config/settings-search.test.ts
+@@ -668,3 +668,18 @@ describe("findSettingsSearchBlocks", () => {
+     ]);
+   });
+ });
++
++it("shows native GitHub search only when its Gateway method is advertised", () => {
++  const search = (gatewayMethods: string[]) =>
++    findSettingsSearchBlocks({
++      query: "GitHub",
++      schema: null,
++      value: null,
++      uiHints: {},
++      gatewayMethods,
++    });
++  expect(search([])).toEqual([]);
++  expect(search(["users.github.status"])).toEqual([
++    expect.objectContaining({ hash: "#settings-profile-github-connections" }),
++  ]);
++});
+diff --git a/ui/src/pages/config/settings-search.ts b/ui/src/pages/config/settings-search.ts
+index c16536a5c0248d294a4fdde44577f301fe3c08e1..b20d88b7bde91b0fdc3a821350cc64ce3ecdebbb 100644
+--- a/ui/src/pages/config/settings-search.ts
++++ b/ui/src/pages/config/settings-search.ts
+@@ -95,6 +95,7 @@ export function findSettingsSearchBlocks(params: {
+   value: Record<string, unknown> | null;
+   uiHints: ConfigUiHints;
+   identityAvailable?: boolean;
++  gatewayMethods?: readonly string[];
+   basePath?: string;
+   canAdmin?: boolean;
+   nativeDeviceSettings?: NativeDeviceSettingsCapability | null;
+@@ -108,6 +109,8 @@ export function findSettingsSearchBlocks(params: {
+       ? STATIC_SETTINGS_BLOCKS.filter(
+           (block) =>
+             (params.identityAvailable || !block.requiresIdentity) &&
++            (!block.requiredGatewayMethod ||
++              params.gatewayMethods?.includes(block.requiredGatewayMethod) === true) &&
+             (params.nativeDeviceSettings || !block.requiresNativeDeviceSettings) &&
+             isSettingsNavigationRouteVisible(
+               block.routeId,
+diff --git a/ui/src/pages/config/settings-targets.ts b/ui/src/pages/config/settings-targets.ts
+index bd8b449e3385a6d24ac998be51eeeec407c259bf..b987204d95ac0bb5dad8e06ba40a05e54baa9e9b 100644
+--- a/ui/src/pages/config/settings-targets.ts
++++ b/ui/src/pages/config/settings-targets.ts
+@@ -31,6 +31,7 @@ export type SettingsSearchTarget = {
+   readonly search?: string;
+   readonly aliases?: string;
+   readonly requiresIdentity?: true;
++  readonly requiredGatewayMethod?: string;
+   readonly requiresNativeDeviceSettings?: true;
+ };
+ 
+@@ -191,6 +192,7 @@ export const SETTINGS_SEARCH_TARGETS = {
+   },
+   githubConnections: {
+     routeId: "profile",
++    requiredGatewayMethod: "users.github.status",
+     labelKey: "githubConnections.title",
+     hash: `#${PROFILE_SETTINGS_TARGET_IDS.githubConnections}`,
+     searchKeys: [
+diff --git a/ui/src/pages/profile/identity-section.ts b/ui/src/pages/profile/identity-section.ts
+index 4695cad876eb635308820d9eff06101a29ab3da3..34f61b9c7516739552be0d5cfd17cc1db5924e01 100644
+--- a/ui/src/pages/profile/identity-section.ts
++++ b/ui/src/pages/profile/identity-section.ts
+@@ -21,6 +21,7 @@ type IdentitySectionProps = {
+   avatarUrl: string | null;
+   displayName: string;
+   gitCoauthorEnabled: boolean;
++  githubAvailable?: boolean;
+   busy: "display-name" | "avatar" | "git-coauthor" | "loading" | null;
+   error: string | null;
+   onDisplayNameInput: (value: string) => void;
+@@ -137,47 +138,55 @@ export function renderIdentitySection(props: IdentitySectionProps) {
+                 control: emails ? renderSettingsValue(emails) : nothing,
+               })
+         }
+-        ${renderSettingsRow({
+-          title: t("profilePage.identity.githubAccount"),
+-          description: isOwnerProfile
+-            ? t("profilePage.identity.ownerGithubDescription")
+-            : githubIdentity
+-              ? t("profilePage.identity.githubAccountDescription")
+-              : t("profilePage.identity.githubUnavailableDescription"),
+-          control: githubIdentity
+-            ? html`
+-                <a
+-                  class="settings-account"
+-                  href=${githubIdentity.profileUrl}
+-                  target=${EXTERNAL_LINK_TARGET}
+-                  rel=${buildExternalLinkRel()}
+-                >
+-                  <img class="settings-account__avatar" src=${githubIdentity.avatarUrl} alt="" />
+-                  <span class="settings-row__value settings-row__value--mono"
+-                    >@${githubIdentity.login}</span
+-                  >
+-                </a>
+-                ${renderSettingsStatus({
+-                  kind: "ok",
+-                  label: t("profilePage.identity.githubVerified"),
+-                })}
+-              `
+-            : renderSettingsStatus({
+-                kind: "muted",
+-                label: t("profilePage.identity.githubUnavailable"),
+-              }),
+-        })}
+-        ${renderSettingsToggleRow({
+-          title: t("profilePage.identity.gitCoauthor"),
+-          description: isOwnerProfile
+-            ? t("profilePage.identity.ownerGitCoauthorDescription")
+-            : githubIdentity
+-              ? t("profilePage.identity.gitCoauthorDescription")
+-              : t("profilePage.identity.gitCoauthorUnavailable"),
+-          checked: Boolean(githubIdentity && props.gitCoauthorEnabled),
+-          disabled: props.busy !== null || !githubIdentity,
+-          onChange: props.onGitCoauthorChange,
+-        })}
++        ${
++          props.githubAvailable === false
++            ? nothing
++            : html` ${renderSettingsRow({
++                title: t("profilePage.identity.githubAccount"),
++                description: isOwnerProfile
++                  ? t("profilePage.identity.ownerGithubDescription")
++                  : githubIdentity
++                    ? t("profilePage.identity.githubAccountDescription")
++                    : t("profilePage.identity.githubUnavailableDescription"),
++                control: githubIdentity
++                  ? html`
++                      <a
++                        class="settings-account"
++                        href=${githubIdentity.profileUrl}
++                        target=${EXTERNAL_LINK_TARGET}
++                        rel=${buildExternalLinkRel()}
++                      >
++                        <img
++                          class="settings-account__avatar"
++                          src=${githubIdentity.avatarUrl}
++                          alt=""
++                        />
++                        <span class="settings-row__value settings-row__value--mono"
++                          >@${githubIdentity.login}</span
++                        >
++                      </a>
++                      ${renderSettingsStatus({
++                        kind: "ok",
++                        label: t("profilePage.identity.githubVerified"),
++                      })}
++                    `
++                  : renderSettingsStatus({
++                      kind: "muted",
++                      label: t("profilePage.identity.githubUnavailable"),
++                    }),
++              })}
++              ${renderSettingsToggleRow({
++                title: t("profilePage.identity.gitCoauthor"),
++                description: isOwnerProfile
++                  ? t("profilePage.identity.ownerGitCoauthorDescription")
++                  : githubIdentity
++                    ? t("profilePage.identity.gitCoauthorDescription")
++                    : t("profilePage.identity.gitCoauthorUnavailable"),
++                checked: Boolean(githubIdentity && props.gitCoauthorEnabled),
++                disabled: props.busy !== null || !githubIdentity,
++                onChange: props.onGitCoauthorChange,
++              })}`
++        }
+         ${
+           props.error
+             ? html`<div class="settings-row identity-error" role="alert">
+diff --git a/ui/src/pages/profile/profile-page.preferences.test.ts b/ui/src/pages/profile/profile-page.preferences.test.ts
+index 423404d673c8f35d13ad10d03843771d2c9734f5..f51401c514372e3e87bb95ff611cc42237ddb048 100644
+--- a/ui/src/pages/profile/profile-page.preferences.test.ts
++++ b/ui/src/pages/profile/profile-page.preferences.test.ts
+@@ -5,6 +5,7 @@ import { GIT_COAUTHOR_PREFERENCE_KEY } from "../../../../packages/gateway-protoc
+ import type { UserProfile } from "../../../../packages/gateway-protocol/src/index.ts";
+ import type { GatewayBrowserClient } from "../../api/gateway.ts";
+ import { i18n } from "../../i18n/index.ts";
++import { createTestGatewayClient } from "../../test-helpers/gateway-client.ts";
+ import { waitForFast } from "../../test-helpers/wait-for.ts";
+ import {
+   createConnectedContext,
+@@ -23,6 +24,45 @@ afterEach(async () => {
+   await i18n.setLocale("en");
+ });
+ 
++it("keeps identity editing available without loading hidden GitHub preferences", async () => {
++  const profile: UserProfile = {
++    ...modelAccountProfile,
++    githubIdentity: {
++      login: "octocat",
++      profileUrl: "https://github.com/octocat",
++      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
++    },
++  };
++  const request = vi.fn(async (method: string) => {
++    if (method === "users.self") {
++      return { profile };
++    }
++    if (method === "users.listModelAccounts") {
++      return { profileId: profile.id, accounts: [], links: [] };
++    }
++    throw new Error(`unexpected method: ${method}`);
++  });
++  const client = createTestGatewayClient(request);
++  const harness = createConnectedContext(client.request.bind(client), {
++    id: profile.id,
++    name: profile.displayName ?? undefined,
++  });
++  const page = mountProfilePage(harness.context);
++
++  await waitForFast(() =>
++    expect(page.querySelector<HTMLInputElement>(".identity-name-control input")?.disabled).toBe(
++      false,
++    ),
++  );
++  expect(page.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(false);
++  expect(page.querySelector(".settings-account")).toBeNull();
++  expect(page.querySelector("wa-switch")).toBeNull();
++  expect(page.textContent).not.toContain("unexpected method");
++  expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
++    ["users.self", "users.listModelAccounts"].toSorted(),
++  );
++});
++
+ it("loads and updates co-author consent separately from verified GitHub identity", async () => {
+   const profile: UserProfile = {
+     ...modelAccountProfile,
+@@ -34,6 +74,9 @@ it("loads and updates co-author consent separately from verified GitHub identity
+     },
+   };
+   const request = vi.fn(async (method: string, params?: unknown) => {
++    if (method === "users.github.status") {
++      return { state: "disconnected" };
++    }
+     if (method === "users.self") {
+       return { profile };
+     }
+@@ -50,10 +93,14 @@ it("loads and updates co-author consent separately from verified GitHub identity
+     }
+     throw new Error(`unexpected method: ${method}`);
+   });
+-  const harness = createConnectedContext(request as GatewayBrowserClient["request"], {
+-    id: profile.id,
+-    name: profile.displayName ?? undefined,
+-  });
++  const harness = createConnectedContext(
++    request as GatewayBrowserClient["request"],
++    {
++      id: profile.id,
++      name: profile.displayName ?? undefined,
++    },
++    ["users.github.status"],
++  );
+   const page = mountProfilePage(harness.context);
+ 
+   await waitForFast(() => expect(page.querySelector(".settings-account")).not.toBeNull());
+@@ -63,7 +110,7 @@ it("loads and updates co-author consent separately from verified GitHub identity
+     ),
+   );
+   expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
+-    ["users.self", "users.listModelAccounts", "users.prefs.get"].toSorted(),
++    ["users.self", "users.listModelAccounts", "users.prefs.get", "users.github.status"].toSorted(),
+   );
+   expect(page.querySelector(".identity-github-form")).toBeNull();
+   const toggle = page.querySelector<HTMLElement & { checked: boolean }>("wa-switch");
+@@ -77,7 +124,13 @@ it("loads and updates co-author consent separately from verified GitHub identity
+   );
+   await waitForFast(() => expect(toggle?.checked).toBe(true));
+   expect(request.mock.calls.map(([method]) => method).toSorted()).toEqual(
+-    ["users.self", "users.listModelAccounts", "users.prefs.get", "users.prefs.set"].toSorted(),
++    [
++      "users.self",
++      "users.listModelAccounts",
++      "users.prefs.get",
++      "users.prefs.set",
++      "users.github.status",
++    ].toSorted(),
+   );
+ });
+ 
+@@ -92,6 +145,9 @@ it("treats a malformed co-author preference as opted out", async () => {
+     },
+   };
+   const request = vi.fn(async (method: string) => {
++    if (method === "users.github.status") {
++      return { state: "disconnected" };
++    }
+     if (method === "users.self") {
+       return { profile };
+     }
+@@ -101,10 +157,14 @@ it("treats a malformed co-author preference as opted out", async () => {
+     }
+     throw new Error(`unexpected method: ${method}`);
+   });
+-  const harness = createConnectedContext(request as GatewayBrowserClient["request"], {
+-    id: profile.id,
+-    name: profile.displayName ?? undefined,
+-  });
++  const harness = createConnectedContext(
++    request as GatewayBrowserClient["request"],
++    {
++      id: profile.id,
++      name: profile.displayName ?? undefined,
++    },
++    ["users.github.status"],
++  );
+   const page = mountProfilePage(harness.context);
+ 
+   await waitForFast(() => expect(page.querySelector(".settings-account")).not.toBeNull());
+@@ -123,6 +183,9 @@ it("keeps co-author credit on until the person opts out", async () => {
+     },
+   };
+   const request = vi.fn(async (method: string, params?: unknown) => {
++    if (method === "users.github.status") {
++      return { state: "disconnected" };
++    }
+     if (method === "users.self") {
+       return { profile };
+     }
+@@ -136,10 +199,14 @@ it("keeps co-author credit on until the person opts out", async () => {
+     }
+     throw new Error(`unexpected method: ${method}`);
+   });
+-  const harness = createConnectedContext(request as GatewayBrowserClient["request"], {
+-    id: profile.id,
+-    name: profile.displayName ?? undefined,
+-  });
++  const harness = createConnectedContext(
++    request as GatewayBrowserClient["request"],
++    {
++      id: profile.id,
++      name: profile.displayName ?? undefined,
++    },
++    ["users.github.status"],
++  );
+   const page = mountProfilePage(harness.context);
+ 
+   await waitForFast(() => expect(page.querySelector(".settings-account")).not.toBeNull());
+diff --git a/ui/src/pages/profile/profile-page.test-support.ts b/ui/src/pages/profile/profile-page.test-support.ts
+index 6bc3b1da4bcacdcb058d829a0e6c0ec5dcae9097..8a34ba8c388fbc5ffe2fd9c926cca7f3cb53d3e5 100644
+--- a/ui/src/pages/profile/profile-page.test-support.ts
++++ b/ui/src/pages/profile/profile-page.test-support.ts
+@@ -7,18 +7,20 @@ import type { ApplicationContext, ApplicationGatewaySnapshot } from "../../app/c
+ import type { AuthenticatedUser } from "../../app/user-profile.ts";
+ import { createApplicationContextProvider } from "../../test-helpers/application-context.ts";
+ import { createTestGatewayClient } from "../../test-helpers/gateway-client.ts";
++import { gatewayHelloForMethods } from "../../test-helpers/gateway-methods.ts";
+ import { ProfilePage } from "./profile-page.ts";
+ 
+ export function createConnectedContext(
+   request: GatewayBrowserClient["request"],
+   selfUser: AuthenticatedUser | null = null,
++  methods: readonly string[] = [],
+ ) {
+   let snapshot: ApplicationGatewaySnapshot = {
+     client: createTestGatewayClient(request),
+     phase: "connected",
+     offlineStable: false,
+     canvasPluginSurfaceUrl: null,
+-    hello: null,
++    hello: gatewayHelloForMethods(methods),
+     assistantAgentId: "main",
+     sessionKey: "agent:main:main",
+     lastError: null,
+diff --git a/ui/src/pages/profile/profile-page.test.ts b/ui/src/pages/profile/profile-page.test.ts
+index 2bdc3205f8b2150efe7d7a969dcb7b3d67aeb069..19e49cb43cefba1f52db6e293045a1c76e100634 100644
+--- a/ui/src/pages/profile/profile-page.test.ts
++++ b/ui/src/pages/profile/profile-page.test.ts
+@@ -147,6 +147,9 @@ it.each([
+       emails,
+     };
+     const request = vi.fn(async (method: string) => {
++      if (method === "users.github.status") {
++        return { state: "disconnected" };
++      }
+       if (method === "users.self") {
+         return { profile };
+       }
+@@ -155,11 +158,15 @@ it.each([
+       }
+       throw new Error(`unexpected method: ${method}`);
+     });
+-    const harness = createConnectedContext(request as GatewayBrowserClient["request"], {
+-      id: profile.id,
+-      email: profile.emails[0],
+-      name: profile.displayName ?? undefined,
+-    });
++    const harness = createConnectedContext(
++      request as GatewayBrowserClient["request"],
++      {
++        id: profile.id,
++        email: profile.emails[0],
++        name: profile.displayName ?? undefined,
++      },
++      ["users.github.status"],
++    );
+     const page = mountProfilePage(harness.context);
+     await waitForFast(() =>
+       expect(page.querySelector("#settings-profile-identity")).not.toBeNull(),
+@@ -167,6 +174,7 @@ it.each([
+ 
+     expect(request.mock.calls.map(([method]) => method)).toEqual([
+       "users.self",
++      "users.github.status",
+       "users.listModelAccounts",
+     ]);
+     const identity = page.querySelector("#settings-profile-identity");
+@@ -268,7 +276,7 @@ it("renders a write-access note without calling users.self for read-only viewers
+     type: "hello-ok",
+     protocol: 1,
+     auth: { role: "operator", scopes: ["operator.read"] },
+-    features: { methods: ["users.self"] },
++    features: { methods: ["users.self", "users.github.status"] },
+   } as ApplicationGatewaySnapshot["hello"];
+   const page = mountProfilePage(harness.context);
+ 
+diff --git a/ui/src/pages/profile/profile-page.ts b/ui/src/pages/profile/profile-page.ts
+index c6ec71d21e6d698571908c87f4a7be0649f05f6c..a92fe364c3fba061c645c6adb646b14035f0bc1a 100644
+--- a/ui/src/pages/profile/profile-page.ts
++++ b/ui/src/pages/profile/profile-page.ts
+@@ -35,6 +35,7 @@ import { renderSettingsWorkspace } from "../../components/settings-workspace.ts"
+ import { t } from "../../i18n/index.ts";
+ import { registerModelAccountsEnglish } from "../../i18n/locales/en-model-accounts.ts";
+ import { formatUiError } from "../../lib/format-error.ts";
++import { isGatewayMethodAdvertised } from "../../lib/gateway-methods.ts";
+ import { IdentityAvatarController } from "../../lib/identity-avatar-loader.ts";
+ import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
+ import { PROFILE_SETTINGS_TARGET_IDS } from "../config/settings-targets.ts";
+@@ -165,7 +166,10 @@ export class ProfilePage extends OpenClawLightDomElement {
+       this.ownProfile = profile;
+       this.displayName = hasUnsavedDisplayName ? displayNameDraft : (profile.displayName ?? "");
+       this.gitCoauthorEnabled = true;
+-      if (profile.githubIdentity) {
++      if (
++        profile.githubIdentity &&
++        isGatewayMethodAdvertised(this.context.gateway.snapshot, "users.github.status") === true
++      ) {
+         const { loadUserPreferences } = await import("../../app/user-prefs-request.ts");
+         if (requestId !== this.identityRequestId) {
+           return;
+@@ -341,6 +345,8 @@ export class ProfilePage extends OpenClawLightDomElement {
+       avatarUrl,
+       displayName: this.displayName,
+       gitCoauthorEnabled: this.gitCoauthorEnabled,
++      githubAvailable:
++        isGatewayMethodAdvertised(this.context.gateway.snapshot, "users.github.status") === true,
+       busy: this.identityLoading ? "loading" : this.identityBusy,
+       error: this.identityError,
+       onDisplayNameInput: (value) => {
+diff --git a/ui/src/test-helpers/control-ui-e2e.ts b/ui/src/test-helpers/control-ui-e2e.ts
+index 06d3db379d790f5ecc5168b6fa34f8e91bebea54..76b4ae742344ffab1aa5343f1878cc628e878230 100644
+--- a/ui/src/test-helpers/control-ui-e2e.ts
++++ b/ui/src/test-helpers/control-ui-e2e.ts
+@@ -389,6 +389,7 @@ const json5EsmPath = require.resolve("json5/dist/index.mjs");
+ const json5BrowserSource = readFileSync(require.resolve("json5/dist/index.min.js"), "utf8");
+ 
+ export const defaultControlUiFeatureMethods = [
++  "controlUi.githubPreview",
+   "chat.abort",
+   "chat.metadata",
+   "chat.startup",

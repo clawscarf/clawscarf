@@ -28,6 +28,7 @@ const text = z.string().min(1);
 /** Public selections only; internal paths and bootstrap state are never CLI overrides. */
 export const selectionSchema = z.object({
   name: installationSchema.shape.name.optional(),
+  agentName: installationSchema.shape.agentName.optional(),
   administratorName: text.optional(),
   port: port.optional(),
   widgetPort: port.optional(),
@@ -81,6 +82,7 @@ export type ConfigureOptions = SetupOptions &
 export function installationOptions(command: Command) {
   return command
     .option("--name <name>", "Installation name")
+    .option("--agent-name <name>", "Initial default agent name")
     .option("--administrator-name <name>", "First administrator display name")
     .option("--port <number>", "Local application port (default: 18800)")
     .option("--widget-port <number>", "Local widgets port (default: 18802)")
@@ -223,6 +225,7 @@ export async function selectedDraft(
     retained ?? recipeConfiguration(context, recipe),
   );
   if (o.name !== undefined) config.name = o.name;
+  if (o.agentName !== undefined) config.agentName = o.agentName;
   if (o.administratorName !== undefined)
     config.access.administratorName = o.administratorName;
   if (o.cpu !== undefined) config.resources.runtime.cpu = o.cpu;

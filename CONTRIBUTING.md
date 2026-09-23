@@ -1,7 +1,7 @@
 # Contributing to ClawScarf
 
 See the [README](README.md) for the product and quickstart, and the
-[installation guide](deploy/deployment/installation.md) for platform requirements. The [task checklist](TODO.md) is the single list of
+[installation guide](deploy/deployment/installation.md) for platform requirements. [TODO](TODO.md) is the single list of
 open work; [AGENTS.md](AGENTS.md) defines engineering and review conventions.
 
 Use the Node and pnpm versions in [package.json](package.json) and follow the
@@ -33,7 +33,7 @@ matrix, failure analysis or verification results into another guide.
 | Build/publish process and release evidence                             | [Release guide](release/README.md); published versions/assets in [GitHub Releases](https://github.com/clawscarf/clawscarf/releases) and their CI runs                            |
 | Component behavior, configuration and current limitations              | Its adjacent README; browser integration belongs to [browser-node](deploy/execution/browser-node/README.md), network rules to [network](deploy/execution/network/README.md)      |
 | Patch authoring and upstream upgrades                                  | [Distribution guide](runtime/openclaw/README.md); each paired intent owns that patch's requirements                                                                              |
-| Open work                                                              | [TODO](TODO.md), short unchecked actions with links to the owning explanation                                                                                                    |
+| Open work                                                              | [TODO](TODO.md), concrete bugs and agreed changes with a clear finish                                                                                                            |
 | Cross-repository service boundary                                      | [Hosted-service contract](docs/cloud-services.md); deployed cloud settings belong only to the [cloud runbook](https://github.com/clawscarf/clawscarf-cloud/blob/main/RUNBOOK.md) |
 | Attribution and redistribution                                         | [Third-party notices](THIRD_PARTY_NOTICES.md), component provenance and required bundled licenses                                                                                |
 

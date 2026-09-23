@@ -11,7 +11,7 @@ import {
 import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
-import { writeFile, access } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
 import { collectInstallation, type InstallOptions } from "./collect.js";
 import {
@@ -95,7 +95,6 @@ export async function installFromAnswers(
     );
   const { configFile, config } = setup;
   const directory = dirname(configFile);
-  const planFile = join(directory, "preview.json");
   const stateDirectory = resolve(directory, config.stateDirectory);
   try {
     await task("Preparing required software", (signal, report) =>
@@ -111,12 +110,7 @@ export async function installFromAnswers(
     const plan = await task("Checking installation settings", () =>
       operator.plan(configFile),
     );
-    await writeFile(planFile, JSON.stringify(plan, null, 2) + "\n", {
-      mode: 0o600,
-    });
-    await task("Installing ClawScarf", () =>
-      operator.apply(configFile, planFile),
-    );
+    await task("Installing ClawScarf", () => operator.apply(configFile, plan));
     if (!(
       options.start ??
       (options.nonInteractive ? true : await ui.confirm("Start now?", true))
@@ -261,11 +255,6 @@ export async function runConfiguration(
   }
   const ui = options.nonInteractive ? unattendedPrompts : terminalPrompts;
   try {
-    if (options.reapply)
-      throw new InstallationError(
-        "invalid_configuration",
-        "--reapply requires an existing installation.",
-      );
     const saved = await savedSetup(options);
     const state = saved
       ? resolve(dirname(saved.configFile), saved.config.stateDirectory)

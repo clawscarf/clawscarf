@@ -35,8 +35,9 @@ ClawScarf-Patch: optional-marketplace
  src/config/marketplace.test.ts                |  25 ++++
  src/config/marketplace.ts                     |  21 ++++
  src/config/schema.help.runtime.ts             |   3 +
- src/config/schema.hints.ts                    |   1 +
+ src/config/schema.hints.ts                    |   2 +
  src/config/schema.labels.ts                   |   2 +
+ src/config/schema.tiers.ts                    |   2 +-
  src/config/types.openclaw.ts                  |   2 +
  src/config/zod-schema.root-shape.ts           |   1 +
  src/gateway/config-reload-plan.ts             |   2 +-
@@ -112,7 +113,7 @@ ClawScarf-Patch: optional-marketplace
  ui/src/pages/skills/view-types.ts             |   1 +
  ui/src/pages/skills/view.ts                   |   4 +-
  ui/src/test-helpers/control-ui-e2e.ts         |   4 +
- 107 files changed, 1401 insertions(+), 144 deletions(-)
+ 108 files changed, 1403 insertions(+), 145 deletions(-)
  create mode 100644 src/config/marketplace.test.ts
  create mode 100644 src/config/marketplace.ts
  create mode 100644 src/skills/loading/marketplace.test.ts
@@ -1175,7 +1176,7 @@ index 79924c6132c3f4618319ab5876e2879f759ded8f..95a28d99c5a47c03a93daf78db904dd8
      "Browser runtime controls for local or remote CDP attachment, profile routing, and screenshot/snapshot behavior. Keep defaults unless your automation workflow requires custom browser transport settings.",
    "browser.enabled":
 diff --git a/src/config/schema.hints.ts b/src/config/schema.hints.ts
-index 31d3678a205bfc6eeaab3ee68f595fc90b62cf3d..09c5a5cdbc8ee886b465fece0305a66cafffb708 100644
+index 31d3678a205bfc6eeaab3ee68f595fc90b62cf3d..7d9262eb90f86e3e94824fc1d43efb77c8e08ef1 100644
 --- a/src/config/schema.hints.ts
 +++ b/src/config/schema.hints.ts
 @@ -44,6 +44,7 @@ const GROUP_HINTS = [
@@ -1186,6 +1187,14 @@ index 31d3678a205bfc6eeaab3ee68f595fc90b62cf3d..09c5a5cdbc8ee886b465fece0305a66c
    ["discovery", "Discovery", 210],
    ["presence", "Presence", 220],
    ["voicewake", "Voice Wake", 230],
+@@ -59,6 +60,7 @@ const SECTION_DOCS_URLS = {
+   cron: "https://docs.openclaw.ai/automation/cron-jobs",
+   bindings: "https://docs.openclaw.ai/concepts/agent-bindings",
+   plugins: "https://docs.openclaw.ai/plugins/manage-plugins",
++  marketplace: "https://docs.openclaw.ai/gateway/config-extensions",
+   mcp: "https://docs.openclaw.ai/tools/mcp",
+   memory: "https://docs.openclaw.ai/concepts/memory",
+   talk: "https://docs.openclaw.ai/nodes/talk",
 diff --git a/src/config/schema.labels.ts b/src/config/schema.labels.ts
 index 2f016b84607915e62d2eed703a0ebc49d0384083..a6f1ba6509e666c3d909cb79287ee2a6462b8f73 100644
 --- a/src/config/schema.labels.ts
@@ -1199,6 +1208,19 @@ index 2f016b84607915e62d2eed703a0ebc49d0384083..a6f1ba6509e666c3d909cb79287ee2a6
    plugins: "Plugins",
    "plugins.enabled": "Enable Plugins",
    "plugins.allow": "Plugin Allowlist",
+diff --git a/src/config/schema.tiers.ts b/src/config/schema.tiers.ts
+index ef6ea217dd8bac75cae1f2c7791d93ad89c1a0b0..4dae5f37f7bb4a212e4417aa59757483288023ea 100644
+--- a/src/config/schema.tiers.ts
++++ b/src/config/schema.tiers.ts
+@@ -3,7 +3,7 @@ import { asSchemaObject, type ConfigJsonSchemaObject } from "./schema.shared.js"
+ 
+ const ROOT_TIER_PATHS = `
+ accessGroups acp agents approvals attachments auth bindings broadcast browser channels
+-cloudWorkers commands cron desktop diagnostics discovery env gateway hooks logging mcp memory messages
++cloudWorkers commands cron desktop diagnostics discovery env gateway hooks logging marketplace mcp memory messages
+ meta models nodeHost plugins proxy secrets security session skills surfaces talk telemetry tools transcripts
+ tts ui update wizard worktreeAcceleration worktreeRoot
+ `
 diff --git a/src/config/types.openclaw.ts b/src/config/types.openclaw.ts
 index 828c02ec78f0f0ae20aab2b0cfdc34b213d9fae4..428b87c3f51f04a49d1f18c4009e4f37fb8e2218 100644
 --- a/src/config/types.openclaw.ts

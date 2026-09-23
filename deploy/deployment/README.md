@@ -72,7 +72,7 @@ These are startup checks, not continuous monitoring.
 
 If an operation reports an uncertain outcome, inspect its private records and the
 controller before resuming. Do not delete records to force a retry. Interrupted
-configuration and runtime replacement block ordinary startup until resolved.
+configuration blocks ordinary startup until resolved.
 Diagnostics retain structured failure reasons without logging credentials or raw
 subprocess output.
 
@@ -129,31 +129,11 @@ not a domain allowlist. See the [browser network](../execution/network/README.md
 Current support and failure analysis belong to the
 [browser-node owner](../execution/browser-node/README.md#verified-release-limits).
 
-## Runtime upgrade
-
-[upgrade.ts](../../scripts/deployment/upgrade.ts) replaces stopped OpenClaw compute
-while retaining its home volume. It does not upgrade the controller, companion or
-database, and it provides no backup or rollback. Published-version upgrades remain
-an open decision in [TODO.md](../../TODO.md#upgrade-decision).
-
-For development, `clawscarf upgrade --help` describes the command. It requires exclusive
-operator control, a stopped installation with only its controller running, an exact
-replacement image supporting the startup gate, and the pinned
-[Python SDK environment](../../packs/README.md). The operator snapshots controller
-policy/settings, replaces compute, restores settings and leaves the result stopped
-before normal startup. It does not reinitialize native identities or workspaces.
-
-Resume an interruption with the same image and command. Conflicting settings or
-unconfirmed deletion/allocation require inspection, not replay. Native deletion has
-no atomic UUID precondition, so concurrent external controller changes are unsafe.
-Provider bindings are retained references, not copies of provider credentials.
-
 ## Testing changes
 
 Run the [repository checks](../../scripts/README.md). For real Docker boundaries,
 use the opt-in [platform installation test](../../tests/deployment/platform-live.test.ts).
-[Allocation](../../tests/deployment/allocation-live.test.ts) and
-[replacement](../../tests/deployment/upgrade-live.test.ts) tests deliberately interrupt
-operations; their source files specify required inputs and disposable state.
+[Allocation tests](../../tests/deployment/allocation-live.test.ts) deliberately interrupt
+operations; their source specifies required inputs and disposable state.
 Those fixtures can retain resources for inspection: delete them after testing.
 [Release evidence](../../release/README.md#release-evidence) is kept with the candidate.

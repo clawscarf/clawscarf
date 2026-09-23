@@ -2,138 +2,60 @@ import { isDeepStrictEqual } from "node:util";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { run } from "./process.js";
+import { run, LocalSetupError } from "./process.js";
 import { resourceNames, writePrivate, type LocalState } from "./state.js";
-import { composePublicWebRules } from "./public-web.js";
-import { runtimeManager } from "./runtime.js";
+import {
+  composeNetworkRules,
+  adjustmentsSchema,
+  networkChangesSchema,
+  type NetworkChanges,
+} from "./public-web.js";
+import { runtimeEnvironment, runtimeManager } from "./runtime.js";
 
-const connectionRuleSchema = z.object({
-  name: z.string(),
-  endpoints: z.array(
-    z.object({
-      host: z.string(),
-      port: z.number(),
-      tls: z.string(),
-      allowed_ips: z.array(z.string()).optional(),
-    }),
-  ),
-  binaries: z.array(z.object({ path: z.string() })),
-});
-const publicRuleSchema = z.object({
-  name: z.string(),
-  endpoints: z.array(
-    z.object({
-      ports: z.array(z.number()),
-      allowed_ips: z.array(z.string()),
-      tls: z.string(),
-    }),
-  ),
-  binaries: z.array(z.object({ path: z.string() })),
-});
-const changesSchema = z.strictObject({
-  connections_broker: connectionRuleSchema.nullable().optional(),
-  public_web: publicRuleSchema.nullable().optional(),
-});
-export async function stageNetworkPolicyChange(
-  directory: string,
-  state: LocalState,
-  rules: z.infer<typeof changesSchema>,
-) {
-  const file = join(directory, "private/network-policy-change.json");
-  let previous: z.infer<typeof changesSchema> = {};
-  try {
-    previous = z
-      .strictObject({ ownerId: z.literal(state.ownerId), rules: changesSchema })
-      .parse(JSON.parse(await readFile(file, "utf8"))).rules;
-  } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
-      throw error;
-  }
-  await writePrivate(
-    file,
-    JSON.stringify({
-      ownerId: state.ownerId,
-      rules: changesSchema.parse({ ...previous, ...rules }),
-    }),
-  );
-}
 const policySchema = z.looseObject({
   network_policies: z.record(z.string(), z.unknown()),
 });
-/** Apply only explicitly selected managed rules; never regenerate an operator's other policies. */
-export async function applyNetworkPolicy(
+const pendingSchema = z.strictObject({
+  ownerId: z.uuid(),
+  requested: networkChangesSchema,
+  changes: z.record(
+    z.string(),
+    z.strictObject({ before: z.unknown(), after: z.unknown() }),
+  ),
+  adjustments: adjustmentsSchema,
+});
+async function optionalJson(path: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(path, "utf8"));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return undefined;
+    throw error;
+  }
+}
+async function observe(
   directory: string,
   state: LocalState,
   env: NodeJS.ProcessEnv,
-  verify = false,
-  command: typeof run = run,
+  command: typeof run,
 ) {
-  const pending = join(directory, "private/network-policy-change.json");
-  let text: string;
-  try {
-    text = await readFile(pending, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT")
-      return;
-    throw error;
-  }
-  const change = z
-    .strictObject({
-      ownerId: z.literal(state.ownerId),
-      rules: changesSchema,
-    })
-    .parse(JSON.parse(text));
-  const base = join(directory, "private/runtime-policy.json");
-  const update = (policy: z.infer<typeof policySchema>) => {
-    return {
-      ...policy,
-      network_policies: composePublicWebRules(
-        Object.fromEntries([
-          ...Object.entries(policy.network_policies).filter(
-            ([key]) => !Object.hasOwn(change.rules, key),
-          ),
-          ...Object.entries(change.rules).filter(([, rule]) => rule !== null),
-        ]),
-      ),
-    };
-  };
-  const matches = (policy: z.infer<typeof policySchema>) => {
-    const expected = update(policy).network_policies;
-    return [
-      ...new Set([
-        ...Object.keys(change.rules),
-        "connections_broker",
-        "model_gateway",
-      ]),
-    ].every((key) => {
-      const observed = policy.network_policies[key];
-      if (!Object.hasOwn(change.rules, key))
-        return isDeepStrictEqual(observed, expected[key]);
-      if (expected[key] === undefined) return observed === undefined;
-      const schema =
-        key === "public_web" ? publicRuleSchema : connectionRuleSchema;
-      const actualRule = schema.safeParse(observed);
-      const expectedRule = schema.safeParse(expected[key]);
-      return (
-        actualRule.success &&
-        expectedRule.success &&
-        isDeepStrictEqual(actualRule.data, expectedRule.data)
-      );
-    });
-  };
   const name = resourceNames(state).sandbox;
-  if (
-    !(await runtimeManager(directory, state, env, command).recorded()).receipt
-  ) {
-    if (verify) throw Error("The configured runtime has not been recorded.");
-    await writePrivate(
-      base,
-      JSON.stringify(
-        update(policySchema.parse(JSON.parse(await readFile(base, "utf8")))),
+  const control = runtimeManager(directory, state, env, command);
+  const { receipt } = await control.recorded();
+  if (!receipt)
+    return {
+      policy: policySchema.parse(
+        JSON.parse(
+          await readFile(
+            join(directory, "private/runtime-policy.json"),
+            "utf8",
+          ),
+        ),
       ),
-    );
-    return;
-  }
+      effective: false,
+      recorded: false,
+    };
+  await control.confirm(receipt.id);
   const observed = z
     .object({
       sandbox: z.literal(name),
@@ -161,27 +83,149 @@ export async function applyNetworkPolicy(
         ),
       ),
     );
-  if (matches(observed.policy)) {
-    if (verify) {
-      if (
-        observed.active_version !== observed.version ||
-        observed.status !== "effective"
+  return {
+    policy: observed.policy,
+    effective:
+      observed.active_version === observed.version &&
+      observed.status === "effective",
+    recorded: true,
+  };
+}
+
+/** Validate the whole selected change before service mutation. Caller holds the installation lock and starts its controller. */
+export async function planNetworkPolicyChange(
+  directory: string,
+  state: LocalState,
+  requested: NetworkChanges,
+  command: typeof run = run,
+) {
+  const file = join(directory, "private/network-policy-change.json");
+  const saved = await optionalJson(file);
+  if (saved !== undefined) {
+    const pending = pendingSchema
+      .extend({ ownerId: z.literal(state.ownerId) })
+      .parse(saved);
+    if (!isDeepStrictEqual(pending.requested, requested))
+      throw new LocalSetupError(
+        "configuration_changed",
+        "Resume the pending network change before selecting another policy.",
+      );
+    return pending;
+  }
+  const { policy } = await observe(
+    directory,
+    state,
+    runtimeEnvironment(directory),
+    command,
+  );
+  const owned = z
+    .strictObject({
+      ownerId: z.literal(state.ownerId),
+      rules: adjustmentsSchema,
+    })
+    .parse(
+      JSON.parse(
+        await readFile(
+          join(directory, "private/network-policy-adjustments.json"),
+          "utf8",
+        ),
+      ),
+    );
+  const composed = composeNetworkRules(
+    policy.network_policies,
+    requested,
+    owned.rules,
+  );
+  const keys = new Set([
+    ...Object.keys(policy.network_policies),
+    ...Object.keys(composed.rules),
+  ]);
+  const changes = Object.fromEntries(
+    [...keys]
+      .filter(
+        (key) =>
+          !isDeepStrictEqual(policy.network_policies[key], composed.rules[key]),
       )
-        throw Error(
-          "The selected network policy has not become effective in the runtime.",
-        );
-      await rm(pending);
-    }
+      .map((key) => [
+        key,
+        {
+          before: policy.network_policies[key] ?? null,
+          after: composed.rules[key] ?? null,
+        },
+      ]),
+  );
+  return {
+    ownerId: state.ownerId,
+    requested,
+    changes,
+    adjustments: composed.adjustments,
+  };
+}
+
+export async function stageNetworkPolicyChange(
+  directory: string,
+  change: Awaited<ReturnType<typeof planNetworkPolicyChange>>,
+) {
+  await writePrivate(
+    join(directory, "private/network-policy-change.json"),
+    JSON.stringify(change),
+  );
+}
+
+/** Compare selected rules with their reviewed values; preserve unrelated edits and reconcile uncertain policy-set outcomes. */
+export async function applyNetworkPolicy(
+  directory: string,
+  state: LocalState,
+  env: NodeJS.ProcessEnv,
+  verify = false,
+  command: typeof run = run,
+) {
+  const file = join(directory, "private/network-policy-change.json");
+  const saved = await optionalJson(file);
+  if (saved === undefined) return;
+  const pending = pendingSchema
+    .extend({ ownerId: z.literal(state.ownerId) })
+    .parse(saved);
+  const observed = await observe(directory, state, env, command);
+  const rules = { ...observed.policy.network_policies };
+  let changed = false;
+  for (const [key, { before, after }] of Object.entries(pending.changes)) {
+    const actual = rules[key] ?? null;
+    if (isDeepStrictEqual(actual, after)) continue;
+    if (!isDeepStrictEqual(actual, before))
+      throw new LocalSetupError(
+        "configuration_changed",
+        "A selected network rule changed after review. No policy was overwritten; inspect the pending change.",
+      );
+    changed = true;
+    if (after === null) Reflect.deleteProperty(rules, key);
+    else rules[key] = after;
+  }
+  if (verify) {
+    if (changed || !observed.effective)
+      throw new LocalSetupError(
+        "invalid_runtime_policy",
+        "The selected network policy has not become effective in the runtime.",
+      );
+    await writePrivate(
+      join(directory, "private/network-policy-adjustments.json"),
+      JSON.stringify({ ownerId: state.ownerId, rules: pending.adjustments }),
+    );
+    await rm(file);
     return;
   }
-  if (verify)
-    throw Error(
-      "The selected network policy was not confirmed. The installation remains unavailable.",
-    );
-  await writePrivate(base, JSON.stringify(update(observed.policy)));
-  await command(
-    state.input.openshellCli,
-    ["policy", "set", name, "--gateway", name, "--policy", base],
-    { env },
+  if (!changed) return;
+  const base = join(directory, "private/runtime-policy.json");
+  await writePrivate(
+    base,
+    JSON.stringify({ ...observed.policy, network_policies: rules }),
   );
+  if (observed.recorded) {
+    const name = resourceNames(state).sandbox;
+    await command(
+      state.input.openshellCli,
+      ["policy", "set", name, "--gateway", name, "--policy", base],
+      { env },
+    );
+  }
 }

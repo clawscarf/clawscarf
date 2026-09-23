@@ -69,3 +69,53 @@ await test("runtime promotion rejects manifests needing locally built images", a
   await assert.rejects(advanceRuntime(options), /registry digests/);
   assert.equal(await readFile(options.current, "utf8"), before);
 });
+
+await test("publication rejects stale inputs before registry access and safely recognizes an identical npm retry", async (t) => {
+  const { checkPublication } = await import("./release/publication.js");
+  const { createHash } = await import("node:crypto");
+  const { options, previous, next } = await fixture(t);
+  const tarball = join(options.current, "../cli.tgz");
+  const bytes = Buffer.from("candidate npm payload");
+  await writeFile(tarball, bytes);
+  const input = { ...options, tarball };
+  let channel = "1.0.0";
+  let integrity: string | undefined = undefined;
+  let calls = 0;
+  const registry: typeof fetch = () => {
+    calls++;
+    return Promise.resolve(
+      Response.json({
+        "dist-tags": { latest: channel },
+        versions: integrity ? { [next.version]: { dist: { integrity } } } : {},
+      }),
+    );
+  };
+  await writeFile(
+    options.current,
+    JSON.stringify({ ...previous, version: "1.2.0" }),
+  );
+  await assert.rejects(checkPublication(input, registry), /changed since/);
+  assert.equal(calls, 0);
+  await writeFile(options.current, JSON.stringify(previous));
+  channel = "1.2.0";
+  await assert.rejects(checkPublication(input, registry), /newer version/);
+  channel = "1.0.0";
+  assert.equal(await checkPublication(input, registry), "publish");
+  assert.deepEqual(
+    JSON.parse(await readFile(options.current, "utf8")),
+    previous,
+  );
+  channel = next.version;
+  integrity = "sha512-" + createHash("sha512").update(bytes).digest("base64");
+  assert.equal(await checkPublication(input, registry), "already-published");
+  await advanceRuntime(options);
+  assert.equal(await checkPublication(input, registry), "already-published");
+  await writeFile(tarball, "different payload");
+  await assert.rejects(checkPublication(input, registry), /different bytes/);
+  await assert.rejects(
+    checkPublication(input, () =>
+      Promise.resolve(new Response("", { status: 503 })),
+    ),
+    /registry check failed/,
+  );
+});

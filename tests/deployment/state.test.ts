@@ -23,6 +23,7 @@ import { parseLocalInput } from "../../scripts/deployment/configuration.js";
 import { composeConfiguration } from "../../scripts/deployment/compose.js";
 const input = parseLocalInput({
   name: "local",
+  agentName: "ClawScarf",
   administratorName: "Admin",
   runtimeImage: "sha256:" + "a".repeat(64),
   companionImage: "sha256:" + "b".repeat(64),
