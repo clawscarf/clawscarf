@@ -145,6 +145,14 @@ export async function collectInstallation(
       };
 
     const initialConfiguration = JSON.stringify(config);
+    let aiChosen = Boolean(
+      options.existing ||
+      options.aiService ||
+      options.provider ||
+      options.llmKeyFile ||
+      options.providerEnvFile ||
+      options.modelCatalog,
+    );
     const initialCloudAi = Boolean(
       config.models?.mode === "litellm" && config.models.cloud,
     );
@@ -153,7 +161,7 @@ export async function collectInstallation(
         [
           ...(recipe ? [recipe.description, ""] : []),
           "One account for team login, AI and connections to your business apps.",
-          "No AI provider keys to manage.",
+          "Choose prepaid Cloud AI or use your own provider API key.",
           "",
           "Team login is free. AI uses prepaid credits.",
           "Connections is optional, with paid usage beyond your allowance.",
@@ -192,6 +200,7 @@ export async function collectInstallation(
       const previousInputs = new Map(inputs.files);
       const previousConfig = structuredClone(config);
       const previousDirectory = directory;
+      const previousAiChosen = aiChosen;
       try {
         switch (choice) {
           case "location": {
@@ -225,15 +234,7 @@ export async function collectInstallation(
                     config.models?.mode === "litellm" && config.models.cloud,
                   ),
             );
-            break;
-          case "ai-service":
-            if (config.models)
-              config.models = await collectAiService(
-                ui,
-                context.modelCatalog,
-                config.models,
-                inputs,
-              );
+            aiChosen = true;
             break;
           case "model-credentials":
             if (!config.models)
@@ -314,6 +315,15 @@ export async function collectInstallation(
                 presetFile,
                 options.existing,
               );
+            if (!aiChosen) {
+              config.models = await collectAiService(
+                ui,
+                context.modelCatalog,
+                config.models,
+                inputs,
+              );
+              aiChosen = true;
+            }
             ui.note(
               await installationSummary(config, inputs),
               "Selected settings",
@@ -378,6 +388,7 @@ export async function collectInstallation(
         if (error instanceof InstallerCancelled) throw error;
         config = previousConfig;
         directory = previousDirectory;
+        aiChosen = previousAiChosen;
         inputs.files.clear();
         for (const [path, bytes] of previousInputs)
           inputs.files.set(path, bytes);

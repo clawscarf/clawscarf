@@ -96,9 +96,9 @@ clawscarf configure \
 ```
 
 Choose a recipe, then review its editable settings. **Accept settings and continue**
-is the first action. Team login, AI service, default model and Connections
+is the first action. Team login, AI and Connections
 come first, followed by optional capabilities, then location, network and resources.
-Cloud login is free; recommended Cloud AI is prepaid. Connections is optional and
+Cloud login is free; Cloud AI uses prepaid credits. Connections is optional and
 paid beyond the account’s allowance. Provider-key billing remains selectable.
 New Cloud AI setups show a short introduction above the menu explaining the
 convenience, paid usage and options to use your own login provider or API key.
@@ -207,7 +207,11 @@ registers selected cloud services, prepares and starts the server. It does
 not prompt. If sign-in is needed, it returns `state: "action_required"`, a browser URL,
 expiry, polling delay and exact resume command. Complete the browser step, then run
 that command; accepted selections and the pending registration are retained. The resume
-command preserves an explicit `--no-start` choice. It does
+command preserves an explicit `--no-start` choice. Repeating the saved `--cloud-url`
+is also accepted during unfinished setup; changing the Cloud environment or non-AI
+selections is rejected until setup finishes. Cancelling after settings are saved
+prints the resume command. Machine checks identify Docker connectivity, Compose
+and Engine version as they run. Configuration does
 not print provider tokens or silently choose an account. `--no-start` stops after preparation.
 
 An existing short-lived owner token or provisioning credential can instead be supplied
@@ -250,10 +254,40 @@ See [models](../models/README.md) for catalog and credential contracts.
 `--ai-service cloud` uses prepaid ClawScarf Cloud AI through bundled LiteLLM.
 The installer uses the existing Cloud owner approval to enable hosted AI, checks
 the selected model against Cloud's live catalog, and retains a scoped inference
-credential outside OpenClaw. It reports the actual available account balance after
-sign-in without promising a fixed free allocation. Exhausted, pending or suspended
-credit does not disable login. Cloud API credentials and purchased balances never
+credential outside OpenClaw. Setup asks how to proceed when Cloud AI cannot run; balances and
+purchases live in Account. Exhausted, pending or suspended credit does not disable
+login. Cloud API credentials and purchased balances never
 become provider keys in the runtime.
+
+The AI section selects a model, then asks **How would you like to use this model?**:
+**Your own API key** (your provider bills you) or **ClawScarf Cloud** (buy prepaid
+credits from us). Neither is labelled recommended. Accepting a new Cloud recipe
+also asks this question unless AI service was already explicitly selected.
+The normal catalog uses exact upstream model identities supported by the bundled
+LiteLLM adapter and Cloud's OpenRouter catalog; changing billing never silently
+selects another model. Existing model reply limits are retained.
+
+At zero/exhausted credit, choose **Add credits**, **Change AI setup**, or **Finish
+setup and add credits later**. Setup displays the current packs and opens Stripe's
+hosted Checkout in a browser. Cloud's authenticated return page reports confirmed
+settlement and directs the owner back to the terminal. The terminal checks both the
+order and allowance; a redirect alone is not proof of payment or AI readiness.
+There is no automatic recharge. Healthy balances are shown in Account, not setup.
+Positive credit does not guarantee that every requested reply budget is affordable;
+Cloud reports a credit error when it is not.
+
+Ctrl+C preserves the purchase request and registration. Resume with the same
+`configure --directory` command to check/reopen that order. Closing Checkout does
+not cancel a payment. Pending or uncertain payment is checked before another purchase.
+Changing AI setup does not cancel/refund a saved purchase or replace team identity.
+An unfinished installation accepts AI flags to make the same change unattended;
+other selections must wait until setup completes.
+
+Unattended setup returns `state: action_required`, `action: ai_funding` when funding
+needs attention. `--ai-credit-offer <offer-id>` opens one selected pack's checkout and
+returns its URL; retrying the saved request does not buy another pack.
+`--allow-unfunded-ai` explicitly finishes setup without working AI (`aiReady: false`),
+so login and Account remain accessible. These options are mutually exclusive.
 
 `--ai-service provider` selects your own provider billing. Supplying `--provider`,
 `--llm-key-file` or `--provider-env-file` also selects that path. An existing

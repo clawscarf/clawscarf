@@ -1,7 +1,7 @@
 import type { Recipe } from "./recipes/definition.js";
 import { InstallationError } from "./errors.js";
 import type { InstallationConfiguration } from "./configuration.js";
-import type { ModelCatalog } from "../models/catalog.js";
+import { modelIdentity, type ModelCatalog } from "../models/catalog.js";
 import { gatewayRoutesSchema } from "../models/configuration.js";
 import type { SetupInputs } from "./save.js";
 
@@ -70,6 +70,7 @@ export async function selectAiService(
   current: InstallationConfiguration["models"],
   catalog: ModelCatalog,
   inputs: SetupInputs,
+  explicitModel?: string,
 ) {
   if (
     current.mode === "litellm" &&
@@ -82,15 +83,22 @@ export async function selectAiService(
   const candidates = catalog.filter(
     (offer) => (offer.provider === "ClawScarf Cloud") === (service === "cloud"),
   );
-  const name = routes.defaultModel.split("/").at(-1);
-  const offer =
-    candidates.find(
-      (candidate) => candidate.model.id.split("/").at(-1) === name,
-    ) ?? candidates[0];
+  const selected = routes.models.find(
+    (model) => model.id === routes.defaultModel,
+  );
+  const identity =
+    current.mode === "litellm" && current.cloud
+      ? selected?.id
+      : selected?.route?.model.replace(/^openrouter\//, "");
+  const offer = candidates.find((candidate) =>
+    explicitModel
+      ? candidate.model.id === explicitModel
+      : modelIdentity(candidate) === identity,
+  );
   if (!offer)
     throw new InstallationError(
       "invalid_configuration",
-      "No models are available for this AI service.",
+      "This model is not available for the selected AI service. Choose another model explicitly.",
     );
   return selectModel(current, routes, offer, routes.thinkingDefault, inputs);
 }

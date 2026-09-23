@@ -25,6 +25,7 @@ import {
 import { controlInstallation, startInstallation } from "../lifecycle.js";
 import { InstallationError } from "../errors.js";
 import { readPreparation } from "../../deployment/state.js";
+import { changeAiSetup, type AiSetupResult } from "./billing.js";
 
 /** The menu only gathers answers; the same plan/apply operations serve unattended callers. */
 export async function editInstallationSettings(
@@ -79,6 +80,7 @@ export async function editInstallationSettings(
   let attempted = false;
   let authorizing: string | undefined;
   let retained = Boolean(pending);
+  let aiSetup: AiSetupResult | undefined;
   try {
     const context = await setupContext(
       config.models.mode === "litellm" && config.models.cloud
@@ -144,7 +146,9 @@ export async function editInstallationSettings(
       ).some(Boolean)
     )
       return { state: "unchanged" as const };
-    await task("Checking this machine", () => prerequisites.host());
+    await task("Checking this machine", (_signal, report) =>
+      prerequisites.host(undefined, report),
+    );
     await task("Preparing required software", (signal, report) =>
       prerequisites.check(candidate, {
         acquire: true,
@@ -153,9 +157,18 @@ export async function editInstallationSettings(
       }),
     );
     authorizing = candidate;
-    if (options.nonInteractive)
-      await registerUnattended(candidate, options.cloudCredentialFile);
-    else await registerWithBrowser(candidate, ui, task);
+    for (;;) {
+      aiSetup = options.nonInteractive
+        ? await registerUnattended(
+            candidate,
+            options.cloudCredentialFile,
+            undefined,
+            options,
+          )
+        : await registerWithBrowser(candidate, ui, task, undefined, options);
+      if (aiSetup !== "change") break;
+      await changeAiSetup(candidate, ui);
+    }
     authorizing = undefined;
     const plan = await planSettingsChange(candidate, reapply);
     ui.note(
@@ -228,15 +241,22 @@ export async function editInstallationSettings(
         ? true
         : await ui.confirm("Start with these settings?", true))
     ) {
-      return await task("Starting ClawScarf", (signal, report) =>
+      const result = await task("Starting ClawScarf", (signal, report) =>
         startInstallation(directory, report, signal),
       );
+      return {
+        ...result,
+        ...(aiSetup === "deferred" ? { aiReady: false } : {}),
+      };
     }
     ui.note(
       `clawscarf start --directory '${resolve(options.directory ?? dirname(directory)).replaceAll("'", "'\\''")}'`,
       "Start later",
     );
-    return { state: "prepared" as const };
+    return {
+      state: "prepared" as const,
+      ...(aiSetup === "deferred" ? { aiReady: false } : {}),
+    };
   } catch (error) {
     if (authorizing && !pending) {
       await retainSettingsAuthorization(

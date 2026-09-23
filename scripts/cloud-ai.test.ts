@@ -29,7 +29,7 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
     revision = 0,
     issues = 0;
   let issued: unknown;
-  const notes: string[] = [];
+  let balance = { available: 0, state: "exhausted" };
   const model = {
     id: "openai/test",
     name: "Test",
@@ -79,7 +79,7 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
     return { generation };
   });
   server.get("/api/installations/:id/allowances", () => ({
-    ai: { available: 0, state: "exhausted" },
+    ai: balance,
   }));
   url = await server.listen({ host: "127.0.0.1", port: 0 });
   const routes = {
@@ -100,13 +100,14 @@ await test("Cloud AI retains scoped credentials across lost issuance responses, 
       { accountId, installationId: id, cloudUrl: url },
       join(dir, "secrets/registration.json"),
       () => Promise.resolve("owner"),
-      (message) => notes.push(message),
     );
   await assert.rejects(run());
-  await run();
+  const session = await run();
+  assert.ok(session);
+  assert.equal(session.installationId, id);
+  assert.equal(session.accountId, accountId);
   assert.equal(issues, 2);
-  assert.match(notes.join(), /exhausted/);
-  assert.match(notes.join(), /Account/);
+  balance = { available: 960000, state: "available" };
   const secret = await readFile(join(dir, "secrets/cloud-ai.env"), "utf8");
   assert.match(secret, /^CLAWSCARF_CLOUD_AI_KEY='[A-Za-z0-9_-]{43}'\n$/);
   assert.equal(

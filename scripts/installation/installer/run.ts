@@ -7,7 +7,10 @@ import {
   savedSetup,
   prepareConfiguration,
   rejectNewSelections,
+  reviseUnfinishedAi,
 } from "../configure.js";
+import { AiFundingRequired } from "../../cloud/billing.js";
+import { changeAiSetup, type AiSetupResult } from "./billing.js";
 import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
@@ -60,8 +63,11 @@ export async function installFromAnswers(
       "--reapply requires an existing installation.",
     );
   const saved = await savedSetup(options);
-  if (saved) rejectNewSelections(options);
-  await task("Checking this machine", () => operator.host());
+  if (saved) rejectNewSelections(options, saved.config);
+  if (saved) saved.config = await reviseUnfinishedAi(saved.configFile, options);
+  await task("Checking this machine", (_signal, report) =>
+    operator.host(undefined, report),
+  );
   let draft: Awaited<ReturnType<typeof collectInstallation>> | undefined;
   while (!saved) {
     draft = options.nonInteractive
@@ -96,17 +102,29 @@ export async function installFromAnswers(
   const { configFile, config } = setup;
   const directory = dirname(configFile);
   const stateDirectory = resolve(directory, config.stateDirectory);
+  let aiSetup: AiSetupResult | undefined;
   try {
     await task("Preparing required software", (signal, report) =>
       operator.prerequisites(configFile, { acquire: true, signal, report }),
     );
-    if (options.nonInteractive)
-      await registerUnattended(
-        configFile,
-        options.cloudCredentialFile,
-        operator.register,
-      );
-    else await registerWithBrowser(configFile, ui, task, operator.register);
+    for (;;) {
+      aiSetup = options.nonInteractive
+        ? await registerUnattended(
+            configFile,
+            options.cloudCredentialFile,
+            operator.register,
+            options,
+          )
+        : await registerWithBrowser(
+            configFile,
+            ui,
+            task,
+            operator.register,
+            options,
+          );
+      if (aiSetup !== "change") break;
+      await changeAiSetup(configFile, ui);
+    }
     const plan = await task("Checking installation settings", () =>
       operator.plan(configFile),
     );
@@ -116,7 +134,11 @@ export async function installFromAnswers(
       (options.nonInteractive ? true : await ui.confirm("Start now?", true))
     )) {
       ui.note(`clawscarf start --directory ${quote(directory)}`, "Start later");
-      return { state: "prepared" as const, directory };
+      return {
+        state: "prepared" as const,
+        directory,
+        ...(aiSetup === "deferred" ? { aiReady: false } : {}),
+      };
     }
     const started = await task("Starting ClawScarf", (signal, report) =>
       operator.start(stateDirectory, report, signal),
@@ -145,8 +167,18 @@ export async function installFromAnswers(
       ...withVerifiedAdministrator(started),
       directory,
       applicationUrl: origin,
+      ...(aiSetup === "deferred" ? { aiReady: false } : {}),
     };
   } catch (error) {
+    if (error instanceof AiFundingRequired)
+      return {
+        ...error.action,
+        state: "action_required" as const,
+        action: "ai_funding",
+        aiState: error.action.state,
+        directory,
+        resume: `clawscarf configure --directory ${quote(directory)} --non-interactive${options.start === false ? " --no-start" : ""} --json`,
+      };
     if (error instanceof CloudAuthorizationRequired)
       return {
         state: "action_required" as const,
@@ -158,8 +190,13 @@ export async function installFromAnswers(
     if (
       error instanceof InstallerCancelled ||
       error instanceof SectionCancelled
-    )
+    ) {
+      ui.note(
+        `Your settings are saved. Resume: clawscarf configure --directory ${quote(directory)}${options.start === false ? " --no-start" : ""}`,
+        "Setup paused",
+      );
       throw error;
+    }
     ui.note(
       `Resume: clawscarf configure --directory ${quote(directory)}\nStatus: clawscarf status --directory ${quote(directory)}\nLogs: clawscarf logs --directory ${quote(directory)} --service controller\nThe server, if started, keeps running. No failed operation is automatically repeated.`,
       "Installation needs attention",
@@ -330,13 +367,17 @@ export async function runConfiguration(
             "Manage this installation",
           );
         clack.outro(
-          "ready" in result
-            ? result.ready
-              ? `ClawScarf is ready.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}`
-              : "ClawScarf needs attention. Check status for details."
-            : result.state === "unchanged"
-              ? "No changes. Server left as it was."
-              : "Configuration saved. Server stopped.",
+          "aiReady" in result && !result.aiReady
+            ? result.state === "prepared"
+              ? "Configuration saved. Server stopped. Add AI credits in Account after starting the installation."
+              : `Installation complete. AI is not ready; check credits and service status in Account.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}`
+            : "ready" in result
+              ? result.ready
+                ? `ClawScarf is ready.${applicationUrl ? ` Visit ${terminalLink(applicationUrl)}` : ""}`
+                : "ClawScarf needs attention. Check status for details."
+              : result.state === "unchanged"
+                ? "No changes. Server left as it was."
+                : "Configuration saved. Server stopped.",
         );
       }
       if ("ready" in result && result.ready && applicationUrl)
@@ -344,6 +385,15 @@ export async function runConfiguration(
     }
     return result;
   } catch (error) {
+    if (error instanceof AiFundingRequired)
+      return {
+        ...error.action,
+        state: "action_required" as const,
+        action: "ai_funding",
+        aiState: error.action.state,
+        directory: options.directory,
+        resume: `clawscarf configure --directory ${quote(resolve(options.directory ?? "."))} --non-interactive --yes${options.start === false ? " --no-start" : ""} --json`,
+      };
     if (error instanceof CloudAuthorizationRequired)
       return {
         state: "action_required" as const,

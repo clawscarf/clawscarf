@@ -17,7 +17,7 @@ import {
 import { readInputFile, readJson } from "../installation/files.js";
 import { writePrivate, ensurePrivateFile } from "../deployment/state.js";
 import { InstallationError } from "../installation/errors.js";
-import { configureCloudAi } from "./ai.js";
+import { configureCloudAi, type CloudAiSession } from "./ai.js";
 
 const identitySchema = z.strictObject({
   issuer: cloudUrlSchema,
@@ -72,7 +72,7 @@ export async function registerCloudServices(
     file: string,
     administrator: boolean,
   ) => Promise<string>,
-  report?: (message: string) => void,
+  onAi?: (session: CloudAiSession) => void,
 ) {
   const config = installationSchema.parse(await readJson(configFile));
   const connections = connectionsRegistration(config);
@@ -121,15 +121,15 @@ export async function registerCloudServices(
   }
   if (ai) {
     const file = resolve(dirname(configFile), ai.registrationFile);
-    await configureCloudAi(
+    const session = await configureCloudAi(
       configFile,
       config.models,
       await readHostedRegistration(file),
       file,
       authorizeOnce,
-      report,
     );
-    await rm(file + ".login", { force: true });
+    if (session && onAi) onAi(session);
+    else await rm(file + ".login", { force: true });
   }
 }
 

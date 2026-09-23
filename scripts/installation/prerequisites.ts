@@ -18,7 +18,10 @@ import { acquireRuntimeTools } from "./runtime.js";
 import { InstallationError } from "./errors.js";
 
 /** No configuration, credentials or cloud account is needed for these checks. */
-export async function checkHost(command: typeof run = run) {
+export async function checkHost(
+  command: typeof run = run,
+  report?: (message: string) => void,
+) {
   if (
     !["darwin", "linux"].includes(process.platform) ||
     !["arm64", "x64"].includes(process.arch)
@@ -28,6 +31,7 @@ export async function checkHost(command: typeof run = run) {
       "Use macOS or Linux (including WSL2), with an ARM64 or x86-64 processor and Linux Docker containers. Run the Windows CLI inside WSL2.",
     );
   let os: string;
+  report?.("Checking Docker is running");
   try {
     os = await command("docker", ["info", "--format", "{{.OSType}}"]);
   } catch (error) {
@@ -48,6 +52,7 @@ export async function checkHost(command: typeof run = run) {
       "Docker must run Linux containers.",
     );
   try {
+    report?.("Checking Docker Compose");
     await command("docker", ["compose", "version"]);
   } catch {
     throw new InstallationError(
@@ -55,6 +60,7 @@ export async function checkHost(command: typeof run = run) {
       "Docker Compose is unavailable. Install the Docker Compose plugin or update Docker Desktop, then try again.",
     );
   }
+  report?.("Checking Docker Engine version");
   const version = (
     await command("docker", ["version", "--format", "{{.Server.Version}}"])
   ).trim();
@@ -217,7 +223,7 @@ export async function checkInstallationPrerequisites(
     }
   }
   if (missing.length) {
-    await checkHost(command);
+    await checkHost(command, report);
     const local = missing.filter((image) => image.startsWith("sha256:"));
     if (local.length)
       throw new InstallationError(

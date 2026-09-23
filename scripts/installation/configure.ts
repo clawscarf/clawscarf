@@ -4,7 +4,11 @@ import { setupContext, assertReleaseCapabilities } from "./setup.js";
 import { readJson, readInputFile, fingerprint } from "./files.js";
 import { isDeepStrictEqual } from "node:util";
 import { SetupInputs } from "./save.js";
-import { installationSchema, type InstallationDraft } from "./configuration.js";
+import {
+  installationSchema,
+  type InstallationDraft,
+  type InstallationConfiguration,
+} from "./configuration.js";
 import { InstallationError } from "./errors.js";
 import {
   selectedDraft,
@@ -13,6 +17,21 @@ import {
 } from "./options.js";
 import { packRequirements } from "./requirements.js";
 import { newDirectory } from "./installer/inputs.js";
+import { writePrivate } from "../deployment/state.js";
+import { dirname } from "node:path";
+
+const aiSelections = new Set([
+  "model",
+  "provider",
+  "reasoning",
+  "aiService",
+  "llmKeyFile",
+  "providerEnvFile",
+  "modelCatalog",
+  "modelGatewayUrl",
+  "modelGatewayKeyFile",
+  "modelGatewayCaFile",
+]);
 
 /** Resolve input references against the settings document; state stays relative to the output. */
 export function resolveConfigurationInputs<T extends InstallationDraft>(
@@ -146,18 +165,91 @@ export async function savedSetup(options: ConfigureOptions) {
   }
 }
 
-export function rejectNewSelections(options: ConfigureOptions) {
+export function rejectNewSelections(
+  options: ConfigureOptions,
+  saved: InstallationConfiguration,
+) {
+  const cloudUrl =
+    saved.access.mode === "hosted"
+      ? saved.access.cloudUrl
+      : saved.models.mode === "litellm" && saved.models.cloud
+        ? saved.models.cloud.url
+        : saved.connections.cloudUrl;
   if (
     options.recipe ||
-    options.cloudUrl ||
-    Object.values(selectionSchema.parse(options)).some(
-      (value) => value !== undefined,
+    (options.cloudUrl && options.cloudUrl !== cloudUrl) ||
+    Object.entries(selectionSchema.parse(options)).some(
+      ([key, value]) => value !== undefined && !aiSelections.has(key),
     )
   )
     throw new InstallationError(
       "change_unsupported",
-      "Setup is unfinished. Resume with configure --directory before changing selections.",
+      "Setup is unfinished. Resume with configure --directory; only AI selections can be changed during setup.",
     );
+}
+
+/** An unfinished installation may revise AI without replacing its registered identity. */
+export async function saveUnfinishedAi(
+  configFile: string,
+  models: InstallationConfiguration["models"],
+  inputs: SetupInputs,
+) {
+  const config = installationSchema.parse(await readJson(configFile));
+  config.models = models;
+  if (models.mode === "litellm" && models.cloud) {
+    if (
+      config.access.mode === "hosted" &&
+      config.access.cloudUrl === models.cloud.url
+    )
+      models.cloud.registrationFile = config.access.registrationFile;
+    else if (
+      config.connections.mode === "hosted" &&
+      config.connections.cloudUrl === models.cloud.url
+    )
+      models.cloud.registrationFile = config.connections.registrationFile;
+  }
+  for (const [path, bytes] of inputs.files) await writePrivate(path, bytes);
+  await writePrivate(configFile, JSON.stringify(config, null, 2) + "\n");
+  return config;
+}
+
+export async function reviseUnfinishedAi(
+  configFile: string,
+  options: ConfigureOptions,
+) {
+  const config = resolveConfigurationInputs(
+    installationSchema.parse(await readJson(configFile)),
+    dirname(configFile),
+  );
+  if (
+    !Object.entries(selectionSchema.parse(options)).some(
+      ([key, value]) => value !== undefined && aiSelections.has(key),
+    )
+  )
+    return installationSchema.parse(await readJson(configFile));
+  const context = await setupContext(
+    {
+      ...(config.models.mode === "litellm" && config.models.cloud
+        ? { cloudUrl: config.models.cloud.url }
+        : config.access.mode === "hosted"
+          ? { cloudUrl: config.access.cloudUrl }
+          : {}),
+    },
+    config.releaseFile,
+  );
+  const inputs = new SetupInputs(dirname(configFile));
+  const draft = await selectedDraft(
+    context,
+    config.recipe?.id ?? "custom",
+    options,
+    inputs,
+    config,
+  );
+  return saveUnfinishedAi(
+    configFile,
+    (await validateSelections(context, draft)).models,
+    inputs,
+  );
 }
 
 /** Compare accepted contents, not the private copy paths created by the menu. */

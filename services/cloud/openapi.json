@@ -77,6 +77,16 @@
               }
             }
           },
+          "403": {
+            "description": "Verified email is not permitted by this deployment.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Response",
             "content": {
@@ -2630,9 +2640,10 @@
                     "format": "uuid"
                   },
                   "path": {
-                    "type": "string",
+                    "type": ["string", "null"],
                     "minLength": 1,
-                    "maxLength": 2048
+                    "maxLength": 2048,
+                    "description": "Installation-relative return path, or null for the fixed Cloud installer return page (owner only). Reuse requestId for checkout."
                   }
                 },
                 "required": ["requestId", "path"]

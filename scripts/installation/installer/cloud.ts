@@ -2,19 +2,25 @@ import { readInputFile } from "../files.js";
 import { styleText } from "node:util";
 import { registerCloudServices } from "../../cloud/registration.js";
 import { authorizeCloud } from "../../cloud/login.js";
+import type { CloudAiSession } from "../../cloud/ai.js";
+import type { AiFundingOptions } from "../../cloud/billing.js";
+import { completeAiFunding } from "./billing.js";
+import { unattendedPrompts } from "./prompts.js";
 import {
   terminalLink,
   type InstallerPrompts,
   type progress,
 } from "./prompts.js";
 
-export function registerWithBrowser(
+export async function registerWithBrowser(
   configFile: string,
   ui: InstallerPrompts,
   task: typeof progress,
   register = registerCloudServices,
+  options: AiFundingOptions = {},
 ) {
-  return task("Connecting selected cloud services", (signal) =>
+  let session: CloudAiSession | undefined;
+  await task("Connecting selected cloud services", (signal) =>
     register(
       configFile,
       (url, file, administrator) =>
@@ -32,20 +38,39 @@ export function registerWithBrowser(
           },
           signal,
         }),
-      (message) => {
-        ui.note(message, "Cloud AI");
+      (value) => {
+        session = value;
       },
     ),
   );
+  return session ? completeAiFunding(session, ui, task, options) : undefined;
 }
 
 export async function registerUnattended(
   configFile: string,
   credentialFile: string | undefined,
   register = registerCloudServices,
+  options: AiFundingOptions = {},
 ) {
-  await register(configFile, async (url, file) => {
-    if (!credentialFile) return authorizeCloud(url, file, { wait: false });
-    return (await readInputFile(credentialFile, true)).toString("utf8").trim();
-  });
+  let session: CloudAiSession | undefined;
+  await register(
+    configFile,
+    async (url, file) => {
+      if (!credentialFile) return authorizeCloud(url, file, { wait: false });
+      return (await readInputFile(credentialFile, true))
+        .toString("utf8")
+        .trim();
+    },
+    (value) => {
+      session = value;
+    },
+  );
+  return session
+    ? completeAiFunding(
+        session,
+        unattendedPrompts,
+        async (_message, work) => work(new AbortController().signal, () => {}),
+        { ...options, nonInteractive: true },
+      )
+    : undefined;
 }

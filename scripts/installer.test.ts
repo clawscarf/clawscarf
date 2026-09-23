@@ -1279,7 +1279,6 @@ await test(
             choices.map((choice) => choice.value),
             [
               "review",
-              "ai-service",
               "models",
               "connections",
               "packs",
@@ -1410,19 +1409,20 @@ for (const mode of ["menu", "flags"] as const)
         first.config.models,
         context.modelCatalog,
         first.inputs,
+        "openai/gpt-6-astra",
       );
       const key = join(f.parent, "openrouter-key");
       await writeFile(key, "test-own-provider-key", { mode: 0o600 });
       const ui = new Answers(
         {
           ...f.answers,
-          "AI service": "provider",
+          "How would you like to use this model?": "provider",
           "Default model": "gpt-5.6-luna",
           Provider: "openrouter/openai/gpt-5.6-luna",
           Reasoning: "low",
           "secret:OpenRouter API key": "test-own-provider-key",
         },
-        ["ai-service", "models"],
+        ["models"],
       );
       const result =
         mode === "menu"
@@ -1781,7 +1781,7 @@ await test(
 );
 
 await test(
-  "authorization resume preserves an explicit no-start selection",
+  "authorization resume accepts the saved Cloud URL, rejects changed selections and preserves no-start",
   local,
   async (t) => {
     const f = await fixture(t);
@@ -1830,9 +1830,52 @@ await test(
     assert.equal(first.state, "action_required");
     assert.ok("resume" in first);
     assert.match(first.resume, /--no-start/);
+    const saved = await readFile(
+      join(f.directory, "installation.json"),
+      "utf8",
+    );
+    for (const selection of [
+      { cloudUrl: "https://other.example.test" },
+      { cloudUrl: f.cloudUrl, cpu: "8" },
+    ])
+      await assert.rejects(
+        installFromAnswers(
+          { directory: f.directory, nonInteractive: true, ...selection },
+          unattendedPrompts,
+          operators,
+        ),
+        /Setup is unfinished/,
+      );
+    const cancelledUi = new Answers({});
+    await assert.rejects(
+      installFromAnswers(
+        { directory: f.directory, cloudUrl: f.cloudUrl, start: false },
+        cancelledUi,
+        {
+          ...operators,
+          register: () => {
+            throw new InstallerCancelled();
+          },
+        },
+      ),
+      InstallerCancelled,
+    );
+    assert.match(
+      cancelledUi.notes.join(),
+      /Your settings are saved\. Resume: clawscarf configure --directory .* --no-start/,
+    );
+    assert.equal(
+      await readFile(join(f.directory, "installation.json"), "utf8"),
+      saved,
+    );
     authorized = true;
     const resumed = await installFromAnswers(
-      { directory: f.directory, nonInteractive: true, start: false },
+      {
+        directory: f.directory,
+        cloudUrl: f.cloudUrl,
+        nonInteractive: true,
+        start: false,
+      },
       unattendedPrompts,
       operators,
     );
@@ -2116,9 +2159,17 @@ await test(
         ),
         /Docker Engine 29 or newer/,
       );
-    await checkHost((_exe, args) =>
-      Promise.resolve(args[0] === "version" ? "29.0.0" : "linux"),
+    const progress: string[] = [];
+    await checkHost(
+      (_exe, args) =>
+        Promise.resolve(args[0] === "version" ? "29.0.0" : "linux"),
+      (message) => progress.push(message),
     );
+    assert.deepEqual(progress, [
+      "Checking Docker is running",
+      "Checking Docker Compose",
+      "Checking Docker Engine version",
+    ]);
   },
 );
 
