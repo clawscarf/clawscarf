@@ -12,3 +12,4 @@ browser-shared-artifacts.patch
 disable-native-github.patch
 managed-inference-cooldown.patch
 responses-reasoning-preservation.patch
+widget-review-approval.patch

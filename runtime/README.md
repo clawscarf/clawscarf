@@ -28,6 +28,8 @@ The OpenShell transport replaces the fixed Hetzner bridge addresses; the donor's
 rootless-Docker UID mapping does not apply. The preset sets
 `agents.defaults.sandbox.mode: off`, member `sandbox: inherit` and
 `tools.exec.host: gateway`, while keeping native `exec.mode: auto` approvals.
+The [widget review patch](openclaw/patches/widget-review-approval.prompt.md)
+keeps uncertain capability reviews pending for a native operator decision.
 OpenShell still encloses the whole runtime. See the [security contract](../README.md)
 for the resulting team trust boundary. Pending identities still have no agent/tool access.
 
