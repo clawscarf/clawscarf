@@ -399,7 +399,7 @@ export async function mountBilling(
               "p",
               paymentWaiting && order?.service === "connections"
                 ? "A payment is pending. Check its status below before buying another pack."
-                : "The Connections allowance has run out. Buy an actions pack or wait for the daily reset.",
+                : "The Connections allowance has run out. Buy an actions pack to continue.",
             ),
           );
         else if (allowance.connections.state !== "available")

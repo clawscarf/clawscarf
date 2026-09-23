@@ -3506,6 +3506,29 @@
                   "store": {
                     "type": "boolean",
                     "const": false
+                  },
+                  "include": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["reasoning.encrypted_content"]
+                    },
+                    "maxItems": 1
+                  },
+                  "prompt_cache_key": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "maxProperties": 16,
+                    "propertyNames": {
+                      "maxLength": 64
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 512
+                    }
                   }
                 },
                 "required": ["messages", "model"]
@@ -3673,6 +3696,29 @@
                   "store": {
                     "type": "boolean",
                     "const": false
+                  },
+                  "include": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["reasoning.encrypted_content"]
+                    },
+                    "maxItems": 1
+                  },
+                  "prompt_cache_key": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "maxProperties": 16,
+                    "propertyNames": {
+                      "maxLength": 64
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 512
+                    }
                   }
                 },
                 "required": ["input", "model"]

@@ -2822,6 +2822,11 @@ export type AiChatCompletionsData = {
             include_usage: boolean;
         };
         store?: false;
+        include?: Array<'reasoning.encrypted_content'>;
+        prompt_cache_key?: string;
+        metadata?: {
+            [key: string]: string;
+        };
     };
     path?: never;
     query?: never;
@@ -2880,6 +2885,11 @@ export type AiResponsesData = {
             include_usage: boolean;
         };
         store?: false;
+        include?: Array<'reasoning.encrypted_content'>;
+        prompt_cache_key?: string;
+        metadata?: {
+            [key: string]: string;
+        };
     };
     path?: never;
     query?: never;
