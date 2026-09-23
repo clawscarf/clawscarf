@@ -1054,7 +1054,9 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Canonical model ID used by installations, independent of the upstream provider route.",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$"
           },
           "name": {
             "type": "string"
@@ -1084,6 +1086,28 @@
           },
           "rateVersion": {
             "type": "string"
+          },
+          "supportsTemperature": {
+            "type": "boolean",
+            "description": "Whether this route accepts the temperature parameter."
+          },
+          "reasoningEfforts": {
+            "type": "array",
+            "maxItems": 7,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            },
+            "description": "Accepted reasoning efforts. Omit none for models that require reasoning; an empty array means no reasoning support."
           }
         },
         "required": [
@@ -1094,7 +1118,9 @@
           "maxOutputTokens",
           "inputMicrosPerMillion",
           "outputMicrosPerMillion",
-          "rateVersion"
+          "rateVersion",
+          "supportsTemperature",
+          "reasoningEfforts"
         ]
       },
       "CloudService": {

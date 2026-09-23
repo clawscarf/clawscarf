@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const modelCapabilitiesSchema = z.strictObject({
+  supportsTemperature: z.boolean(),
+  supportedReasoningEfforts: z
+    .array(z.enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"]))
+    .max(7),
+});
+
 const assignmentSchema = z.discriminatedUnion("path", [
   z.strictObject({
     path: z.literal("secrets.providers.clawscarf-models"),
@@ -29,7 +36,7 @@ const assignmentSchema = z.discriminatedUnion("path", [
             reasoning: z.boolean(),
             contextWindow: z.number().int().positive(),
             maxTokens: z.number().int().positive(),
-            compat: z.strictObject({
+            compat: modelCapabilitiesSchema.partial().extend({
               supportsTools: z.boolean(),
               supportsUsageInStreaming: z.literal(true),
               supportsStrictMode: z.literal(true),

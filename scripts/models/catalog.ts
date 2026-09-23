@@ -11,10 +11,3 @@ export const modelCatalogSchema = z
   .max(512);
 
 export type ModelCatalog = z.infer<typeof modelCatalogSchema>;
-
-/** Exact upstream identity, independent of the installation's billing service. */
-export function modelIdentity(offer: ModelCatalog[number]) {
-  return offer.provider === "ClawScarf Cloud"
-    ? offer.model.id
-    : offer.model.route.model.replace(/^openrouter\//, "");
-}

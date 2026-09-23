@@ -1,7 +1,7 @@
 import type { Recipe } from "./recipes/definition.js";
 import { InstallationError } from "./errors.js";
 import type { InstallationConfiguration } from "./configuration.js";
-import { modelIdentity, type ModelCatalog } from "../models/catalog.js";
+import { type ModelCatalog } from "../models/catalog.js";
 import { gatewayRoutesSchema } from "../models/configuration.js";
 import type { SetupInputs } from "./save.js";
 
@@ -86,14 +86,11 @@ export async function selectAiService(
   const selected = routes.models.find(
     (model) => model.id === routes.defaultModel,
   );
-  const identity =
-    current.mode === "litellm" && current.cloud
-      ? selected?.id
-      : selected?.route?.model.replace(/^openrouter\//, "");
+  const identity = selected?.id;
   const offer = candidates.find((candidate) =>
     explicitModel
       ? candidate.model.id === explicitModel
-      : modelIdentity(candidate) === identity,
+      : candidate.model.id === identity,
   );
   if (!offer)
     throw new InstallationError(

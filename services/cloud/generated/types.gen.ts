@@ -413,6 +413,9 @@ export type AiConfiguration = {
 };
 
 export type AiModel = {
+    /**
+     * Canonical model ID used by installations, independent of the upstream provider route.
+     */
     id: string;
     name: string;
     protocols: Array<'responses' | 'chat/completions'>;
@@ -421,6 +424,14 @@ export type AiModel = {
     inputMicrosPerMillion: number;
     outputMicrosPerMillion: number;
     rateVersion: string;
+    /**
+     * Whether this route accepts the temperature parameter.
+     */
+    supportsTemperature: boolean;
+    /**
+     * Accepted reasoning efforts. Omit none for models that require reasoning; an empty array means no reasoning support.
+     */
+    reasoningEfforts: Array<'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'>;
 };
 
 export type AiError = {

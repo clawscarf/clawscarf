@@ -14,7 +14,11 @@
         "model": "openai/gpt-6-astra",
         "apiKeyEnv": "OPENAI_API_KEY"
       },
-      "api": "openai-responses"
+      "api": "openai-responses",
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
+      }
     },
     "reasoningLevels": ["low", "medium", "high"]
   },
@@ -33,7 +37,18 @@
         "model": "openai/gpt-5.6-terra",
         "apiKeyEnv": "OPENAI_API_KEY"
       },
-      "api": "openai-responses"
+      "api": "openai-responses",
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      }
     },
     "reasoningLevels": ["low", "medium", "high"]
   },
@@ -52,14 +67,25 @@
         "model": "openai/gpt-5.6-luna",
         "apiKeyEnv": "OPENAI_API_KEY"
       },
-      "api": "openai-responses"
+      "api": "openai-responses",
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      }
     },
     "reasoningLevels": ["low", "medium", "high"]
   },
   {
     "provider": "Anthropic",
     "model": {
-      "id": "claude-fable-5.1",
+      "id": "claude-fable-5-1",
       "name": "Anthropic: Claude Fable 5.1",
       "enabled": true,
       "contextWindow": 1000000,
@@ -68,8 +94,12 @@
       "tools": true,
       "input": ["text"],
       "route": {
-        "model": "anthropic/claude-fable-5.1",
+        "model": "anthropic/claude-fable-5-1",
         "apiKeyEnv": "ANTHROPIC_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -88,6 +118,17 @@
       "route": {
         "model": "anthropic/claude-opus-5",
         "apiKeyEnv": "ANTHROPIC_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -106,6 +147,17 @@
       "route": {
         "model": "anthropic/claude-sonnet-5",
         "apiKeyEnv": "ANTHROPIC_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -142,6 +194,10 @@
       "route": {
         "model": "openrouter/openai/gpt-6-astra",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -160,6 +216,17 @@
       "route": {
         "model": "openrouter/openai/gpt-5.6-terra",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -178,6 +245,17 @@
       "route": {
         "model": "openrouter/openai/gpt-5.6-luna",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -185,7 +263,7 @@
   {
     "provider": "OpenRouter",
     "model": {
-      "id": "claude-fable-5.1",
+      "id": "claude-fable-5-1",
       "name": "Anthropic: Claude Fable 5.1",
       "enabled": true,
       "contextWindow": 1000000,
@@ -196,6 +274,10 @@
       "route": {
         "model": "openrouter/anthropic/claude-fable-5.1",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -214,6 +296,17 @@
       "route": {
         "model": "openrouter/anthropic/claude-opus-5",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -232,6 +325,17 @@
       "route": {
         "model": "openrouter/anthropic/claude-sonnet-5",
         "apiKeyEnv": "OPENROUTER_API_KEY"
+      },
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
       }
     },
     "reasoningLevels": ["low", "medium", "high"]
@@ -271,5 +375,512 @@
       }
     },
     "reasoningLevels": ["low", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-luna-pro",
+      "name": "OpenAI: GPT-6 Luna Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-6-luna-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-luna",
+      "name": "OpenAI: GPT-6 Luna",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-6-luna",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-sol-pro",
+      "name": "OpenAI: GPT-6 Sol Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-6-sol-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-sol",
+      "name": "OpenAI: GPT-6 Sol",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-6-sol",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-5-5",
+      "name": "Anthropic: Claude Opus 5.5",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-5.5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-6-astra-pro",
+      "name": "OpenAI: GPT-6 Astra Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-6-astra-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-luna-pro",
+      "name": "OpenAI: GPT-5.6 Luna Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-luna-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-terra-pro",
+      "name": "OpenAI: GPT-5.6 Terra Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-terra-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-sol-pro",
+      "name": "OpenAI: GPT-5.6 Sol Pro",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-sol-pro",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "gpt-5.6-sol",
+      "name": "OpenAI: GPT-5.6 Sol",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1050000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "route": {
+        "model": "openrouter/openai/gpt-5.6-sol",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-fable-5",
+      "name": "Anthropic: Claude Fable 5",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": ["max", "xhigh", "high", "medium", "low"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-fable-5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-4-8",
+      "name": "Anthropic: Claude Opus 4.8",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-4.8",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-4-7",
+      "name": "Anthropic: Claude Opus 4.7",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": false,
+        "supportedReasoningEfforts": [
+          "none",
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-4.7",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-sonnet-4-6",
+      "name": "Anthropic: Claude Sonnet 4.6",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "max", "high", "medium", "low"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-sonnet-4.6",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-4-6",
+      "name": "Anthropic: Claude Opus 4.6",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 128000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "max", "high", "medium", "low"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-4.6",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-4-5",
+      "name": "Anthropic: Claude Opus 4.5",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 200000,
+      "maxTokens": 64000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "low", "medium", "high"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-4.5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-sonnet-4-5",
+      "name": "Anthropic: Claude Sonnet 4.5",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "maxTokens": 64000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "low", "medium", "high"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-sonnet-4.5",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-opus-4-1",
+      "name": "Anthropic: Claude Opus 4.1",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 200000,
+      "maxTokens": 32000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "low", "medium", "high"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-opus-4.1",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
+  },
+  {
+    "provider": "OpenRouter",
+    "model": {
+      "id": "claude-sonnet-4",
+      "name": "Anthropic: Claude Sonnet 4",
+      "enabled": true,
+      "api": "openai-completions",
+      "contextWindow": 200000,
+      "maxTokens": 64000,
+      "reasoning": true,
+      "tools": true,
+      "input": ["text"],
+      "compat": {
+        "supportsTemperature": true,
+        "supportedReasoningEfforts": ["none", "low", "medium", "high"]
+      },
+      "route": {
+        "model": "openrouter/anthropic/claude-sonnet-4",
+        "apiKeyEnv": "OPENROUTER_API_KEY"
+      }
+    },
+    "reasoningLevels": ["low", "medium", "high"]
   }
 ]

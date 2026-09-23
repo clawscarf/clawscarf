@@ -94,7 +94,7 @@ await test("bundled recipes pin a runtime and validate their editable defaults",
   assert.equal(recipe.defaults.connections?.enabled, true);
   assert.deepEqual(recipe.models, {
     service: "cloud",
-    model: "openai/gpt-6-astra",
+    model: "gpt-6-astra",
     reasoning: "medium",
   });
   assert.equal(

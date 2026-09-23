@@ -7,6 +7,11 @@ import {
   nativeModelProvider,
 } from "../../scripts/models/configuration.js";
 import { modelInputSchema } from "../../runtime/model-contract.js";
+import {
+  cloudModelCatalog,
+  cloudModelsSchema,
+} from "../../scripts/cloud/models.js";
+import { installationCatalog } from "../../scripts/installation/recipes/catalog.js";
 const input = {
   mode: "litellm",
   baseUrl: "http://127.0.0.1:14000/v1",
@@ -121,4 +126,78 @@ await test("per-model protocols preserve Responses reasoning/tools alongside Cha
     }).success,
   );
   assert.equal(config.thinkingDefault, "medium");
+});
+
+await test("Cloud and provider-key offerings keep canonical model IDs and explicit model capabilities", async () => {
+  const { modelCatalog } = await installationCatalog();
+  const hosted = modelCatalog.filter(
+    (offer) => offer.provider === "ClawScarf Cloud",
+  );
+  assert.ok(hosted.length >= 25);
+  for (const offer of hosted) {
+    assert.ok(!offer.model.id.includes("/"));
+    assert.ok(
+      modelCatalog.some(
+        (own) =>
+          own.provider !== "ClawScarf Cloud" && own.model.id === offer.model.id,
+      ),
+    );
+    assert.ok(offer.model.compat);
+    assert.equal(offer.model.route.model, `openai/${offer.model.id}`);
+    assert.equal(offer.model.route.apiBase, "https://cloud.clawscarf.com/v1");
+  }
+  for (const id of ["gpt-6-astra", "gpt-6-astra-pro", "claude-fable-5-1"]) {
+    const model = hosted.find((offer) => offer.model.id === id)?.model;
+    assert.ok(model);
+    const config = configurationSchema.parse({
+      ...input,
+      models: [model],
+      defaultModel: id,
+    });
+    if (config.mode === "disabled") throw Error("Expected enabled models");
+    const native = nativeModelProvider(config).models[0];
+    assert.ok(native);
+    assert.equal(native.id, id);
+    assert.equal(native.compat.supportsTemperature, false);
+    assert.deepEqual(native.compat.supportedReasoningEfforts, [
+      "max",
+      "xhigh",
+      "high",
+      "medium",
+      "low",
+    ]);
+    assert.ok(
+      modelInputSchema.safeParse({
+        assignments: nativeAssignments(config),
+        token: "scoped-test-token",
+        ca: null,
+        apply: true,
+      }).success,
+    );
+  }
+  assert.ok(
+    hosted
+      .find((offer) => offer.model.id === "gpt-6-luna")
+      ?.model.compat?.supportedReasoningEfforts.includes("none"),
+  );
+});
+
+await test("Cloud model capabilities cannot silently disappear from discovery", () => {
+  const model = {
+    id: "new-model",
+    name: "New model",
+    protocols: ["responses" as const],
+    contextTokens: 8192,
+    maxOutputTokens: 1024,
+    inputMicrosPerMillion: 1,
+    outputMicrosPerMillion: 1,
+    rateVersion: "test",
+  };
+  assert.equal(cloudModelsSchema.safeParse([model]).success, false);
+  const catalog = cloudModelCatalog(
+    [{ ...model, supportsTemperature: true, reasoningEfforts: [] }],
+    "https://cloud.example.test",
+  );
+  assert.equal(catalog[0]?.model.reasoning, false);
+  assert.deepEqual(catalog[0]?.reasoningLevels, []);
 });

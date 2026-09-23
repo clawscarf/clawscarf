@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recipeSchema, recipesSchema } from "./definition.js";
 import { readJson } from "../files.js";
-import { modelCatalogSchema, modelIdentity } from "../../models/catalog.js";
+import { modelCatalogSchema } from "../../models/catalog.js";
 import { openPack } from "../../packs/source.js";
 import { recipeModelRoutes } from "../models.js";
 import { InstallationError } from "../errors.js";
@@ -37,34 +37,11 @@ export async function installationCatalog(root = packageRoot) {
     await readJson(join(root, "deploy/models/cloud-catalog.json")),
   );
   const supported = new Set(cloudModels.map((model) => model.id));
-  modelCatalog = modelCatalog.filter((offer) =>
-    supported.has(modelIdentity(offer)),
-  );
+  modelCatalog = modelCatalog.filter((offer) => supported.has(offer.model.id));
   const cloud = cloudModelCatalog(cloudModels, defaultCloudUrl);
-  // The bundled OpenRouter adapter accepts exact upstream IDs through Chat Completions.
-  // Keep the curated snapshot as the boundary; never expose arbitrary vendor discovery.
-  for (const offer of cloud) {
-    const route = `openrouter/${offer.model.id}`;
-    if (modelCatalog.some((candidate) => candidate.model.route.model === route))
-      continue;
-    const advertised = cloudModels.find((model) => model.id === offer.model.id);
-    if (!advertised?.protocols.includes("chat/completions")) continue;
-    modelCatalog.push({
-      ...offer,
-      provider: "OpenRouter",
-      model: {
-        ...offer.model,
-        id: offer.model.id.split("/").slice(1).join("/"),
-        api: "openai-completions",
-        route: { model: route, apiKeyEnv: "OPENROUTER_API_KEY" },
-      },
-    });
-  }
   modelCatalog.push(
     ...cloud.filter((offer) =>
-      modelCatalog.some(
-        (candidate) => modelIdentity(candidate) === offer.model.id,
-      ),
+      modelCatalog.some((candidate) => candidate.model.id === offer.model.id),
     ),
   );
   const packEntries = await readdir(join(root, "packs"), {

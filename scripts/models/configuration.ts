@@ -1,5 +1,6 @@
 import { OperatorError } from "../errors.js";
 import { z } from "zod";
+import { modelCapabilitiesSchema } from "../../runtime/model-contract.js";
 export const modelSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/),
   name: z.string().min(1).max(200),
@@ -8,6 +9,7 @@ export const modelSchema = z.strictObject({
   contextWindow: z.number().int().positive(),
   maxTokens: z.number().int().positive(),
   reasoning: z.boolean(),
+  compat: modelCapabilitiesSchema.optional(),
   tools: z.boolean(),
   input: z.array(z.enum(["text", "image"])).min(1),
   route: z
@@ -109,6 +111,7 @@ export function nativeModelProvider(config: EnabledModelConfiguration) {
         contextWindow: model.contextWindow,
         maxTokens: model.maxTokens,
         compat: {
+          ...model.compat,
           supportsTools: model.tools,
           supportsUsageInStreaming: true,
           // Permit explicit strict:false on compatible routes; preserve optional tool arguments.
