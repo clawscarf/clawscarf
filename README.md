@@ -21,7 +21,7 @@ NVIDIA OpenShell.
 ## Get started
 
 ```sh
-curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.14/install.sh | sh
+curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.15/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
@@ -29,10 +29,10 @@ clawscarf configure
 **Choose Personal assistant or Team server. Pick a model. Sign in. Start your server.**
 
 The terminal setup walks you through it, downloads the runtime, and opens OpenClaw
-in your browser. Your sign-in becomes the first administrator account. No checkout,
+in your browser. Your sign-in becomes the first administrator account. No source checkout,
 Docker configuration files or separate OpenClaw installation required.
 
-You’ll need Docker. The Team server recipe recommends ClawScarf Cloud for free
+You’ll need Docker. Both bundled recipes recommend ClawScarf Cloud for free
 team login and prepaid AI; using your own model-provider API key is also supported.
 Optional Connections uses prepaid packs beyond your account’s allowance. Check the
 [platform requirements](deploy/deployment/installation.md) before installing.
