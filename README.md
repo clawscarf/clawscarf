@@ -21,7 +21,7 @@ NVIDIA OpenShell.
 ## Get started
 
 ```sh
-curl -fsSL https://github.com/clawscarf/clawscarf/releases/download/v0.1.0-alpha.15/install.sh | sh
+curl -fsSL https://clawscarf.com/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 clawscarf configure
 ```
@@ -32,8 +32,8 @@ The terminal setup walks you through it, downloads the runtime, and opens OpenCl
 in your browser. Your sign-in becomes the first administrator account. No source checkout,
 Docker configuration files or separate OpenClaw installation required.
 
-You’ll need Docker. Both bundled recipes recommend ClawScarf Cloud for free
-team login and prepaid AI; using your own model-provider API key is also supported.
+You’ll need Docker. ClawScarf Cloud provides free team login. For AI, choose your
+own provider API key or buy prepaid ClawScarf Cloud credits.
 Optional Connections uses prepaid packs beyond your account’s allowance. Check the
 [platform requirements](deploy/deployment/installation.md) before installing.
 
