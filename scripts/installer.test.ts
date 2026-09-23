@@ -196,8 +196,6 @@ async function fixture(t: TestContext) {
     Access: "local",
     "Default model": "team",
     Provider: "openai/test",
-    "Model catalog": "file",
-    "Model catalog file": models,
     "secret:OpenAI API key": "test-key",
     Connections: "off",
     "Start now?": false,
@@ -377,16 +375,18 @@ await test(
         ...f.answers,
         "Default model": "team",
         Provider: "openai/test",
-        "Model catalog file": modelFile,
         "secret:OpenAI API key": "private-test-secret",
         "Install a pack? (experimental native Claws)": true,
         Pack: resolve("packs/research-team"),
         "Pack agents": ["researcher", "reviewer"],
         "Python executable with the pinned OpenShell SDK": "/usr/bin/python3",
       },
-      ["advanced-models", "packs"],
+      ["packs"],
     );
-    const result = await saveAnswers(f, ui);
+    const result = await saveAnswers(
+      { ...f, modelCatalog: modelFile, providerEnvFile: undefined },
+      ui,
+    );
     assert.equal(result.state, "saved");
     const configFile = join(f.directory, "installation.json");
     const plan = await planInstallation(configFile);
@@ -820,17 +820,17 @@ await test(
         ],
       }),
     );
-    const ui = new Answers(
-      {
-        ...f.answers,
-        "Default model": "team",
-        Provider: "openai/test",
-        "Model catalog file": models,
-        "secret:OpenAI API key": "private-$key#value",
-      },
-      ["advanced-models"],
-    );
-    const draft = await collectInstallation(ui, f);
+    const ui = new Answers({
+      ...f.answers,
+      "Default model": "team",
+      Provider: "openai/test",
+      "secret:OpenAI API key": "private-$key#value",
+    });
+    const draft = await collectInstallation(ui, {
+      ...f,
+      modelCatalog: models,
+      providerEnvFile: undefined,
+    });
     const path = await saveConfiguration(
       draft.directory,
       draft.config,
@@ -987,22 +987,20 @@ await test(
 );
 
 await test(
-  "advanced existing LiteLLM collects its URL and scoped key without upstream credentials",
+  "existing LiteLLM flags collect its scoped key without upstream credentials",
   local,
   async (t) => {
     const f = await fixture(t);
-    const ui = new Answers(
-      {
-        ...f.answers,
-        "Model gateway": "external",
-        "Model catalog file": join(f.parent, "initial-models.json"),
-        "LiteLLM API URL (ending in /v1)": "https://models.example.test/v1",
-        "Model gateway key": "paste",
-        "secret:Model gateway key": "scoped-test-model-runtime-key",
-      },
-      ["advanced-models"],
-    );
-    const draft = await collectInstallation(ui, f);
+    const ui = new Answers({
+      ...f.answers,
+      "Model gateway key": "paste",
+      "secret:Model gateway key": "scoped-test-model-runtime-key",
+    });
+    const draft = await collectInstallation(ui, {
+      ...f,
+      providerEnvFile: undefined,
+      modelGatewayUrl: "https://models.example.test/v1",
+    });
     assert.equal(draft.config.models.mode, "external");
     assert.ok(!ui.questions.includes("Provider credentials"));
     const file = await saveConfiguration(
@@ -1153,41 +1151,41 @@ await test(
 );
 
 await test(
-  "changing the external model gateway does not reuse the previous gateway credential",
+  "external gateway flags cannot redirect a retained installation's credential",
   local,
   async (t) => {
     const f = await fixture(t);
     const first = await collectInstallation(
-      new Answers(
-        {
-          ...f.answers,
-          "Model gateway": "external",
-          "LiteLLM API URL (ending in /v1)": "https://first.example.test/v1",
-          "Model gateway key": "paste",
-          "secret:Model gateway key": "first-gateway-secret",
-        },
-        ["advanced-models"],
-      ),
-      f,
-    );
-    const ui = new Answers(
-      {
+      new Answers({
         ...f.answers,
-        "Model gateway": "external",
-        "LiteLLM API URL (ending in /v1)": "https://second.example.test/v1",
         "Model gateway key": "paste",
-        "secret:Model gateway key": "second-gateway-secret",
+        "secret:Model gateway key": "first-gateway-secret",
+      }),
+      {
+        ...f,
+        providerEnvFile: undefined,
+        modelGatewayUrl: "https://first.example.test/v1",
       },
-      ["advanced-models"],
     );
-    const second = await collectInstallation(ui, f, first);
-    assert.equal(second.config.models.mode, "external");
-    assert.ok(ui.questions.includes("secret:Model gateway key"));
+    const { setupContext } = await import("./installation/setup.js");
+    const { selectedDraft } = await import("./installation/options.js");
+    const context = await setupContext(f);
+    await assert.rejects(
+      selectedDraft(
+        context,
+        "team-server",
+        { modelGatewayUrl: "https://second.example.test/v1" },
+        first.inputs,
+        first.config,
+      ),
+      { code: "invalid_configuration" },
+    );
+    assert.equal(first.config.models.mode, "external");
     assert.equal(
-      second.inputs.files
-        .get(second.config.models.credentialFile)
+      first.inputs.files
+        .get(first.config.models.credentialFile)
         ?.toString("utf8"),
-      "second-gateway-secret",
+      "first-gateway-secret",
     );
   },
 );

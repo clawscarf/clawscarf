@@ -30,7 +30,6 @@ import { collectPacks, collectPackInputs } from "./sections/packs.js";
 import { selectedDraft, type ConfigureOptions } from "../options.js";
 import { installationSummary, modelSummary } from "./summary.js";
 import { secretInput } from "./secrets.js";
-import { collectExternalModels } from "./sections/external-models.js";
 import { inputFile } from "./inputs.js";
 import { collectResources } from "./sections/resources.js";
 
@@ -269,26 +268,6 @@ export async function collectInstallation(
               config.connections,
             );
             break;
-          case "advanced-models": {
-            const file = await inputFile(ui, "Model catalog file", false);
-            const mode = await ui.select(
-              "Model gateway",
-              [
-                { value: "bundled", label: "Run with this installation" },
-                { value: "external", label: "Existing LiteLLM gateway" },
-              ],
-              "bundled",
-            );
-            config.models =
-              mode === "external"
-                ? await collectExternalModels(ui, inputs, file, config.models)
-                : {
-                    mode: "litellm",
-                    configurationFile: file,
-                    upstreamEnvironmentFile: "",
-                  };
-            break;
-          }
           case "resources":
             config.resources = await collectResources(ui, config.resources);
             break;
