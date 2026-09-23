@@ -134,6 +134,24 @@ export function nativeAssignments(config: ModelConfiguration) {
       value: nativeModelProvider(config),
     },
   ];
+  if (defaults.models)
+    assignments.push({
+      path: "agents.defaults.models",
+      value: defaults.models,
+    });
+  if (defaults.model.primary !== undefined)
+    assignments.push({
+      path: "agents.defaults.model.primary",
+      value: defaults.model.primary,
+    });
+  if (defaults.thinkingDefault)
+    assignments.push({
+      path: "agents.defaults.thinkingDefault",
+      value: defaults.thinkingDefault,
+    });
+  return assignments;
+}
+export function nativeModelDefaults(config: EnabledModelConfiguration) {
   const budgets = Object.fromEntries(
     config.models
       .filter((m) => m.enabled && m.replyBudgetTokens !== undefined)
@@ -149,22 +167,8 @@ export function nativeAssignments(config: ModelConfiguration) {
         },
       ]),
   );
-  if (Object.keys(budgets).length)
-    assignments.push({ path: "agents.defaults.models", value: budgets });
-  if (defaults.model.primary !== undefined)
-    assignments.push({
-      path: "agents.defaults.model.primary",
-      value: defaults.model.primary,
-    });
-  if (defaults.thinkingDefault)
-    assignments.push({
-      path: "agents.defaults.thinkingDefault",
-      value: defaults.thinkingDefault,
-    });
-  return assignments;
-}
-export function nativeModelDefaults(config: EnabledModelConfiguration) {
   return {
+    ...(Object.keys(budgets).length ? { models: budgets } : {}),
     model: {
       ...(config.defaultModel === null
         ? {}

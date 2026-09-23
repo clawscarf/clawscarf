@@ -67,6 +67,9 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
   const { input } = await fixture(t);
   const models = await loadInitialModels(input);
   assert.ok(models);
+  const first = models.configuration.models[0];
+  assert.ok(first);
+  first.replyBudgetTokens = 512;
   const native = initialConfiguration({
     publicOrigin: "http://127.0.0.1:18800",
     widgetOrigin: "http://127.0.0.1:18802",
@@ -93,6 +96,10 @@ await test("initial setup binds the scoped secret and only the declared Node HTT
     "clawscarf/team-model",
   );
   assert.equal(configured.agents.defaults.thinkingDefault, "medium");
+  assert.deepEqual(configured.agents.defaults.models, {
+    "clawscarf/team-model": { params: { maxTokens: 512 } },
+  });
+
   assert.deepEqual(configured.agents.entries, native.agents.entries);
   assert.equal(
     configured.agents.defaults.workspace,
