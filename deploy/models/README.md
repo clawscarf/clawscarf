@@ -153,7 +153,8 @@ model choices. Its model capabilities were checked against OpenRouter on 2026-09
 the installer validates availability against the authenticated live API before
 enablement. Its prices are indicative snapshot data, not installer promises.
 `maxOutputTokens` records the model capability; `replyBudgetTokens` records Cloud's
-request ceiling and the installer sets it as native per-model `params.maxTokens`.
+request ceiling. Both fresh installation and explicit model reapplication set it as
+native per-model `params.maxTokens`.
 The current Cloud budget is 32,768 tokens including reasoning, capped by the model's
 capability. Explicit reapplication preserves other native model parameters.
 Every hosted route uses the selected Cloud origin's `/v1` endpoint through LiteLLM;
