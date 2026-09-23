@@ -18,9 +18,8 @@ does not cancel or refund a payment. A return
 from Stripe is not proof that credit was granted. Recent purchases and refunds
 remain visible through purchase history and Stripe payment details. Refreshes
 retain expanded prices and purchase history and preserve keyboard focus.
-A native session-header accessory supplies Account recovery guidance after failed
-Cloud AI chats; OpenClaw keeps its own error presentation. Members are directed to
-an installation administrator. It neither buys credits nor redirects automatically.
+OpenClaw presents chat errors. Installation administrators manage Cloud AI credits
+in Account; other team members should ask their installation administrator.
 
 People is visible to native
 administrators: it lists members and their observed native roles, assigns existing
