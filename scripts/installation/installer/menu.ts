@@ -114,7 +114,6 @@ export function installationMenu(
           ),
         ]
       : []),
-    { value: "advanced-models", label: "Advanced model gateway settings" },
   ];
   return existing
     ? [

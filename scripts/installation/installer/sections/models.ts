@@ -43,7 +43,7 @@ export async function collectModels(
     if (catalog.mode !== "external")
       throw new InstallationError(
         "invalid_configuration",
-        "Import the existing gateway's model catalog under Advanced.",
+        "Supply the existing gateway's model catalog with --model-catalog.",
       );
     const defaultModel = await ui.select(
       "Default model",
@@ -86,7 +86,7 @@ export async function collectModels(
   if (!choices.size)
     throw new InstallationError(
       "invalid_configuration",
-      "No model choices are available. Import a catalog under Advanced.",
+      "No model choices are available. Supply a catalog with --model-catalog.",
     );
   const id = await ui.select(
     "Default model",
@@ -107,7 +107,7 @@ export async function collectModels(
   if (!providerOptions.size)
     throw new InstallationError(
       "invalid_configuration",
-      "This model has no configured provider. Choose another model or import a catalog under Advanced.",
+      "This model has no configured provider. Choose another model or supply a catalog with --model-catalog.",
     );
   const selectedRoute = cloud
     ? (existing?.route?.model ?? matching[0]?.model.route.model ?? "")

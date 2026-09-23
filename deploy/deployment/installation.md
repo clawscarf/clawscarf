@@ -118,6 +118,8 @@ them, the model catalog and pack files. Each recipe points to its fixed runtime
 in [runtime/current.json](../../runtime/current.json). There is no public
 `--release` override. Runtime images/tools are separate [release artifacts](../../release/README.md).
 Recipe defaults are copied once; changing a recipe never changes an existing server.
+For custom model catalogs or an existing LiteLLM gateway, use the explicit
+[configuration options](#configuration-options).
 
 The directory defaults to `~/clawscarf-team` for configure, start, stop, status and
 logs. Change it with `--directory` or the initial settings menu. Reusing a configured
