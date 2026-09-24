@@ -76,14 +76,20 @@ Never run that fixture against a production gateway or database.
 
 The [Cloud gateway regression](../../tests/models/cloud-gateway.test.ts) separately
 checks Cloud model IDs through the pinned LiteLLM image for both Chat Completions
-and Responses, JSON and streaming, successful requests and HTTP 402 failures with
-no replay. It uses a controlled upstream on port 14501, no paid provider account.
+and Responses, JSON and streaming, successful requests and HTTP 402/429 failures
+with no gateway replay. It uses a controlled upstream on port 14501, no paid provider account.
 Set `CLAWSCARF_TEST_CLOUD_GATEWAY=1`, `CLAWSCARF_TEST_MODEL_CONFIGURATION` to the
 isolated rendered model input, and `CLAWSCARF_TEST_LITELLM_MASTER_KEY_FILE` to that
 gateway's private test key. Its route must use `openai/cloud-fixture`, public
 model ID `cloud-fixture`, and upstream key `scoped-test-cloud-secret`.
 LiteLLM preserves the HTTP status and readable message but rewrites the public
-error code to `402`; native Account reads the authoritative Cloud allowance state.
+error codes to numeric strings; native Account reads the authoritative Cloud allowance
+state. The pinned LiteLLM drops Cloud’s `Retry-After` response header on errors, so
+OpenClaw uses its native bounded rate-limit backoff. Set
+`CLAWSCARF_TEST_CLOUD_NATIVE_IMAGE` to a candidate runtime image to additionally
+verify native recovery after a 429 on both protocols and browser-tool advertisement
+with the browser plugin disabled and enabled. This launches disposable containers;
+it does not contact Cloud or a paid model.
 
 ### Private TLS and OpenShell proof
 

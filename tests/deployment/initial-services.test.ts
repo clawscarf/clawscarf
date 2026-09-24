@@ -62,7 +62,14 @@ await test("browser and Connections preserve one local execution model", () => {
     assert.deepEqual(result.tools, native.tools);
     assert.deepEqual(result.tools.exec, { host: "gateway", mode: "auto" });
     assert.deepEqual(result.tools.alsoAllow, ["lobster"]);
-    assert.deepEqual(result.plugins, native.plugins);
+    assert.deepEqual(result.plugins, {
+      ...native.plugins,
+      entries: {
+        ...native.plugins.entries,
+        browser: { enabled: browser },
+      },
+    });
+    assert.equal(result.browser.enabled, browser);
     if (browser)
       assert.partialDeepStrictEqual(result.browser, {
         profiles: { team: { attachOnly: true } },
@@ -131,6 +138,18 @@ await test("Connections composes with model secrets and protected browser execut
   assert.ok("clawscarf-models" in result.secrets.providers);
   assert.ok("clawscarf-connections" in result.secrets.providers);
   assert.ok(result.plugins.entries["clawscarf-connections"].enabled);
+  assert.equal(result.plugins.entries.browser.enabled, true);
+  assert.equal(result.browser.enabled, true);
   assert.equal("sandbox" in result.tools, false);
   assert.ok(!JSON.stringify(result).includes(models.credential.token));
+});
+
+await test("Connections without Browser leaves both native browser switches disabled", () => {
+  const result = withInitialServices(withInitialModels(preset(), models), {
+    connectionsBrokerUrl: "https://broker.example.test",
+  });
+  assert.equal(result.browser.enabled, false);
+  assert.equal(result.plugins.entries.browser.enabled, false);
+  assert.equal(result.plugins.entries["clawscarf-connections"].enabled, true);
+  assert.equal(result.mcp.apps.enabled, true);
 });

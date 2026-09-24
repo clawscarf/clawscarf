@@ -4,6 +4,11 @@ The [local operator](../../deployment/README.md#shared-browser) prepares, enroll
 starts and stops this optional controller. This guide owns native enrollment,
 controller policy and [current integration limits](#verified-release-limits).
 
+Fresh installations with Browser Off disable both native browser control and the
+bundled browser plugin, so agents are not offered an unavailable browser tool.
+Browser On enables both and selects the protected team controller below. These
+initial defaults are not reapplied over retained native settings on restart.
+
 This optional image runs OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
 This component does not run team shell commands or hold administrator credentials.

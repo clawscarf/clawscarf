@@ -119,6 +119,7 @@ export function initialConfiguration(
         ],
       },
       entries: {
+        browser: { enabled: false },
         "clawscarf-connections": { enabled: false },
         "clawscarf-access": { enabled: settings.standaloneNavigation },
         lobster: { enabled: true },
@@ -161,6 +162,7 @@ export function initialConfiguration(
       elevated: { enabled: false },
     },
     browser: {
+      enabled: false,
       headless: true,
       noSandbox: false,
       executablePath: "/usr/bin/chromium",
