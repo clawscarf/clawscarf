@@ -2,16 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { issueRuntimeCredential } from "../../scripts/models/credentials.js";
 import { configurationSchema } from "../../scripts/models/configuration.js";
+import { run } from "../../scripts/deployment/process.js";
 
 await test(
   "Cloud model IDs and quota errors survive the pinned LiteLLM chat and Responses paths without replay",
-  { skip: process.env.CLAWSCARF_TEST_CLOUD_GATEWAY !== "1", timeout: 60000 },
+  { skip: process.env.CLAWSCARF_TEST_CLOUD_GATEWAY !== "1", timeout: 180000 },
   async (t) => {
     const masterKeyFile = process.env.CLAWSCARF_TEST_LITELLM_MASTER_KEY_FILE;
     const configurationFile = process.env.CLAWSCARF_TEST_MODEL_CONFIGURATION;
@@ -25,12 +26,16 @@ await test(
       model = configuration.defaultModel;
     const directory = await mkdtemp(join(tmpdir(), "clawscarf-cloud-route-"));
     t.after(() => rm(directory, { recursive: true, force: true }));
-    let failure = false,
+    let failure = 0,
       calls = 0;
+    let failOnce = false;
+    const attempts: number[] = [];
+    let expectsBrowser: boolean | undefined;
     const observed: string[] = [];
     const upstream = createServer((request, response) => {
       void (async () => {
         calls++;
+        attempts.push(Date.now());
         observed.push(request.url ?? "");
         assert.equal(
           request.headers.authorization,
@@ -42,19 +47,37 @@ await test(
             Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)),
           );
         const body = z
-          .object({ model: z.literal(model), stream: z.boolean().optional() })
+          .object({
+            model: z.literal(model),
+            stream: z.boolean().optional(),
+            tools: z.array(z.record(z.string(), z.unknown())).optional(),
+          })
           .passthrough()
           .parse(JSON.parse(Buffer.concat(chunks).toString()));
         response.setHeader("content-type", "application/json");
+        if (expectsBrowser !== undefined) {
+          const names = (body.tools ?? []).map(
+            (tool) =>
+              tool.name ??
+              z.object({ name: z.string() }).parse(tool.function).name,
+          );
+          assert.equal(names.includes("browser"), expectsBrowser);
+        }
         if (failure) {
-          response.statusCode = 402;
+          const status = failure;
+          if (failOnce) failure = 0;
+          response.statusCode = status;
+          if (status === 429) response.setHeader("Retry-After", "5");
           response.end(
             JSON.stringify({
               error: {
                 message:
-                  "ClawScarf Cloud AI credits have run out. Ask an administrator to open Account to add credits.",
-                type: "invalid_request_error",
-                code: "credit_exhausted",
+                  status === 429
+                    ? "ClawScarf Cloud AI is busy with other requests on this account. Retry shortly."
+                    : "ClawScarf Cloud AI credits have run out. Ask an administrator to open Account to add credits.",
+                type:
+                  status === 429 ? "rate_limit_error" : "invalid_request_error",
+                code: status === 429 ? "inference_busy" : "credit_exhausted",
                 param: null,
               },
               requestId: "fixture",
@@ -157,8 +180,8 @@ await test(
     });
     for (const protocol of ["chat/completions", "responses"]) {
       for (const stream of [false, true]) {
-        for (const exhausted of [false, true]) {
-          failure = exhausted;
+        for (const status of [200, 402, 429]) {
+          failure = status === 200 ? 0 : status;
           const before = calls;
           const response = await fetch(origin + "/v1/" + protocol, {
             method: "POST",
@@ -176,10 +199,15 @@ await test(
             signal: AbortSignal.timeout(15000),
           });
           const text = await response.text();
-          assert.equal(response.status, exhausted ? 402 : 200, text);
-          if (exhausted) {
+          assert.equal(response.status, status, text);
+          if (status === 402) {
             assert.match(text, /402/);
             assert.match(text, /Account/);
+          } else if (status === 429) {
+            // The pinned LiteLLM drops Retry-After on errors. Native OpenClaw
+            // must recover using its standard bounded rate-limit backoff.
+            assert.equal(response.headers.get("retry-after"), null);
+            assert.match(text, /busy with other requests/);
           } else assert.match(text, /Cloud (Responses|chat|stream) works/);
           assert.equal(calls - before, 1, "one upstream attempt per request");
         }
@@ -187,5 +215,94 @@ await test(
     }
     assert.ok(observed.includes("/v1/responses"));
     assert.ok(observed.includes("/v1/chat/completions"));
+    const image = process.env.CLAWSCARF_TEST_CLOUD_NATIVE_IMAGE;
+    if (image) {
+      for (const [api, browser] of [
+        ["openai-completions", false],
+        ["openai-responses", true],
+      ] as const) {
+        const nativeOrigin = new URL(origin);
+        nativeOrigin.hostname = "host.docker.internal";
+        await writeFile(
+          join(directory, "native.json"),
+          JSON.stringify({
+            gateway: { mode: "local" },
+            browser: { enabled: browser },
+            plugins: { entries: { browser: { enabled: browser } } },
+            models: {
+              providers: {
+                clawscarf: {
+                  baseUrl: nativeOrigin.href.replace(/\/$/, "") + "/v1",
+                  api,
+                  apiKey: key,
+                  models: [
+                    {
+                      id: model,
+                      name: "Cloud fixture",
+                      contextWindow: 128000,
+                      maxTokens: 1024,
+                    },
+                  ],
+                },
+              },
+            },
+            agents: {
+              defaults: {
+                model: { primary: `clawscarf/${model}` },
+                workspace: "/tmp/workspace",
+              },
+            },
+          }),
+          { mode: 0o600 },
+        );
+        expectsBrowser = browser;
+        failure = 429;
+        failOnce = true;
+        const before = calls;
+        const output = await run(
+          "docker",
+          [
+            "run",
+            "--rm",
+            "--add-host",
+            "host.docker.internal:host-gateway",
+            "--mount",
+            `type=bind,source=${directory},target=/fixture,readonly`,
+            "--tmpfs",
+            "/tmp:rw,mode=1777",
+            "--env",
+            "HOME=/tmp/native-home",
+            "--env",
+            "OPENCLAW_CONFIG_PATH=/fixture/native.json",
+            "--env",
+            "OPENCLAW_STATE_DIR=/tmp/native-state",
+            "--entrypoint",
+            "node",
+            image,
+            "/app/openclaw.mjs",
+            "agent",
+            "--local",
+            "--agent",
+            "main",
+            "--session-id",
+            crypto.randomUUID(),
+            "--message",
+            "Reply hello without tools.",
+            "--json",
+          ],
+          { timeout: 90000 },
+        );
+        assert.match(output, /Cloud (Responses|chat|stream) works/);
+        assert.equal(
+          calls - before,
+          2,
+          "native runtime retries the rejected request once",
+        );
+        assert.ok(
+          (attempts[before + 1] ?? 0) - (attempts[before] ?? 0) >= 500,
+          "native rate-limit recovery waits instead of retrying immediately",
+        );
+      }
+    }
   },
 );

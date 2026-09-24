@@ -28,10 +28,15 @@ export function withInitialServices(
               },
             },
           },
-          plugins: {
-            ...native.plugins,
-            entries: {
-              ...native.plugins.entries,
+        }
+      : {}),
+    plugins: {
+      ...native.plugins,
+      entries: {
+        ...native.plugins.entries,
+        ...(browser ? { browser: { enabled: true } } : {}),
+        ...(services.connectionsBrokerUrl
+          ? {
               "clawscarf-connections": {
                 enabled: true,
                 config: {
@@ -43,10 +48,10 @@ export function withInitialServices(
                   },
                 },
               },
-            },
-          },
-        }
-      : {}),
+            }
+          : {}),
+      },
+    },
     ...(browser && services.browserNode
       ? {
           gateway: {
