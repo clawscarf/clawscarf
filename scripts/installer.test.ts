@@ -148,6 +148,13 @@ async function fixture(t: TestContext) {
         gateway: image,
         companion: image,
         openshellClient: image,
+        relay: image,
+        browser: {
+          chromium: image,
+          node: image,
+          dns: image,
+          egress: image,
+        },
       },
       tools: {
         openshell: {
@@ -240,16 +247,6 @@ await test(
   local,
   async (t) => {
     const f = await fixture(t);
-    const release = releaseSchema.parse(await readJson(f.release));
-    const image = `sha256:${"a".repeat(64)}`;
-    release.images.relay = image;
-    release.images.browser = {
-      chromium: image,
-      node: image,
-      dns: image,
-      egress: image,
-    };
-    await writeFile(f.release, JSON.stringify(release));
     const first = await collectInstallation(new Answers(f.answers), f);
     const ui = new Answers({ ...f.answers, Browser: "on" }, ["browser"]);
     const changed = await collectInstallation(
@@ -1335,6 +1332,7 @@ await test(
               "models",
               "connections",
               "packs",
+              "browser",
               "public-web",
               "model-credentials",
             ],
