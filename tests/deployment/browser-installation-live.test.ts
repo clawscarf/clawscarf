@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { getCACertificates, setDefaultCACertificates } from "node:tls";
@@ -218,6 +218,13 @@ await test(
           } finally {
             clearTimeout(timer);
           }
+          const session = z.object({ key: z.string() }).parse(
+            await client.request("sessions.create", {
+              agentId: "main",
+              label: "Browser installation qualification",
+              idempotencyKey: randomUUID(),
+            }),
+          );
           const tools = z
             .object({
               groups: z.array(
@@ -227,7 +234,7 @@ await test(
             .parse(
               await client.request("tools.effective", {
                 agentId: "main",
-                sessionKey: "agent:main:browser-qualification",
+                sessionKey: session.key,
               }),
             );
           assert.equal(
@@ -253,24 +260,20 @@ await test(
               { timeoutMs: 40_000 },
             );
           // No explicit target, node or profile: exercise the installation's normal routing.
-          const { targetId } = z
-            .object({ targetId: z.string() })
-            .parse(
-              await request("POST", "/tabs/open", {
-                url: "https://example.com",
-              }),
-            );
+          const { targetId } = z.object({ targetId: z.string() }).parse(
+            await request("POST", "/tabs/open", {
+              url: "https://example.com",
+            }),
+          );
           try {
             const act = (body: Record<string, unknown>) =>
               request("POST", "/act", { ...body, targetId });
-            const heading = z
-              .object({ result: z.string() })
-              .parse(
-                await act({
-                  kind: "evaluate",
-                  fn: "() => document.querySelector('h1').textContent",
-                }),
-              );
+            const heading = z.object({ result: z.string() }).parse(
+              await act({
+                kind: "evaluate",
+                fn: "() => document.querySelector('h1').textContent",
+              }),
+            );
             assert.equal(heading.result, "Example Domain");
             if (mode === "retained") {
               const cookie = z
@@ -313,14 +316,12 @@ await test(
               element: "#upload",
               paths: [inbound],
             });
-            const uploaded = z
-              .object({ result: z.array(z.number()) })
-              .parse(
-                await act({
-                  kind: "evaluate",
-                  fn: "async () => Array.from(new Uint8Array(await document.querySelector('#upload').files[0].arrayBuffer()))",
-                }),
-              );
+            const uploaded = z.object({ result: z.array(z.number()) }).parse(
+              await act({
+                kind: "evaluate",
+                fn: "async () => Array.from(new Uint8Array(await document.querySelector('#upload').files[0].arrayBuffer()))",
+              }),
+            );
             assert.deepEqual(Buffer.from(uploaded.result), bytes);
             const downloaded = z
               .object({
