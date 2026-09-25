@@ -198,6 +198,13 @@ tracks remaining Linux installation qualification. [Release evidence](../../../r
 owns publication status, and the [network regression](../network/README.md#build-and-test)
 owns destination restrictions.
 
+The [installation acceptance workflow](../../../.github/workflows/browser-acceptance.yml)
+tests the selected published standalone CLI on Linux ARM64/x86-64. Its
+[regression](../../../tests/deployment/browser-installation-live.test.ts) exercises
+authenticated Gateway/node transfers, workspace file retention and browser cookies
+across restart and retained On/Off changes. It uses synthetic administrator sessions
+and file contents; it does not qualify external OIDC login or model inference.
+
 Run the file-transfer regression against newly built images:
 
 ```sh

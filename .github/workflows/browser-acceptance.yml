@@ -1,0 +1,65 @@
+name: Browser installation acceptance
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/browser-acceptance.yml
+      - tests/deployment/browser-installation-live.test.ts
+      - scripts/deployment/browser*.ts
+      - scripts/installation/**
+      - recipes/**
+      - runtime/current.json
+permissions:
+  contents: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            recipe: team-server
+            runner: depot-ubuntu-24.04-arm-16
+          - arch: x64
+            recipe: personal-assistant
+            runner: depot-ubuntu-24.04-16
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Stop the runner's older Docker engine
+        run: sudo systemctl stop docker.service docker.socket
+      - name: Set up Docker 29
+        id: docker
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
+        with:
+          version: v29.5.3
+      - name: Expose the test engine at the standard local socket
+        env:
+          DOCKER_SOCKET: ${{ steps.docker.outputs.sock }}
+        run: sudo ln -sf "${DOCKER_SOCKET#unix://}" /var/run/docker.sock
+      - name: Verify released browser transfers and retained configuration
+        env:
+          CLAWSCARF_TEST_BROWSER_INSTALLATION: "1"
+          CLAWSCARF_TEST_BROWSER_RECIPE: ${{ matrix.recipe }}
+          CLAWSCARF_TELEMETRY_DISABLED: "1"
+        run: |
+          mkdir -p .local/browser-acceptance
+          set -o pipefail
+          node --import tsx --test tests/deployment/browser-installation-live.test.ts 2>&1 | tee .local/browser-acceptance/result.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: browser-acceptance-${{ matrix.arch }}
+          path: .local/browser-acceptance/result.log
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
