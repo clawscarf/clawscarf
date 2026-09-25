@@ -164,6 +164,7 @@ await test(
             timeout: 45_000,
           },
         );
+      let sessionKey: string | undefined;
       const verify = async (mode: "first" | "retained" | "off") => {
         const access = await readConfiguration(
           join(directory, "private/access.json"),
@@ -218,13 +219,13 @@ await test(
           } finally {
             clearTimeout(timer);
           }
-          const session = z.object({ key: z.string() }).parse(
+          sessionKey ??= z.object({ key: z.string() }).parse(
             await client.request("sessions.create", {
               agentId: "main",
               label: "Browser installation qualification",
               idempotencyKey: randomUUID(),
             }),
-          );
+          ).key;
           const tools = z
             .object({
               groups: z.array(
@@ -234,7 +235,7 @@ await test(
             .parse(
               await client.request("tools.effective", {
                 agentId: "main",
-                sessionKey: session.key,
+                sessionKey,
               }),
             );
           assert.equal(
