@@ -209,6 +209,7 @@ export async function selectedDraft(
       "modelGatewayKeyFile",
       "modelGatewayCaFile",
       "connections",
+      "browser",
       "publicWeb",
       "connectionsCloudUrl",
       "pack",
@@ -222,7 +223,7 @@ export async function selectedDraft(
       )
     )
       invalid(
-        "Existing installations support changes to models, keys, Connections, public web and packs only.",
+        "Existing installations support changes to models, keys, Connections, browser, public web and packs only.",
       );
   }
   const config = structuredClone(

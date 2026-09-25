@@ -75,7 +75,10 @@ export async function saveConfiguration(
       )
         cloud.registrationFile = config.connections.registrationFile;
     }
-    config.models.upstreamEnvironmentFile = "./secrets/cloud-ai.env";
+    config.models.upstreamEnvironmentFile =
+      retained && isAbsolute(config.models.upstreamEnvironmentFile)
+        ? await secret(config.models.upstreamEnvironmentFile, "cloud-ai.env")
+        : "./secrets/cloud-ai.env";
   } else if (config.models.mode === "litellm")
     config.models.upstreamEnvironmentFile = await secret(
       config.models.upstreamEnvironmentFile,

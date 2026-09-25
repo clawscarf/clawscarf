@@ -24,8 +24,8 @@ import { InstallationError } from "./errors.js";
 import { openPack } from "../packs/source.js";
 import { validateCloudRoutes } from "../cloud/models.js";
 
-export async function allocatePorts() {
-  const servers = Array.from({ length: 7 }, () => createServer());
+export async function allocatePorts(count = 7) {
+  const servers = Array.from({ length: count }, () => createServer());
   try {
     const ports: number[] = [];
     for (const server of servers) {

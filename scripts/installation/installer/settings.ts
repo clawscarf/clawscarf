@@ -38,7 +38,7 @@ export async function editInstallationSettings(
   if (options.recipe || options.cloudUrl)
     throw new InstallationError(
       "change_unsupported",
-      "Existing installations keep their recipe, software release and login service. Change models, keys, Connections, public web or packs instead.",
+      "Existing installations keep their recipe, software release and login service. Change models, keys, Connections, browser, public web or packs instead.",
     );
   if (options.nonInteractive && !options.yes)
     throw new InstallationError(
@@ -132,19 +132,14 @@ export async function editInstallationSettings(
       retained = !(await discardSettingsCandidate(directory, pending));
       return { state: "cancelled" as const };
     }
-    if (
-      !pending &&
-      !reapply &&
-      !Object.values(
-        await configurationChanges(
-          config,
-          resolveConfigurationInputs(
-            installationSchema.parse(await readJson(candidate)),
-            dirname(candidate),
-          ),
-        ),
-      ).some(Boolean)
-    )
+    const changes = await configurationChanges(
+      config,
+      resolveConfigurationInputs(
+        installationSchema.parse(await readJson(candidate)),
+        dirname(candidate),
+      ),
+    );
+    if (!pending && !reapply && !Object.values(changes).some(Boolean))
       return { state: "unchanged" as const };
     await task("Checking this machine", (_signal, report) =>
       prerequisites.host(undefined, report),
@@ -156,20 +151,23 @@ export async function editInstallationSettings(
         report,
       }),
     );
-    authorizing = candidate;
-    for (;;) {
-      aiSetup = options.nonInteractive
-        ? await registerUnattended(
-            candidate,
-            options.cloudCredentialFile,
-            undefined,
-            options,
-          )
-        : await registerWithBrowser(candidate, ui, task, undefined, options);
-      if (aiSetup !== "change") break;
-      await changeAiSetup(candidate, ui);
+    // Local capabilities do not require another Cloud sign-in or AI purchase.
+    if (changes.models || changes.connections || reapply) {
+      authorizing = candidate;
+      for (;;) {
+        aiSetup = options.nonInteractive
+          ? await registerUnattended(
+              candidate,
+              options.cloudCredentialFile,
+              undefined,
+              options,
+            )
+          : await registerWithBrowser(candidate, ui, task, undefined, options);
+        if (aiSetup !== "change") break;
+        await changeAiSetup(candidate, ui);
+      }
+      authorizing = undefined;
     }
-    authorizing = undefined;
     const plan = await planSettingsChange(candidate, reapply);
     ui.note(
       [
@@ -185,6 +183,11 @@ export async function editInstallationSettings(
           : []),
         ...(plan.scopes.publicWeb
           ? [`Public web: ${plan.changes.publicWeb.to ? "On" : "Off"}`]
+          : []),
+        ...(plan.scopes.browser
+          ? [
+              `Browser: ${plan.changes.browser.to ? "On · Shared team browser" : "Off · Saved browser sessions kept"}`,
+            ]
           : []),
         ...(plan.scopes.packs
           ? [`Packs: ${plan.changes.packs.selected.join(", ") || "None"}`]

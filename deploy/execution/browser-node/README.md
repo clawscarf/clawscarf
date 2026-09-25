@@ -8,6 +8,9 @@ Fresh installations with Browser Off disable both native browser control and the
 bundled browser plugin, so agents are not offered an unavailable browser tool.
 Browser On enables both and selects the protected team controller below. These
 initial defaults are not reapplied over retained native settings on restart.
+An explicit [retained Browser change](../../deployment/installation.md#change-an-existing-installation)
+adds or stops the same services and changes only their native browser settings.
+Disabling keeps owned volumes, saved logins and node admission for re-enabling.
 
 This optional image runs OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.

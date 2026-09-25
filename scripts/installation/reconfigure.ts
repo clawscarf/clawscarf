@@ -10,6 +10,7 @@ import {
   planNetworkPolicyChange,
 } from "../deployment/network-policy.js";
 import { applyConnectionSettings } from "../deployment/connection-settings.js";
+import { applyBrowserSettings } from "../deployment/browser-settings.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -42,7 +43,7 @@ import {
 import { run, LocalSetupError } from "../deployment/process.js";
 import { selectionSchema } from "./packs.js";
 import { installationSchema } from "./configuration.js";
-import { resolveInstallation } from "./resolve.js";
+import { allocatePorts, resolveInstallation } from "./resolve.js";
 import { readJson, fingerprint } from "./files.js";
 import { InstallationError } from "./errors.js";
 
@@ -62,13 +63,14 @@ export async function planSettingsChange(
   );
   const state = await readState(directory);
   const old = state.input;
+  const pending = await readPreparation(directory);
   const desired = await resolveInstallation(configFile, [
     old.ports.controller,
     old.ports.management,
     old.ports.native,
     old.ports.nativeWidgets,
     old.ports.database,
-    old.browser?.port ?? 65534,
+    old.browser?.port ?? pending.settingsBrowserPort ?? 65534,
     old.modelGateway?.port ?? 65533,
   ]);
   const next = desired.input;
@@ -83,6 +85,8 @@ export async function planSettingsChange(
     connections: oldConnections,
     publicWeb: oldPublicWeb,
     cloudServices: _oldCloudServices,
+    browser: oldBrowser,
+    relayImage: _oldRelay,
     ...oldFixed
   } = old;
   const {
@@ -91,6 +95,8 @@ export async function planSettingsChange(
     connections: nextConnections,
     publicWeb: nextPublicWeb,
     cloudServices: _nextCloudServices,
+    browser: nextBrowser,
+    relayImage: _nextRelay,
     ...nextFixed
   } = next;
   if (
@@ -135,7 +141,6 @@ export async function planSettingsChange(
         )
       ).configuration
     : (await loadInitialModels(next.models))?.configuration;
-  const pending = await readPreparation(directory);
   if (
     pending.settingsPending &&
     pending.settingsPending !== desired.fingerprint
@@ -171,6 +176,7 @@ export async function planSettingsChange(
     scopes,
     reapply,
     changes: {
+      browser: { from: Boolean(oldBrowser), to: Boolean(nextBrowser) },
       publicWeb: { from: oldPublicWeb, to: nextPublicWeb },
       models: modelConfiguration
         ? {
@@ -271,6 +277,27 @@ export async function reconfigureInstallation(
         "The native home volume does not belong to this installation.",
       );
     const prepared = join(directory, "prepared.json");
+    if (scopes.browser && desired.input.browser && !state.input.browser) {
+      const pending = await readPreparation(directory);
+      let port = pending.settingsBrowserPort;
+      while (port === undefined) {
+        const allocated = (await allocatePorts(1))[0];
+        if (
+          allocated &&
+          ![
+            ...Object.values(state.input.ports),
+            state.input.modelGateway?.port,
+          ].includes(allocated)
+        )
+          port = allocated;
+      }
+      if (!port)
+        throw new InstallationError(
+          "unavailable",
+          "Cannot allocate the browser listener.",
+        );
+      desired.input.browser.port = port;
+    }
     let models = await loadInitialModels(state.input.models);
     const gateway = desired.input.modelGateway;
     const loaded = gateway
@@ -322,6 +349,9 @@ export async function reconfigureInstallation(
         ownerId: state.ownerId,
         settingsPending: desired.fingerprint,
         settingsCandidate: resolve(configFile),
+        ...(scopes.browser && desired.input.browser
+          ? { settingsBrowserPort: desired.input.browser.port }
+          : {}),
         ...(checked.reapply ? { settingsReapply: checked.reapply } : {}),
       }),
     );
@@ -382,6 +412,12 @@ export async function reconfigureInstallation(
       stage = "Cloud management configuration";
       if (scopes.models || scopes.connections)
         await applyCloudManagement(directory, desired.input);
+      stage = "browser configuration";
+      if (scopes.browser)
+        await applyBrowserSettings(directory, {
+          ...state,
+          input: desired.input,
+        });
       stage = "accepted settings";
       if (scopes.models)
         await writePrivate(

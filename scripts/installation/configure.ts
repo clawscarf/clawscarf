@@ -289,6 +289,7 @@ export async function configurationChanges(
     models: !isDeepStrictEqual(await models(before), await models(after)),
     connections: !isDeepStrictEqual(before.connections, after.connections),
     publicWeb: before.publicWeb !== after.publicWeb,
+    browser: before.browser.enabled !== after.browser.enabled,
     packs: !isDeepStrictEqual(await packs(before), await packs(after)),
   };
 }
