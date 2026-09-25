@@ -28,6 +28,7 @@ const preparationSchema = z.strictObject({
   ownerId: z.uuid(),
   settingsCandidate: z.string().optional(),
   settingsPending: z.string().optional(),
+  settingsBrowserPort: z.number().int().min(1024).max(65535).optional(),
   settingsReapply: z.enum(["models", "connections"]).optional(),
 });
 export async function readPreparation(directory: string) {

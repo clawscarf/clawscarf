@@ -64,6 +64,8 @@ await test(
         gateway: image,
         companion: image,
         openshellClient: image,
+        relay: image,
+        browser: { chromium: image, node: image, dns: image, egress: image },
       },
       tools: {
         openshell: {
@@ -224,16 +226,44 @@ await test(
       /Changing an existing installation noninteractively requires --yes/,
     );
     const changedSettings = await planSettingsChange(path);
+    await writeFile(
+      path,
+      JSON.stringify({ ...configuration, browser: { enabled: true } }),
+    );
+    const browserChange = await planSettingsChange(path);
+    assert.equal(browserChange.scopes.browser, true);
+    assert.deepEqual(browserChange.changes.browser, { from: false, to: true });
+    assert.equal(browserChange.desired.input.browser?.nodeImage, image);
+    await writeFile(
+      join(stateDirectory, "prepared.json"),
+      JSON.stringify({
+        ownerId: retained.ownerId,
+        settingsPending: browserChange.desired.fingerprint,
+        settingsCandidate: path,
+        settingsBrowserPort: 51234,
+      }),
+    );
+    assert.equal(
+      (await planSettingsChange(path)).desired.input.browser?.port,
+      51234,
+    );
+    await writeFile(
+      join(stateDirectory, "prepared.json"),
+      JSON.stringify({ ownerId: retained.ownerId }),
+    );
+    await writeFile(path, JSON.stringify(configuration));
     assert.deepEqual(changedSettings.scopes, {
       models: false,
       connections: false,
       publicWeb: false,
+      browser: false,
       packs: false,
     });
     assert.deepEqual((await planSettingsChange(path, "models")).scopes, {
       models: true,
       connections: false,
       publicWeb: false,
+      browser: false,
       packs: false,
     });
     const candidate = await saveConfiguration(

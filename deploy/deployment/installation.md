@@ -357,7 +357,7 @@ authority as their pages; an operator filesystem credential is not a role overri
 clawscarf configure --directory ~/my-team
 ```
 
-This loads accepted choices and opens the Models, Connections, Public web and Packs editor.
+This loads accepted choices and opens the AI, Connections, Browser, Public web and Packs editor.
 Review and confirm the change; the CLI handles stopping, applying and optionally starting.
 Unrelated native edits and data are retained. For automation:
 
@@ -368,10 +368,19 @@ clawscarf configure --directory ~/my-team --reasoning high \
 
 `--yes` is required for unattended changes to an existing installation. Changes can restart
 the server; removing packs can remove their native-owned agents, workspaces and sessions.
-Supported changes are models, routes/keys, Connections enablement, public web access and pack selections.
+Supported changes are models, routes/keys, Connections and Browser enablement, public web access and pack selections.
 Release, identity, login, addresses, resources and execution protection stay fixed. Changing
 model gateway ownership or moving broker accounts is a separate deployment change and is
 rejected here.
+
+Choose **Browser → On** to add the shared team Chromium browser to an existing
+installation. The CLI provisions its isolated services and connects them to OpenClaw
+during the restart. **Off** stops those services and disables the browser tool and
+routing. Saved browser logins, profiles and node identity are retained for re-enabling;
+chats, files and unrelated native settings are preserved. The equivalent flags are
+`--browser` and `--no-browser`, with `--non-interactive --yes` for unattended changes.
+Browser access remains administrator-only; see the
+[browser limits](../execution/browser-node/README.md#verified-release-limits).
 
 Unchanged settings leave the running server alone. Changed capabilities are applied
 independently: changing Connections or packs does not reset model defaults. To deliberately

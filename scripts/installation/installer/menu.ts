@@ -73,7 +73,7 @@ export function installationMenu(
           row(
             "browser",
             "Browser",
-            config.browser.enabled ? "On (experimental)" : "Off",
+            config.browser.enabled ? "On · Administrators only" : "Off",
           ),
         ]
       : []),
@@ -106,9 +106,14 @@ export function installationMenu(
   return existing
     ? [
         ...choices.filter(({ value }) =>
-          ["review", "models", "connections", "packs", "public-web"].includes(
-            value,
-          ),
+          [
+            "review",
+            "models",
+            "connections",
+            "packs",
+            "browser",
+            "public-web",
+          ].includes(value),
         ),
         ...(config.models?.mode === "litellm" && config.models.cloud
           ? []

@@ -280,15 +280,15 @@ export async function collectInstallation(
             break;
           case "browser":
             ui.note(
-              "Explicit browser node use works. Ordinary model-selected browsing is not qualified because of an upstream routing issue.",
-              "Experimental browser",
+              "A separate Chromium browser for the team. Administrators can browse public websites, fill in forms and transfer files through chat. Browser logins are shared and kept when you turn it off.",
+              "Shared browser",
             );
             config.browser.enabled =
               (await ui.select(
                 "Browser",
                 [
                   { value: "off", label: "Off" },
-                  { value: "on", label: "On (experimental)" },
+                  { value: "on", label: "On · Administrators only" },
                 ],
                 config.browser.enabled ? "on" : "off",
               )) === "on";

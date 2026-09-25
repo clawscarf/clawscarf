@@ -148,6 +148,13 @@ async function fixture(t: TestContext) {
         gateway: image,
         companion: image,
         openshellClient: image,
+        relay: image,
+        browser: {
+          chromium: image,
+          node: image,
+          dns: image,
+          egress: image,
+        },
       },
       tools: {
         openshell: {
@@ -166,7 +173,11 @@ async function fixture(t: TestContext) {
     JSON.stringify({
       ...preset,
       runtime: release,
-      defaults: { ...preset.defaults, connections: { enabled: false } },
+      defaults: {
+        ...preset.defaults,
+        connections: { enabled: false },
+        browser: { enabled: false },
+      },
     }),
   );
   const models = join(parent, "initial-models.json");
@@ -230,6 +241,45 @@ async function saveAnswers(
 const local = {
   skip: process.platform !== "darwin" || process.arch !== "arm64",
 };
+
+await test(
+  "retained installer offers Browser and accepts its toggle",
+  local,
+  async (t) => {
+    const f = await fixture(t);
+    const first = await collectInstallation(new Answers(f.answers), f);
+    const ui = new Answers({ ...f.answers, Browser: "on" }, ["browser"]);
+    const changed = await collectInstallation(
+      ui,
+      { recipe: f.recipe, existing: true },
+      first,
+    );
+    assert.equal(changed.config.browser.enabled, true);
+    assert.ok(
+      ui.notes.some((note) => note.includes("Browser logins are shared")),
+    );
+    assert.ok(
+      !ui.notes.some((note) => note.includes("upstream routing issue")),
+    );
+    const { selectedDraft } = await import("./installation/options.js");
+    const { setupContext } = await import("./installation/setup.js");
+    const context = await setupContext(f);
+    for (const browser of [true, false]) {
+      const selected = await selectedDraft(
+        context,
+        "team-server",
+        { browser },
+        first.inputs,
+        first.config,
+      );
+      assert.equal(selected.browser.enabled, browser);
+      assert.deepEqual(
+        { ...selected, browser: first.config.browser },
+        first.config,
+      );
+    }
+  },
+);
 
 await test(
   "collected settings save private files without applying",
@@ -1282,6 +1332,7 @@ await test(
               "models",
               "connections",
               "packs",
+              "browser",
               "public-web",
               "model-credentials",
             ],
@@ -1937,6 +1988,7 @@ await test(
       models: false,
       connections: false,
       publicWeb: false,
+      browser: false,
       packs: false,
     });
     copied.connections.mode = "hosted";
@@ -1944,6 +1996,7 @@ await test(
       models: false,
       connections: true,
       publicWeb: false,
+      browser: false,
       packs: false,
     });
     copied.models = { ...copied.models };
@@ -1957,6 +2010,7 @@ await test(
         models: true,
         connections: true,
         publicWeb: false,
+        browser: false,
         packs: false,
       });
     }
@@ -2295,6 +2349,11 @@ await test(
     const { resolveConfigurationInputs } =
       await import("./installation/configure.js");
     const accepted = resolveConfigurationInputs(original, f.directory);
+    assert.equal(accepted.models.mode, "litellm");
+    const credential = "CLAWSCARF_CLOUD_AI_KEY='retained-fixture-key'\n";
+    await writeFile(accepted.models.upstreamEnvironmentFile, credential, {
+      mode: 0o600,
+    });
     accepted.connections = { ...accepted.connections, mode: "disabled" };
     const retained = await saveConfiguration(
       join(f.parent, "retained-ai"),
@@ -2303,6 +2362,14 @@ await test(
       true,
     );
     const next = installationSchema.parse(await readJson(retained));
+    assert.equal(next.models.mode, "litellm");
+    assert.equal(
+      await readFile(
+        resolve(dirname(retained), next.models.upstreamEnvironmentFile),
+        "utf8",
+      ),
+      credential,
+    );
     assert.deepEqual(
       aiRegistration(next),
       aiRegistration(resolveConfigurationInputs(original, f.directory)),

@@ -8,6 +8,9 @@ Fresh installations with Browser Off disable both native browser control and the
 bundled browser plugin, so agents are not offered an unavailable browser tool.
 Browser On enables both and selects the protected team controller below. These
 initial defaults are not reapplied over retained native settings on restart.
+An explicit [retained Browser change](../../deployment/installation.md#change-an-existing-installation)
+adds or stops the same services and changes only their native browser settings.
+Disabling keeps owned volumes, saved logins and node admission for re-enabling.
 
 This optional image runs OpenClaw's headless node as a trusted browser
 controller **outside OpenShell**. The team runtime retains OpenShell. Chromium runs separately with its own sandbox and network boundary.
@@ -190,10 +193,18 @@ file retention and browser reconnection after stop/start.
 Shared downloads require controller images and operator wiring with file-transfer
 support. Existing installations retain their selected runtime; updating the CLI
 does not upgrade them. See [changing an installation](../../deployment/installation.md#change-an-existing-installation).
-The Team server recipe remains disabled by default. [TODO.md](../../../TODO.md#browser)
-tracks remaining Linux installation qualification. [Release evidence](../../../release/README.md#release-evidence)
-owns publication status, and the [network regression](../network/README.md#build-and-test)
-owns destination restrictions.
+Both [bundled recipes](../../../recipes/README.md) enable the browser by default.
+Existing installations keep their accepted setting until explicitly changed.
+[Release evidence](../../../release/README.md#release-evidence) owns publication
+status, and the [network regression](../network/README.md#build-and-test) owns
+destination restrictions.
+
+The [installation acceptance workflow](../../../.github/workflows/browser-acceptance.yml)
+tests the selected published standalone CLI on Linux ARM64/x86-64. Its
+[regression](../../../tests/deployment/browser-installation-live.test.ts) exercises
+authenticated Gateway/node transfers, workspace file retention and browser cookies
+across restart and retained On/Off changes. It uses synthetic administrator sessions
+and file contents; it does not qualify external OIDC login or model inference.
 
 Run the file-transfer regression against newly built images:
 

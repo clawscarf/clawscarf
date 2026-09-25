@@ -3,7 +3,20 @@ import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 
 const owner = z.uuid();
+const browserSettingsSchema = z.discriminatedUnion("enabled", [
+  z.strictObject({ enabled: z.literal(false) }),
+  z.strictObject({
+    enabled: z.literal(true),
+    token: z.string().regex(/^[a-f0-9]{64}$/u),
+    node: z.string().min(1),
+  }),
+]);
 const inputSchema = z.discriminatedUnion("command", [
+  z.strictObject({
+    command: z.literal("configure"),
+    ownerId: owner,
+    settings: browserSettingsSchema,
+  }),
   z.strictObject({
     command: z.literal("initialize"),
     ownerId: owner,
@@ -22,6 +35,125 @@ const inputSchema = z.discriminatedUnion("command", [
   }),
   z.strictObject({ command: z.literal("remove-code"), ownerId: owner }),
 ]);
+
+/** Only the selected browser capability is reapplied; other native settings stay native-owned. */
+export function configuredBrowser(
+  value: unknown,
+  settings: z.infer<typeof browserSettingsSchema>,
+) {
+  const object = (input: unknown) =>
+    z.record(z.string(), z.unknown()).parse(input ?? {});
+  const config = object(value);
+  const browser = object(config.browser);
+  const plugins = object(config.plugins);
+  const entries = object(plugins.entries);
+  const gateway = object(config.gateway);
+  const nodes = object(gateway.nodes);
+  const ssrf = object(browser.ssrfPolicy);
+  return {
+    ...config,
+    browser: {
+      ...browser,
+      enabled: settings.enabled,
+      ...(settings.enabled
+        ? {
+            allowSystemProfileImport: false,
+            defaultProfile: "team",
+            profiles: {
+              ...object(browser.profiles),
+              team: {
+                cdpUrl: `http://openclaw:${settings.token}@runtime.clawscarf.internal:9223`,
+                attachOnly: true,
+              },
+            },
+            ssrfPolicy: {
+              ...ssrf,
+              allowedHostnames: [
+                ...new Set([
+                  ...z.array(z.string()).parse(ssrf.allowedHostnames ?? []),
+                  "runtime.clawscarf.internal",
+                ]),
+              ],
+            },
+          }
+        : {}),
+    },
+    plugins: {
+      ...plugins,
+      entries: {
+        ...entries,
+        browser: { ...object(entries.browser), enabled: settings.enabled },
+      },
+    },
+    gateway: {
+      ...gateway,
+      nodes: {
+        ...nodes,
+        ...(settings.enabled
+          ? { pairing: { ...object(nodes.pairing), autoApproveLocal: false } }
+          : {}),
+        browser: {
+          ...object(nodes.browser),
+          mode: settings.enabled ? "manual" : "off",
+          ...(settings.enabled ? { node: settings.node } : {}),
+        },
+      },
+    },
+  };
+}
+
+async function configureBrowser(
+  ownerId: string,
+  settings: z.infer<typeof browserSettingsSchema>,
+) {
+  const root = "/home/node/.openclaw";
+  for (const name of ["clawscarf-installation.json", "openclaw.json"]) {
+    const info = fs.lstatSync(`${root}/${name}`);
+    if (
+      !info.isFile() ||
+      info.nlink !== 1 ||
+      info.uid !== process.getuid?.() ||
+      (info.mode & 0o077) !== 0
+    )
+      throw new Error("Unsafe native configuration");
+  }
+  z.object({ ownerId: z.literal(ownerId) }).parse(
+    JSON.parse(fs.readFileSync(`${root}/clawscarf-installation.json`, "utf8")),
+  );
+  const specifier = "openclaw/plugin-sdk/config-mutation";
+  const sdk = z.record(z.string(), z.unknown()).parse(await import(specifier));
+  const read = sdk.readConfigFileSnapshotForWrite;
+  const mutate = sdk.mutateConfigFile;
+  if (typeof read !== "function" || typeof mutate !== "function")
+    throw new Error("Native SDK unavailable");
+  const snapshot = z
+    .object({
+      snapshot: z.object({
+        exists: z.literal(true),
+        valid: z.literal(true),
+        hash: z.string().min(1),
+      }),
+    })
+    .parse(await Reflect.apply(read, undefined, [])).snapshot;
+  await Reflect.apply(mutate, undefined, [
+    {
+      base: "source",
+      baseHash: snapshot.hash,
+      afterWrite: {
+        mode: "none",
+        reason: "The installation service owns restart.",
+      },
+      writeOptions: { skipOutputLogs: true },
+      mutate: (draft: unknown) => {
+        const configured = configuredBrowser(draft, settings);
+        if (typeof draft !== "object" || draft === null)
+          throw new Error("Invalid configuration");
+        Object.assign(draft, configured);
+      },
+    },
+  ]);
+  return { ok: true };
+}
 
 const paired = z.object({
   deviceId: z.string(),
@@ -73,6 +205,8 @@ async function main() {
     if (text.length > 131072) throw new Error("Input too large");
   }
   const input = inputSchema.parse(JSON.parse(text));
+  if (input.command === "configure")
+    return configureBrowser(input.ownerId, input.settings);
   if (input.command === "issue") {
     const issued = z
       .object({ token: z.string(), expiresAtMs: z.number() })

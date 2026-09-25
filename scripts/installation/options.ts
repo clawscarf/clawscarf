@@ -111,7 +111,7 @@ export function installationOptions(command: Command) {
       "--connections-cloud-url <url>",
       "Use a separate Connections service",
     )
-    .option("--browser", "Enable experimental browser capability")
+    .option("--browser", "Enable the shared browser (administrators only)")
     .option("--no-browser", "Disable browser capability")
     .option("--public-web", "Allow public HTTP(S) from agents and tools")
     .option("--no-public-web", "Restrict runtime egress to configured services")
@@ -209,6 +209,7 @@ export async function selectedDraft(
       "modelGatewayKeyFile",
       "modelGatewayCaFile",
       "connections",
+      "browser",
       "publicWeb",
       "connectionsCloudUrl",
       "pack",
@@ -222,7 +223,7 @@ export async function selectedDraft(
       )
     )
       invalid(
-        "Existing installations support changes to models, keys, Connections, public web and packs only.",
+        "Existing installations support changes to models, keys, Connections, browser, public web and packs only.",
       );
   }
   const config = structuredClone(
