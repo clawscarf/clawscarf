@@ -9,7 +9,6 @@ administrator-added plugins, skills and MCP.
 - [ ] Fix `skill-creator` to invoke installed `python3` and run its packaged validator.
 - [ ] Fix `taskflow` examples to find packaged pipelines from the runtime workspace;
       exercise approval and resume.
-- [ ] Rename `ClawScarf People` to `People` in the manifest and registration.
 - [ ] Remove personal-device setup and Talk pages, routes and native setup actions.
       Keep browser-node pairing.
 - [ ] Remove direct-provider account setup and Advanced provider settings; keep

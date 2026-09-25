@@ -1,6 +1,6 @@
 {
   "id": "clawscarf-access",
-  "name": "ClawScarf People",
+  "name": "People",
   "version": "0.1.0",
   "description": "Account, team invitations and native role assignments.",
   "activation": {

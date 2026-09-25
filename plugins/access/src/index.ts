@@ -6,7 +6,7 @@ const plugin: ReturnType<typeof defineFeaturePlugin> = defineFeaturePlugin({
     operations: {},
     events: {},
   }),
-  name: "ClawScarf People",
+  name: "People",
   description: "Account, team invitations and native role assignments.",
   setup: () => ({}),
 });
