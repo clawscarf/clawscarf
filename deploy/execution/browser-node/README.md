@@ -193,10 +193,11 @@ file retention and browser reconnection after stop/start.
 Shared downloads require controller images and operator wiring with file-transfer
 support. Existing installations retain their selected runtime; updating the CLI
 does not upgrade them. See [changing an installation](../../deployment/installation.md#change-an-existing-installation).
-The Team server recipe remains disabled by default. [TODO.md](../../../TODO.md#browser)
-tracks remaining Linux installation qualification. [Release evidence](../../../release/README.md#release-evidence)
-owns publication status, and the [network regression](../network/README.md#build-and-test)
-owns destination restrictions.
+Both [bundled recipes](../../../recipes/README.md) enable the browser by default.
+Existing installations keep their accepted setting until explicitly changed.
+[Release evidence](../../../release/README.md#release-evidence) owns publication
+status, and the [network regression](../network/README.md#build-and-test) owns
+destination restrictions.
 
 The [installation acceptance workflow](../../../.github/workflows/browser-acceptance.yml)
 tests the selected published standalone CLI on Linux ARM64/x86-64. Its

@@ -111,7 +111,7 @@ export function installationOptions(command: Command) {
       "--connections-cloud-url <url>",
       "Use a separate Connections service",
     )
-    .option("--browser", "Enable experimental browser capability")
+    .option("--browser", "Enable the shared browser (administrators only)")
     .option("--no-browser", "Disable browser capability")
     .option("--public-web", "Allow public HTTP(S) from agents and tools")
     .option("--no-public-web", "Restrict runtime egress to configured services")

@@ -73,7 +73,7 @@ export function installationMenu(
           row(
             "browser",
             "Browser",
-            config.browser.enabled ? "On (experimental)" : "Off",
+            config.browser.enabled ? "On · Administrators only" : "Off",
           ),
         ]
       : []),

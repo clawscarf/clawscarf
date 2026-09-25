@@ -1,11 +1,5 @@
 # TODO
 
-## Browser
-
-- [ ] Qualify administrator browser file transfers in released Linux ARM64/x86-64
-      installations before enabling browser by default.
-      [Current support](deploy/execution/browser-node/README.md#verified-release-limits).
-
 ## OpenClaw curation
 
 Built-in selection is implemented in the [inventory](runtime/openclaw/inventory.json).
