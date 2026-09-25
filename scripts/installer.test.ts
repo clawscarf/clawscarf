@@ -166,7 +166,11 @@ async function fixture(t: TestContext) {
     JSON.stringify({
       ...preset,
       runtime: release,
-      defaults: { ...preset.defaults, connections: { enabled: false } },
+      defaults: {
+        ...preset.defaults,
+        connections: { enabled: false },
+        browser: { enabled: false },
+      },
     }),
   );
   const models = join(parent, "initial-models.json");
